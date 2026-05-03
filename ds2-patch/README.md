@@ -3,6 +3,10 @@
 Bugfix patch for *Dark Sun: Wake of the Ravager* (1994). Targets
 the GOG release (engine version 1.10).
 
+Part of the [OpenDS](../README.md) community toolkit. The patch
+ships as `darkfix-ds2` releases; the rest of OpenDS provides the
+tools used to author them.
+
 This is the headline patch — *Wake of the Ravager* shipped with
 game-breaking bugs that even SSI's 1.02 and 1.10 patches did not
 fully resolve. There has never been a public unofficial patch.

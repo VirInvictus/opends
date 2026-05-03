@@ -1,79 +1,107 @@
 <p align="center">
-  <img src="logo.svg" alt="darkfix" width="360">
+  <img src="logo.svg" alt="OpenDS" width="360">
 </p>
 
-# darkfix
+# OpenDS
 
-Community bugfix patches for SSI's Dark Sun CRPGs:
+**An open community toolkit for SSI's Dark Sun CRPGs** —
+*Shattered Lands* (1993) and *Wake of the Ravager* (1994).
 
-- `ds1-patch/` — *Dark Sun: Shattered Lands* (1993)
-- `ds2-patch/` — *Dark Sun: Wake of the Ravager* (1994)
+Tools, patches, and documentation. Everything we learn gets
+written down. Every utility we build gets published.
 
-The first unofficial patches ever attempted for either game.
+## What ships out of this repo
 
-## Why
+In build order — **tools first, patches second**:
 
-The original engine never shipped finished. *Wake of the Ravager* in
-particular is famous for game-breaking bugs that even SSI's 1.02/1.10
-patches did not fully resolve. The GOG releases ship the original DOS
-binaries inside DOSBox — there is no fan patch and no public
-reimplementation that plays end-to-end.
+- **Tools** — every utility built to make the digging easier.
+  GFF reader/writer, GPL bytecode disassembler, dialog
+  extractor, save inspector, region viewer, install verifier,
+  extractors. Each ships independently with its own README and
+  tagged release. MIT-licensed. → [`tools/`](tools/)
+  *(forthcoming)*
+- **darkfix patches** — community bugfix patches for both
+  games. Distributed as zips you apply to your GOG install. The
+  game still launches via DOSBox; the bugs you used to hit, you
+  don't. Authoring is built on the tools above.
+  → [`ds1-patch/`](ds1-patch/), [`ds2-patch/`](ds2-patch/)
+- **Documentation** — file formats, engine internals, bug
+  catalogs, reverse-engineering notes. So the next person doesn't
+  have to figure it out again. → [`docs/`](docs/)
 
-This project takes the patches-first route:
+Anything that makes the digging easier is priority #1. Patches
+follow the toolkit. See [`roadmap.md`](roadmap.md) for the
+phased ordering.
 
-- **Data patches** to the game's `.GFF` files (quest scripts,
-  region data, item flags) — applied with `gff-tool` from the
-  `dsun_music` project.
-- **Binary patches** to `DSUN.EXE` — surgical fixes for bugs that
-  live in the engine itself (combat AI, sprite culling, save/exit).
-- **Distributed as scripts** that apply edits to a player's GOG
-  install. The game still launches via DOSBox; the bugs they hit,
-  they don't.
+## What this is not (yet)
 
-What you give up vs a from-scratch reimplementation: native Linux,
-arbitrary resolution, modern UI. What you gain: a finished thing,
-realistically, this year.
+A full open-source engine reimplementation.
 
-## Long-term aspiration
+It has been tried, repeatedly. Public attempts going back two
+decades:
 
-A from-scratch open-source engine ("OpenDS") remains the dream. The
-patch work directly feeds into it — disassembling GPL bytecode to
-fix quest bugs is the same work an eventual GPL VM would need.
-For now the focus is patches; engine deferred.
+- **Dark Sun World** (2004–2008) — DSO revival. Inactive.
+- **A 2010s DSO emulator** — shut down by Wizards of the Coast.
+- **paulofthewest's `soloscuro-archive`** — the most serious
+  attempt, ~567 commits, stalled in 2023.
+- **soloscuro (Zig rewrite)**, **soloscuro-orx**,
+  **soloscuro-oldgo**, **libsoloscuro** — half a dozen prototypes
+  inside the dsoageofheroes org alone, none playable end-to-end.
+- **Beamdog forums port** — a community attempt to recreate
+  *Shattered Lands* inside the Infinity Engine. Inactive.
+
+Every attempt has stalled before delivering a playable game. The
+problem is the GPL bytecode VM — the engine's embedded scripting
+language, with no public spec — and the volume of game logic
+expressed in it.
+
+OpenDS goes at it sideways: ship the artifacts you build *on the
+way* to an engine — disassemblers, chunk editors, format docs, bug
+patches — as standalone, useful tools. Each one is valuable on
+its own. Each one teaches us more about the engine. The eventual
+full reimplementation lives in the project's name as an
+aspiration, not a roadmap commitment. We get there if we get
+there. The toolkit and patches matter even if we don't.
 
 ## Status
 
-Day zero. Documentation phase. See:
+Day zero. Documentation phase.
 
 - [`spec.md`](spec.md) — design spec and invariants
 - [`roadmap.md`](roadmap.md) — phased plan
-- [`docs/`](docs/) — engine research, file formats, known bugs, build setup
-- [`ds1-patch/`](ds1-patch/) and [`ds2-patch/`](ds2-patch/) — per-game patch sources
+- [`docs/`](docs/) — research, formats, bugs, build setup, GPL
+  notes, binary patching, patch workflow
 
 ## Quick start (developer)
 
 You need a legitimate copy of one or both games (GOG installers
 recommended). Place the GOG `.exe` installers under `.games/`
-(gitignored) and run the extraction script (forthcoming) to populate
-`extracted/<ds1|ds2>/`. See [`docs/build-environment.md`](docs/build-environment.md).
+(gitignored). Extraction script forthcoming; see
+[`docs/build-environment.md`](docs/build-environment.md) for the
+manual `innoextract` route.
 
 ## License
 
-TBD. Patches and tooling will be open-source. Game data files are
-not redistributed and remain the property of Wizards of the Coast /
-the original copyright holders.
+TBD — likely MIT for tools and patch tooling. Game data files
+are not redistributed; they remain the property of Wizards of
+the Coast / the original copyright holders. The player provides
+their own.
 
 ## Credits
 
-Standing on the shoulders of:
+Standing on the shoulders of every prior attempt:
 
 - **paulofthewest** and the [dsoageofheroes](https://github.com/dsoageofheroes)
-  organization (`libgff`, `soloscuro`) — primary GFF reverse-engineering.
+  organization (`libgff`, `soloscuro` and family) — the deepest
+  public GFF reverse-engineering work; OpenDS would not be
+  feasible without it.
 - **John Glassmyer** ([dsun_music](https://github.com/JohnGlassmyer/dsun_music))
-  — the GFF editor that makes data-patches feasible at all.
+  — the GFF *writer* that makes data patches possible.
 - **Greg Kennedy** ([DarkSunOnline](https://github.com/greg-kennedy/DarkSunOnline))
-  — DSO protocol RE; the v1.0 client's debug symbols cross-reference WotR
-  internals.
+  — DSO protocol RE; the v1.0 client's debug symbols
+  cross-reference WotR engine internals.
 
-See [`docs/upstream-projects.md`](docs/upstream-projects.md) for the
-full upstream catalog.
+See [`docs/upstream-projects.md`](docs/upstream-projects.md) for
+the full upstream catalog. If you've worked on Dark Sun
+reverse-engineering and aren't listed, open an issue — we'd
+rather over-credit than under-credit.

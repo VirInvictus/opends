@@ -133,25 +133,49 @@ All GFFs verified to start with `GFFI\0\0\x03\0\x1c\0\0\0` — magic
 the offset to the table of contents. Identical magic across DS1, DS2,
 and (per other sources) DSO.
 
-## 5. The darkfix opportunity
+## 5. The OpenDS opportunity
 
-WotR shipped buggy in 1994; SSI's 1.02 and 1.10 patches reduced but
-did not eliminate the problems. **No public unofficial community
-patch has ever existed for either Dark Sun game.** GOG ships the
-1.10 binary inside DOSBox. This means:
+WotR shipped buggy in 1994; SSI's 1.02 and 1.10 patches reduced
+but did not eliminate the problems. **No public unofficial
+community patch has ever existed for either Dark Sun game.** GOG
+ships the 1.10 binary inside DOSBox. The state of the art for
+"play Wake of the Ravager today" is identical to the state of
+the art in 1995 modulo DOSBox conveniences.
 
-- The state of the art for "play Wake of the Ravager today" is
-  identical to the state of the art in 1995 modulo DOSBox
-  conveniences.
-- The first community patch will, by definition, be the most
-  reliable way to play the late game.
+Reimplementations have been attempted — and have failed — for
+two decades:
 
-That is the project's pitch in one sentence: **darkfix ships the
-version of *Wake of the Ravager* that should have shipped.**
+| Year       | Project                     | Outcome                                  |
+|------------|-----------------------------|------------------------------------------|
+| 2004–2008  | Dark Sun World              | DSO revival; inactive                    |
+| ~2010s     | DSO emulator                | Shut down by Wizards of the Coast        |
+| 2017–2023  | `soloscuro-archive`         | ~567 commits, stalled 2023               |
+| 2020s      | `soloscuro` (Zig rewrite)   | Very early; ~7 commits                   |
+| 2020s      | `soloscuro-orx`             | Experimental; dormant                    |
+| 2020s      | `soloscuro-oldgo`           | Archived                                 |
+| 2010s      | Beamdog Infinity Engine port| Inactive                                 |
 
-A from-scratch open-source engine ("OpenDS") remains the long-term
-aspiration; the patch work is the route that gets there. See
-[`../spec.md`](../spec.md) §12.
+The blocker each time is the GPL bytecode VM: no public spec,
+extensive game logic in it, hard to verify against the original
+engine.
+
+OpenDS reframes the problem. Instead of "build the whole engine
+in one push" (a strategy with a 0-for-7 record), we ship the
+**toolkit and patches** that accumulate engine knowledge as
+standalone deliverables:
+
+- **darkfix patches** are the first community patches ever
+  shipped for either game.
+- **Tools** (GPL disassembler, GFF editor, install verifier,
+  region viewer) are independently useful and reusable.
+- **Documentation** is the artifact every prior attempt failed
+  to leave behind — meaning every new contributor has had to
+  redo the same RE work from scratch.
+
+The eventual full reimplementation lives in the project's name
+as an aspiration. We commit to building the toolkit that makes
+it possible. We do not commit to shipping it ourselves. See
+[`../spec.md`](../spec.md) §12 and §13.
 
 ## 6. Sources
 

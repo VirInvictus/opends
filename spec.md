@@ -1,33 +1,71 @@
-# darkfix — Design Spec
+# OpenDS — Design Spec
 
 This document captures the design invariants and architectural
-decisions for the darkfix patch project. It is the source of truth
-for "what we are building"; [`roadmap.md`](roadmap.md) tracks
-"in what order."
+decisions for OpenDS. It is the source of truth for "what we are
+building"; [`roadmap.md`](roadmap.md) tracks "in what order."
 
 ## 1. Scope
 
-darkfix authors and distributes unofficial bugfix patches for two
-SSI titles:
+OpenDS is a **community toolkit** for SSI's Dark Sun CRPGs:
 
-- *Dark Sun: Shattered Lands* (1993, GOG-shipped 1.10) →
-  [`ds1-patch/`](ds1-patch/)
-- *Dark Sun: Wake of the Ravager* (1994, GOG-shipped 1.10) →
-  [`ds2-patch/`](ds2-patch/)
+- *Dark Sun: Shattered Lands* (1993, GOG-shipped 1.10)
+- *Dark Sun: Wake of the Ravager* (1994, GOG-shipped 1.10)
 
-Each patch is a set of edits applied to the player's install of the
-GOG release. The output is a fixed game; the game still runs in
-DOSBox under the original engine.
+Three product surfaces, each shippable on its own:
 
-What this project is **not** (now):
+1. **darkfix patches** — unofficial bugfix patches per game,
+   under [`ds1-patch/`](ds1-patch/) and [`ds2-patch/`](ds2-patch/).
+   Applied to the player's GOG install; game still runs in
+   DOSBox under the original engine.
+2. **Tools** — every utility we build to author a fix becomes
+   a public, MIT-licensed tool under [`tools/`](tools/). GFF
+   chunk editor, GPL disassembler, install verifier, etc.
+3. **Documentation** — every reverse-engineering finding is
+   written into [`docs/`](docs/) so the next person doesn't have
+   to redo the work.
 
-- Not an engine reimplementation.
-- Not a content mod (no new quests, no new items, no new regions).
+What OpenDS is **not** (now):
+
+- Not a from-scratch engine reimplementation. That is the
+  long-term aspiration the name encodes; it is not the v1
+  deliverable. See §12.
+- Not a content mod (no new quests, no new items, no new
+  regions).
 - Not a re-balance.
 - Not a port (still DOSBox; still DOS).
 
-The from-scratch engine is a separate, deferred aspiration. The
-patch work feeds it, but is not gated by it.
+## 1a. Why a toolkit, not an engine
+
+Multiple public engine reimplementation attempts going back to
+2004 have stalled before producing a playable game (Dark Sun
+World, the 2010s DSO emulator, soloscuro-archive at ~567 commits,
+several other dsoageofheroes prototypes, the Beamdog Infinity
+Engine port). The blocker each time is the GPL bytecode VM:
+no public spec, lots of game logic, hard to verify against the
+original.
+
+OpenDS reframes the problem. Instead of "build the whole engine
+in one push," we ship the artifacts you accumulate *on the way*
+to an engine — disassemblers, chunk editors, format
+documentation, bug patches — as standalone, useful tools. Each
+one is valuable on its own. Each one chips at the GPL VM
+problem. Each one is something a future engine project can pick
+up and use rather than reinvent.
+
+## 1b. Tools-first ordering
+
+A consequence of §1a: **anything that makes the digging easier
+is priority over any specific patch.** Tools that help us read,
+locate, edit, and verify the game's internals ship before the
+patches that consume them. The patch phases of the
+[roadmap](roadmap.md) (Phase 6 onward) start when the toolkit is
+sharp enough that authoring fixes is plumbing, not archaeology.
+
+This is intentional even though it means patches ship later. The
+alternative — author a fix, build an ad-hoc tool around it, ship
+both — produces fragile one-off code and a slow flow. Tools
+first means tool *N+1* benefits from every prior tool, and every
+patch authored against the toolkit takes a fraction of the time.
 
 ## 2. Target platform
 
@@ -178,11 +216,12 @@ See [`docs/build-environment.md`](docs/build-environment.md).
 ## 8. Repository layout
 
 ```
-darkfix/  (currently named opends/ on disk; rename pending)
+opends/
 ├── README.md
 ├── spec.md                 # this file
 ├── roadmap.md
 ├── patchnotes.md
+├── logo.svg
 ├── .gitignore              # .games/, extracted/, scratch/
 ├── docs/
 │   ├── research.md         # engine research
@@ -193,23 +232,32 @@ darkfix/  (currently named opends/ on disk; rename pending)
 │   ├── gpl-bytecode.md
 │   ├── binary-patching.md
 │   └── patch-workflow.md
-├── ds1-patch/
+├── ds1-patch/              # darkfix patch for Shattered Lands
 │   ├── README.md
 │   ├── manifest.toml
 │   ├── fixes/              # one .md + script per fix
 │   └── scripts/            # apply.py and helpers
-├── ds2-patch/
+├── ds2-patch/              # darkfix patch for Wake of the Ravager
 │   ├── README.md
 │   ├── manifest.toml
 │   ├── fixes/
 │   └── scripts/
-├── tools/                  # shared dev tooling
+├── tools/                  # the public toolkit
 │   ├── extract.sh          # GOG installer → extracted/
 │   ├── verify-install.py   # hash a player's install
-│   └── gpl-disasm/         # the disassembler
+│   ├── gpl-disasm/         # GPL bytecode disassembler
+│   ├── gff-edit/           # GFF chunk editor (Python)
+│   └── ...                 # one folder per tool
 ├── extracted/  (gitignored) # unpacked game files for dev
 └── .games/     (gitignored) # raw GOG installers
 ```
+
+The repo name `opends` is the umbrella project. The patches
+shipped from inside it are referred to as **darkfix patches**
+(`darkfix-ds1`, `darkfix-ds2`) — that's the name players and
+release artifacts see. Tools are referred to by their own names
+(`gpl-disasm`, etc.). When the engine eventually exists, it
+inherits the umbrella name: OpenDS.
 
 ## 9. Versioning
 
@@ -247,11 +295,41 @@ Three levels:
 
 CI runs unit tests only. In-game and manual run locally.
 
-## 12. Engine project (deferred)
+## 12. Engine (deferred — the aspiration in the name)
 
-A from-scratch engine ("OpenDS") remains a long-term goal. When
-darkfix has ten or more shipped fixes and a solid GPL disassembler,
-spinning up an engine becomes plausible. Not before.
+A from-scratch engine remains the long-term goal the name
+*OpenDS* encodes. The project does not promise it. The toolkit
+and patches are the v1 deliverables; the engine is what becomes
+*possible* if the toolkit gets good enough.
+
+Concretely: when we have a working GPL disassembler, a
+GPL reassembler, a GFF reader/writer in our preferred language,
+a region renderer prototype, and enough documented opcodes to
+read the bulk of `GPLDATA.GFF` — *then* an engine project is no
+longer an act of single-handed reverse-engineering. It's
+plumbing. At that point, spinning it up makes sense.
+
+Not before. Not as a roadmap commitment. We get there if we get
+there. Every shipped tool and patch is independently valuable.
+
+## 13. Tool publication policy
+
+Every utility built in service of a fix is a candidate for
+public release as a standalone tool, even tools we initially
+build "just for our own use." If a tool would help anyone else
+working on Dark Sun (or any other GFF-based SSI title), it
+ships:
+
+- Its own README, with examples and known limitations.
+- MIT license unless there's a specific reason otherwise.
+- An entry in `tools/README.md` (an index of the toolkit).
+- Versioned releases when meaningful (a parser that gets
+  better over time deserves tags).
+
+If a tool turns out to have wider applicability than Dark Sun
+specifically (e.g., a generic GFF inspector), we factor it into
+its own repo and link from the toolkit index — but we don't do
+this prematurely. One repo until friction proves we need two.
 
 ## 13. Open questions
 

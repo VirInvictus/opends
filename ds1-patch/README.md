@@ -3,6 +3,10 @@
 Bugfix patch for *Dark Sun: Shattered Lands* (1993). Targets the
 GOG release (engine version 1.10).
 
+Part of the [OpenDS](../README.md) community toolkit. The patch
+ships as `darkfix-ds1` releases; the rest of OpenDS provides the
+tools used to author them.
+
 Status: pre-release. No fixes shipped yet. See
 [`../roadmap.md`](../roadmap.md).
 

@@ -125,7 +125,7 @@
   <!-- Wordmark -->
   <g font-family="ui-monospace, 'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace"
      text-anchor="middle" font-weight="900">
-    <text x="400" y="734" font-size="96" letter-spacing="12" fill="#e8d5b7">DARKFIX</text>
-    <text x="400" y="770" font-size="14" letter-spacing="9" fill="#d8421e">DARK · SUN · BUGFIX · PATCHES</text>
+    <text x="400" y="734" font-size="100" letter-spacing="14" fill="#e8d5b7">OPENDS</text>
+    <text x="400" y="770" font-size="14" letter-spacing="9" fill="#d8421e">DARK · SUN · COMMUNITY · TOOLKIT</text>
   </g>
 </svg>
