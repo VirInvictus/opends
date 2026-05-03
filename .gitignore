@@ -1,0 +1,21 @@
+# Local game binaries (GOG installers, extracted assets)
+.games/
+
+# Build artifacts
+/build/
+/target/
+*.o
+*.obj
+*.exe
+
+# Editor / OS
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/
+.cache/
+
+# Extracted/derived assets used for analysis but not redistributable
+/extracted/
+/scratch/

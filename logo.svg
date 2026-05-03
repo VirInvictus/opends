@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-label="darkfix">
+  <title>darkfix</title>
+
+  <defs>
+    <radialGradient id="sky" cx="50%" cy="48%" r="78%">
+      <stop offset="0%"  stop-color="#3a1208"/>
+      <stop offset="55%" stop-color="#190703"/>
+      <stop offset="100%" stop-color="#000000"/>
+    </radialGradient>
+
+    <radialGradient id="sun" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#180202"/>
+      <stop offset="28%"  stop-color="#4a0a05"/>
+      <stop offset="62%"  stop-color="#9a2218"/>
+      <stop offset="86%"  stop-color="#d8421e"/>
+      <stop offset="100%" stop-color="#f0802a"/>
+    </radialGradient>
+
+    <radialGradient id="haze" cx="50%" cy="82%" r="65%">
+      <stop offset="0%"   stop-color="#5a2210" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#5a2210" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="ral" cx="35%" cy="35%" r="65%">
+      <stop offset="0%"   stop-color="#9aa888"/>
+      <stop offset="65%"  stop-color="#5c6850"/>
+      <stop offset="100%" stop-color="#2a3024"/>
+    </radialGradient>
+
+    <radialGradient id="guthay" cx="35%" cy="35%" r="65%">
+      <stop offset="0%"   stop-color="#f0c860"/>
+      <stop offset="65%"  stop-color="#a07820"/>
+      <stop offset="100%" stop-color="#3c2c0a"/>
+    </radialGradient>
+
+    <linearGradient id="dunes" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#1c0a05"/>
+      <stop offset="100%" stop-color="#000000"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Sky -->
+  <rect width="800" height="800" fill="url(#sky)"/>
+  <rect width="800" height="800" fill="url(#haze)"/>
+
+  <!-- Sand-dust motes -->
+  <g fill="#e8d5b7" opacity="0.55">
+    <rect x="118" y="118" width="2" height="2"/>
+    <rect x="660" y="78"  width="2" height="2"/>
+    <rect x="538" y="178" width="2" height="2"/>
+    <rect x="202" y="222" width="2" height="2"/>
+    <rect x="744" y="262" width="2" height="2"/>
+    <rect x="372" y="98"  width="2" height="2"/>
+    <rect x="78"  y="288" width="2" height="2"/>
+    <rect x="694" y="334" width="2" height="2"/>
+  </g>
+
+  <!-- Athas's two moons -->
+  <!-- Ral (sage) -->
+  <circle cx="148" cy="160" r="26" fill="url(#ral)"/>
+  <circle cx="142" cy="154" r="6"  fill="#8a9678" opacity="0.55"/>
+  <!-- Guthay (amber) -->
+  <circle cx="660" cy="200" r="20" fill="url(#guthay)"/>
+  <circle cx="655" cy="195" r="5"  fill="#e8b840" opacity="0.6"/>
+
+  <!-- Sun rays (faint, behind sun) -->
+  <g opacity="0.16" stroke="#d8421e" stroke-width="1.6" stroke-linecap="round">
+    <line x1="400" y1="100" x2="400" y2="170"/>
+    <line x1="400" y1="640" x2="400" y2="710"/>
+    <line x1="80"  y1="410" x2="160" y2="410"/>
+    <line x1="640" y1="410" x2="720" y2="410"/>
+    <line x1="170" y1="180" x2="232" y2="242"/>
+    <line x1="568" y1="242" x2="630" y2="180"/>
+    <line x1="170" y1="640" x2="232" y2="578"/>
+    <line x1="568" y1="578" x2="630" y2="640"/>
+  </g>
+
+  <!-- The Dark Sun -->
+  <circle cx="400" cy="410" r="222" fill="url(#sun)"/>
+  <!-- subtle deeper core -->
+  <circle cx="400" cy="410" r="78" fill="#0a0000" opacity="0.55"/>
+
+  <!-- Horizon -->
+  <rect x="0" y="640" width="800" height="2" fill="#d8421e" opacity="0.35"/>
+
+  <!-- Dunes -->
+  <path d="M 0,668
+           Q 90,612 180,640
+           Q 268,668 350,628
+           Q 432,594 520,634
+           Q 610,672 700,624
+           Q 758,596 800,632
+           L 800,800 L 0,800 Z" fill="url(#dunes)"/>
+
+  <!-- THE PATCH LINE — broken bright segments across the sun.
+       Bytecode-as-image: each segment is a span of patched bytes. -->
+  <g fill="#fff6d8">
+    <rect x="178" y="406" width="44" height="4"/>
+    <rect x="232" y="406" width="78" height="4"/>
+    <rect x="320" y="406" width="22" height="4"/>
+    <rect x="354" y="406" width="62" height="4"/>
+    <rect x="428" y="406" width="38" height="4"/>
+    <rect x="478" y="406" width="104" height="4"/>
+    <rect x="594" y="406" width="14" height="4"/>
+  </g>
+  <!-- Soft glow envelope -->
+  <rect x="160" y="402" width="460" height="12" fill="#f0c040" opacity="0.18"/>
+
+  <!-- Floating "edit" pixels -->
+  <g fill="#f0c040">
+    <rect x="270" y="384" width="10" height="10"/>
+    <rect x="446" y="382" width="14" height="14"/>
+    <rect x="376" y="426" width="8"  height="8"/>
+    <rect x="528" y="424" width="6"  height="6"/>
+    <rect x="206" y="424" width="6"  height="6"/>
+    <rect x="600" y="386" width="6"  height="6"/>
+  </g>
+  <!-- Two small white pixels right at the patch site -->
+  <g fill="#ffffff">
+    <rect x="394" y="402" width="4" height="4"/>
+    <rect x="402" y="406" width="4" height="4"/>
+  </g>
+
+  <!-- Wordmark -->
+  <g font-family="ui-monospace, 'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace"
+     text-anchor="middle" font-weight="900">
+    <text x="400" y="734" font-size="96" letter-spacing="12" fill="#e8d5b7">DARKFIX</text>
+    <text x="400" y="770" font-size="14" letter-spacing="9" fill="#d8421e">DARK · SUN · BUGFIX · PATCHES</text>
+  </g>
+</svg>
