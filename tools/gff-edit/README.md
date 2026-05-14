@@ -48,7 +48,8 @@ API surface lands incrementally; see
 gff-cat info  <file>                # print header + TOC summary
 gff-cat list  <file>                # one row per chunk: kind, id, offset, len
 gff-cat extract <file> <kind> <id>  # write chunk bytes to stdout (or -o <file>)
-gff-cat replace <file> <kind> <id> <bytes>  # swap a chunk and rewrite (v0.3.0)
+gff-cat replace <file> <kind> <id> <bytes-file> -o <out>
+                                    # swap a chunk and write modified GFF to <out>
 ```
 
 ## Build
@@ -63,10 +64,16 @@ cargo build -p gff-edit --release
 
 - **v0.1.0** — header + TOC parser, chunk iteration,
   `gff-cat info`, `gff-cat list`. Read-only, indexed types only.
-- **v0.2.0 (current)** — segmented chunks fully resolved via
-  the GFFI cross-reference; `gff-cat extract`; library `read()`
-  works for both indexed and segmented chunks. Verified against
-  128 GFFs across DS1 and DS2 with 63,080 chunks resolved.
-- v0.3.0 — writer; `gff-cat replace`; byte-identical round-trip
-  tests against every shipped GFF in DS1 and DS2.
+- **v0.2.0** — segmented chunks fully resolved via the GFFI
+  cross-reference; `gff-cat extract`; library `read()` works
+  for both indexed and segmented chunks. Verified against 128
+  GFFs across DS1 and DS2 with 63,080 chunks resolved.
+- **v0.3.0 (current)** — writer: `Gff::replace_chunk` and
+  `gff-cat replace`. In-place if the new bytes fit, append at
+  end-of-file otherwise (matches dsun_music's
+  `replaceResource` strategy). Round-trip verified
+  byte-identical across all 128 corpus GFFs.
+- v0.4.0 — modder readability layer: `gff-cat extract --all`,
+  `gff-cat info --json` / `list --json`, `gff-cat dump-text` /
+  `pack-text` for TEXT/ETME/MERR/NAME/SPIN chunks.
 - v1.0.0 — API frozen; full DS1 and DS2 corpus covered.

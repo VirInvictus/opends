@@ -43,6 +43,22 @@ enum Cmd {
         #[arg(short = 'o', long = "output")]
         output: Option<PathBuf>,
     },
+    /// Replace a chunk's bytes and write the modified GFF to `--output`.
+    Replace {
+        /// Path to the source GFF file.
+        file: PathBuf,
+        /// Four-character chunk kind (e.g. "GPL ", "ETME", "TILE").
+        kind: String,
+        /// Resource id of the chunk to replace.
+        id: i32,
+        /// File containing the new chunk bytes.
+        bytes_file: PathBuf,
+        /// Output path for the modified GFF. Required; will not
+        /// overwrite the source unless you point this at it
+        /// explicitly.
+        #[arg(short = 'o', long = "output")]
+        output: PathBuf,
+    },
 }
 
 fn main() -> Result<()> {
@@ -52,6 +68,9 @@ fn main() -> Result<()> {
         Cmd::Info { file } => cmd_info(file),
         Cmd::List { file } => cmd_list(file),
         Cmd::Extract { file, kind, id, output } => cmd_extract(file, kind, id, output),
+        Cmd::Replace { file, kind, id, bytes_file, output } => {
+            cmd_replace(file, kind, id, bytes_file, output)
+        }
     }
 }
 
@@ -135,6 +154,26 @@ fn cmd_list(file: PathBuf) -> Result<()> {
             c.length
         );
     }
+    Ok(())
+}
+
+fn cmd_replace(
+    file: PathBuf,
+    kind: String,
+    id: i32,
+    bytes_file: PathBuf,
+    output: PathBuf,
+) -> Result<()> {
+    let gff = Gff::open(&file).with_context(|| format!("opening {}", file.display()))?;
+    let fourcc = FourCC::from_str(&kind)
+        .with_context(|| format!("parsing FOURCC {kind:?} (must be exactly 4 characters)"))?;
+    let new_bytes = std::fs::read(&bytes_file)
+        .with_context(|| format!("reading replacement bytes from {}", bytes_file.display()))?;
+    let result = gff
+        .replace_chunk(fourcc, id, &new_bytes)
+        .with_context(|| format!("replacing '{}' id={} in {}", fourcc, id, file.display()))?;
+    std::fs::write(&output, &result)
+        .with_context(|| format!("writing modified GFF to {}", output.display()))?;
     Ok(())
 }
 

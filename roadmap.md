@@ -76,16 +76,18 @@ library plus `gff-cat` binary. Tagged release:
       128 GFFs in DS1+DS2 resolved cleanly.)
 - [x] Extract a chunk (indexed or segmented) to a file by
       `(kind, id)`. (gff-edit v0.2.0, `gff-cat extract`.)
-- [ ] Replace a chunk in-place; rewrite the GFF with a valid
-      TOC. (gff-edit v0.3.0)
-- [ ] Round-trip test: read → write → byte-identical for at
-      least one GFF in each game. (gff-edit v0.3.0)
+- [x] Replace a chunk in-place (or append on grow); rewrite
+      the (location, length) record in TOC or secondary table.
+      (gff-edit v0.3.0; works for indexed and segmented.)
+- [x] Round-trip test: no-op replace produces byte-identical
+      output for every GFF in DS1 and DS2 (128/128 corpus
+      pass). (gff-edit v0.3.0)
 - [x] CLI: `gff-cat info <file>`, `gff-cat list <file>`.
       (gff-edit v0.1.0)
 - [x] CLI: `gff-cat extract <file> <kind> <id> [-o <out>]`.
       (gff-edit v0.2.0)
-- [ ] CLI: `gff-cat replace <file> <kind> <id> <bytes>`.
-      (gff-edit v0.3.0)
+- [x] CLI: `gff-cat replace <file> <kind> <id> <bytes-file>
+      -o <out>`. (gff-edit v0.3.0)
 - [x] Tested against every shipped GFF in both DS1 and DS2 with
       no parse errors. (gff-edit v0.1.0: 61/61 pristine,
       67/67 deployed.)

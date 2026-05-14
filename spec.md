@@ -11,18 +11,27 @@ OpenDS is a **community toolkit** for SSI's Dark Sun CRPGs:
 - *Dark Sun: Shattered Lands* (1993, GOG-shipped 1.10)
 - *Dark Sun: Wake of the Ravager* (1994, GOG-shipped 1.10)
 
-Three product surfaces, each shippable on its own:
+Three product surfaces, each shippable on its own and ordered
+by priority:
 
-1. **darkfix patches** — unofficial bugfix patches per game,
-   under [`ds1-patch/`](ds1-patch/) and [`ds2-patch/`](ds2-patch/).
-   Applied to the player's GOG install; game still runs in
-   DOSBox under the original engine.
-2. **Tools** — every utility we build to author a fix becomes
-   a public, MIT-licensed tool under [`tools/`](tools/). GFF
-   chunk editor, GPL disassembler, install verifier, etc.
+1. **Modding toolkit (Goal 1)** — public, MIT-licensed tools
+   under [`tools/`](tools/) that let anyone read, inspect,
+   edit, and repack the game's files: GFF reader/writer
+   (`gff-edit`), GPL disassembler/assembler, region viewer,
+   dialog extractor, save inspector, install verifier. The
+   toolkit is the primary deliverable. It serves any mod
+   author, not just our own patch work.
+2. **darkfix patches (Goal 2)** — unofficial bugfix patches
+   per game, under [`ds1-patch/`](ds1-patch/) and
+   [`ds2-patch/`](ds2-patch/). Applied to the player's GOG
+   install; the game still runs in DOSBox under the original
+   engine. These are our application of the toolkit, not the
+   reason for it. A community mod author with different goals
+   uses the same tools.
 3. **Documentation** — every reverse-engineering finding is
-   written into [`docs/`](docs/) so the next person doesn't have
-   to redo the work.
+   written into [`docs/`](docs/) so the next person doesn't
+   have to redo the work. Cross-cutting; supports both Goal 1
+   and Goal 2.
 
 What OpenDS is **not** (now):
 
@@ -54,18 +63,21 @@ up and use rather than reinvent.
 
 ## 1b. Tools-first ordering
 
-A consequence of §1a: **anything that makes the digging easier
-is priority over any specific patch.** Tools that help us read,
-locate, edit, and verify the game's internals ship before the
-patches that consume them. The patch phases of the
-[roadmap](roadmap.md) (Phase 6 onward) start when the toolkit is
-sharp enough that authoring fixes is plumbing, not archaeology.
+A consequence of §1a, reinforced by the Goal 1 / Goal 2 split
+in §1: **anything that makes the digging easier is priority
+over any specific patch.** Tools that help anyone read, locate,
+edit, and verify the game's internals ship before the patches
+that consume them. The patch phases of the
+[roadmap](roadmap.md) (Phase 6 onward) start when the toolkit
+is sharp enough that authoring fixes is plumbing rather than
+archaeology.
 
-This is intentional even though it means patches ship later. The
-alternative — author a fix, build an ad-hoc tool around it, ship
-both — produces fragile one-off code and a slow flow. Tools
-first means tool *N+1* benefits from every prior tool, and every
-patch authored against the toolkit takes a fraction of the time.
+This ordering also reflects who the toolkit serves: mod
+authors first, our own patch authoring second. We are one
+consumer of the toolkit among many. Tools first means each
+new tool benefits every later one, and the eventual darkfix
+patches inherit the leverage of the whole toolkit instead of
+being authored against ad-hoc one-off code.
 
 ## 2. Target platform
 

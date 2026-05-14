@@ -127,6 +127,30 @@ Cross-checked against:
   in `JohnGlassmyer/dsun_music`
   (`common/src/main/java/net/johnglassmyer/dsun/common/gff/`).
 
+### Writer policy
+
+When replacing a chunk's bytes, we follow dsun_music's
+`replaceResource` policy:
+
+- If the new bytes fit in the existing slot
+  (`new_length <= old_length`), write them at the chunk's
+  original `location` and rewrite the `(location, length)`
+  record so `length` reflects the new size. Trailing bytes
+  within the old slot become unreferenced dead space; the
+  parser will not see them because it follows the TOC.
+- If the new bytes are larger, append them at end-of-file and
+  rewrite the `(location, length)` record to point there. The
+  TOC's own `toc_location` and `toc_length` in the file header
+  are unchanged; the appended chunk lives past the TOC. Both
+  libgff and our reader follow the TOC, so a chunk past the
+  TOC parses correctly.
+
+For indexed chunks the `(location, length)` record sits in the
+TOC; for segmented chunks it sits in the secondary table inside
+the GFFI chunk. Our writer tracks each chunk's metadata file
+offset (`ChunkRef::meta_offset`) so a single code path handles
+both cases.
+
 **Worked example, DARKRUN.GFF (991 bytes total):**
 
 | Offset    | Bytes               | Decoded                              |

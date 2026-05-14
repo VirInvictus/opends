@@ -131,6 +131,78 @@ impl Gff {
     pub fn bytes(&self) -> &[u8] {
         &self.bytes
     }
+
+    /// Produce a new GFF byte buffer with the named chunk's payload
+    /// replaced. Returns the new file bytes; does not mutate `self`.
+    ///
+    /// Replacement policy (matches JohnGlassmyer/dsun_music's
+    /// `GffFile.replaceResource`):
+    /// - If the new bytes fit in the existing slot
+    ///   (`new_bytes.len() <= chunk.length`), they are written in
+    ///   place at the chunk's original `location`. The chunk's
+    ///   `(location, length)` metadata is rewritten so the length
+    ///   reflects the new size; trailing bytes of the old payload
+    ///   become unreferenced dead space.
+    /// - Otherwise the new bytes are appended at end-of-file and the
+    ///   chunk's `(location, length)` metadata is rewritten to point
+    ///   there. The TOC's own `toc_location`/`toc_length` in the
+    ///   file header are unchanged.
+    ///
+    /// Works for both indexed and segmented chunks; the writer
+    /// updates whichever of the TOC or the secondary table holds
+    /// the chunk's `(location, length)` record, as identified by
+    /// [`ChunkRef::meta_offset`].
+    ///
+    /// To stage multiple edits, re-parse the returned bytes between
+    /// calls. `replace_chunk` does not consume `self`, so the same
+    /// parsed `Gff` cannot be used to perform a sequence of edits.
+    pub fn replace_chunk(
+        &self,
+        kind: FourCC,
+        id: i32,
+        new_bytes: &[u8],
+    ) -> Result<Vec<u8>, GffError> {
+        let chunk = self
+            .find(kind, id)
+            .ok_or(GffError::ChunkNotFound { kind, id })?;
+
+        let new_length_u32 = u32::try_from(new_bytes.len()).map_err(|_| {
+            GffError::ChunkTooLarge {
+                kind,
+                id,
+                length: new_bytes.len(),
+            }
+        })?;
+
+        let mut out = self.bytes.clone();
+
+        let new_location = if new_bytes.len() <= chunk.length as usize {
+            // In-place: overwrite at the chunk's existing location.
+            // Bytes past new_length within the old slot become
+            // unreferenced (matching dsun_music's policy).
+            let start = chunk.location as usize;
+            out[start..start + new_bytes.len()].copy_from_slice(new_bytes);
+            chunk.location
+        } else {
+            // Append: write at end-of-file.
+            let new_loc = u32::try_from(out.len()).map_err(|_| {
+                GffError::ChunkTooLarge {
+                    kind,
+                    id,
+                    length: out.len() + new_bytes.len(),
+                }
+            })?;
+            out.extend_from_slice(new_bytes);
+            new_loc
+        };
+
+        // Rewrite the chunk's (location, length) record.
+        let m = chunk.meta_offset as usize;
+        out[m..m + 4].copy_from_slice(&new_location.to_le_bytes());
+        out[m + 4..m + 8].copy_from_slice(&new_length_u32.to_le_bytes());
+
+        Ok(out)
+    }
 }
 
 /// GFF file header (28 bytes). See docs/file-formats.md §1.
@@ -232,6 +304,12 @@ pub struct ChunkRef {
     pub id: i32,
     pub location: u32,
     pub length: u32,
+    /// File offset of this chunk's `(location, length)` record (8
+    /// bytes, little-endian). For indexed types this sits in the TOC;
+    /// for segmented types it sits in the secondary table inside the
+    /// `GFFI` chunk. Used by [`Gff::replace_chunk`] to update the
+    /// metadata when bytes change. Treat as opaque.
+    pub meta_offset: u32,
 }
 
 /// Four-byte tag identifying a chunk's type. Stored verbatim as
@@ -352,6 +430,16 @@ pub enum GffError {
         table_count: usize,
         runs_total: usize,
     },
+
+    #[error("no chunk '{kind}' id={id} found")]
+    ChunkNotFound { kind: FourCC, id: i32 },
+
+    #[error("chunk '{kind}' id={id} new length {length} exceeds u32::MAX")]
+    ChunkTooLarge {
+        kind: FourCC,
+        id: i32,
+        length: usize,
+    },
 }
 
 fn parse_toc(
@@ -453,6 +541,7 @@ fn parse_toc(
             }
             let mut indexed = Vec::with_capacity(chunk_count);
             for _ in 0..chunk_count {
+                let entry_start = cursor;
                 let id = i32_le(&toc[cursor..cursor + 4]);
                 let location = u32_le(&toc[cursor + 4..cursor + 8]);
                 let length = u32_le(&toc[cursor + 8..cursor + 12]);
@@ -468,11 +557,16 @@ fn parse_toc(
                         length: length as usize,
                         file_size: bytes.len(),
                     })?;
+                // Metadata (location, length) sits 4 bytes past the
+                // entry start (after the id field), in file
+                // coordinates.
+                let meta_offset = (toc_start + entry_start + 4) as u32;
                 indexed.push(ChunkRef {
                     kind,
                     id,
                     location,
                     length,
+                    meta_offset,
                 });
             }
             builds.push(TypeBuild {
@@ -604,11 +698,15 @@ fn resolve_segmented_type(
                     file_size: bytes.len(),
                 })?;
 
+            // For segmented chunks the (location, length) lives in the
+            // secondary table, not the TOC; entry_pos is already a
+            // file-relative offset.
             resolved.push(ChunkRef {
                 kind,
                 id,
                 location,
                 length,
+                meta_offset: entry_pos as u32,
             });
             entry_index += 1;
         }
@@ -905,5 +1003,99 @@ mod tests {
             FourCC::from_str("GPL").unwrap_err(),
             GffError::BadFourCC(_)
         ));
+    }
+
+    #[test]
+    fn replace_same_size_in_place() {
+        // 4-byte chunk replaced with 4 different bytes. File size
+        // unchanged; (location, length) record unchanged.
+        let original = minimal_gff();
+        let gff = Gff::from_bytes(original.clone()).unwrap();
+        let new = gff
+            .replace_chunk(FourCC(*b"ETME"), 7, b"BYE!")
+            .expect("replace");
+        assert_eq!(new.len(), original.len());
+        let reparsed = Gff::from_bytes(new).unwrap();
+        assert_eq!(reparsed.read(FourCC(*b"ETME"), 7), Some(b"BYE!".as_ref()));
+        assert_eq!(reparsed.chunks()[0].location, 28);
+        assert_eq!(reparsed.chunks()[0].length, 4);
+    }
+
+    #[test]
+    fn replace_smaller_fits_in_place() {
+        // 4-byte chunk shrunk to 2 bytes; location stays, length
+        // drops, bytes after the new content become dead.
+        let gff = Gff::from_bytes(minimal_gff()).unwrap();
+        let new = gff
+            .replace_chunk(FourCC(*b"ETME"), 7, b"hi")
+            .expect("replace");
+        let reparsed = Gff::from_bytes(new).unwrap();
+        assert_eq!(reparsed.read(FourCC(*b"ETME"), 7), Some(b"hi".as_ref()));
+        assert_eq!(reparsed.chunks()[0].location, 28);
+        assert_eq!(reparsed.chunks()[0].length, 2);
+    }
+
+    #[test]
+    fn replace_larger_appends_to_end() {
+        // 4-byte chunk grown to 8 bytes; new bytes appended past
+        // original file end; (location, length) updated.
+        let original = minimal_gff();
+        let gff = Gff::from_bytes(original.clone()).unwrap();
+        let new = gff
+            .replace_chunk(FourCC(*b"ETME"), 7, b"longer!!")
+            .expect("replace");
+        assert_eq!(new.len(), original.len() + 8);
+        let reparsed = Gff::from_bytes(new).unwrap();
+        assert_eq!(
+            reparsed.read(FourCC(*b"ETME"), 7),
+            Some(b"longer!!".as_ref())
+        );
+        assert_eq!(reparsed.chunks()[0].location, original.len() as u32);
+        assert_eq!(reparsed.chunks()[0].length, 8);
+    }
+
+    #[test]
+    fn replace_segmented_chunk_updates_secondary_table() {
+        // Segmented TILE chunk replaced with a same-size value. The
+        // chunk's secondary-table (offset, length) entry should be
+        // unchanged (same location, same length).
+        let original = full_segmented_gff();
+        let gff = Gff::from_bytes(original.clone()).unwrap();
+        let new = gff
+            .replace_chunk(FourCC(*b"TILE"), 101, b"XXXX")
+            .expect("replace");
+        let reparsed = Gff::from_bytes(new).unwrap();
+        assert_eq!(
+            reparsed.read(FourCC(*b"TILE"), 101),
+            Some(b"XXXX".as_ref())
+        );
+        // TILE 100 untouched.
+        assert_eq!(
+            reparsed.read(FourCC(*b"TILE"), 100),
+            Some(b"til0".as_ref())
+        );
+    }
+
+    #[test]
+    fn replace_nonexistent_chunk_errors() {
+        let gff = Gff::from_bytes(minimal_gff()).unwrap();
+        let err = gff
+            .replace_chunk(FourCC(*b"ETME"), 99, b"nope")
+            .unwrap_err();
+        assert!(matches!(err, GffError::ChunkNotFound { .. }));
+    }
+
+    #[test]
+    fn replace_with_same_bytes_is_byte_identical() {
+        // No-op round-trip: replace a chunk with its own bytes and
+        // verify the result is byte-identical to the input.
+        let original = minimal_gff();
+        let gff = Gff::from_bytes(original.clone()).unwrap();
+        let chunk = &gff.chunks()[0];
+        let same: Vec<u8> = gff.read_chunk(chunk).to_vec();
+        let kind = chunk.kind;
+        let id = chunk.id;
+        let new = gff.replace_chunk(kind, id, &same).expect("replace");
+        assert_eq!(new, original);
     }
 }

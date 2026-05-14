@@ -4,6 +4,37 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **Project priority pivot**: the modding toolkit is now
+  framed explicitly as Goal 1, with darkfix patches as Goal 2.
+  [`spec.md`](spec.md) §1 reordered to put the toolkit first;
+  §1b's tools-first paragraph reframed to say the toolkit
+  serves *any* mod author and that our own patch authoring is
+  one consumer among many. Memory updated to match. The
+  underlying tools-first ordering of the roadmap is unchanged;
+  this is a framing pass, not a re-plan.
+- **`tools/gff-edit/` v0.3.0**: writer lands. `Gff::replace_chunk`
+  in the library; `gff-cat replace <file> <kind> <id>
+  <bytes-file> -o <out>` in the CLI. Replacement policy matches
+  dsun_music's `GffFile.replaceResource`: in-place if the new
+  bytes fit, append at end-of-file otherwise. The chunk's
+  `(location, length)` record is rewritten wherever it lives,
+  TOC for indexed chunks or the secondary table inside the
+  `GFFI` chunk for segmented chunks. `ChunkRef` carries a new
+  `meta_offset` field tracking that location during parse. New
+  error variants: `ChunkNotFound`, `ChunkTooLarge`. 14 unit
+  tests passing (up from 8): in-place same-size, in-place
+  shrink, append-grow, segmented replace, no-op-is-identity,
+  not-found error. Corpus integration test
+  (`tests/corpus_roundtrip.rs`) verifies no-op replace is
+  byte-identical on all 128 GFFs in DS1+DS2 (pristine
+  innoextract + deployed Wine installs).
+- [`docs/file-formats.md`](docs/file-formats.md) §1: documents
+  the writer policy (in-place vs append) and how the writer
+  uses each chunk's metadata file offset.
+- **Phase 1 closed**: the GFF foundation is read-and-write
+  complete. Toolkit gains `verify-install` (Python) and
+  `gff-edit` (Rust); patches start at Phase 6 or are deferred
+  in favour of Phase 4's modder-facing tools per Goal 1.
 - **`tools/gff-edit/` v0.2.0**: segmented chunks fully resolved.
   The parser now reads each segmented type's secondary table
   inside the GFFI chunk, reconstructs resource ids from the
