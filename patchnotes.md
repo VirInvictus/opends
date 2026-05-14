@@ -4,6 +4,35 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gff-edit/` v0.1.0** ships (Rust crate + `gff-cat`
+  binary). Read-only first pass: parses the 28-byte GFF file
+  header and the full TOC, including both indexed and segmented
+  chunk lists. Library exposes `Gff::open`, `Gff::types`,
+  `Gff::chunks`, `Gff::find`, `Gff::read`. CLI subcommands:
+  `gff-cat info <file>` (header + TOC summary), `gff-cat list
+  <file>` (indexed chunks). Smoke-tested clean against every
+  GFF in both pristine innoextract trees (61/61) and both
+  deployed Wine installs including save files (67/67).
+  Resolving segmented-chunk locations (requires `GFFI`
+  cross-reference) and the writer roll forward to v0.2.0 and
+  v0.3.0; see [`tools/gff-edit/README.md`](tools/gff-edit/README.md)
+  for the crate-level roadmap.
+- **Cargo workspace** lands at the repo root. `Cargo.toml`
+  declares `tools/gff-edit` as the first member, plus shared
+  edition / license / repo metadata and a minimal
+  `[workspace.dependencies]` block (clap, anyhow, thiserror).
+  Per [`docs/versioning.md`](docs/versioning.md), tools version
+  independently; the workspace does **not** carry a shared
+  `version.workspace`.
+- [`docs/file-formats.md`](docs/file-formats.md) §1 fills in the
+  authoritative GFF layout: 7-field file header, TOC header,
+  num_types + chunk_list_header + (indexed entry | segmented
+  entry) pattern, segmented-flag mask `0x80000000` on
+  `chunk_count` (not `chunk_type`). Cross-checked against
+  libgff's `gff_open()` loader. §5 open questions updated to
+  carry only the genuinely-unresolved items (segmented chunk
+  resolution, non-empty free-list layout, `file_flags`/`data0`
+  semantics, internal compression).
 - **`tools/verify-install/` v0.1.0** ships. Stdlib-only Python.
   Default mode verifies an install against the canonical
   per-game hash manifest; `--capture` mode regenerates the

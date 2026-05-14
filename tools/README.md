@@ -10,9 +10,10 @@ implementation-language split.
 
 ## Shipped
 
-| Tool                                     | Lang   | Version | Purpose                                                                   |
-|------------------------------------------|--------|---------|---------------------------------------------------------------------------|
-| [`verify-install`](verify-install/)      | Python | 0.1.0   | Check a Dark Sun install against the canonical pristine-hash manifest.    |
+| Tool                                     | Lang   | Version | Purpose                                                                              |
+|------------------------------------------|--------|---------|--------------------------------------------------------------------------------------|
+| [`verify-install`](verify-install/)      | Python | 0.1.0   | Check a Dark Sun install against the canonical pristine-hash manifest.               |
+| [`gff-edit`](gff-edit/)                  | Rust   | 0.1.0   | Pure-Rust GFF reader (library `gff_edit` + CLI `gff-cat`). Read-only in v0.1.        |
 
 ## Planned
 
@@ -20,7 +21,6 @@ In roadmap order. See [`../roadmap.md`](../roadmap.md).
 
 | Tool             | Lang             | Phase | Purpose                                              |
 |------------------|------------------|-------|------------------------------------------------------|
-| `gff-edit`       | Rust             | 1     | GFF reader/writer crate with `gff-cat` CLI.          |
 | `repro`          | Shell + Python   | 2     | DOSBox repro harness with per-bug save library.      |
 | `gpl-disasm`     | Rust             | 3     | GPL bytecode disassembler.                           |
 | `dialog-extract` | Python           | 4     | Pull NPC dialog trees out as structured JSON.        |

@@ -16,23 +16,97 @@ when in doubt.
 
 ### Header
 
-Verified locally on every GFF in both games:
+The file header is **28 bytes** (`0x1C`), a fixed sequence of
+seven little-endian `uint32_t` fields. Verified locally against
+DS1 `DARKRUN.GFF`, `RGN02.GFF`, `RESOURCE.GFF` and DS2
+`CHARSAVE.GFF`, cross-checked with libgff's `gff_file_header_t`
+in `dsoageofheroes/libgff` `include/gff/common.h`.
 
 ```
-offset  size  field
-  0      4    magic = "GFFI"  (0x47 0x46 0x46 0x49)
-  4      2    version = 3     (little-endian)
-  6      2    header size = 0x1C
-  8      4    offset of TOC (in bytes from start of file, little-endian)
-  ...   ...   (further header fields TBD; total 0x1C bytes)
+offset  size  field            notes
+  0      4    identity         "GFFI" magic (0x47 0x46 0x46 0x49)
+  4      4    version          0x00030000 on every observed file. (version >> 16) == 3.
+  8      4    data_location    First chunk data offset. Always 28 (= header size).
+ 12      4    toc_location     Byte offset from file start to the TOC.
+ 16      4    toc_length       TOC byte length.
+ 20      4    file_flags       Observed: 0 on most GFFs, 8 on CHARSAVE.GFF. Semantics TBD.
+ 24      4    data0            Per-file sentinel. Observed: 1, 3, 117. Likely a next-id or count; not load-bearing for read.
 ```
 
-After the header comes the chunk data area, then the TOC at the offset
-recorded in bytes 8–11.
+The chunk data area runs from `data_location` (= 28) up to
+`toc_location`.
 
-The TOC is an indexed list of (chunk-type FOURCC, resource ID, offset,
-length) entries — exact layout to be confirmed against libgff's
-`gff_load_index()` implementation when we begin writing the parser.
+### Table of Contents
+
+At `toc_location`, the TOC starts with an 8-byte header, then a
+list of types and their chunk entries, then a free list. Cross-
+checked with libgff's `gff_open()` loader in `src/gff.c`.
+
+```
+struct gff_toc_header {
+    uint32_t types_offset;     // byte offset from TOC start to the type list. Observed: always 8.
+    uint32_t free_list_offset; // byte offset from TOC start to the free list.
+};
+```
+
+At `toc_location + types_offset` the type list begins:
+
+```
+uint16_t num_types;
+
+for each type (num_types entries):
+    uint32_t chunk_type;       // four ASCII bytes spelling the FOURCC at offset 0..3
+    uint32_t chunk_count;      // number of resources of this type
+
+    if (chunk_type & 0x80000000) {
+        // Segmented chunk list. Used for resources too large for a
+        // single (id, location, length) entry. Layout follows libgff's
+        // seg_header_t + gff_seg_entry_t records; document when first
+        // encountered in the wild.
+    } else {
+        // Indexed chunk list. The default and dominant case.
+        for (i = 0; i < chunk_count; i++) {
+            int32_t  id;        // resource id within this type
+            uint32_t location;  // byte offset in file where chunk data lives
+            uint32_t length;    // chunk byte length
+        }
+    }
+```
+
+At `toc_location + free_list_offset` the free list begins. On
+every shipped GFF inspected the free list is empty
+(`free_list_offset == toc_length`, leaving zero bytes). When
+populated, libgff's writer is the reference; document layout
+when we first need it.
+
+The high bit of `chunk_type` (`GFFSEGFLAGMASK = 0x80000000`)
+selects between indexed and segmented chunk lists. The FOURCC
+catalogue below assumes the bit is clear; segmented variants of
+the same type share the lower 28 bits.
+
+**Worked example, DARKRUN.GFF (991 bytes total):**
+
+| Offset    | Bytes               | Decoded                              |
+|----------:|---------------------|--------------------------------------|
+| 0..3      | `47 46 46 49`       | identity = `GFFI`                    |
+| 4..7      | `00 00 03 00`       | version = `0x00030000` (major 3)     |
+| 8..11     | `1c 00 00 00`       | data_location = 28                   |
+| 12..15    | `bf 03 00 00`       | toc_location = 959                   |
+| 16..19    | `20 00 00 00`       | toc_length = 32                      |
+| 20..23    | `00 00 00 00`       | file_flags = 0                       |
+| 24..27    | `01 00 00 00`       | data0 = 1                            |
+| 959..962  | `08 00 00 00`       | toc.types_offset = 8                 |
+| 963..966  | `1e 00 00 00`       | toc.free_list_offset = 30            |
+| 967..968  | `01 00`             | num_types = 1                        |
+| 969..972  | `45 54 4d 45`       | chunk_type = `ETME`                  |
+| 973..976  | `01 00 00 00`       | chunk_count = 1                      |
+| 977..980  | `00 00 00 00`       | id = 0                               |
+| 981..984  | `1c 00 00 00`       | location = 28                        |
+| 985..988  | `a3 03 00 00`       | length = 931                         |
+| 989..990  | `00 00`             | free list (empty)                    |
+
+`28 + 931 = 959 = toc_location`, so the single chunk fills the
+entire data region between header and TOC.
 
 ### Chunk type catalog
 
@@ -203,14 +277,20 @@ content adapted to the target hardware's timbre map.
 
 ## 5. Open questions
 
-These are answered by reading libgff source rather than guessing:
+Resolved questions are documented inline. These remain.
 
-- Exact TOC entry layout (we know the offset; we don't know the size of
-  each TOC entry yet).
-- Whether DS1 and DS2 use identical TOC encodings (likely yes; needs
-  confirmation).
-- Compression: is any chunk type stored compressed? The DOS-era
-  expectation is "no" (the disk format is the in-memory format), but
-  large GFFs (5.7 MB+) may have RLE bitmaps internally.
-- The exact contents of `DARKRUN.GFF` (991 bytes — too small to be
-  game-state; likely a runtime configuration stub).
+- The exact layout of **segmented chunk lists**
+  (`chunk_type & 0x80000000`). libgff's `seg_header_t` and
+  `gff_seg_entry_t` are the reference; document when first
+  encountered in the wild.
+- The exact layout of a **non-empty free list**. Every shipped
+  GFF inspected has `free_list_offset == toc_length`, leaving
+  zero bytes. libgff's writer is the reference for when it
+  matters.
+- Semantics of `file_flags` (observed: 0 and 8) and `data0`
+  (observed: 1, 3, 117). Not load-bearing for read; document
+  when the writer needs to set them correctly.
+- **Compression**: is any chunk type stored compressed? The
+  DOS-era expectation is "no" (disk format = in-memory format),
+  but large GFFs (5.7 MB+) may have RLE bitmaps internally.
+  Unanswered.

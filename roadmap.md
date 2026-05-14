@@ -53,26 +53,43 @@ and VERSION and is listed in `tools/README.md`.
 
 ## Phase 1 — `gff-edit` + `gff-cat` (the foundation)
 
-**Goal**: a pure-Python GFF reader/writer in our own code, so we
-don't depend on a JVM tool for the most basic operation. Every
-later phase reads or writes GFFs through this.
+**Goal**: a pure-Rust GFF reader/writer crate in our own code,
+so we don't depend on a JVM tool for the most basic operation.
+Every later phase reads or writes GFFs through this.
 
-**Ships**: `tools/gff-edit/` (Rust) — single crate, library plus
-`gff-cat` binary. Tagged release: `gff-edit-v0.1.0`.
+**Ships**: `tools/gff-edit/` (Rust) as a workspace member crate;
+library plus `gff-cat` binary. Tagged release:
+`gff-edit-v0.1.0`.
 
-- [ ] Parse the GFFI header, version 3, TOC.
-- [ ] Iterator API: `for chunk in gff.chunks(): chunk.type, chunk.id, chunk.bytes`.
-- [ ] Extract a chunk to a file by `(type, id)`.
-- [ ] Replace a chunk in-place; rewrite the GFF with a valid TOC.
+- [x] Parse the 28-byte file header and the TOC per the layout
+      documented in
+      [`docs/file-formats.md`](../docs/file-formats.md) §1.
+      (gff-edit v0.1.0; both indexed and segmented TOC types are
+      parsed at the type level.)
+- [x] Iterator API on the library: `gff.chunks()` returns a slice
+      of indexed `ChunkRef`s; `gff.types()` exposes per-type
+      metadata including segmented-list details; `gff.find(kind, id)`
+      and `gff.read(kind, id)` for targeted access. (gff-edit
+      v0.1.0)
+- [ ] Resolve individual segmented-chunk locations via GFFI
+      cross-reference. (gff-edit v0.2.0)
+- [ ] Extract an indexed chunk to a file by `(kind, id)`.
+      (gff-edit v0.2.0)
+- [ ] Replace a chunk in-place; rewrite the GFF with a valid
+      TOC. (gff-edit v0.3.0)
 - [ ] Round-trip test: read → write → byte-identical for at
-      least one GFF in each game.
-- [ ] CLI: `gff-cat list <file>`, `gff-cat extract <file> <type> <id>`,
-      `gff-cat info <file>`, `gff-cat replace <file> <type> <id> <bytes>`.
-- [ ] Tested against every shipped GFF in both DS1 and DS2 with
-      no parse errors.
+      least one GFF in each game. (gff-edit v0.3.0)
+- [x] CLI: `gff-cat info <file>`, `gff-cat list <file>`.
+      (gff-edit v0.1.0)
+- [ ] CLI: `gff-cat extract <file> <kind> <id>` (v0.2.0),
+      `gff-cat replace <file> <kind> <id> <bytes>` (v0.3.0).
+- [x] Tested against every shipped GFF in both DS1 and DS2 with
+      no parse errors. (gff-edit v0.1.0: 61/61 pristine,
+      67/67 deployed.)
 
-**Done when**: every GFF in `extracted/ds1/` and `extracted/ds2/`
-opens, lists, and round-trips cleanly without a Java dependency.
+**Done when**: every GFF under `.games/ds1/` and `.games/ds2/`
+opens, lists, and round-trips cleanly through the Rust crate
+with no Java dependency.
 
 ## Phase 2 — DOSBox repro harness
 

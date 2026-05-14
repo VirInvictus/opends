@@ -1,0 +1,22 @@
+[package]
+name = "gff-edit"
+version = "0.1.0"
+description = "Pure-Rust reader and writer for SSI's GFF container format (Dark Sun)."
+readme = "README.md"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lib]
+name = "gff_edit"
+path = "src/lib.rs"
+
+[[bin]]
+name = "gff-cat"
+path = "src/bin/gff-cat.rs"
+
+[dependencies]
+anyhow.workspace = true
+thiserror.workspace = true
+clap.workspace = true
