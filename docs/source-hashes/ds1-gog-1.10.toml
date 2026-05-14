@@ -1,0 +1,107 @@
+# Canonical source-hash manifest. Schema version 1.
+# Captured by tools/verify-install v0.1.0 (capture mode).
+# Source path: /home/bdkl/.gitrepos/opends/.games/ds1
+# Hand-edit only the [runtime_state] block; the [files] block is
+# regenerated each capture and should not be hand-edited.
+
+[meta]
+game = "ds1"
+source = "GOG"
+engine_version = "1.10"
+schema_version = 1
+captured_from = "innoextract of game-dark.sun.shattered.lands-(28043-gog).rar"
+
+[files]
+"CINE.GFF" = "353162f7ca6ff390300243eb8efbc04f72302c7b0765a28b3b704627464a9c97"
+"Cluebook.PDF" = "1ec2fc357596a89f2c18de44af8b4fc3670ed99cf5c5a3b17b479e3a06b96d66"
+"DARKRUN.GFF" = "b0f2d474a62a541c5adb05e272d25dba7a539cd86f4507b67879cd00faa6c195"
+"DARKSUN.BAT" = "5360f9e06e3d87589e4d377995399410aa0d0334a8ab06eed19cf950c1e1ebea"
+"DSUN.EXE" = "7bbd84f105b1ebe538a4abdfccdb2bacbf5b4fa763b45fa3a84499780f1d8c96"
+"GM1.BNK" = "843f012e7980e0a58722aa5c7a6e88b652f2f8d404834638cd994ca0869df5a8"
+"GM2.BNK" = "b4af656059a6afba5db2da972c3506ca08d899ca04c65389e0bec7aaf6536339"
+"GPLDATA.GFF" = "405fdadcf703b9ac15d05735e0a74cb41419e9178c6aced9f02538314dd6eb04"
+"GRAVIS.EXE" = "04800ed4e6fc39847d6d2be2068577884acd3435f3c3daa99095d86f532ea1cc"
+"MIDITSR.EXE" = "bec17f7b8ac4db603c7e313d4da7520ec3d037dd7010bf16f6610abfc3017433"
+"Manual.pdf" = "45f8f14b3eca1f21d4d1fd52b426f0a80074dd8e313fe43e186466979583d9dc"
+"RESOURCE.GFF" = "85d0afe53d40f6f1fa0285041531aeee153f170088826a87d1d3b976b5716179"
+"RGN02.GFF" = "fca4258a3fb6f6db81df95cf49c35852620354517ccbd2553dd590cd8eb0bc48"
+"RGN03.GFF" = "36e26d23fdcbdbff32170d4d9a652eab69bfe817b921d36e77a0aa9451d8c9b8"
+"RGN04.GFF" = "ddae048430ef1f3c41bf7853d44c5d50ea372a38bd735b5755816308efe3d15a"
+"RGN05.GFF" = "a45c6e43697f77227677c47cc75b96df7848a82d88e066d53c239870587ba747"
+"RGN06.GFF" = "ad6b388bbe616382878b7fac65f95174037179643e0d0a22c4b5fb1feb68dd68"
+"RGN07.GFF" = "bc7fc44d0319122529b46711123084eb9cd6d9204d2a61bfd1360d42adfa64a4"
+"RGN08.GFF" = "7ac06d472e2a9993d83c50e89de3a5c0eff03bf0542cc526516982eaa98ef378"
+"RGN09.GFF" = "2c2ed12dfc0a93bbcdde342c2d4461d44ab355eb847763ad905d25515a1b1238"
+"RGN0A.GFF" = "75762d8a6a3f32d69cbf6fd091920e83660526e26176c7d47a4942734ff961d1"
+"RGN0B.GFF" = "289ce600738c373c58dde4bc64370e3194bd52f018fb7b1329584cca0dcbc3ed"
+"RGN0D.GFF" = "05aba03712bc040bf962e8db0a04928723351354368f9517785dff7ac4075824"
+"RGN0E.GFF" = "25d9b258c5f23df5f50f0dec78b2c39ee1caba2b481295fc08a44f15e9e4e01e"
+"RGN0F.GFF" = "af238e6cc68eab92e7587620184ab8707fac8c9c78e6ef6d8035261ff0d7d60e"
+"RGN12.GFF" = "45824bbd1b1b964b8b0cd710b5d55575aaedb4430e2955c33c9b9b915b92f699"
+"RGN14.GFF" = "049ab2463e7372d3a6c0233a2138ca61c0851223087b0940426eec95bf039136"
+"RGN1A.GFF" = "bf6a6d88fd375aad7e42325a2a3e47997ffdcc48948548f7fc377c27d0e27bd1"
+"RGN1B.GFF" = "b382ff48d688ef75b3450929887dc424a849f7e738ab5db7a8ed6ba568dbe5f0"
+"RGN1C.GFF" = "48a5a139b2539e9cd3750959c7ade0e3ac69c5d0599cd2e80b1153d189905239"
+"RGN1D.GFF" = "4677f55a9bba12f5231b1e1dc5940967b36d32734ca7116f5492d40e81c3c099"
+"RGN1E.GFF" = "050bb7f41aa90cedf4fab1430bf5a58cdec40e5801571f7bf18c75a7dd585c7f"
+"RGN1F.GFF" = "c97cc0d9cb4b483ca76e0094f48c34e2823275ec229313838428a770b7be793b"
+"RGN21.GFF" = "6c8c60ed30e728392af5388ecae266a0160a5c32aa52fc659a2dd3df6a1c0cab"
+"RGN22.GFF" = "1328889d7bcced6fa51ec13952c374f3dcf62478782f37985177de702886fcfe"
+"RGN23.GFF" = "c7ccccd2eb1656df6bbf9c1b346428d17c3117bfcebf52dc5815139ec8bf271a"
+"RGN26.GFF" = "150c2ec11af635f19012419bd6212fe96717e784f89917516b766533a8f3768b"
+"RGN27.GFF" = "ee4624689eca719a736110be105c2c1bd21ed8050566474cf842661071a3bbe3"
+"RGN28.GFF" = "bc854e894c501b112a90f7eb78c3ccb130843d046081f3b0781d2911f214cc7a"
+"RGN29.GFF" = "b129ce9b6b7d0aa580f149214973a0bdca3534afa077e9e232f000903933790d"
+"RGN2A.GFF" = "2844212028b83accf00e84ed1398ef7a730f1db5709edb9575c2434b96ed3990"
+"RGN2B.GFF" = "93a124201959f8c6bc6cf7e7f72d0e53bcc30d07c365df32335824d25f5ffd7c"
+"RGN2C.GFF" = "bedf6c5a7d60a7a6b0d4e525bd51b804063301afee96078b729749d435b6119a"
+"RGN2D.GFF" = "33fe54dade1c97922f76e564610c1cd9a294ae2f3f76471ae057bbf1f2a26462"
+"RGNFF.GFF" = "6b3bd23b196848473f7c8b4a34050bb7bf36442cec3ebac60acc52992a923a55"
+"SEGOBJEX.GFF" = "8e9fd18debaa6389621dc72586c63465b88f40234637fd461a3ac84f911397ce"
+"SOUND.BAT" = "a980b993334887394af6192a5a4a593c9eb9a541d9b681037fd34ada0675e120"
+"SOUND.CFG" = "e529ba2cf33a4d9805eb5231d59d13c4fbe60c9fb55bd1d8c9baa274de084870"
+"SOUND_DS.EXE" = "36904413454f6b6ec349b3633cb24e407cd849fc53c5ead3f75b97c6063be943"
+"SSI1.INI" = "f54dc8d1ef805f89b63acb697e930b20efc18e3cf8e22bb19a4d3537b858e94b"
+"STDPATCH.AD" = "c1999d9b247c960d62ca562aea5854fafe4efcdc0bc55fdbd4427854ed4125bd"
+"ULTRAMID.EXE" = "d8f71c8e59e31a40da4d26fefa1145f0c5f7c43066dfa4db816d1582690fcd62"
+"UM200.INI" = "979c4d2384363985840116840f8fed296858de4c1be1c160e756904d17c9a9e6"
+"UM206.INI" = "a97ac3f716390920257204c46f9544bb3374bac6c1ef58db17b4fc3c4707739c"
+"UM206A.INI" = "6f2d80329d554caf00835b7b366ecc51cac5a9ec62bc7aab7b654ff256cf694e"
+"goggame-1432723859.hashdb" = "4d92cfbe629aaa792640662dd2044927da3ea9feeacce31cdf1f4ae622420e17"
+"goggame-1432723859.ico" = "4d87216b922e961d85decfa5e2be09e678c23c934361f452ca30284e15749059"
+"goggame-1432723859.info" = "b442a761c87e496f46036e95b8b3746f5a3b5111bafd1e4143fdf155e6b0fb06"
+"goggame-1432723859.script" = "c6bcf6621834af6a088a018f05bb14481ea3eaf71493869bb4a8928979a4333d"
+
+[runtime_state]
+# Paths the verifier expects may exist in a deployed install
+# but whose contents are user-mutable (saves, configs, GOG client
+# state, DOSBox tuning, etc.). Glob patterns (fnmatchcase).
+#
+# Patterns matching entries in [files] override them: the verifier
+# treats them as runtime_state (skipped), not as hash-checked.
+patterns = [
+  # Save / runtime-state files. DARKRUN.GFF ships pristine but
+  # mutates as the player runs the game; treating as runtime_state
+  # avoids a false positive on a played install.
+  "BACKSAVE.GFF",
+  "CHARSAVE.GFF",
+  "DARKSAVE.GFF",
+  "DARKRUN.GFF",
+  # Audio config; the GOG installer or DOSBox launcher writes to it
+  # post-install (a few bytes differ from the pristine innoextract).
+  "SOUND.CFG",
+  # DOSBox redistributable shipped by GOG; not part of game artifacts.
+  "DOSBOX/*",
+  # DOSBox configs (user-tweakable).
+  "dosbox_*.conf",
+  # GOG installer / desktop artifacts.
+  "*.lnk",
+  "EULA.txt",
+  "gog.ico",
+  "support.ico",
+  "goglog.ini",
+  "webcache.zip",
+  "unins000.*",
+  # GOG cloud sync (created on first GOG-client run).
+  "cloud_saves/*",
+]

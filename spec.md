@@ -98,7 +98,7 @@ Authoring tool: **`gff-tool`** from
 Each fix produces:
 
 - A short markdown writeup in `dsN-patch/fixes/<id>.md`.
-- A per-fix script (Python preferred) that takes the original GFF
+- A per-fix script (Python; see §7a) that takes the original GFF
   and emits the patched GFF.
 - A test record: hash of the original chunk, hash of the patched
   chunk.
@@ -127,7 +127,7 @@ Each binary fix:
 A darkfix patch is a directory tree:
 
 ```
-darkfix-ds2-v0.1/
+darkfix-ds2-v0.1.0/
 ├── manifest.toml         # version, target hashes, fix list
 ├── fixes/
 │   ├── data/
@@ -213,6 +213,63 @@ See [`docs/gpl-bytecode.md`](docs/gpl-bytecode.md).
 All available on Fedora via `dnf` (or pip/cargo for niche tools).
 See [`docs/build-environment.md`](docs/build-environment.md).
 
+## 7a. Implementation languages
+
+OpenDS tools we author are written in **Rust or Python**, split
+by role:
+
+| Role                                                          | Language | Why                                                                              |
+|---------------------------------------------------------------|----------|----------------------------------------------------------------------------------|
+| Foundation libraries (other tools depend on them)             | Rust     | Correctness and perf matter; engine-inheritable.                                 |
+| Heavy-lifting tools (disassembler, assembler, region renderer)| Rust     | Throughput-bound; benefit from strict types; single-binary distribution.         |
+| CLI utilities (verify, inspect, extract-as-JSON)              | Python   | Iteration-bound; stdlib-preferred; no build step for contributors.               |
+| Patch authoring scripts and applier                           | Python   | User-runnable; readable by anyone reviewing a fix.                               |
+
+Tool-by-tool assignment:
+
+| Tool                                  | Language                                          |
+|---------------------------------------|---------------------------------------------------|
+| `verify-install`                      | Python                                            |
+| `gff-edit` (library) + `gff-cat` (CLI)| Rust                                              |
+| `repro/` (DOSBox harness)             | Shell + Python glue                               |
+| `gpl-disasm`                          | Rust                                              |
+| `dialog-extract`                      | Python                                            |
+| `save-inspect`                        | Python                                            |
+| `region-view`                         | Rust                                              |
+| `gpl-asm`                             | Rust                                              |
+| `opcode-fuzz`                         | Python (drives DOSBox debugger over IPC)          |
+| Per-fix patch scripts                 | Python                                            |
+| `apply.py` (applier)                  | Python                                            |
+
+**Language defaults**
+
+- Python target: **3.11 or newer** (we rely on `tomllib` in
+  stdlib).
+- Python tools are **stdlib-only** by default. Adding a
+  third-party dependency requires per-tool justification. The
+  single pre-approved exception is `bsdiff4` for the applier
+  (binary patches need bsdiff; we are not writing one from
+  scratch).
+- Rust target: **stable channel, edition 2024**. A minimal
+  dependency tree is acceptable from the start: `clap` for CLI
+  parsing, `anyhow` / `thiserror` for errors, `serde` plus
+  `toml` / `serde_json` where format I/O is needed. Anything
+  beyond requires per-tool justification.
+
+**Why both languages, not one**
+
+A single-language toolkit was considered. Python-only loses the
+engine-inheritable foundation Rust gives (`gff-edit`,
+`gpl-disasm`, `gpl-asm`, `region-view`): those crates are
+exactly the artifacts a future engine project would want to
+absorb without rewriting. Rust-only adds build complexity to
+tools that don't need it (verify-install, per-fix scripts, the
+applier) and slows reverse-engineering iteration on small
+exploratory tools. The split-by-role tax is one extra toolchain
+on the contributor's machine; the gain is each tool fits its
+workload, and the artifacts that matter long-term are written
+in the language that benefits.
+
 ## 8. Repository layout
 
 ```
@@ -274,8 +331,8 @@ inherits the umbrella name: OpenDS.
 Per-game GitHub releases under `github.com/virinvictus/darkfix`.
 Each release is a single zip:
 
-- `darkfix-ds1-v0.1.zip` for DS1
-- `darkfix-ds2-v0.1.zip` for DS2
+- `darkfix-ds1-v0.1.0.zip` for DS1
+- `darkfix-ds2-v0.1.0.zip` for DS2
 
 User downloads, unzips, runs `python3 apply.py /path/to/game`.
 
@@ -331,7 +388,7 @@ specifically (e.g., a generic GFF inspector), we factor it into
 its own repo and link from the toolkit index — but we don't do
 this prematurely. One repo until friction proves we need two.
 
-## 13. Open questions
+## 14. Open questions
 
 - Do we want one umbrella repo (current plan) or two repos
   (`darkfix-ds1`, `darkfix-ds2`)? Current: umbrella with subfolders.

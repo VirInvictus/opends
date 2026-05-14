@@ -27,11 +27,11 @@ section 2.1).
 
 ## Player install (forthcoming)
 
-Once v0.1 ships:
+Once v0.1.0 ships:
 
 ```sh
-unzip darkfix-ds2-v0.1.zip
-cd darkfix-ds2-v0.1
+unzip darkfix-ds2-v0.1.0.zip
+cd darkfix-ds2-v0.1.0
 python3 apply.py /path/to/GOG/Dark\ Sun\ 2\ Wake\ of\ the\ Ravager
 ```
 

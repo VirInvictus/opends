@@ -28,17 +28,28 @@ are extractable on Fedora.
 - [x] GPL bytecode strategy ([`docs/gpl-bytecode.md`](docs/gpl-bytecode.md)).
 - [x] Binary patching strategy ([`docs/binary-patching.md`](docs/binary-patching.md)).
 - [x] Patch authoring workflow ([`docs/patch-workflow.md`](docs/patch-workflow.md)).
-- [ ] **Tool**: `tools/extract.sh` — GOG installer (.exe or .rar
-      + .exe) → `extracted/ds1/` or `extracted/ds2/`.
-- [ ] **Tool**: `tools/verify-install.py` — hash a player's
-      install, identify GOG 1.10 / original CD / unknown.
-- [ ] Source-hash manifest: SHA256 of every shipped DS1 and DS2
-      file, baked into the patch manifests.
+- [x] **Tool**: `tools/verify-install/` (Python, stdlib-only) —
+      hashes a player's install, identifies GOG 1.10 / original
+      CD / unknown, supports a capture mode for regenerating the
+      manifest. Tagged: `verify-install-v0.1.0`.
+- [x] Source-hash manifests at
+      `docs/source-hashes/ds1-gog-1.10.toml` and
+      `ds2-gog-1.10.toml` — SHA256 of every shipped file per
+      game. Canonical reference; `verify-install` checks against
+      these, and future patch `manifest.toml` files cite them.
+      Captured from the pristine innoextract of the GOG
+      installers under `.games/`.
+- [ ] **Tool (deferred)**: `tools/extract.sh` — GOG installer
+      (.exe or .rar + .exe) → `extracted/ds1/` or `extracted/ds2/`.
+      Not blocking: developers who run the GOG installer (under
+      Wine, on Windows, or natively) already have the same file
+      tree. Reinstated if a contributor needs from-installer
+      extraction without running the installer.
 
-**Done when**: a fresh clone + a GOG installer + one script call →
-a fully populated `extracted/` tree with file inventory and hash
-manifest. Both tools have their own READMEs and are listed in
-`tools/README.md`.
+**Done when**: a working game install + one command →
+`verify-install` reports a clean match against the canonical
+source-hash manifest for that game. The tool has its own README
+and VERSION and is listed in `tools/README.md`.
 
 ## Phase 1 — `gff-edit` + `gff-cat` (the foundation)
 
@@ -46,8 +57,8 @@ manifest. Both tools have their own READMEs and are listed in
 don't depend on a JVM tool for the most basic operation. Every
 later phase reads or writes GFFs through this.
 
-**Ships**: `tools/gff-edit/` (library) + `tools/gff-cat/` (CLI).
-Tagged release: `gff-edit-v0.1`.
+**Ships**: `tools/gff-edit/` (Rust) — single crate, library plus
+`gff-cat` binary. Tagged release: `gff-edit-v0.1.0`.
 
 - [ ] Parse the GFFI header, version 3, TOC.
 - [ ] Iterator API: `for chunk in gff.chunks(): chunk.type, chunk.id, chunk.bytes`.
@@ -69,8 +80,8 @@ opens, lists, and round-trips cleanly without a Java dependency.
 the local machine in under five minutes. Validation infrastructure
 for everything that follows.
 
-**Ships**: `tools/repro/` — DOSBox configs, save library,
-recording wrapper.
+**Ships**: `tools/repro/` (Shell + Python) — DOSBox configs,
+save library, recording wrapper.
 
 - [ ] DOSBox-Staging configured to run DS1 and DS2 reliably on
       Fedora.
@@ -93,7 +104,8 @@ into mnemonic form, even if many opcodes are still `db`. This is
 the single most important tool — the bulk of patch authoring
 runs through it.
 
-**Ships**: `tools/gpl-disasm/`. Tagged release: `gpl-disasm-v0.1`.
+**Ships**: `tools/gpl-disasm/` (Rust). Tagged release:
+`gpl-disasm-v0.1.0`.
 
 - [ ] Read GPL chunks via our `gff-edit` library.
 - [ ] Identify entry points and basic-block boundaries.
@@ -119,7 +131,7 @@ look at the maps directly.
 
 **Ships**: three tools, each with its own tag.
 
-### `tools/dialog-extract/`
+### `tools/dialog-extract/` (Python)
 
 - [ ] Pull every NPC dialog tree out of the GPL/RDFF/text
       chunks as structured JSON.
@@ -128,14 +140,16 @@ look at the maps directly.
       every chunk that references the NPC.
 - [ ] Useful for fan docs and for any future engine project,
       not just for patches.
+- [ ] Tagged: `dialog-extract-v0.1.0`.
 
-### `tools/save-inspect/`
+### `tools/save-inspect/` (Python)
 
 - [ ] Read `CHARSAVE.GFF` and dump character data as JSON.
 - [ ] Diff two saves: party state, inventory, flags.
 - [ ] Half-step toward writable saves; v0 is read-only.
+- [ ] Tagged: `save-inspect-v0.1.0`.
 
-### `tools/region-view/`
+### `tools/region-view/` (Rust + sdl2)
 
 - [ ] Minimal SDL2 window that opens a single region GFF and
       draws the tilemap + sprite layer + entities.
@@ -143,9 +157,10 @@ look at the maps directly.
 - [ ] Camera pan + zoom for inspection.
 - [ ] Useful for "what does this region actually look like" and
       "is this entity placed where I think it is."
+- [ ] Tagged: `region-view-v0.1.0`.
 
 **Done when**: all three tools exist with their own READMEs,
-each tagged `<tool>-v0.1`, and `tools/README.md` indexes them.
+each tagged at `v0.1.0`, and `tools/README.md` indexes them.
 
 ## Phase 5 — `gpl-asm` + `opcode-fuzz`
 
@@ -154,22 +169,22 @@ just read it. Be able to discover unknown opcodes systematically.
 
 **Ships**: two tools.
 
-### `tools/gpl-asm/`
+### `tools/gpl-asm/` (Rust)
 
 - [ ] Round-trip reassembler: `gpl-disasm` output → bytecode.
 - [ ] Unblocks fixes that need to insert or delete bytes
       (currently we'd work around with no-op padding only).
-- [ ] Tagged: `gpl-asm-v0.1`.
+- [ ] Tagged: `gpl-asm-v0.1.0`.
 
-### `tools/opcode-fuzz/`
+### `tools/opcode-fuzz/` (Python; drives DOSBox debugger over IPC)
 
 - [ ] Harness that runs the original game in DOSBox with a
       single GPL chunk swapped to a one-opcode test.
 - [ ] Records the engine state delta (memory regions, register
       state via DOSBox debugger).
-- [ ] The fastest path to filling in unknown opcodes — turns
+- [ ] The fastest path to filling in unknown opcodes; turns
       "guess from context" into "observe the effect."
-- [ ] Tagged: `opcode-fuzz-v0.1`.
+- [ ] Tagged: `opcode-fuzz-v0.1.0`.
 
 **Done when**: we can author and verify a synthetic GPL chunk
 end-to-end, and `opcode-fuzz` can discover at least one
@@ -181,14 +196,14 @@ previously-unknown opcode and add it to `docs/gpl-opcodes.md`.
 possible DS1 bug. By this point the toolkit is sharp enough that
 authoring should feel like routine work.
 
-**Ships**: `darkfix-ds1-v0.1`.
+**Ships**: `darkfix-ds1-v0.1.0`.
 
 - [ ] Pick one trivial DS1 bug (identified during Phase 2 repro
       work).
 - [ ] Author the fix using `gpl-disasm` + `gff-edit`.
 - [ ] Author the test (hash before/after, in-game repro via
       `tools/repro/`).
-- [ ] Tag `darkfix-ds1-v0.1`, push GitHub release.
+- [ ] Tag `darkfix-ds1-v0.1.0`, push GitHub release.
 - [ ] Player-facing README explaining install.
 
 **Done when**: a stranger could download the v0.1 zip, run
@@ -199,7 +214,7 @@ authoring should feel like routine work.
 **Goal**: fix the most famous DS2 bug — the one that broke the
 late game in 1994 and has never been fixed.
 
-**Ships**: `darkfix-ds2-v0.1`.
+**Ships**: `darkfix-ds2-v0.1.0`.
 
 - [ ] Reproduce in DOSBox via `tools/repro/`.
 - [ ] Locate the GPL function or DSUN.EXE routine controlling
@@ -220,7 +235,7 @@ applied.
 section 2 (community-reported, post-1.10) has either a fix or an
 explicit "won't fix" note with rationale.
 
-**Ships**: `darkfix-ds2-v0.5`.
+**Ships**: `darkfix-ds2-v0.5.0`.
 
 - [ ] Charged-weapon disappearance.
 - [ ] Doorway / item graphics layering.
@@ -232,7 +247,7 @@ explicit "won't fix" note with rationale.
 
 **Goal**: same as Phase 8, for DS1's known issues.
 
-**Ships**: `darkfix-ds1-v0.5`.
+**Ships**: `darkfix-ds1-v0.5.0`.
 
 - [ ] Compile a more thorough DS1 bug list (DS1 is less
       documented; we will find issues during this phase).
@@ -243,7 +258,7 @@ explicit "won't fix" note with rationale.
 **Goal**: the patches reach a state where they can be
 recommended to fellow Dark Sun players in good conscience.
 
-**Ships**: `darkfix-ds1-v1.0` and `darkfix-ds2-v1.0`.
+**Ships**: `darkfix-ds1-v1.0.0` and `darkfix-ds2-v1.0.0`.
 
 - [ ] Full playthrough of DS1 with the patch on; no workaround
       needed.

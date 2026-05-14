@@ -22,11 +22,11 @@ Status: pre-release. No fixes shipped yet. See
 
 ## Player install (forthcoming)
 
-Once v0.1 ships:
+Once v0.1.0 ships:
 
 ```sh
-unzip darkfix-ds1-v0.1.zip
-cd darkfix-ds1-v0.1
+unzip darkfix-ds1-v0.1.0.zip
+cd darkfix-ds1-v0.1.0
 python3 apply.py /path/to/GOG/Dark\ Sun\ Shattered\ Lands
 ```
 

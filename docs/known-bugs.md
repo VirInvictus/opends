@@ -68,8 +68,8 @@ elevator solo, re-hire below.
 **Surface**: likely GPL (region-transition script) or DSUN.EXE
 (transition state machine). Investigation needed.
 
-**Status**: headline target for `darkfix-ds2-v0.1`. See
-[`../roadmap.md`](../roadmap.md) Phase 4.
+**Status**: headline target for `darkfix-ds2-v0.1.0`. See
+[`../roadmap.md`](../roadmap.md) Phase 7.
 
 ### 2.2. Doorway / item graphics disappearance
 
