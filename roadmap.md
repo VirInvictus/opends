@@ -71,18 +71,21 @@ library plus `gff-cat` binary. Tagged release:
       metadata including segmented-list details; `gff.find(kind, id)`
       and `gff.read(kind, id)` for targeted access. (gff-edit
       v0.1.0)
-- [ ] Resolve individual segmented-chunk locations via GFFI
-      cross-reference. (gff-edit v0.2.0)
-- [ ] Extract an indexed chunk to a file by `(kind, id)`.
-      (gff-edit v0.2.0)
+- [x] Resolve individual segmented-chunk locations via GFFI
+      cross-reference. (gff-edit v0.2.0; 63,080 chunks across
+      128 GFFs in DS1+DS2 resolved cleanly.)
+- [x] Extract a chunk (indexed or segmented) to a file by
+      `(kind, id)`. (gff-edit v0.2.0, `gff-cat extract`.)
 - [ ] Replace a chunk in-place; rewrite the GFF with a valid
       TOC. (gff-edit v0.3.0)
 - [ ] Round-trip test: read → write → byte-identical for at
       least one GFF in each game. (gff-edit v0.3.0)
 - [x] CLI: `gff-cat info <file>`, `gff-cat list <file>`.
       (gff-edit v0.1.0)
-- [ ] CLI: `gff-cat extract <file> <kind> <id>` (v0.2.0),
-      `gff-cat replace <file> <kind> <id> <bytes>` (v0.3.0).
+- [x] CLI: `gff-cat extract <file> <kind> <id> [-o <out>]`.
+      (gff-edit v0.2.0)
+- [ ] CLI: `gff-cat replace <file> <kind> <id> <bytes>`.
+      (gff-edit v0.3.0)
 - [x] Tested against every shipped GFF in both DS1 and DS2 with
       no parse errors. (gff-edit v0.1.0: 61/61 pristine,
       67/67 deployed.)

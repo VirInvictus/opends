@@ -47,8 +47,8 @@ API surface lands incrementally; see
 ```sh
 gff-cat info  <file>                # print header + TOC summary
 gff-cat list  <file>                # one row per chunk: kind, id, offset, len
-gff-cat extract <file> <kind> <id>  # write chunk bytes to stdout (or -o)
-gff-cat replace <file> <kind> <id> <bytes>  # swap a chunk and rewrite
+gff-cat extract <file> <kind> <id>  # write chunk bytes to stdout (or -o <file>)
+gff-cat replace <file> <kind> <id> <bytes>  # swap a chunk and rewrite (v0.3.0)
 ```
 
 ## Build
@@ -61,9 +61,12 @@ cargo build -p gff-edit --release
 
 ## Roadmap
 
-- v0.1.0 (this phase): header + TOC parser, chunk iteration,
-  `gff-cat info`, `gff-cat list`. Read-only.
-- v0.2.0: `gff-cat extract`, library `Gff::read`.
-- v0.3.0: writer; `gff-cat replace`; byte-identical round-trip
+- **v0.1.0** — header + TOC parser, chunk iteration,
+  `gff-cat info`, `gff-cat list`. Read-only, indexed types only.
+- **v0.2.0 (current)** — segmented chunks fully resolved via
+  the GFFI cross-reference; `gff-cat extract`; library `read()`
+  works for both indexed and segmented chunks. Verified against
+  128 GFFs across DS1 and DS2 with 63,080 chunks resolved.
+- v0.3.0 — writer; `gff-cat replace`; byte-identical round-trip
   tests against every shipped GFF in DS1 and DS2.
-- v1.0.0: API frozen; full DS1 and DS2 corpus covered.
+- v1.0.0 — API frozen; full DS1 and DS2 corpus covered.

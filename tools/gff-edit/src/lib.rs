@@ -18,18 +18,19 @@
 //! # Ok::<(), gff_edit::GffError>(())
 //! ```
 //!
-//! # Coverage of GFF features in this version (v0.1)
+//! # Coverage of GFF features in this version (v0.2)
 //!
 //! - **Indexed chunk lists** are fully parsed; their `ChunkRef`s
 //!   appear in [`Gff::chunks`] and chunk bytes can be read via
 //!   [`Gff::read`].
-//! - **Segmented chunk lists** are parsed at the type level
-//!   (kind, chunk count, seg_count, seg_loc_id, seg_entries) and
-//!   surfaced via [`Gff::types`], but their individual chunk
-//!   locations are not yet resolved. Resolving requires a
-//!   cross-reference into the file's `GFFI` chunk; that lands in
-//!   v0.2 along with `gff-cat extract`. Segmented types contribute
-//!   nothing to [`Gff::chunks`] in v0.1.
+//! - **Segmented chunk lists** are fully resolved via the `GFFI`
+//!   cross-reference: the parser reads each type's secondary
+//!   table from the file offset given by the `seg_loc_id`-th
+//!   GFFI chunk, reconstructs resource numbers from the type's
+//!   segment runs, and appends the resulting `ChunkRef`s to
+//!   [`Gff::chunks`] in TOC declaration order.
+//! - **Writer** (round-trip read → edit → write byte-identical):
+//!   lands in v0.3.0.
 
 use std::fmt;
 use std::fs;
@@ -98,18 +99,20 @@ impl Gff {
         &self.types
     }
 
-    /// Flat list of chunk references for **indexed** types. In v0.1,
-    /// chunks belonging to segmented types do not appear here.
+    /// Flat list of every chunk reference in TOC declaration order.
+    /// Includes both indexed chunks and resolved segmented chunks.
     pub fn chunks(&self) -> &[ChunkRef] {
         &self.chunks
     }
 
-    /// Find an indexed chunk by FOURCC and resource id.
+    /// Find a chunk by FOURCC and resource id. Works for both indexed
+    /// and segmented chunks.
     pub fn find(&self, kind: FourCC, id: i32) -> Option<&ChunkRef> {
         self.chunks.iter().find(|c| c.kind == kind && c.id == id)
     }
 
-    /// Borrow the raw bytes of an indexed chunk by (kind, id).
+    /// Borrow the raw bytes of a chunk by (kind, id). Works for both
+    /// indexed and segmented chunks.
     pub fn read(&self, kind: FourCC, id: i32) -> Option<&[u8]> {
         let c = self.find(kind, id)?;
         let start = c.location as usize;
@@ -324,6 +327,31 @@ pub enum GffError {
 
     #[error("FOURCC must be exactly 4 bytes: got {0:?}")]
     BadFourCC(String),
+
+    #[error("segmented type {kind} requires a GFFI type but none is present in the TOC")]
+    MissingGffiType { kind: FourCC },
+
+    #[error("segmented type {kind}: seg_loc_id {seg_loc_id} out of range (GFFI has {gffi_count} chunks)")]
+    SegLocIdOutOfRange {
+        kind: FourCC,
+        seg_loc_id: i32,
+        gffi_count: usize,
+    },
+
+    #[error("secondary table for {kind} out of bounds: offset={offset} entry_count={entry_count} file_size={file_size}")]
+    SecondaryTableOutOfBounds {
+        kind: FourCC,
+        offset: usize,
+        entry_count: usize,
+        file_size: usize,
+    },
+
+    #[error("secondary table for {kind} declares {table_count} entries but segment runs sum to {runs_total}")]
+    SecondaryTableMismatch {
+        kind: FourCC,
+        table_count: usize,
+        runs_total: usize,
+    },
 }
 
 fn parse_toc(
@@ -361,8 +389,10 @@ fn parse_toc(
     let num_types = u16_le(&toc[types_offset..types_offset + 2]) as usize;
     let mut cursor = types_offset + 2;
 
-    let mut types = Vec::with_capacity(num_types);
-    let mut chunks = Vec::new();
+    // First pass: parse each type's TOC region linearly. Indexed chunks
+    // are stashed per-type so we can preserve TOC order when we later
+    // interleave resolved segmented chunks.
+    let mut builds: Vec<TypeBuild> = Vec::with_capacity(num_types);
 
     for _ in 0..num_types {
         if cursor + 8 > toc.len() {
@@ -402,14 +432,17 @@ fn parse_toc(
                 cursor += 8;
                 seg_entries.push(SegEntry { first_id, num_chunks });
             }
-            types.push(TypeInfo {
-                kind,
-                chunk_count,
-                segmented: Some(SegmentedInfo {
-                    seg_count,
-                    seg_loc_id,
-                    seg_entries,
-                }),
+            builds.push(TypeBuild {
+                info: TypeInfo {
+                    kind,
+                    chunk_count,
+                    segmented: Some(SegmentedInfo {
+                        seg_count,
+                        seg_loc_id,
+                        seg_entries,
+                    }),
+                },
+                indexed: Vec::new(),
             });
         } else {
             let entries_size = chunk_count
@@ -418,6 +451,7 @@ fn parse_toc(
             if cursor + entries_size > toc.len() {
                 return Err(GffError::TocTypesTruncated { num_types, offset: cursor });
             }
+            let mut indexed = Vec::with_capacity(chunk_count);
             for _ in 0..chunk_count {
                 let id = i32_le(&toc[cursor..cursor + 4]);
                 let location = u32_le(&toc[cursor + 4..cursor + 8]);
@@ -434,22 +468,153 @@ fn parse_toc(
                         length: length as usize,
                         file_size: bytes.len(),
                     })?;
-                chunks.push(ChunkRef {
+                indexed.push(ChunkRef {
                     kind,
                     id,
                     location,
                     length,
                 });
             }
-            types.push(TypeInfo {
-                kind,
-                chunk_count,
-                segmented: None,
+            builds.push(TypeBuild {
+                info: TypeInfo {
+                    kind,
+                    chunk_count,
+                    segmented: None,
+                },
+                indexed,
             });
         }
     }
 
+    // Second pass: resolve segmented types via the GFFI primary table.
+    // Snapshot the GFFI type's indexed chunks (cloned) so the per-type
+    // resolution can borrow without conflicting with the in-progress
+    // assembly of the flat chunks vec.
+    let gffi_chunks: Vec<ChunkRef> = builds
+        .iter()
+        .find(|b| b.info.kind == GFFI_KIND)
+        .map(|b| b.indexed.clone())
+        .unwrap_or_default();
+
+    let mut chunks = Vec::new();
+    for build in &builds {
+        if let Some(seg) = &build.info.segmented {
+            let resolved = resolve_segmented_type(bytes, build.info.kind, seg, &gffi_chunks)?;
+            chunks.extend(resolved);
+        } else {
+            chunks.extend(build.indexed.iter().copied());
+        }
+    }
+
+    let types = builds.into_iter().map(|b| b.info).collect();
     Ok((types, chunks))
+}
+
+/// Internal builder: a type's metadata plus, for indexed types, the
+/// raw chunk references we stash so the final flat list can be
+/// assembled in TOC order after segmented resolution.
+struct TypeBuild {
+    info: TypeInfo,
+    indexed: Vec<ChunkRef>,
+}
+
+/// `GFFI` FOURCC constant (kept private to avoid leaking into the API).
+const GFFI_KIND: FourCC = FourCC(*b"GFFI");
+
+/// Resolve a segmented type into concrete `ChunkRef`s.
+///
+/// Reads the type's secondary table at the offset given by the
+/// `seg_loc_id`-th GFFI chunk, then walks the type's segment runs
+/// to reconstruct resource numbers for each entry. Confirmed against
+/// both `libgff` (`gff_find_chunk_header`) and `dsun_music`
+/// (`SecondaryGffiTable`) format references.
+fn resolve_segmented_type(
+    bytes: &[u8],
+    kind: FourCC,
+    seg: &SegmentedInfo,
+    gffi_chunks: &[ChunkRef],
+) -> Result<Vec<ChunkRef>, GffError> {
+    if gffi_chunks.is_empty() {
+        return Err(GffError::MissingGffiType { kind });
+    }
+    if seg.seg_loc_id < 0 || (seg.seg_loc_id as usize) >= gffi_chunks.len() {
+        return Err(GffError::SegLocIdOutOfRange {
+            kind,
+            seg_loc_id: seg.seg_loc_id,
+            gffi_count: gffi_chunks.len(),
+        });
+    }
+    let gffi_chunk = &gffi_chunks[seg.seg_loc_id as usize];
+
+    let table_start = gffi_chunk.location as usize;
+    if table_start.checked_add(4).filter(|e| *e <= bytes.len()).is_none() {
+        return Err(GffError::SecondaryTableOutOfBounds {
+            kind,
+            offset: table_start,
+            entry_count: 0,
+            file_size: bytes.len(),
+        });
+    }
+    let entry_count = u32_le(&bytes[table_start..table_start + 4]) as usize;
+    let entries_start = table_start + 4;
+    let entries_size = entry_count
+        .checked_mul(8)
+        .filter(|sz| entries_start.checked_add(*sz).filter(|e| *e <= bytes.len()).is_some())
+        .ok_or(GffError::SecondaryTableOutOfBounds {
+            kind,
+            offset: table_start,
+            entry_count,
+            file_size: bytes.len(),
+        })?;
+    let _ = entries_size;
+
+    let runs_total: usize = seg
+        .seg_entries
+        .iter()
+        .map(|s| s.num_chunks.max(0) as usize)
+        .sum();
+    if runs_total != entry_count {
+        return Err(GffError::SecondaryTableMismatch {
+            kind,
+            table_count: entry_count,
+            runs_total,
+        });
+    }
+
+    let mut resolved = Vec::with_capacity(entry_count);
+    let mut entry_index = 0usize;
+    for run in &seg.seg_entries {
+        if run.num_chunks <= 0 {
+            continue;
+        }
+        for k in 0..run.num_chunks {
+            let id = run.first_id.wrapping_add(k);
+            let entry_pos = entries_start + entry_index * 8;
+            let location = u32_le(&bytes[entry_pos..entry_pos + 4]);
+            let length = u32_le(&bytes[entry_pos + 4..entry_pos + 8]);
+
+            (location as usize)
+                .checked_add(length as usize)
+                .filter(|e| *e <= bytes.len())
+                .ok_or(GffError::ChunkOutOfBounds {
+                    kind,
+                    id,
+                    location: location as usize,
+                    length: length as usize,
+                    file_size: bytes.len(),
+                })?;
+
+            resolved.push(ChunkRef {
+                kind,
+                id,
+                location,
+                length,
+            });
+            entry_index += 1;
+        }
+    }
+
+    Ok(resolved)
 }
 
 #[inline]
@@ -495,38 +660,153 @@ mod tests {
         v
     }
 
-    /// Hand-built GFF with one indexed type and one segmented type.
-    fn mixed_gff() -> Vec<u8> {
-        // 4 bytes of "indexed" chunk data + 0 bytes for segmented (no
-        // real data needed; we only test the TOC parse).
+    /// Hand-built GFF with a segmented TILE type but no GFFI type to
+    /// resolve it. Expected to fail with `MissingGffiType` once we
+    /// attempt segmented resolution.
+    fn mixed_gff_missing_gffi() -> Vec<u8> {
         let mut v = Vec::new();
         v.extend_from_slice(b"GFFI");
         v.extend_from_slice(&0x0003_0000u32.to_le_bytes()); // version
         v.extend_from_slice(&28u32.to_le_bytes()); // data_location
         v.extend_from_slice(&32u32.to_le_bytes()); // toc_location
-        // TOC = 8 (header) + 2 (num_types) + (8 + 12) (indexed) + (8 + 12 + 8) (segmented) + 2 (free) = 60
         v.extend_from_slice(&60u32.to_le_bytes()); // toc_length
         v.extend_from_slice(&0u32.to_le_bytes()); // file_flags
         v.extend_from_slice(&2u32.to_le_bytes()); // data0
-        v.extend_from_slice(b"hi!\0"); // 4 bytes
+        v.extend_from_slice(b"hi!\0"); // 4 bytes ETME data
         // TOC
         v.extend_from_slice(&8u32.to_le_bytes()); // types_offset
         v.extend_from_slice(&58u32.to_le_bytes()); // free_list_offset
         v.extend_from_slice(&2u16.to_le_bytes()); // num_types
         // Type 1: ETME indexed, 1 chunk
         v.extend_from_slice(b"ETME");
+        v.extend_from_slice(&1u32.to_le_bytes());
+        v.extend_from_slice(&3i32.to_le_bytes());
+        v.extend_from_slice(&28u32.to_le_bytes());
+        v.extend_from_slice(&4u32.to_le_bytes());
+        // Type 2: TILE segmented, 5 chunks, 1 seg entry
+        v.extend_from_slice(b"TILE");
+        v.extend_from_slice(&(5u32 | SEGMENTED_FLAG).to_le_bytes());
+        v.extend_from_slice(&5i32.to_le_bytes());
+        v.extend_from_slice(&0i32.to_le_bytes());
+        v.extend_from_slice(&1u32.to_le_bytes());
+        v.extend_from_slice(&100i32.to_le_bytes());
+        v.extend_from_slice(&5i32.to_le_bytes());
+        v.extend_from_slice(&0u16.to_le_bytes()); // free list
+        v
+    }
+
+    /// Hand-built GFF exercising the full segmented-chunk path:
+    ///
+    /// - One indexed ETME chunk (id 3, 4 bytes).
+    /// - One indexed GFFI chunk holding a 2-entry secondary table.
+    /// - One segmented TILE type with one segment run mapping resource
+    ///   ids 100..=101 to entries 0..=1 of the GFFI secondary table.
+    ///
+    /// File layout:
+    /// ```
+    /// 0..28    file header
+    /// 28..32   ETME-3 data ("hi!\0")
+    /// 32..36   TILE-100 data ("til0")
+    /// 36..40   TILE-101 data ("til1")
+    /// 40..60   GFFI-0 data: 4-byte entryCount=2, then 2x (offset,size)
+    /// 60..140  TOC (80 bytes)
+    /// ```
+    fn full_segmented_gff() -> Vec<u8> {
+        let mut v = Vec::new();
+        // Header.
+        v.extend_from_slice(b"GFFI");
+        v.extend_from_slice(&0x0003_0000u32.to_le_bytes());
+        v.extend_from_slice(&28u32.to_le_bytes()); // data_location
+        v.extend_from_slice(&60u32.to_le_bytes()); // toc_location
+        v.extend_from_slice(&80u32.to_le_bytes()); // toc_length
+        v.extend_from_slice(&0u32.to_le_bytes()); // file_flags
+        v.extend_from_slice(&3u32.to_le_bytes()); // data0
+        // Chunk data area (32 bytes).
+        v.extend_from_slice(b"hi!\0"); // ETME-3
+        v.extend_from_slice(b"til0"); // TILE-100
+        v.extend_from_slice(b"til1"); // TILE-101
+        // GFFI-0 (secondary table for TILE) at offset 40.
+        v.extend_from_slice(&2u32.to_le_bytes()); // entryCount = 2
+        v.extend_from_slice(&32u32.to_le_bytes()); // entry 0 offset
+        v.extend_from_slice(&4u32.to_le_bytes()); //  entry 0 size
+        v.extend_from_slice(&36u32.to_le_bytes()); // entry 1 offset
+        v.extend_from_slice(&4u32.to_le_bytes()); //  entry 1 size
+        // TOC at offset 60 (80 bytes).
+        v.extend_from_slice(&8u32.to_le_bytes()); // types_offset
+        v.extend_from_slice(&78u32.to_le_bytes()); // free_list_offset
+        v.extend_from_slice(&3u16.to_le_bytes()); // num_types
+        // Type 1: ETME indexed (20 bytes: 4 + 4 + 12).
+        v.extend_from_slice(b"ETME");
         v.extend_from_slice(&1u32.to_le_bytes()); // chunk_count
         v.extend_from_slice(&3i32.to_le_bytes()); // id
         v.extend_from_slice(&28u32.to_le_bytes()); // location
         v.extend_from_slice(&4u32.to_le_bytes()); // length
-        // Type 2: TILE segmented, 5 chunks, 1 seg entry
+        // Type 2: GFFI indexed (20 bytes).
+        v.extend_from_slice(b"GFFI");
+        v.extend_from_slice(&1u32.to_le_bytes());
+        v.extend_from_slice(&0i32.to_le_bytes());
+        v.extend_from_slice(&40u32.to_le_bytes());
+        v.extend_from_slice(&20u32.to_le_bytes());
+        // Type 3: TILE segmented (28 bytes: 4 + 4 + 12 + 8).
         v.extend_from_slice(b"TILE");
-        v.extend_from_slice(&(5u32 | SEGMENTED_FLAG).to_le_bytes()); // chunk_count with seg flag
-        v.extend_from_slice(&5i32.to_le_bytes()); // seg_count
-        v.extend_from_slice(&0i32.to_le_bytes()); // seg_loc_id
+        v.extend_from_slice(&(2u32 | SEGMENTED_FLAG).to_le_bytes());
+        v.extend_from_slice(&2i32.to_le_bytes()); // seg_count
+        v.extend_from_slice(&0i32.to_le_bytes()); // seg_loc_id → GFFI chunk 0
         v.extend_from_slice(&1u32.to_le_bytes()); // num_entries
-        v.extend_from_slice(&100i32.to_le_bytes()); // first_id
-        v.extend_from_slice(&5i32.to_le_bytes()); // num_chunks
+        v.extend_from_slice(&100i32.to_le_bytes()); // run.first_id
+        v.extend_from_slice(&2i32.to_le_bytes()); // run.num_chunks
+        v.extend_from_slice(&0u16.to_le_bytes()); // free list
+        v
+    }
+
+    /// Like `full_segmented_gff` but with two segment runs:
+    /// (first_id=200, n=2) and (first_id=900, n=1). Three resolved
+    /// TILE chunks total.
+    fn full_segmented_gff_multi_run() -> Vec<u8> {
+        let mut v = Vec::new();
+        v.extend_from_slice(b"GFFI");
+        v.extend_from_slice(&0x0003_0000u32.to_le_bytes());
+        v.extend_from_slice(&28u32.to_le_bytes());
+        v.extend_from_slice(&72u32.to_le_bytes()); // toc_location
+        v.extend_from_slice(&88u32.to_le_bytes()); // toc_length
+        v.extend_from_slice(&0u32.to_le_bytes());
+        v.extend_from_slice(&4u32.to_le_bytes());
+        // ETME-3 data (4 bytes) at 28.
+        v.extend_from_slice(b"hi!\0");
+        // TILE-200 (4), TILE-201 (4), TILE-900 (4) at 32, 36, 40.
+        v.extend_from_slice(b"t200");
+        v.extend_from_slice(b"t201");
+        v.extend_from_slice(b"t900");
+        // GFFI-0 at offset 44, 28 bytes: 4 + 3*(4+4).
+        v.extend_from_slice(&3u32.to_le_bytes()); // entryCount = 3
+        v.extend_from_slice(&32u32.to_le_bytes()); v.extend_from_slice(&4u32.to_le_bytes());
+        v.extend_from_slice(&36u32.to_le_bytes()); v.extend_from_slice(&4u32.to_le_bytes());
+        v.extend_from_slice(&40u32.to_le_bytes()); v.extend_from_slice(&4u32.to_le_bytes());
+        // TOC at offset 72 (28 bytes data + 16 bytes secondary table = 44; 44+28=72 — wait recompute).
+        // 28 header + 4 ETME + 4*3 TILE data + 4 entryCount + 3*8 entries = 28+4+12+4+24 = 72. ✓
+        v.extend_from_slice(&8u32.to_le_bytes()); // types_offset
+        v.extend_from_slice(&86u32.to_le_bytes()); // free_list_offset
+        v.extend_from_slice(&3u16.to_le_bytes()); // num_types
+        // ETME (20 bytes)
+        v.extend_from_slice(b"ETME");
+        v.extend_from_slice(&1u32.to_le_bytes());
+        v.extend_from_slice(&3i32.to_le_bytes());
+        v.extend_from_slice(&28u32.to_le_bytes());
+        v.extend_from_slice(&4u32.to_le_bytes());
+        // GFFI (20 bytes)
+        v.extend_from_slice(b"GFFI");
+        v.extend_from_slice(&1u32.to_le_bytes());
+        v.extend_from_slice(&0i32.to_le_bytes());
+        v.extend_from_slice(&44u32.to_le_bytes());
+        v.extend_from_slice(&28u32.to_le_bytes());
+        // TILE segmented (4 + 4 + 12 + 16 = 36 bytes)
+        v.extend_from_slice(b"TILE");
+        v.extend_from_slice(&(3u32 | SEGMENTED_FLAG).to_le_bytes());
+        v.extend_from_slice(&3i32.to_le_bytes());
+        v.extend_from_slice(&0i32.to_le_bytes());
+        v.extend_from_slice(&2u32.to_le_bytes()); // num_entries = 2 runs
+        v.extend_from_slice(&200i32.to_le_bytes()); v.extend_from_slice(&2i32.to_le_bytes());
+        v.extend_from_slice(&900i32.to_le_bytes()); v.extend_from_slice(&1i32.to_le_bytes());
         v.extend_from_slice(&0u16.to_le_bytes()); // free list
         v
     }
@@ -546,27 +826,55 @@ mod tests {
     }
 
     #[test]
-    fn parses_mixed_indexed_and_segmented() {
-        let bytes = mixed_gff();
+    fn rejects_segmented_without_gffi() {
+        let bytes = mixed_gff_missing_gffi();
+        let err = Gff::from_bytes(bytes).unwrap_err();
+        assert!(
+            matches!(err, GffError::MissingGffiType { kind } if kind == FourCC(*b"TILE")),
+            "got: {err:?}"
+        );
+    }
+
+    #[test]
+    fn resolves_segmented_with_gffi() {
+        let bytes = full_segmented_gff();
         let gff = Gff::from_bytes(bytes).expect("parses");
-        assert_eq!(gff.types().len(), 2);
-        // Indexed type contributes to chunks().
-        assert_eq!(gff.chunks().len(), 1);
-        // Type 1: indexed ETME with 1 chunk.
-        assert_eq!(gff.types()[0].kind, FourCC(*b"ETME"));
-        assert_eq!(gff.types()[0].chunk_count, 1);
-        assert!(!gff.types()[0].is_segmented());
-        // Type 2: segmented TILE with 5 logical chunks (high bit stripped),
-        // 1 seg entry mapping id 100..=104.
-        assert_eq!(gff.types()[1].kind, FourCC(*b"TILE"));
-        assert_eq!(gff.types()[1].chunk_count, 5);
-        assert!(gff.types()[1].is_segmented());
-        let seg = gff.types()[1].segmented.as_ref().unwrap();
-        assert_eq!(seg.seg_count, 5);
-        assert_eq!(seg.seg_loc_id, 0);
-        assert_eq!(seg.seg_entries.len(), 1);
-        assert_eq!(seg.seg_entries[0].first_id, 100);
-        assert_eq!(seg.seg_entries[0].num_chunks, 5);
+        assert_eq!(gff.types().len(), 3);
+        // Chunks in TOC order: ETME-3, GFFI-0, TILE-100, TILE-101.
+        let kinds: Vec<_> = gff.chunks().iter().map(|c| (c.kind, c.id)).collect();
+        assert_eq!(
+            kinds,
+            vec![
+                (FourCC(*b"ETME"), 3),
+                (FourCC(*b"GFFI"), 0),
+                (FourCC(*b"TILE"), 100),
+                (FourCC(*b"TILE"), 101),
+            ]
+        );
+        // Reading a segmented chunk by (kind, id) works through the
+        // same API as indexed chunks.
+        assert_eq!(gff.read(FourCC(*b"TILE"), 100), Some(b"til0".as_ref()));
+        assert_eq!(gff.read(FourCC(*b"TILE"), 101), Some(b"til1".as_ref()));
+        assert_eq!(gff.read(FourCC(*b"TILE"), 999), None);
+    }
+
+    #[test]
+    fn resolves_segmented_multi_run() {
+        let bytes = full_segmented_gff_multi_run();
+        let gff = Gff::from_bytes(bytes).expect("parses");
+        let kinds: Vec<_> = gff.chunks().iter().map(|c| (c.kind, c.id)).collect();
+        assert_eq!(
+            kinds,
+            vec![
+                (FourCC(*b"ETME"), 3),
+                (FourCC(*b"GFFI"), 0),
+                (FourCC(*b"TILE"), 200),
+                (FourCC(*b"TILE"), 201),
+                (FourCC(*b"TILE"), 900),
+            ]
+        );
+        assert_eq!(gff.read(FourCC(*b"TILE"), 200), Some(b"t200".as_ref()));
+        assert_eq!(gff.read(FourCC(*b"TILE"), 900), Some(b"t900".as_ref()));
     }
 
     #[test]

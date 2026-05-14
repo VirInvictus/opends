@@ -4,6 +4,26 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gff-edit/` v0.2.0**: segmented chunks fully resolved.
+  The parser now reads each segmented type's secondary table
+  inside the GFFI chunk, reconstructs resource ids from the
+  type's segment runs, and appends the resolved `ChunkRef`s to
+  `Gff::chunks()` in TOC declaration order. `Gff::find()` and
+  `Gff::read()` work for both indexed and segmented chunks
+  with no API change. New CLI subcommand: `gff-cat extract
+  <file> <kind> <id> [-o <out>]` writes chunk bytes to stdout
+  or a file. v0.1's "segmented not listed" caveat removed from
+  `gff-cat list`. SIGPIPE-safe (`gff-cat list | head` no
+  longer panics). Smoke-tested against 128 GFFs in DS1 and DS2
+  with 63,080 chunks resolved; integrity spot-checked against
+  manual `dd` slices. New error variants: `MissingGffiType`,
+  `SegLocIdOutOfRange`, `SecondaryTableOutOfBounds`,
+  `SecondaryTableMismatch`. `dsun_music` and `libgff` cited as
+  the format references for segmented resolution.
+- `docs/file-formats.md` §1 expanded: documents segmented chunk
+  resolution (primary GFFI table, secondary table layout,
+  resource-id reconstruction from segment runs). §5 open
+  question on segmented chunk layout struck through; resolved.
 - **`tools/gff-edit/` v0.1.0** ships (Rust crate + `gff-cat`
   binary). Read-only first pass: parses the 28-byte GFF file
   header and the full TOC, including both indexed and segmented

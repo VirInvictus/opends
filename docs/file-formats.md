@@ -58,11 +58,18 @@ for each type (num_types entries):
     uint32_t chunk_type;       // four ASCII bytes spelling the FOURCC at offset 0..3
     uint32_t chunk_count;      // number of resources of this type
 
-    if (chunk_type & 0x80000000) {
-        // Segmented chunk list. Used for resources too large for a
-        // single (id, location, length) entry. Layout follows libgff's
-        // seg_header_t + gff_seg_entry_t records; document when first
-        // encountered in the wild.
+    if (chunk_count & 0x80000000) {
+        // Segmented chunk list. The actual count is in the low 31
+        // bits. Per-chunk (offset, length) records live in a
+        // separate secondary table inside the file's GFFI chunk
+        // (see "Segmented chunk resolution" below).
+        int32_t seg_count;        // total chunks (often duplicates the low 31 bits above)
+        int32_t seg_loc_id;       // index into the GFFI type's chunks; that chunk holds the secondary table
+        uint32_t num_runs;        // number of segment runs that follow
+        for (i = 0; i < num_runs; i++) {
+            int32_t first_id;     // first resource id in this run
+            int32_t num_chunks;   // count of consecutive resource ids
+        }
     } else {
         // Indexed chunk list. The default and dominant case.
         for (i = 0; i < chunk_count; i++) {
@@ -79,10 +86,46 @@ every shipped GFF inspected the free list is empty
 populated, libgff's writer is the reference; document layout
 when we first need it.
 
-The high bit of `chunk_type` (`GFFSEGFLAGMASK = 0x80000000`)
-selects between indexed and segmented chunk lists. The FOURCC
-catalogue below assumes the bit is clear; segmented variants of
-the same type share the lower 28 bits.
+The high bit of **`chunk_count`** (`GFFSEGFLAGMASK = 0x80000000`)
+selects between indexed and segmented chunk lists. The chunk
+type's FOURCC is unchanged across the two cases. libgff names
+this `GFFSEGFLAGMASK`; `chunk_count & 0x7FFFFFFF`
+(`GFFMAXCHUNKMASK`) gives the canonical chunk count.
+
+### Segmented chunk resolution
+
+Segmented types do not list per-chunk `(id, location, length)`
+records inline. Instead, the type's TOC entry carries:
+
+- `seg_loc_id` — an **index** into the chunks of the file's
+  `GFFI` type (i.e. the `seg_loc_id`-th `gff_chunk_header_t`
+  emitted by the GFFI type in the type list above).
+- A list of **segment runs**, each `(first_id, num_chunks)`,
+  describing the resource ids the type owns.
+
+The chunk indexed by `seg_loc_id` in the GFFI type points at a
+**secondary table** sitting inside the GFFI chunk's data. Its
+layout:
+
+```
+uint32 entry_count
+entry_count × { uint32 offset, uint32 size }   // 8 bytes each
+```
+
+Resource ids are not stored in the secondary table. They are
+reconstructed by walking the type's segment runs in order: the
+i-th secondary-table entry's resource id is
+`runs[r].first_id + (i - start_index_of_run_r)`, where `r` is
+the run that contains entry `i`. The sum of all `num_chunks`
+across runs equals `entry_count`.
+
+Cross-checked against:
+
+- libgff's `gff_find_chunk_header` in
+  `dsoageofheroes/libgff/src/gff.c`.
+- dsun_music's `GffFile.createTables` and `SecondaryGffiTable`
+  in `JohnGlassmyer/dsun_music`
+  (`common/src/main/java/net/johnglassmyer/dsun/common/gff/`).
 
 **Worked example, DARKRUN.GFF (991 bytes total):**
 
@@ -279,10 +322,9 @@ content adapted to the target hardware's timbre map.
 
 Resolved questions are documented inline. These remain.
 
-- The exact layout of **segmented chunk lists**
-  (`chunk_type & 0x80000000`). libgff's `seg_header_t` and
-  `gff_seg_entry_t` are the reference; document when first
-  encountered in the wild.
+- ~~The exact layout of segmented chunk lists.~~ Resolved (see
+  "Segmented chunk resolution" above). Verified on the full DS1
+  and DS2 corpus.
 - The exact layout of a **non-empty free list**. Every shipped
   GFF inspected has `free_list_offset == toc_length`, leaving
   zero bytes. libgff's writer is the reference for when it
