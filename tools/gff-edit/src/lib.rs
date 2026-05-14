@@ -36,6 +36,7 @@ use std::fmt;
 use std::fs;
 use std::path::Path;
 
+use serde::{Serialize, Serializer};
 use thiserror::Error;
 
 /// Bit mask for the segmented-list flag stored in the high bit of
@@ -205,10 +206,15 @@ impl Gff {
     }
 }
 
+fn serialize_identity<S: Serializer>(id: &[u8; 4], s: S) -> Result<S::Ok, S::Error> {
+    s.serialize_str(std::str::from_utf8(id).unwrap_or("?"))
+}
+
 /// GFF file header (28 bytes). See docs/file-formats.md §1.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct FileHeader {
     /// Magic bytes; always "GFFI" for a valid file.
+    #[serde(serialize_with = "serialize_identity")]
     pub identity: [u8; 4],
     /// Version word. The major version is `(version >> 16) & 0xFFFF`,
     /// which is 3 on every shipped Dark Sun GFF.
@@ -264,7 +270,7 @@ impl FileHeader {
 }
 
 /// Metadata for one chunk type's TOC entry.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TypeInfo {
     pub kind: FourCC,
     /// Logical chunk count (the on-disk field with its high bit
@@ -280,9 +286,10 @@ impl TypeInfo {
     }
 }
 
-/// On-disk metadata for a segmented chunk list. Individual chunk
-/// locations require a `GFFI` cross-reference, deferred to v0.2.
-#[derive(Debug, Clone)]
+/// On-disk metadata for a segmented chunk list. Resolution to
+/// individual chunks via the GFFI cross-reference happens in
+/// [`Gff::from_bytes`].
+#[derive(Debug, Clone, Serialize)]
 pub struct SegmentedInfo {
     pub seg_count: i32,
     pub seg_loc_id: i32,
@@ -290,7 +297,7 @@ pub struct SegmentedInfo {
 }
 
 /// One entry in a segmented type's segment-reference table.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct SegEntry {
     pub first_id: i32,
     pub num_chunks: i32,
@@ -298,7 +305,7 @@ pub struct SegEntry {
 
 /// A reference to a chunk in the GFF: its kind, id, on-disk offset,
 /// and byte length. Borrowing the chunk data lives on `Gff::read`.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct ChunkRef {
     pub kind: FourCC,
     pub id: i32,
@@ -308,7 +315,8 @@ pub struct ChunkRef {
     /// bytes, little-endian). For indexed types this sits in the TOC;
     /// for segmented types it sits in the secondary table inside the
     /// `GFFI` chunk. Used by [`Gff::replace_chunk`] to update the
-    /// metadata when bytes change. Treat as opaque.
+    /// metadata when bytes change. Treat as opaque; not serialized.
+    #[serde(skip)]
     pub meta_offset: u32,
 }
 
@@ -358,6 +366,12 @@ impl fmt::Display for FourCC {
             }
         }
         Ok(())
+    }
+}
+
+impl Serialize for FourCC {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.collect_str(self)
     }
 }
 
@@ -1083,6 +1097,30 @@ mod tests {
             .replace_chunk(FourCC(*b"ETME"), 99, b"nope")
             .unwrap_err();
         assert!(matches!(err, GffError::ChunkNotFound { .. }));
+    }
+
+    #[test]
+    fn fourcc_serializes_as_display_string() {
+        let json = serde_json::to_string(&FourCC(*b"GPL ")).unwrap();
+        assert_eq!(json, "\"GPL \"");
+        let json_escape = serde_json::to_string(&FourCC([0x01, b'A', 0x80, b'Z'])).unwrap();
+        assert_eq!(json_escape, "\"\\\\x01A\\\\x80Z\"");
+    }
+
+    #[test]
+    fn chunk_ref_serializes_without_meta_offset() {
+        let chunk = ChunkRef {
+            kind: FourCC(*b"ETME"),
+            id: 7,
+            location: 28,
+            length: 4,
+            meta_offset: 999, // should be absent from JSON
+        };
+        let json = serde_json::to_string(&chunk).unwrap();
+        assert!(json.contains("\"kind\":\"ETME\""), "got: {json}");
+        assert!(json.contains("\"id\":7"), "got: {json}");
+        assert!(!json.contains("meta_offset"), "got: {json}");
+        assert!(!json.contains("999"), "got: {json}");
     }
 
     #[test]

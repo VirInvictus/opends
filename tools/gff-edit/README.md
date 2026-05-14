@@ -45,11 +45,16 @@ API surface lands incrementally; see
 ## CLI: `gff-cat`
 
 ```sh
-gff-cat info  <file>                # print header + TOC summary
-gff-cat list  <file>                # one row per chunk: kind, id, offset, len
-gff-cat extract <file> <kind> <id>  # write chunk bytes to stdout (or -o <file>)
+gff-cat info  <file> [--json]           # print header + TOC summary
+gff-cat list  <file> [--json]           # one row per chunk: kind, id, offset, len
+gff-cat extract <file> <kind> <id>      # write chunk bytes to stdout (or -o <file>)
+gff-cat extract <file> --all -o <dir>   # dump every chunk to <dir>/<kind>-<id>.bin
 gff-cat replace <file> <kind> <id> <bytes-file> -o <out>
-                                    # swap a chunk and write modified GFF to <out>
+                                        # swap a chunk and write modified GFF to <out>
+gff-cat dump-text <file> -o <dir>       # write TEXT/ETME/MERR/NAME/SPIN as .txt files
+gff-cat pack-text <file> <dir> -o <out> # repack <kind>-<id>.txt files into a new GFF
+gff-cat kind <FOURCC>                   # print the FOURCC's catalogue entry
+gff-cat kind --list                     # print every catalogue entry
 ```
 
 ## Build
@@ -68,12 +73,16 @@ cargo build -p gff-edit --release
   cross-reference; `gff-cat extract`; library `read()` works
   for both indexed and segmented chunks. Verified against 128
   GFFs across DS1 and DS2 with 63,080 chunks resolved.
-- **v0.3.0 (current)** — writer: `Gff::replace_chunk` and
-  `gff-cat replace`. In-place if the new bytes fit, append at
-  end-of-file otherwise (matches dsun_music's
-  `replaceResource` strategy). Round-trip verified
-  byte-identical across all 128 corpus GFFs.
-- v0.4.0 — modder readability layer: `gff-cat extract --all`,
-  `gff-cat info --json` / `list --json`, `gff-cat dump-text` /
-  `pack-text` for TEXT/ETME/MERR/NAME/SPIN chunks.
+- **v0.3.0** — writer: `Gff::replace_chunk` and `gff-cat
+  replace`. In-place if the new bytes fit, append at
+  end-of-file otherwise. Round-trip verified byte-identical
+  across all 128 corpus GFFs.
+- **v0.4.0 (current)** — modder readability layer.
+  `gff-cat extract --all` (bulk chunk dump).
+  `gff-cat info --json` / `list --json` (machine-readable).
+  `gff-cat dump-text` / `pack-text` for TEXT/ETME/MERR/NAME/
+  SPIN chunks (the lowest-friction mod loop: dump → edit
+  `.txt` files → repack). `gff-cat kind <FOURCC>` for
+  catalogue lookups. 17/17 text-bearing GFFs round-trip
+  byte-identical.
 - v1.0.0 — API frozen; full DS1 and DS2 corpus covered.

@@ -1,6 +1,6 @@
 [package]
 name = "gff-edit"
-version = "0.3.0"
+version = "0.4.0"
 description = "Pure-Rust reader and writer for SSI's GFF container format (Dark Sun)."
 readme = "README.md"
 edition.workspace = true
@@ -20,3 +20,5 @@ path = "src/bin/gff-cat.rs"
 anyhow.workspace = true
 thiserror.workspace = true
 clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true

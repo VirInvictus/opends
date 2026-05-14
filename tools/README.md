@@ -13,7 +13,7 @@ implementation-language split.
 | Tool                                     | Lang   | Version | Purpose                                                                              |
 |------------------------------------------|--------|---------|--------------------------------------------------------------------------------------|
 | [`verify-install`](verify-install/)      | Python | 0.1.0   | Check a Dark Sun install against the canonical pristine-hash manifest.               |
-| [`gff-edit`](gff-edit/)                  | Rust   | 0.3.0   | Pure-Rust GFF read/write (library `gff_edit` + CLI `gff-cat`). Indexed + segmented; extract + replace.|
+| [`gff-edit`](gff-edit/)                  | Rust   | 0.4.0   | Pure-Rust GFF read/write (library `gff_edit` + CLI `gff-cat`). Read/write + bulk extract + text codec + JSON + catalogue.|
 
 ## Planned
 

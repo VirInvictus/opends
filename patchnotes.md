@@ -4,6 +4,33 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gff-edit/` v0.4.0**: modder readability layer.
+  - `gff-cat extract --all -o <dir>` bulk-dumps every chunk as
+    `<kind>-<id>.bin` under a directory.
+  - `gff-cat info --json` / `list --json` emit machine-readable
+    output. `FourCC`, `FileHeader`, `ChunkRef`, `TypeInfo`,
+    `SegmentedInfo`, and `SegEntry` derive (or implement)
+    `serde::Serialize`. `ChunkRef::meta_offset` is excluded
+    from the JSON surface via `#[serde(skip)]`.
+  - `gff-cat dump-text <file> -o <dir>` writes each
+    TEXT/ETME/MERR/NAME/SPIN chunk as `<kind>-<id>.txt`. Bytes
+    are verbatim (DOS CRLF preserved on disk; modders can edit
+    in any editor that handles CRLF, which is most).
+  - `gff-cat pack-text <file> <dir> -o <out>` reads every
+    `<kind>-<id>.txt` in `<dir>` and re-injects matching chunks
+    into the source GFF via `Gff::replace_chunk`.
+    Demonstrated end-to-end: dump-text on RESOURCE.GFF
+    produces 271 .txt files; pack-text on those files produces
+    a GFF byte-identical to the original. Across the full
+    corpus, 17/17 text-bearing GFFs round-trip byte-identical.
+  - `gff-cat kind <FOURCC>` looks up an embedded catalogue
+    sourced from [`docs/file-formats.md`](docs/file-formats.md).
+    `gff-cat kind --list` dumps the whole catalogue.
+  - Workspace gains `serde` and `serde_json` as pre-approved
+    deps per [`spec.md`](spec.md) §7a (format I/O).
+  - 16 unit tests (2 new for JSON shape). All Phase 1 tests
+    (incl. the byte-identical no-op replace corpus integration
+    test) continue to pass.
 - **Project priority pivot**: the modding toolkit is now
   framed explicitly as Goal 1, with darkfix patches as Goal 2.
   [`spec.md`](spec.md) §1 reordered to put the toolkit first;
