@@ -4,6 +4,55 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/dialog-extract/` v0.1.0** ships (new Python tool;
+  Phase 4 Goal-1 deliverable). Pulls inline NPC dialog strings
+  from `GPL ` and `MAS ` chunks as JSON.
+  - **The headline find from the dsoageofheroes research**:
+    GPL inline strings are *not* plain ASCII; they use a
+    1-byte type marker (`0x01` INTRODUCE / `0x02` UNCOMPRESSED
+    / `0x05` COMPRESSED) followed by a 7-bit packed payload
+    terminated by `0x03`. Decoder ported from
+    `dsoageofheroes/soloscuro-archive`
+    `src/gpl/gpl-string.c` `read_compressed`
+    (MIT, Paul E. West et al.; attributed in the script's
+    comments). That's why v0.1 byte-mode ASCII-run detection
+    didn't surface the dialog text on its own.
+  - **v0.1.0 is heuristic**: scans GPL/MAS chunk bytes for
+    `GPL_IMMED_STRING | 0x80` (`0x92`) followed by a known
+    type byte, then decodes. False positives possible (param
+    byte that happens to equal `0x92`); false negatives
+    possible (strings referenced via `gpl_get_gstr(id)` from
+    external `TEXT` chunks are not yet resolved). README
+    documents the limitations.
+  - **v0.2.0 plan**: replace the heuristic with
+    `gpl-disasm --json` consumption once gpl-disasm v0.2.0
+    ships proper instruction-boundary decoding; the 7-bit
+    string decoder itself stays.
+  - Stdlib-only Python. Shells out to `gff-cat extract --all`
+    to handle segmented GPL/MAS chunks rather than
+    re-implementing segmented chunk resolution.
+  - CLI: `dialog-extract <file> [--pretty] [-o <out>]
+    [--grep <regex>] [--gff-cat <path>]`.
+  - **Empirical results**: DS1 `GPLDATA.GFF` yields 215
+    chunks / **13,938 dialog strings**; DS2 `GPLDATA.GFF`
+    yields 316 chunks / **22,431 strings**. Total across both
+    games: **36,369 NPC dialog strings**, fully readable
+    today. Sample DS1 strings: "Free! Finally free! I will
+    destroy you all!", "By the lost gods of Athas, set me
+    free!", "I am A'Poss, master of this temple."
+- **`.dsoageofheroes/` reference checkout** lands. All 7 repos
+  from the dsoageofheroes GitHub org cloned at depth 1
+  (~8.7 MB total): `libgff`, `libsoloscuro`, `soloscuro`,
+  `soloscuro-archive`, `soloscuro-oldgo`, `soloscuro-orx`,
+  `the-dark-lens`. Mostly MIT-licensed. The 7-bit packed
+  string format was discovered in soloscuro-archive's
+  `gpl-string.c` during this research pass. Memory note
+  `dsoageofheroes_reference` saved for future sessions.
+  `.gitignore` updated.
+- Roadmap Phase 4: dialog-extract v0.1.0 boxes ticked
+  (inline strings + `--grep`); text-id reference resolution
+  and structured dialog trees roll forward to v0.2.0 and
+  v0.3.0.
 - **`tools/save-inspect/` v0.1.0** ships (new Python tool;
   Phase 4 Goal-1 deliverable). Dumps a `CHARSAVE.GFF` as JSON
   with per-chunk decoding:

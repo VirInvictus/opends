@@ -168,14 +168,24 @@ look at the maps directly.
 
 ### `tools/dialog-extract/` (Python)
 
-- [ ] Pull every NPC dialog tree out of the GPL/RDFF/text
-      chunks as structured JSON.
-- [ ] Output: `<chunk-id>: { speaker, lines, branches, gpl_refs }`.
-- [ ] Search-friendly: `dialog-extract --grep "Magnolia"` finds
-      every chunk that references the NPC.
-- [ ] Useful for fan docs and for any future engine project,
-      not just for patches.
-- [ ] Tagged: `dialog-extract-v0.1.0`.
+- [x] Pull inline NPC dialog strings from GPL/MAS chunks as
+      structured JSON. (dialog-extract v0.1.0; heuristic
+      IMMED_STRING scan + 7-bit decoder ported from
+      soloscuro-archive. 13,938 strings from DS1 GPLDATA, 22,431
+      from DS2, total 36,369.)
+- [x] Search-friendly: `dialog-extract --grep "Magnolia"` finds
+      chunks whose inline strings match the pattern.
+      (dialog-extract v0.1.0.)
+- [ ] Resolve text-id references (`gpl_get_gstr(id)`,
+      `gpl_get_lstr(id)`) into the matching TEXT chunks for a
+      complete dialog set. Currently only inline strings are
+      captured. (dialog-extract v0.2.0; depends on gpl-disasm
+      v0.2.0 + cross-chunk reference resolution.)
+- [ ] Output a richer `{ speaker, lines, branches, gpl_refs }`
+      tree once instruction boundaries from gpl-disasm v0.2.0
+      let us correlate strings to the surrounding control flow.
+      (dialog-extract v0.3.0.)
+- [x] Tagged: `dialog-extract-v0.1.0`. (this release)
 
 ### `tools/save-inspect/` (Python)
 
