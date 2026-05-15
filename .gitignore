@@ -5,6 +5,7 @@
 # Each is its own checkout under a dot-prefixed directory.
 .dsun_music/
 .dsoageofheroes/
+.dso-online/
 
 # Build artifacts
 /build/

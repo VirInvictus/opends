@@ -66,12 +66,15 @@ comments next to the relevant code.
   psionic.h). Will inform save-inspect v0.2.0 (CHAR record body
   decoding) and any future rules-aware tool.
 - **`greg-kennedy/DarkSunOnline`** — DSO server reimplementation
-  + wiki. Reports that the DSO v1.0 client shipped with debug
-  symbols including function and variable names. WotR shares
-  this codebase, so those symbols are the single best public
-  source for naming functions inside `DSUN.EXE`. Future
-  reference for `gpl-disasm` symbol curation (v0.4.0+) and any
-  binary patching work.
+  + wiki. The DSO v1.0 client shipped with Watcom debug symbols
+  including function and variable names; Greg's repo extracts
+  them to `tools/symbols.txt` (3,530 functions + 2,247 globals).
+  WotR shares this codebase, so those names are the single best
+  public source for naming functions inside `DSUN.EXE`.
+  AGPL-3.0; the names are facts we cite individually in
+  [`docs/dso-symbols.md`](docs/dso-symbols.md), not source code
+  we port. Future reference for `gpl-disasm` symbol curation
+  (v0.4.0+) and any binary patching work.
 - **Crimson Sands postmortem** (Gamasutra / Game Developer
   Magazine) — the only first-person account that names "GPL"
   as the in-engine scripting language. Cited in
@@ -89,11 +92,18 @@ For fast iteration during research, the following are cloned
 locally and gitignored:
 
 - `.dsun_music/` — shallow clone of
-  [`JohnGlassmyer/dsun_music`](https://github.com/JohnGlassmyer/dsun_music).
+  [`JohnGlassmyer/dsun_music`](https://github.com/JohnGlassmyer/dsun_music)
+  (MIT).
 - `.dsoageofheroes/` — shallow clones of all 7 repos at
   [`github.com/dsoageofheroes`](https://github.com/dsoageofheroes):
   `libgff`, `libsoloscuro`, `soloscuro`, `soloscuro-archive`,
-  `soloscuro-oldgo`, `soloscuro-orx`, `the-dark-lens`.
+  `soloscuro-oldgo`, `soloscuro-orx`, `the-dark-lens` (mostly
+  MIT).
+- `.dso-online/` — shallow clone of
+  [`greg-kennedy/DarkSunOnline`](https://github.com/greg-kennedy/DarkSunOnline)
+  (AGPL-3.0). Research mirror; we do not port source code from
+  it. We cite individual symbol names from its
+  `tools/symbols.txt` in [`docs/dso-symbols.md`](docs/dso-symbols.md).
 
 These are not redistributed by OpenDS; they are research
 mirrors for the maintainer's machine.

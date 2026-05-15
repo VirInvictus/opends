@@ -146,11 +146,19 @@ identification or function purpose.
 The DSO project also documents prior revival attempts: Dark Sun World
 (2004–2008), and a 2010s emulator shut down by Wizards of the Coast.
 
-**darkfix strategy**: out of scope (multiplayer rather than
-single-player), but the v1.0 debug symbols are a research goldmine
-for naming functions in WotR's `DSUN.EXE` when binary patching.
-Coordinate with Greg before exploring; he has done the homework on
-what's safe to publish.
+**darkfix strategy**: out of scope as a project to integrate
+with (multiplayer rather than single-player), but the v1.0 debug
+symbols are a research goldmine for naming functions in WotR's
+`DSUN.EXE` when binary patching. Greg's repo extracts the
+symbol table to `tools/symbols.txt`: 3,530 named functions and
+2,247 named globals/labels. Locally checked out at
+`.dso-online/` (research mirror; AGPL-3.0, never redistributed).
+We curate hand-verified DSO-to-DS2 mappings in
+[`dso-symbols.md`](dso-symbols.md); the symbol file itself is
+the load-bearing reference for `gpl-disasm v0.4.0+` symbol
+import and any future binary patching. Coordinate with Greg
+before exploring publication of derived work; he has done the
+homework on what's safe to publish.
 
 ## 4. Other tools
 

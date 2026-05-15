@@ -4,6 +4,25 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`.dso-online/` reference checkout** lands.
+  [`greg-kennedy/DarkSunOnline`](https://github.com/greg-kennedy/DarkSunOnline)
+  cloned at depth 1 (~2.3 MB) to `.dso-online/` (gitignored).
+  License is AGPL-3.0, so this is a research-only mirror; we
+  cite individual symbol names from
+  `tools/symbols.txt` (3,530 functions, 2,247 globals/labels;
+  extracted by Greg from the DSO v1.0 client's Watcom debug
+  symbols) as facts, not source code we port. The symbols
+  cover most of the engine internals shared between DSO and
+  WotR: `ExecuteGpl`, the `Gpl{Tile,Talk,Door,Pickup,Attack,
+  Look,Use,UseWith}Check` trigger family, `GplChangeRegion`
+  (relevant to the DS2 mines-elevator bug),
+  `GplUpdatePsionics`, and the `Gff*` API. **[`docs/dso-symbols.md`](docs/dso-symbols.md)**
+  lands as the curation surface: how the symbols were
+  extracted, the format, the highest-value candidates for
+  `gpl-disasm v0.4.0+` symbol import, and a hand-verified
+  catalogue table that grows as we cross-check each name
+  against `DSUN.EXE`. Memory note `dso_online_reference` saved.
+  Cited from `CREDITS.md` and `docs/upstream-projects.md` §3.
 - **`tools/gpl-disasm/` v0.2.0** ships parameter decoding.
   Output is now **one row per instruction** (was one row per
   byte) with formatted parameters: `gpl print string  115,
