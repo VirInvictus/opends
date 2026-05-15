@@ -4,6 +4,49 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gpl-disasm/` v0.3.1** fixes the `gpl else` (0x3F)
+  control-flow edge. v0.3.0's CFG treated the else opcode's
+  offset as a first-class block leader and routed `gpl if` /
+  `gpl ifcompare` / `gpl while` not-taken edges directly to it.
+  In the real runtime the else opcode is dual-mode: when reached
+  by jump (the if-false path), it behaves as a no-op and
+  control continues past the opcode bytes into the else-body;
+  when reached by fall-through (from the matching then-block),
+  it executes an unconditional jump to its param (the matching
+  endif). v0.3.0's model missed the entire else-body on the
+  false path.
+  - **Scope of impact**: 5,471 of 20,281 conditional branches
+    in the DS1+DS2 corpus (27%) landed on a `gpl else` opcode
+    and were affected. dialog-extract v0.2.0's flat-string
+    output was unaffected (no CFG dependency yet);
+    dialog-extract v0.3.0+ depends on this fix.
+  - **CFG model**: a new `redirect_past_else` helper rewrites
+    any branch target whose offset equals a `gpl else` opcode
+    to `else_offset + else_length`. The else opcode is no
+    longer a block leader; it becomes the terminator
+    instruction of its preceding block (with
+    `TerminatorKind::UnconditionalElse` → param). Applied to
+    leader collection AND to `successors_for` edge wiring so
+    both views stay consistent.
+  - **Rendering**: a new `Cfg.target_aliases` map preserves the
+    "raw branch param → labeled name" lookup. `gpl if 80` (when
+    80 is the offset of a `gpl else`) renders as
+    `gpl if label_0x0053` (the else-body offset). The else
+    opcode itself does NOT get a spurious `label_*:` line
+    prepended; only true block leaders do.
+  - **Corpus**: 600 / 600 chunks remain aligned; 66,028
+    successor edges now resolve to instruction boundaries (was
+    71,403; the difference is the ~5,400 Fallthrough edges that
+    formerly entered the else-as-its-own-block and are now
+    absorbed into the preceding block's terminator). Still 0
+    computed-target edges and 1,384 cross-chunk `global sub`
+    call sites recorded.
+  - **Tests**: 1 new unit test
+    (`cfg_redirects_if_target_past_else_opcode`) covers the
+    redirect, the suppressed leader, and the `target_aliases`
+    population. Total gpl-disasm test count: 36 unit + 2
+    integration.
+
 - **`tools/gpl-disasm/` v0.3.0** ships control-flow analysis.
   Each disassembled chunk now carries a `Cfg` of basic blocks,
   entry points, and labeled successors. The text listing

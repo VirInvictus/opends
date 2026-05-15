@@ -218,11 +218,9 @@ fn write_or_stdout(
 
 fn render_text(result: &DisasmResult, labels_on: bool) -> String {
     let mut out = String::with_capacity(result.instructions.len() * 48);
-    let labels: Option<&BTreeMap<usize, String>> = if labels_on {
-        result.cfg.as_ref().map(|c| &c.labels)
-    } else {
-        None
-    };
+    let cfg = if labels_on { result.cfg.as_ref() } else { None };
+    let labels: Option<&BTreeMap<usize, String>> = cfg.map(|c| &c.labels);
+    let target_aliases: Option<&BTreeMap<usize, String>> = cfg.map(|c| &c.target_aliases);
     for instr in &result.instructions {
         if let Some(map) = labels {
             if let Some(name) = map.get(&instr.offset) {
@@ -230,7 +228,7 @@ fn render_text(result: &DisasmResult, labels_on: bool) -> String {
                 out.push_str(":\n");
             }
         }
-        render_instruction(&mut out, instr, labels);
+        render_instruction(&mut out, instr, labels, target_aliases);
         out.push('\n');
     }
     let pct = if result.total_bytes > 0 {
@@ -249,16 +247,21 @@ fn render_text(result: &DisasmResult, labels_on: bool) -> String {
 
 /// Render a single instruction. If `labels` is `Some`, replace
 /// branch-instruction target parameters with the matching label
-/// name from the map. Otherwise defers to [`Instruction`]'s
-/// `Display` impl (integer targets).
+/// name from `labels`, falling back to `target_aliases` (the
+/// gpl-disasm v0.3.1 else-redirect map). Otherwise defers to
+/// [`Instruction`]'s `Display` impl (integer targets).
 fn render_instruction(
     out: &mut String,
     instr: &Instruction,
     labels: Option<&BTreeMap<usize, String>>,
+    target_aliases: Option<&BTreeMap<usize, String>>,
 ) {
     if let Some(map) = labels {
         if let Some((target_param_idx, target_offset)) = branch_target_param(instr) {
-            if let Some(label) = map.get(&target_offset) {
+            let resolved_label = map
+                .get(&target_offset)
+                .or_else(|| target_aliases.and_then(|t| t.get(&target_offset)));
+            if let Some(label) = resolved_label {
                 let m = instr.mnemonic.unwrap_or("db");
                 out.push_str(&format!(
                     "{:04x}  {:02x}  {:<22}",

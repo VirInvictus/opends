@@ -14,6 +14,18 @@ chunks so modders can read what a script does.
 
 Depends on `gff-edit` for GFF I/O.
 
+## What `gpl-disasm v0.3.1` ships
+
+**`gpl else` edge fix.** v0.3.0's CFG routed the if-not-taken
+edge to the else opcode itself, which the runtime treats as a
+no-op when entered by jump; the actual control flow continues
+past the opcode bytes into the else-body. v0.3.1 redirects any
+branch target landing on a `gpl else` to `else_offset +
+else_length` and introduces a `target_aliases` map so that
+renderers can still resolve raw branch params pointing at the
+else opcode. 5,471 / 20,281 (27%) of DS1+DS2 conditionals were
+affected. See patchnotes for full details.
+
 ## What `gpl-disasm v0.3.0` ships
 
 **Control-flow analysis.** Every disassembled chunk now carries a
@@ -175,11 +187,17 @@ gpl-disasm .games/ds1/GPLDATA.GFF --kind GPL --id 9 --cfg - | dot -Tpng -o chunk
   case), `gpl_setrecord`, and the complex-write path of
   `gpl_load_variable`. Corpus alignment hits 100% on all 600
   DS1+DS2 GPL/MAS chunks.
-- **v0.3.0 (current)** — recursive-descent CFG. Basic-block
-  graph, entry-point discovery, labeled jump targets, Graphviz
-  DOT output. 71,403 edges across the DS1+DS2 corpus all resolve
-  to instruction boundaries; 1,384 cross-chunk `global sub` call
-  sites recorded.
+- v0.3.0 — recursive-descent CFG. Basic-block graph,
+  entry-point discovery, labeled jump targets, Graphviz DOT
+  output. Initial corpus: 71,403 edges, 1,384 cross-chunk
+  call sites.
+- **v0.3.1 (current)** — `gpl else` edge fix. v0.3.0 routed
+  if-not-taken edges to the else opcode itself, missing the
+  else-body on 27% of corpus conditionals. v0.3.1 redirects
+  past the else opcode and adds a `target_aliases` map for
+  raw-target-to-label rendering. 66,028 edges resolved on the
+  corpus (the ~5,400 difference is Fallthrough edges absorbed
+  into the now-merged blocks). See patchnotes for details.
 - v0.4.0+ — DSO debug-symbol import; inter-chunk CFG following
   `global sub` edges; integration with `opcode-fuzz` (Phase 5)
   for opcode discovery.

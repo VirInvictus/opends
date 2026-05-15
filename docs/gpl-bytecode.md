@@ -141,9 +141,14 @@ elements). `gpl_setrecord` (0x40) is a first-class
 complex-write path now decodes too. Corpus alignment: **100% on
 all 600 DS1+DS2 GPL/MAS chunks**.
 
-**v0.3.0 — control flow (current).** Every disassembled chunk
-now carries a [`Cfg`] of basic blocks, entry points, and
-labeled successors. The default text listing renders
+**v0.3.0 — control flow.** Every disassembled chunk
+carries a [`Cfg`] of basic blocks, entry points, and
+labeled successors. **v0.3.1 (current)** corrects the
+`gpl else` (0x3F) edge model: branch targets that land on
+an else opcode are redirected past it to the else-body
+start, with a new `target_aliases` map preserving the
+raw-target-to-label resolution for rendering. See the
+v0.3.1 patchnote entry for the rationale and corpus impact. The default text listing renders
 `gpl if label_0x0020` instead of `gpl if 32`, with `label_*:` /
 `entry_*:` lines preceding each block leader. New CLI flags:
 `--entries`, `--cfg <path>`, `--no-labels`. JSON output gains

@@ -741,9 +741,20 @@ pub struct Cfg {
     /// Basic blocks, sorted by `start_offset`.
     pub blocks: Vec<BasicBlock>,
     /// Offset → label name. One entry per block leader. Entry
-    /// points get an alternate `entry_0x...` form alongside the
-    /// regular `label_0x...`.
+    /// points get the `entry_0x...` form; other leaders get
+    /// `label_0x...`.
     pub labels: BTreeMap<usize, String>,
+    /// Auxiliary lookup for branch-target rendering. Maps "the raw
+    /// target offset stored in a branch instruction's bytecode" to
+    /// the corresponding label name when that raw offset is not
+    /// itself a block leader. Currently populated only for
+    /// `gpl else` (0x3F) offsets, which are not block leaders but
+    /// are common branch targets (see [`redirect_past_else`]).
+    /// Renderers that show `label_0xNNNN` in place of integer
+    /// targets should consult [`Self::labels`] first, then
+    /// [`Self::target_aliases`].
+    #[serde(skip_serializing_if = "BTreeMap::is_empty", default)]
+    pub target_aliases: BTreeMap<usize, String>,
     /// Successor offsets that didn't resolve to an instruction
     /// boundary in this chunk. Empirically should be empty for the
     /// DS1+DS2 corpus; populated only when a `jump` target's first
@@ -1518,6 +1529,37 @@ fn literal_target(param: &[Expression]) -> Option<i64> {
     }
 }
 
+/// If `target` is the offset of a `gpl else` (0x3F) instruction,
+/// return the offset of the instruction immediately *after* the
+/// else opcode; otherwise return `target` unchanged.
+///
+/// Background: the `gpl else` opcode is a dual-mode instruction.
+/// When reached by fall-through from a then-block, it executes its
+/// own unconditional jump (target = its param, typically the
+/// matching endif). When reached by jump (e.g., from a `gpl if`'s
+/// not-taken edge), it behaves as a no-op and control continues
+/// past the opcode bytes into the else-body. The runtime
+/// distinguishes the two paths via the if/while depth state; for
+/// CFG purposes we just redirect any incoming jump past the else
+/// opcode so the else-body shows up on the not-taken successor.
+///
+/// 5,471 of 20,281 conditional branches in the DS1+DS2 corpus
+/// (27%) land on a `gpl else` opcode; before this redirect, the
+/// not-taken paths skipped the else-body entirely.
+fn redirect_past_else(
+    target: usize,
+    instructions: &[Instruction],
+    offset_to_idx: &BTreeMap<usize, usize>,
+) -> usize {
+    if let Some(&idx) = offset_to_idx.get(&target) {
+        let instr = &instructions[idx];
+        if instr.opcode == 0x3F {
+            return instr.offset + instr.length;
+        }
+    }
+    target
+}
+
 /// Build a [`Cfg`] for an aligned chunk's instruction list. Caller
 /// is responsible for skipping this when the disassembly was not
 /// aligned (best-effort consumption can misidentify branch
@@ -1564,7 +1606,8 @@ pub fn build_cfg(
             BranchClass::Jump | BranchClass::Conditional1 | BranchClass::Else | BranchClass::Wend => {
                 if let Some(v) = instr.params.first().and_then(|p| literal_target(p)) {
                     if v >= 0 && (v as usize) <= chunk_len {
-                        leaders.insert(v as usize);
+                        let t = redirect_past_else(v as usize, instructions, &offset_to_idx);
+                        leaders.insert(t);
                     } else {
                         unresolved.push(UnresolvedEdge {
                             from_offset: instr.offset,
@@ -1582,7 +1625,8 @@ pub fn build_cfg(
             BranchClass::Ifcompare => {
                 if let Some(v) = instr.params.get(1).and_then(|p| literal_target(p)) {
                     if v >= 0 && (v as usize) <= chunk_len {
-                        leaders.insert(v as usize);
+                        let t = redirect_past_else(v as usize, instructions, &offset_to_idx);
+                        leaders.insert(t);
                     } else {
                         unresolved.push(UnresolvedEdge {
                             from_offset: instr.offset,
@@ -1600,8 +1644,9 @@ pub fn build_cfg(
             BranchClass::LocalSub => {
                 if let Some(v) = instr.params.first().and_then(|p| literal_target(p)) {
                     if v >= 0 && (v as usize) <= chunk_len {
-                        leaders.insert(v as usize);
-                        entry_points.insert(v as usize);
+                        let t = redirect_past_else(v as usize, instructions, &offset_to_idx);
+                        leaders.insert(t);
+                        entry_points.insert(t);
                     }
                 }
             }
@@ -1655,7 +1700,7 @@ pub fn build_cfg(
 
         let (terminator, successors) = if let Some(&last_idx) = instr_indices.last() {
             let last = &instructions[last_idx];
-            successors_for(last, end)
+            successors_for(last, end, instructions, &offset_to_idx)
         } else {
             (TerminatorKind::Fallthrough, vec![])
         };
@@ -1669,9 +1714,8 @@ pub fn build_cfg(
         });
     }
 
-    // Labels: every block leader gets one. Entry points get an
-    // alias `entry_0xNNNN` recorded alongside `label_0xNNNN` in a
-    // single map by using the entry form for entries.
+    // Labels: every block leader gets one. Entry points get the
+    // `entry_0xNNNN` form; other leaders get `label_0xNNNN`.
     let mut labels: BTreeMap<usize, String> = BTreeMap::new();
     for b in &blocks {
         let name = if entry_points.contains(&b.start_offset) {
@@ -1681,11 +1725,27 @@ pub fn build_cfg(
         };
         labels.insert(b.start_offset, name);
     }
+    // target_aliases: map each `gpl else` opcode's raw offset to
+    // the label name of its post-else block leader. This lets
+    // branch-target renderers replace the stored target value
+    // with a meaningful label name without making the else
+    // offset itself a block leader (and thus without prepending a
+    // spurious label_*: line in front of the else instruction).
+    let mut target_aliases: BTreeMap<usize, String> = BTreeMap::new();
+    for instr in instructions {
+        if instr.opcode == 0x3F {
+            let redirected = instr.offset + instr.length;
+            if let Some(name) = labels.get(&redirected).cloned() {
+                target_aliases.insert(instr.offset, name);
+            }
+        }
+    }
 
     let cfg = Cfg {
         entry_points: entry_points.into_iter().collect(),
         blocks,
         labels,
+        target_aliases,
         unresolved,
     };
     (cfg, cross_chunk_calls)
@@ -1693,8 +1753,15 @@ pub fn build_cfg(
 
 /// Build the successor list for a block whose terminator
 /// instruction is `last`. `next_block_offset` is the fall-through
-/// destination if applicable.
-fn successors_for(last: &Instruction, next_block_offset: usize) -> (TerminatorKind, Vec<Edge>) {
+/// destination if applicable. `instructions` + `offset_to_idx` let
+/// us apply the [`redirect_past_else`] fixup when a branch target
+/// lands on a `gpl else` opcode.
+fn successors_for(
+    last: &Instruction,
+    next_block_offset: usize,
+    instructions: &[Instruction],
+    offset_to_idx: &BTreeMap<usize, usize>,
+) -> (TerminatorKind, Vec<Edge>) {
     let class = classify_branch(last.opcode);
     match class {
         BranchClass::NonBranch | BranchClass::Marker | BranchClass::LocalSub => (
@@ -1717,7 +1784,7 @@ fn successors_for(last: &Instruction, next_block_offset: usize) -> (TerminatorKi
                 .params
                 .first()
                 .and_then(|p| literal_target(p))
-                .map(|v| v as usize);
+                .map(|v| redirect_past_else(v as usize, instructions, offset_to_idx));
             (
                 TerminatorKind::Unconditional,
                 target
@@ -1731,6 +1798,10 @@ fn successors_for(last: &Instruction, next_block_offset: usize) -> (TerminatorKi
             )
         }
         BranchClass::Else => {
+            // The `gpl else` opcode's *own* unconditional target is
+            // its param (the matching endif). Do NOT redirect: this
+            // is the goto the runtime executes when reached by
+            // fall-through from a then-block.
             let target = last
                 .params
                 .first()
@@ -1753,7 +1824,7 @@ fn successors_for(last: &Instruction, next_block_offset: usize) -> (TerminatorKi
                 .params
                 .first()
                 .and_then(|p| literal_target(p))
-                .map(|v| v as usize);
+                .map(|v| redirect_past_else(v as usize, instructions, offset_to_idx));
             (
                 TerminatorKind::Unconditional,
                 target
@@ -1771,7 +1842,7 @@ fn successors_for(last: &Instruction, next_block_offset: usize) -> (TerminatorKi
                 .params
                 .first()
                 .and_then(|p| literal_target(p))
-                .map(|v| v as usize);
+                .map(|v| redirect_past_else(v as usize, instructions, offset_to_idx));
             let mut edges = vec![Edge {
                 target_offset: next_block_offset,
                 kind: EdgeKind::ConditionalTaken,
@@ -1789,7 +1860,7 @@ fn successors_for(last: &Instruction, next_block_offset: usize) -> (TerminatorKi
                 .params
                 .get(1)
                 .and_then(|p| literal_target(p))
-                .map(|v| v as usize);
+                .map(|v| redirect_past_else(v as usize, instructions, offset_to_idx));
             let mut edges = vec![Edge {
                 target_offset: next_block_offset,
                 kind: EdgeKind::ConditionalTaken,
@@ -2492,6 +2563,55 @@ mod tests {
         assert_eq!(
             if_block.successors[1].kind,
             EdgeKind::ConditionalNotTaken
+        );
+    }
+
+    #[test]
+    fn cfg_redirects_if_target_past_else_opcode() {
+        // Synthetic if-then-else:
+        //   0: if   (len 3, target = 4 = else opcode)
+        //   3: endif-marker (len 1; stands in for then-body)
+        //   4: else (len 3, target = 9 = matching endif)
+        //   7: endif-marker (len 1; stands in for else-body)
+        //   8: endif-marker (len 1; stands in for else-body)
+        //   9: endif (len 1)
+        // The if's not-taken edge param is 4 (the else opcode);
+        // with the redirect, the effective target is 7 (the
+        // byte after the else opcode = start of the else-body).
+        let instrs = vec![
+            fake_instr(0, 0x3E, Some(4)),  // if @ 0, len=3, target=4
+            fake_instr(3, 0x67, None),     // then-body filler
+            fake_instr(4, 0x3F, Some(9)),  // else @ 4, len=3, target=9
+            fake_instr(7, 0x67, None),     // else-body filler
+            fake_instr(8, 0x67, None),     // else-body filler
+            fake_instr(9, 0x67, None),     // endif @ 9
+        ];
+        let (cfg, _) = build_cfg(&instrs, 10);
+        let if_block = cfg
+            .blocks
+            .iter()
+            .find(|b| b.start_offset == 0)
+            .expect("block at if");
+        assert_eq!(if_block.terminator, TerminatorKind::Conditional);
+        let not_taken = if_block
+            .successors
+            .iter()
+            .find(|e| e.kind == EdgeKind::ConditionalNotTaken)
+            .expect("not-taken edge");
+        // Without redirect this would be 4 (the else opcode itself).
+        // With redirect it's 7 (the byte after the else opcode).
+        assert_eq!(not_taken.target_offset, 7);
+        // The else opcode's offset (4) should NOT be a block leader.
+        assert!(
+            !cfg.blocks.iter().any(|b| b.start_offset == 4),
+            "no block should start at the else opcode's offset"
+        );
+        // target_aliases should map the else offset to the
+        // redirected label so renderers can still resolve raw
+        // branch params that point at the else opcode.
+        assert_eq!(
+            cfg.target_aliases.get(&4).map(String::as_str),
+            Some("label_0x0007")
         );
     }
 
