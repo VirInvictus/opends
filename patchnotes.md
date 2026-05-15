@@ -4,6 +4,49 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/image-extract/` v0.1.0** ships (new Rust crate;
+  Phase 4 Goal-1 deliverable, the first **visual** modder tool
+  in the toolkit). Extracts Dark Sun bitmap chunks (`BMP `,
+  `PORT`, `ICON`, `BMAP`, `OMAP`, `TILE`) as palette-indexed
+  PNG.
+  - **Ports from `dsoageofheroes/libgff` (MIT, attributed)**:
+    - **Palette** (`PAL ` / `CPAL` chunks): 768 bytes = 256 × RGB
+      6-bit, scaled to 8-bit by libgff's `intensity_multiplier = 4`.
+    - **Bitmap header**: 6-byte preamble + u16 `frame_count` at
+      +4 + u32 per-frame offset table at +6; per-frame `u16 width`
+      + `u16 height` + 1 unknown byte + 4-byte frame_type tag
+      ("PLNR" / "PLAN" / DS1 RLE).
+    - **DS1 RLE pixel decoder**: per-row spans with even/odd
+      code split (even = direct palette indices, odd =
+      repeat-single). Image stored bottom-up; rows flipped to
+      PNG top-down on output.
+    - **PLNR bit-packed dictionary decoder**: per-symbol
+      bit-packed indices into a chunk-local dictionary; 4-bit
+      rotated bit-extraction order.
+  - **PNG output** via the `png` crate (MIT/Apache 2.0; new
+    workspace dep `png = "0.17"`, pre-approved per spec §7a as
+    format I/O). PNGs are 8-bit palette-indexed, preserving the
+    source format's compact representation.
+  - **CLI**: `image-extract <file> --kind PORT --id N -o out.png`
+    for single-frame; `--frame N` for multi-frame chunks;
+    `--all -o <dir>` for bulk dump; `--palette N --palette-kind
+    PAL` for explicit palette selection (default: lowest-id
+    `PAL `, falling back to lowest-id `CPAL`).
+  - **Library**: `Palette::from_bytes`, `Bitmap::from_bytes`,
+    `Bitmap::decode_frame -> Frame`, `write_png(path, frame,
+    palette)`.
+  - **Empirical** (GOG 1.10): DS1 GPLDATA.GFF's 112 `PORT`
+    frames extract cleanly (100%). Combined DS1+DS2 corpus:
+    1,334 bitmap chunks, 1,976 frames, **1,328 decoded (67%)**:
+    883 DS1 RLE + 445 PLNR. The 648 skipped frames are mostly
+    PLAN (libgff itself doesn't implement it) and other
+    variants pending RE.
+  - **Tests**: 5 unit tests covering palette scaling, bitmap
+    header parsing, DS1 RLE direct + repeat. Corpus smoke test
+    iterates all bitmap chunks across DS1+DS2 GPLDATA.GFF and
+    RESOURCE.GFF without panicking, verifies pixel counts match
+    width × height, and reports decoded percentages per type.
+  - Roadmap Phase 4 image-extract v0.1.0 added and ticked.
 - **`tools/save-inspect/` v0.2.0** ships CHAR record body
   decoding. v0.1.0 emitted an opaque hex preview of every
   CHAR's data; v0.2.0 walks the RDFF sub-blocks and decodes

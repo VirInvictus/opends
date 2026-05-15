@@ -207,6 +207,21 @@ look at the maps directly.
       (save-inspect v0.3.0)
 - [x] Tagged: `save-inspect-v0.1.0`. (this release)
 
+### `tools/image-extract/` (Rust)
+
+- [x] Pull bitmap chunks (`BMP `, `PORT`, `ICON`, `BMAP`, `OMAP`,
+      `TILE`) out as palette-indexed PNG. Decodes DS1 RLE
+      (per-row spans with even/odd code split) and PLNR
+      (bit-packed dictionary) frame formats. Palette parser
+      for `PAL ` / `CPAL` chunks with libgff's 6-bit → 8-bit
+      `intensity_multiplier`. (image-extract v0.1.0; 1,328 of
+      1,976 frames across DS1+DS2 decode cleanly; the
+      remaining ~648 are PLAN and other variants not yet RE'd.)
+- [ ] PLAN frame format support.
+- [ ] Sprite-frame animation export (multi-frame BMPs as GIF /
+      animated PNG / spritesheet).
+- [x] Tagged: `image-extract-v0.1.0`. (this release)
+
 ### `tools/region-view/` (Rust + sdl2)
 
 - [ ] Minimal SDL2 window that opens a single region GFF and
@@ -217,8 +232,9 @@ look at the maps directly.
       "is this entity placed where I think it is."
 - [ ] Tagged: `region-view-v0.1.0`.
 
-**Done when**: all three tools exist with their own READMEs,
-each tagged at `v0.1.0`, and `tools/README.md` indexes them.
+**Done when**: dialog-extract, save-inspect, image-extract, and
+region-view all exist with their own READMEs, each tagged at
+`v0.1.0`, and `tools/README.md` indexes them.
 
 ## Phase 5 — `gpl-asm` + `opcode-fuzz`
 

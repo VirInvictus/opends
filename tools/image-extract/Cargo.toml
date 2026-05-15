@@ -1,0 +1,24 @@
+[package]
+name = "image-extract"
+version = "0.1.0"
+description = "Extract Dark Sun bitmap chunks (BMP / PORT / ICON) as PNG."
+readme = "README.md"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lib]
+name = "image_extract"
+path = "src/lib.rs"
+
+[[bin]]
+name = "image-extract"
+path = "src/bin/image-extract.rs"
+
+[dependencies]
+gff-edit = { path = "../gff-edit" }
+anyhow.workspace = true
+thiserror.workspace = true
+clap.workspace = true
+png.workspace = true

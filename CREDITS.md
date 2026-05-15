@@ -67,6 +67,19 @@ comments next to the relevant code.
 **OpenDS code that consumes the above:**
 - `tools/save-inspect/save-inspect.py` — `decode_rdff_header`, PSIN / PSST branches in `decode_chunk`
 
+## Bitmap and palette (image-extract)
+
+| Feature | Upstream | License |
+|---------|----------|---------|
+| Palette parser (`PAL ` / `CPAL` chunk = 768 bytes = 256 × RGB 6-bit; scaled to 8-bit by `intensity_multiplier = 4`) | `dsoageofheroes/libgff` `src/gpl/image.c` `gff_palettes_read_type` | MIT |
+| Bitmap chunk header (6-byte preamble + `u16 frame_count` at +4 + `u32` per-frame offset table at +6; each frame at its offset is `u16 width + u16 height + 1 unknown byte + 4-byte frame_type tag`) | `dsoageofheroes/libgff` `src/gpl/image.c` `gff_get_frame_rgba_palette_img` + `gff_frame_info` | MIT |
+| DS1 RLE pixel decoder (per-row spans: `byte row_num` (0xFF terminates) + sub-spans of `startx / flags / unknown / compressed_length / RLE codes`; even RLE codes are direct palette indices, odd codes are repeat-single; image is stored bottom-up so rows go at `height - row_num - 1`) | `dsoageofheroes/libgff` `src/gpl/image.c` `create_ds1_rgba` | MIT |
+| PLNR bit-packed dictionary decoder (`bits_per_symbol` byte + `(1 << bits) byte dictionary` + bit-packed symbol stream via `plnr_get_next` / `plnr_get_bits`; 4-bit-rotated bit-order extraction within each byte) | `dsoageofheroes/libgff` `src/gpl/image.c` `plnr_get_next` + `plnr_get_bits` + `plnr_get_mask` | MIT |
+
+**OpenDS code that consumes the above:**
+- `tools/image-extract/src/lib.rs` — `Palette`, `Bitmap`,
+  `decode_ds1_rle`, `decode_plnr`, `plnr_get_next`, `plnr_get_bits`
+
 ## Influences (read but not yet ported)
 
 - **`dsoageofheroes/libsoloscuro`** — DS-specific rules engine
