@@ -14,6 +14,34 @@ chunks so modders can read what a script does.
 
 Depends on `gff-edit` for GFF I/O.
 
+## What `gpl-disasm v0.3.0` ships
+
+**Control-flow analysis.** Every disassembled chunk now carries a
+`Cfg` of basic blocks, entry points, and labeled successors. The
+text listing renders branch targets as label names
+(`gpl if label_0x0020`) and prepends `label_*:` / `entry_*:` lines
+to every block leader. The CFG is exposed via three new CLI flags
+(`--entries`, `--cfg <path>`, `--no-labels`) and an additive
+`cfg` field in JSON output.
+
+The walker's load-bearing assumption was verified in a
+pre-implementation spike: the first parameter of every branch
+opcode is the absolute byte offset of the target instruction
+within the same GPL chunk. Sources, hand-trace evidence, and the
+per-opcode table live in
+[`../../docs/gpl-bytecode.md` §5a](../../docs/gpl-bytecode.md).
+The one wrinkle: `gpl ifcompare` (0x27) takes 2 params where the
+**second** is the target offset (the first is the comparison
+value).
+
+**Corpus verification.** 600 / 600 DS1+DS2 GPL/MAS chunks build a
+CFG where every one of the 71,403 successor edges resolves to a
+known instruction boundary. 0 computed-target edges, 1,384
+cross-chunk `gpl global sub` call sites are recorded for v0.4.0+
+inter-chunk analysis. The new
+`every_cfg_successor_resolves_to_instruction_boundary` integration
+test enforces this invariant.
+
 ## What `gpl-disasm v0.2.1` ships
 
 **The deferred cases are closed.** v0.2.0 deferred `GPL_RETVAL`
@@ -95,31 +123,45 @@ wrapper around `serde_json::to_string_pretty`.
 ## CLI: `gpl-disasm`
 
 ```sh
-gpl-disasm <file> --kind GPL --id N           # one chunk to stdout
+gpl-disasm <file> --kind GPL --id N           # one chunk to stdout (labels on)
 gpl-disasm <file> --kind MAS --id N
-gpl-disasm <file> --kind GPL --id N --json    # structured JSON
+gpl-disasm <file> --kind GPL --id N --json    # structured JSON, incl. cfg
+gpl-disasm <file> --kind GPL --id N --no-labels   # integer targets
+gpl-disasm <file> --kind GPL --id N --entries     # list entry-point offsets
+gpl-disasm <file> --kind GPL --id N --cfg -       # DOT to stdout
+gpl-disasm <file> --kind GPL --id N --cfg out.dot # DOT to file
 gpl-disasm <file> --all -o <dir>              # every GPL/MAS chunk → <kind>-<id>.asm
 gpl-disasm <file> --all -o <dir> --json       # ... → <kind>-<id>.json
+gpl-disasm <file> --all -o <dir> --cfg <dir>  # ... → <kind>-<id>.dot in cfg dir
+gpl-disasm <file> --all -o <dir> --entries    # ... → <kind>-<id>.entries beside .asm
 gpl-disasm --opcodes                          # dump the embedded opcode catalogue
 ```
 
 `--kind` accepts `GPL` (compiled bytecode) or `MAS` (compiled
 master scripts). Both are flat byte streams.
 
-### Example
+### Example (v0.3.0 labeled output)
 
 ```
-$ gpl-disasm .games/ds1/GPLDATA.GFF --kind 'GPL ' --id 1 | head
+$ gpl-disasm .games/ds1/GPLDATA.GFF --kind GPL --id 9 | head -12
+entry_0x0000:
 0000  19  gpl global ret
-0001  16  gpl load variable     0i8, LNUM[0]
-0006  16  gpl load variable     0i8, LNUM[1]
-000b  54  gpl showpic           120i8
-000e  18  gpl load accum        GF[1] == 1i8
-0014  3e  gpl if                86
-0017  4f  gpl print string      115, "Free! Finally free! I will destroy you all! Ha ha ha! "
-004d  22  gpl request           16i8, GNAME[39], 3i8, 0i8
-0056  3f  gpl else              137
-0059  18  gpl load accum        GNUM[1] == 0i8
+entry_0x0001:
+0001  18  gpl load accum          (GF[34]) and (GF[36] == 0i8)
+000e  3e  gpl if                  label_0x0020
+label_0x0011:
+0011  22  gpl request             5i8, NAME(-2002), 0i8, 0i8
+001b  16  gpl load variable       1i8, GF[36]
+label_0x0020:
+0020  67  gpl endif
+0021  18  gpl load accum          (GF[58] == 1i8) and (GF[56] == 0i8)
+0031  3e  gpl if                  label_0x0062
+```
+
+Pipe `--cfg -` into Graphviz `dot` for a visual:
+
+```sh
+gpl-disasm .games/ds1/GPLDATA.GFF --kind GPL --id 9 --cfg - | dot -Tpng -o chunk9.png
 ```
 
 ## Roadmap
@@ -128,15 +170,19 @@ $ gpl-disasm .games/ds1/GPLDATA.GFF --kind 'GPL ' --id 1 | head
 - v0.2.0 — parameter decoding. True instruction boundaries on
   the common path; `--json` output. Inline string decoding via
   the 7-bit packed-string port.
-- **v0.2.1 (current)** — close the deferred cases: nested
-  RETVAL recursion, `gpl_access_complex` (COMPLEX_* range and
-  the `0xb3` special case), `gpl_setrecord`, and the complex-
-  write path of `gpl_load_variable`. Corpus alignment hits
-  100% on all 600 DS1+DS2 GPL/MAS chunks.
-- v0.3.0 — recursive descent. Follow jumps and calls; emit
-  basic blocks and labels.
-- v0.4.0+ — DSO debug-symbol import; integration with
-  `opcode-fuzz` (Phase 5) for opcode discovery.
+- v0.2.1 — close the deferred cases: nested RETVAL recursion,
+  `gpl_access_complex` (COMPLEX_* range and the `0xb3` special
+  case), `gpl_setrecord`, and the complex-write path of
+  `gpl_load_variable`. Corpus alignment hits 100% on all 600
+  DS1+DS2 GPL/MAS chunks.
+- **v0.3.0 (current)** — recursive-descent CFG. Basic-block
+  graph, entry-point discovery, labeled jump targets, Graphviz
+  DOT output. 71,403 edges across the DS1+DS2 corpus all resolve
+  to instruction boundaries; 1,384 cross-chunk `global sub` call
+  sites recorded.
+- v0.4.0+ — DSO debug-symbol import; inter-chunk CFG following
+  `global sub` edges; integration with `opcode-fuzz` (Phase 5)
+  for opcode discovery.
 
 ## Build
 

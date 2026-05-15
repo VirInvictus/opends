@@ -143,8 +143,12 @@ runs through it.
       v0.1.0.)
 - [x] Tool README with usage examples on real game files.
       (gpl-disasm v0.1.0.)
-- [ ] Identify entry points and basic-block boundaries.
-      (gpl-disasm v0.3.0; needs parameter decoding first.)
+- [x] Identify entry points and basic-block boundaries.
+      (gpl-disasm v0.3.0; recursive-descent CFG with labeled
+      successors, `--entries` / `--cfg` / `--no-labels` flags.
+      Verified on 600 / 600 DS1+DS2 chunks: 71,403 edges, 1,384
+      cross-chunk `global sub` call sites, 0 computed-target
+      edges.)
 - [x] Decode each opcode's parameters (port libgff's
       `gpl_read_number` / `gpl_get_parameters`). True
       instruction-boundary alignment for the common path

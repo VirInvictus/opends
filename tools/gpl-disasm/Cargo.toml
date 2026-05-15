@@ -1,6 +1,6 @@
 [package]
 name = "gpl-disasm"
-version = "0.2.1"
+version = "0.3.0"
 description = "Disassembler for SSI's GPL (Game Programming Language) bytecode (Dark Sun)."
 readme = "README.md"
 edition.workspace = true

@@ -14,6 +14,8 @@
 use std::fs;
 use std::path::Path;
 
+use std::collections::BTreeSet;
+
 use gff_edit::{FourCC, Gff};
 use gpl_disasm::disassemble;
 
@@ -80,4 +82,73 @@ fn every_gpl_and_mas_chunk_disassembles() {
     // cases (RETVAL, COMPLEX, custom handlers) may bring the
     // percentage lower than target. Document the measurement, fix
     // in v0.2.1.
+}
+
+/// v0.3.0: for every aligned chunk, every CFG successor offset must
+/// resolve to a known instruction boundary OR to the chunk's end
+/// (i.e., `total_bytes`). Misses indicate a branch instruction
+/// whose target falls between two instructions, which would mean
+/// either our instruction-boundary alignment is wrong or the
+/// branch-target semantics differ from those in
+/// `docs/gpl-bytecode.md` §5a.
+#[test]
+fn every_cfg_successor_resolves_to_instruction_boundary() {
+    let mut total_chunks = 0usize;
+    let mut total_edges = 0usize;
+    let mut unresolved_count = 0usize;
+    let mut cross_chunk_calls = 0usize;
+
+    for path in CORPUS {
+        let p = Path::new(path);
+        if !p.is_file() {
+            continue;
+        }
+        let bytes = fs::read(p).unwrap_or_else(|e| panic!("reading {path}: {e}"));
+        let gff = Gff::from_bytes(bytes).unwrap_or_else(|e| panic!("parsing {path}: {e}"));
+
+        for c in gff.chunks() {
+            if c.kind != FourCC(*b"GPL ") && c.kind != FourCC(*b"MAS ") {
+                continue;
+            }
+            let chunk_bytes = gff.read_chunk(c);
+            let result = disassemble(chunk_bytes);
+            let Some(cfg) = &result.cfg else {
+                continue;
+            };
+
+            let boundaries: BTreeSet<usize> = result
+                .instructions
+                .iter()
+                .map(|i| i.offset)
+                .chain(std::iter::once(result.total_bytes))
+                .collect();
+
+            total_chunks += 1;
+            cross_chunk_calls += result.cross_chunk_calls.len();
+            unresolved_count += cfg.unresolved.len();
+
+            for block in &cfg.blocks {
+                for edge in &block.successors {
+                    total_edges += 1;
+                    assert!(
+                        boundaries.contains(&edge.target_offset),
+                        "{}:{}-{}: edge from block 0x{:x} to offset 0x{:x} doesn't land \
+                         on an instruction boundary (chunk_len=0x{:x})",
+                        path,
+                        c.kind,
+                        c.id,
+                        block.start_offset,
+                        edge.target_offset,
+                        result.total_bytes
+                    );
+                }
+            }
+        }
+    }
+
+    assert!(total_chunks > 0, "no aligned GPL/MAS chunks; check CORPUS paths");
+    eprintln!(
+        "CFG soundness: {total_chunks} aligned chunks, {total_edges} edges resolved, \
+         {cross_chunk_calls} global-sub call sites recorded, {unresolved_count} computed-target edges"
+    );
 }

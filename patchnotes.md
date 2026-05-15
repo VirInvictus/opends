@@ -4,6 +4,68 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gpl-disasm/` v0.3.0** ships control-flow analysis.
+  Each disassembled chunk now carries a `Cfg` of basic blocks,
+  entry points, and labeled successors. The text listing
+  renders `gpl if label_0x0020` instead of `gpl if 32`, with
+  `label_*:` / `entry_*:` lines preceding every block leader.
+  - **Pre-implementation spike** verified the load-bearing
+    assumption against three independent sources
+    (soloscuro-archive's Lua emitter, libgff's parser, and a
+    hand-trace of two DS1 GPLDATA chunks): the first parameter
+    of every branch opcode is the absolute byte offset of the
+    target instruction within the same chunk. The semantics
+    table and the trace evidence land in
+    [`docs/gpl-bytecode.md` §5a](docs/gpl-bytecode.md). The
+    spike caught one wrinkle worth surfacing: `gpl ifcompare`
+    (0x27) takes 2 parameters where the *second* param is the
+    target offset (param[0] is the comparison value); this is
+    different from the single-param branches (`if`, `else`,
+    `while`, `wend`, `jump`, `local sub`).
+  - **Branch classification** for the CFG covers `gpl jump`
+    (0x12), `gpl local sub` (0x13), `gpl global sub` (0x14),
+    `gpl local ret` (0x15), `gpl global ret` (0x19), `gpl
+    ifcompare` (0x27), `gpl exit gpl` (0x31), `gpl if` (0x3E),
+    `gpl else` (0x3F), `gpl while` (0x63), `gpl wend` (0x64),
+    plus `gpl zero` / EXIT_GPL (0x00) and the
+    `endif`/`cmpend` markers (0x67/0x61).
+  - **Entry points** = chunk start (offset 0), offset 1 when a
+    real instruction lives there (every chunk we have begins
+    with the `gpl global ret` epilogue placeholder at offset 0),
+    plus every observed `gpl local sub` target inside the same
+    chunk. `gpl global sub` cross-chunk targets are recorded in
+    a new `cross_chunk_calls` list for v0.4.0+ inter-chunk work
+    but are not added as CFG edges in v0.3.0.
+  - **New CLI flags**: `--entries` (list discovered entry
+    points, one offset per line), `--cfg <path>` (Graphviz DOT
+    of the per-chunk CFG; supports `-` for stdout in
+    single-chunk mode; writes `<kind>-<id>.dot` files in
+    `--all` mode), `--no-labels` (revert to integer targets in
+    the text listing for diff-friendly output).
+  - **JSON output** gains an additive `cfg` field
+    (entry_points, blocks, labels, unresolved) plus a top-level
+    `cross_chunk_calls` list. Existing consumers
+    (`dialog-extract` v0.2.0) parse the new shape without
+    modification.
+  - **Corpus verification**: 600 / 600 DS1+DS2 GPL/MAS chunks
+    build a CFG where every one of the 71,403 successor edges
+    resolves to a known instruction boundary. 0 computed-target
+    edges, 1,384 `global sub` cross-chunk call sites recorded.
+    A new integration test
+    (`every_cfg_successor_resolves_to_instruction_boundary` in
+    `tests/corpus_smoke.rs`) enforces this invariant.
+  - **Tests**: 10 new unit tests in `src/lib.rs` cover each
+    branch classification, entry-point promotion via `local
+    sub`, cross-chunk call recording, label formatting, and the
+    `cfg = None` fallback for misaligned disassembly. Total
+    gpl-disasm test count: 35 unit + 2 integration.
+  - Ported from `.dsoageofheroes/soloscuro-archive/src/gpl/gpl-lua.c`
+    (MIT, attributed) and `.dsoageofheroes/libgff/src/gpl/parse.c`
+    (MIT, attributed). No new third-party crate deps; the DOT
+    writer uses `std::io::Write` only.
+  - Roadmap Phase 3 "Identify entry points and basic-block
+    boundaries" box ticked.
+
 - **`tools/image-extract/` v0.1.0** ships (new Rust crate;
   Phase 4 Goal-1 deliverable, the first **visual** modder tool
   in the toolkit). Extracts Dark Sun bitmap chunks (`BMP `,

@@ -42,10 +42,13 @@ comments next to the relevant code.
 | `gpl_access_complex` (gpl-disasm v0.2.1): word obj_name + byte depth + depth bytes of element data. Decodes record-field access for the `GPL_COMPLEX_*` (`0xB0..=0xBF`) range, the `0xb3` special case, `gpl_setrecord` (0x40), and the complex-write path of `gpl_load_variable` (0x16). `obj_name >= 0x8000` keyword set (POV, ACTIVE, PASSIVE, OTHER, OTHER1, THING) preserved. | `dsoageofheroes/libgff` `src/gpl/parse.c` `gpl_access_complex` lines 235-288 | MIT |
 | `gpl_retval` safe-subset dispatch (gpl-disasm v0.2.1): the 21 opcodes libgff permits inside a `GPL_RETVAL` nested call. Recursive port reuses `read_instruction_params_with_depth` and the same `PARAM_COUNTS` table; bounded by `MAX_RETVAL_DEPTH = 4`. | `dsoageofheroes/libgff` `src/gpl/parse.c` `gpl_retval` lines 1791-1826 | MIT |
 | 7-bit packed inline-string decoder (sub-type markers `0x01` INTRODUCE / `0x02` UNCOMPRESSED / `0x05` COMPRESSED; 7-bit packed stream terminated by `0x03`; non-printable bytes replaced with space) | `dsoageofheroes/soloscuro-archive` `src/gpl/gpl-string.c` `sol_gpl_read_text` + `read_compressed` | MIT |
+| Branch-opcode semantics for the CFG (gpl-disasm v0.3.0): the first param of every branch opcode (`gpl jump` 0x12, `gpl local sub` 0x13, `gpl global sub` 0x14 first param, `gpl if` 0x3E, `gpl else` 0x3F, `gpl while` 0x63, `gpl wend` 0x64) and the **second** param of `gpl ifcompare` 0x27 is the absolute byte offset of the target instruction within the same GPL chunk. Verified via soloscuro-archive's `print_label` / `lua_goto` (label = `data_ptr - chunk_start_ptr`), libgff's `gpl_call_global` printf labeling `(ADDR, FILE)`, and a hand-trace of DS1 GPLDATA chunks 3 + 9 + 199 (11 / 11 jumps land on instruction boundaries, plus the corpus-wide soundness test). | `dsoageofheroes/soloscuro-archive` `src/gpl/gpl-lua.c` (lines 218 `lua_goto`, 265 `print_label`, 1111 `gpl_lua_if`, 1119 `gpl_lua_else`, 1524 `gpl_lua_jump`, 1528 `gpl_lua_local_sub`, 1534 `gpl_lua_global_sub`); `dsoageofheroes/libgff` `src/gpl/parse.c` `gpl_jump` 1305, `gpl_call_local` 1312, `gpl_call_global` 1319, `gpl_if` 670, `gpl_else` 682, `gpl_while` 1417, `gpl_wend` 1425, `gpl_ifcompare` 784 | MIT |
 
 **OpenDS code that consumes the above:**
-- `tools/gpl-disasm/src/lib.rs` — `OPCODES`
+- `tools/gpl-disasm/src/lib.rs` — `OPCODES`, `build_cfg`,
+  `classify_branch`, `successors_for`, `write_dot`
 - `docs/gpl-opcodes.md`
+- `docs/gpl-bytecode.md` §5a (branch-opcode semantics)
 - `tools/dialog-extract/dialog-extract.py` — `decode_compressed_string`
 
 ## Character data (CHARSAVE.GFF)

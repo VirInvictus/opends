@@ -1,6 +1,14 @@
 //! gpl-disasm: disassembler for SSI's GPL bytecode (Dark Sun).
 //!
-//! v0.2.0 ships **parameter decoding**: each opcode now consumes
+//! v0.3.0 ships **control-flow analysis**: each aligned chunk
+//! also yields a [`Cfg`] of basic blocks, entry points, and
+//! labeled successors. Branch-target offsets render as labels
+//! (`gpl if label_0x0020`) and the `--cfg` flag emits a Graphviz
+//! DOT graph. Per-opcode branch semantics are documented in
+//! `docs/gpl-bytecode.md` §5a and verified across 600 / 600
+//! DS1+DS2 chunks (71,403 successor edges, 0 computed-target).
+//!
+//! v0.2.0 baseline: **parameter decoding**. Each opcode consumes
 //! its variable-length parameter bytes via a port of libgff's
 //! `gpl_read_number`, so output is one row per **instruction**
 //! (not one per byte as in v0.1.0). True instruction boundaries
@@ -28,7 +36,9 @@
 //! `dsoageofheroes/soloscuro-archive` `src/gpl/gpl-string.c`
 //! `read_compressed`.
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
+use std::io::{self, Write};
 
 use serde::Serialize;
 
@@ -704,6 +714,120 @@ pub struct DisasmResult {
     /// True if no instruction was marked `best_effort` and every
     /// byte was consumed.
     pub aligned: bool,
+    /// Control-flow graph built post-walk (v0.3.0+). `None` when
+    /// `aligned == false`: best-effort disassembly may misidentify
+    /// branch instructions, so we skip CFG construction rather than
+    /// emit a wrong one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cfg: Option<Cfg>,
+    /// Cross-chunk `gpl global sub` (0x14) call sites. Targets are
+    /// in another GPL file and are not wired into [`Cfg`]; recorded
+    /// here for future inter-chunk analysis (v0.4.0+).
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub cross_chunk_calls: Vec<CrossChunkCall>,
+}
+
+// ---------- CFG types (v0.3.0) ----------
+
+/// Control-flow graph for one disassembled chunk. Branch semantics
+/// are documented in `docs/gpl-bytecode.md` §5a.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Cfg {
+    /// Discovered entry offsets, sorted and deduplicated. Includes
+    /// candidate offsets 0 and 1 (`chunk[0]` is consistently the
+    /// `gpl global ret` epilogue placeholder), plus every observed
+    /// `gpl local sub` target inside this chunk.
+    pub entry_points: Vec<usize>,
+    /// Basic blocks, sorted by `start_offset`.
+    pub blocks: Vec<BasicBlock>,
+    /// Offset → label name. One entry per block leader. Entry
+    /// points get an alternate `entry_0x...` form alongside the
+    /// regular `label_0x...`.
+    pub labels: BTreeMap<usize, String>,
+    /// Successor offsets that didn't resolve to an instruction
+    /// boundary in this chunk. Empirically should be empty for the
+    /// DS1+DS2 corpus; populated only when a `jump` target's first
+    /// param is a non-literal expression (computed jump).
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub unresolved: Vec<UnresolvedEdge>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct BasicBlock {
+    pub start_offset: usize,
+    /// Exclusive: equals the next leader offset, or [`DisasmResult::total_bytes`]
+    /// for the final block.
+    pub end_offset: usize,
+    /// Indices into [`DisasmResult::instructions`] for the
+    /// instructions that make up this block.
+    pub instruction_indices: Vec<usize>,
+    pub successors: Vec<Edge>,
+    pub terminator: TerminatorKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum TerminatorKind {
+    /// Block ends because it ran into the next leader; control
+    /// falls through. Used for `endif` / `cmpend` markers and for
+    /// any unterminated leader-bounded run.
+    Fallthrough,
+    /// `gpl jump` (0x12) or `gpl wend` (0x64) — single outgoing
+    /// edge.
+    Unconditional,
+    /// `gpl if` (0x3E), `gpl while` (0x63), `gpl ifcompare` (0x27)
+    /// — two outgoing edges.
+    Conditional,
+    /// `gpl else` (0x3F) — single outgoing edge to the matching
+    /// endif (unconditionally skips the else-block when reached by
+    /// fall-through from the then-branch).
+    UnconditionalElse,
+    /// `gpl local ret` (0x15) / `gpl global ret` (0x19). No
+    /// successors.
+    Return,
+    /// `gpl zero` (0x00, EXIT_GPL) / `gpl exit gpl` (0x31). No
+    /// successors.
+    ExitScript,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Edge {
+    pub target_offset: usize,
+    pub kind: EdgeKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum EdgeKind {
+    /// Natural fall-through to the next instruction.
+    Fallthrough,
+    /// Unconditional branch taken (`gpl jump`, `gpl else`).
+    Unconditional,
+    /// Conditional branch's "predicate is true" path. For `gpl if`
+    /// / `gpl while` this is the fall-through (the param target is
+    /// the not-taken side); for `gpl ifcompare` this is also the
+    /// fall-through (param[1] is the mismatch target).
+    ConditionalTaken,
+    /// Conditional branch's "predicate is false" path. For `gpl
+    /// if` / `gpl while` / `gpl ifcompare` this is the param-supplied
+    /// target.
+    ConditionalNotTaken,
+    /// `gpl wend` (0x64) backward edge to the matching `gpl while`.
+    WhileBack,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct CrossChunkCall {
+    /// Offset of the `gpl global sub` instruction in this chunk.
+    pub from_offset: usize,
+    /// First param: target offset within the destination GPL file.
+    pub target_offset: i32,
+    /// Second param: destination GPL file id.
+    pub target_file_id: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct UnresolvedEdge {
+    pub from_offset: usize,
+    pub reason: &'static str,
 }
 
 // ---------- Decoder ----------
@@ -1304,12 +1428,461 @@ pub fn disassemble(bytes: &[u8]) -> DisasmResult {
         });
     }
 
+    let aligned = !any_best_effort && cursor == bytes.len();
+    let total_bytes = bytes.len();
+    let (cfg, cross_chunk_calls) = if aligned {
+        let (c, x) = build_cfg(&instructions, total_bytes);
+        (Some(c), x)
+    } else {
+        (None, Vec::new())
+    };
+
     DisasmResult {
-        aligned: !any_best_effort && cursor == bytes.len(),
+        aligned,
         bytes_consumed: cursor,
-        total_bytes: bytes.len(),
+        total_bytes,
         instructions,
+        cfg,
+        cross_chunk_calls,
     }
+}
+
+// ---------- CFG construction (v0.3.0) ----------
+
+/// Per-opcode classification for CFG construction. Returned by
+/// [`classify_branch`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BranchClass {
+    /// Non-branch instruction; block continues to the next.
+    NonBranch,
+    /// Falls through but a sibling target may want this as a block
+    /// leader (`gpl endif` 0x67, `gpl cmpend` 0x61). Treated like
+    /// `NonBranch` for terminator purposes; the leader is added
+    /// because something jumps here.
+    Marker,
+    /// `gpl jump` (0x12): 1 successor = param[0].
+    Jump,
+    /// `gpl local sub` (0x13): block continues; target is recorded
+    /// as a separate entry point.
+    LocalSub,
+    /// `gpl global sub` (0x14): block continues; target is recorded
+    /// as a cross-chunk call only.
+    GlobalSub,
+    /// `gpl local ret` / `gpl global ret` / `gpl exit gpl` /
+    /// `gpl zero` — block terminates with no successors.
+    Return,
+    /// Single-param conditional (`if`, `while`). Param[0] is the
+    /// not-taken target; falls through on the taken path.
+    Conditional1,
+    /// `gpl else` (0x3F): unconditional jump to param[0] (skips the
+    /// else-block when reached by fall-through from the then-block).
+    Else,
+    /// `gpl wend` (0x64): unconditional backward jump to param[0]
+    /// (matching `while`).
+    Wend,
+    /// `gpl ifcompare` (0x27): param[0] is the comparison value;
+    /// param[1] is the not-taken target. Falls through on match.
+    Ifcompare,
+}
+
+fn classify_branch(opcode: u8) -> BranchClass {
+    match opcode {
+        0x00 | 0x31 => BranchClass::Return, // gpl zero (EXIT_GPL), gpl exit gpl
+        0x12 => BranchClass::Jump,
+        0x13 => BranchClass::LocalSub,
+        0x14 => BranchClass::GlobalSub,
+        0x15 | 0x19 => BranchClass::Return,
+        0x27 => BranchClass::Ifcompare,
+        0x3E | 0x63 => BranchClass::Conditional1,
+        0x3F => BranchClass::Else,
+        0x61 | 0x67 => BranchClass::Marker, // gpl cmpend, gpl endif
+        0x64 => BranchClass::Wend,
+        _ => BranchClass::NonBranch,
+    }
+}
+
+/// Extract a literal integer value from a single-param expression
+/// list. Returns `Some(value)` only when the param is exactly one
+/// of the immediate-literal forms (`Immediate14`, `ImmediateByte`,
+/// `ImmediateBigNum`). Returns `None` for variable references,
+/// computed expressions, `RetVal`, etc.
+fn literal_target(param: &[Expression]) -> Option<i64> {
+    if param.len() != 1 {
+        return None;
+    }
+    match &param[0] {
+        Expression::Immediate14 { value } => Some(*value as i64),
+        Expression::ImmediateByte { value } => Some(*value as i64),
+        Expression::ImmediateBigNum { value } => Some(*value as i64),
+        _ => None,
+    }
+}
+
+/// Build a [`Cfg`] for an aligned chunk's instruction list. Caller
+/// is responsible for skipping this when the disassembly was not
+/// aligned (best-effort consumption can misidentify branch
+/// instructions).
+pub fn build_cfg(
+    instructions: &[Instruction],
+    chunk_len: usize,
+) -> (Cfg, Vec<CrossChunkCall>) {
+    // Offset → instruction index, used to validate target offsets
+    // and to populate `instruction_indices` later.
+    let offset_to_idx: BTreeMap<usize, usize> = instructions
+        .iter()
+        .enumerate()
+        .map(|(i, instr)| (instr.offset, i))
+        .collect();
+
+    let mut leaders: BTreeSet<usize> = BTreeSet::new();
+    leaders.insert(0);
+    // `chunk[0]` is consistently `gpl global ret` (0x19) as an
+    // epilogue placeholder. Treat offset 1 as a candidate entry
+    // point too if a real instruction lives there.
+    if offset_to_idx.contains_key(&1) {
+        leaders.insert(1);
+    }
+
+    let mut entry_points: BTreeSet<usize> = BTreeSet::new();
+    entry_points.insert(0);
+    if offset_to_idx.contains_key(&1) {
+        entry_points.insert(1);
+    }
+
+    let mut cross_chunk_calls: Vec<CrossChunkCall> = Vec::new();
+    let mut unresolved: Vec<UnresolvedEdge> = Vec::new();
+
+    // Pass 1: collect leaders and cross-chunk records.
+    for (i, instr) in instructions.iter().enumerate() {
+        let class = classify_branch(instr.opcode);
+        let next_offset = instructions
+            .get(i + 1)
+            .map(|n| n.offset)
+            .unwrap_or(chunk_len);
+        match class {
+            BranchClass::NonBranch | BranchClass::Marker => {}
+            BranchClass::Jump | BranchClass::Conditional1 | BranchClass::Else | BranchClass::Wend => {
+                if let Some(v) = instr.params.first().and_then(|p| literal_target(p)) {
+                    if v >= 0 && (v as usize) <= chunk_len {
+                        leaders.insert(v as usize);
+                    } else {
+                        unresolved.push(UnresolvedEdge {
+                            from_offset: instr.offset,
+                            reason: "target out of range",
+                        });
+                    }
+                } else {
+                    unresolved.push(UnresolvedEdge {
+                        from_offset: instr.offset,
+                        reason: "non-literal target",
+                    });
+                }
+                leaders.insert(next_offset);
+            }
+            BranchClass::Ifcompare => {
+                if let Some(v) = instr.params.get(1).and_then(|p| literal_target(p)) {
+                    if v >= 0 && (v as usize) <= chunk_len {
+                        leaders.insert(v as usize);
+                    } else {
+                        unresolved.push(UnresolvedEdge {
+                            from_offset: instr.offset,
+                            reason: "target out of range",
+                        });
+                    }
+                } else {
+                    unresolved.push(UnresolvedEdge {
+                        from_offset: instr.offset,
+                        reason: "non-literal target",
+                    });
+                }
+                leaders.insert(next_offset);
+            }
+            BranchClass::LocalSub => {
+                if let Some(v) = instr.params.first().and_then(|p| literal_target(p)) {
+                    if v >= 0 && (v as usize) <= chunk_len {
+                        leaders.insert(v as usize);
+                        entry_points.insert(v as usize);
+                    }
+                }
+            }
+            BranchClass::GlobalSub => {
+                let target = instr
+                    .params
+                    .first()
+                    .and_then(|p| literal_target(p))
+                    .unwrap_or(0) as i32;
+                let file_id = instr
+                    .params
+                    .get(1)
+                    .and_then(|p| literal_target(p))
+                    .unwrap_or(0) as i32;
+                cross_chunk_calls.push(CrossChunkCall {
+                    from_offset: instr.offset,
+                    target_offset: target,
+                    target_file_id: file_id,
+                });
+            }
+            BranchClass::Return => {
+                leaders.insert(next_offset);
+            }
+        }
+    }
+
+    // Drop leaders that don't correspond to a real instruction
+    // boundary (and aren't the chunk-end sentinel). These can
+    // happen when an `if` target was a non-literal expression and
+    // got mistakenly added; the unresolved list already records it.
+    let leaders: Vec<usize> = leaders
+        .into_iter()
+        .filter(|o| *o == chunk_len || offset_to_idx.contains_key(o))
+        .collect();
+
+    // Pass 2: build blocks.
+    let mut blocks: Vec<BasicBlock> = Vec::with_capacity(leaders.len());
+    for (li, &start) in leaders.iter().enumerate() {
+        if start == chunk_len {
+            continue;
+        }
+        let end = leaders.get(li + 1).copied().unwrap_or(chunk_len);
+        let mut instr_indices: Vec<usize> = Vec::new();
+        for (i, instr) in instructions.iter().enumerate() {
+            if instr.offset >= start && instr.offset < end {
+                instr_indices.push(i);
+            } else if instr.offset >= end {
+                break;
+            }
+        }
+
+        let (terminator, successors) = if let Some(&last_idx) = instr_indices.last() {
+            let last = &instructions[last_idx];
+            successors_for(last, end)
+        } else {
+            (TerminatorKind::Fallthrough, vec![])
+        };
+
+        blocks.push(BasicBlock {
+            start_offset: start,
+            end_offset: end,
+            instruction_indices: instr_indices,
+            successors,
+            terminator,
+        });
+    }
+
+    // Labels: every block leader gets one. Entry points get an
+    // alias `entry_0xNNNN` recorded alongside `label_0xNNNN` in a
+    // single map by using the entry form for entries.
+    let mut labels: BTreeMap<usize, String> = BTreeMap::new();
+    for b in &blocks {
+        let name = if entry_points.contains(&b.start_offset) {
+            format!("entry_{:#06x}", b.start_offset)
+        } else {
+            format!("label_{:#06x}", b.start_offset)
+        };
+        labels.insert(b.start_offset, name);
+    }
+
+    let cfg = Cfg {
+        entry_points: entry_points.into_iter().collect(),
+        blocks,
+        labels,
+        unresolved,
+    };
+    (cfg, cross_chunk_calls)
+}
+
+/// Build the successor list for a block whose terminator
+/// instruction is `last`. `next_block_offset` is the fall-through
+/// destination if applicable.
+fn successors_for(last: &Instruction, next_block_offset: usize) -> (TerminatorKind, Vec<Edge>) {
+    let class = classify_branch(last.opcode);
+    match class {
+        BranchClass::NonBranch | BranchClass::Marker | BranchClass::LocalSub => (
+            TerminatorKind::Fallthrough,
+            vec![Edge {
+                target_offset: next_block_offset,
+                kind: EdgeKind::Fallthrough,
+            }],
+        ),
+        BranchClass::GlobalSub => (
+            TerminatorKind::Fallthrough,
+            vec![Edge {
+                target_offset: next_block_offset,
+                kind: EdgeKind::Fallthrough,
+            }],
+        ),
+        BranchClass::Return => (TerminatorKind::Return, vec![]),
+        BranchClass::Jump => {
+            let target = last
+                .params
+                .first()
+                .and_then(|p| literal_target(p))
+                .map(|v| v as usize);
+            (
+                TerminatorKind::Unconditional,
+                target
+                    .map(|t| {
+                        vec![Edge {
+                            target_offset: t,
+                            kind: EdgeKind::Unconditional,
+                        }]
+                    })
+                    .unwrap_or_default(),
+            )
+        }
+        BranchClass::Else => {
+            let target = last
+                .params
+                .first()
+                .and_then(|p| literal_target(p))
+                .map(|v| v as usize);
+            (
+                TerminatorKind::UnconditionalElse,
+                target
+                    .map(|t| {
+                        vec![Edge {
+                            target_offset: t,
+                            kind: EdgeKind::Unconditional,
+                        }]
+                    })
+                    .unwrap_or_default(),
+            )
+        }
+        BranchClass::Wend => {
+            let target = last
+                .params
+                .first()
+                .and_then(|p| literal_target(p))
+                .map(|v| v as usize);
+            (
+                TerminatorKind::Unconditional,
+                target
+                    .map(|t| {
+                        vec![Edge {
+                            target_offset: t,
+                            kind: EdgeKind::WhileBack,
+                        }]
+                    })
+                    .unwrap_or_default(),
+            )
+        }
+        BranchClass::Conditional1 => {
+            let target = last
+                .params
+                .first()
+                .and_then(|p| literal_target(p))
+                .map(|v| v as usize);
+            let mut edges = vec![Edge {
+                target_offset: next_block_offset,
+                kind: EdgeKind::ConditionalTaken,
+            }];
+            if let Some(t) = target {
+                edges.push(Edge {
+                    target_offset: t,
+                    kind: EdgeKind::ConditionalNotTaken,
+                });
+            }
+            (TerminatorKind::Conditional, edges)
+        }
+        BranchClass::Ifcompare => {
+            let target = last
+                .params
+                .get(1)
+                .and_then(|p| literal_target(p))
+                .map(|v| v as usize);
+            let mut edges = vec![Edge {
+                target_offset: next_block_offset,
+                kind: EdgeKind::ConditionalTaken,
+            }];
+            if let Some(t) = target {
+                edges.push(Edge {
+                    target_offset: t,
+                    kind: EdgeKind::ConditionalNotTaken,
+                });
+            }
+            (TerminatorKind::Conditional, edges)
+        }
+    }
+}
+
+/// Emit a Graphviz DOT graph for `cfg`. Block nodes carry an
+/// abbreviated label (offset + first instruction's mnemonic);
+/// edges are colored by [`EdgeKind`].
+pub fn write_dot(
+    cfg: &Cfg,
+    instructions: &[Instruction],
+    out: &mut impl Write,
+) -> io::Result<()> {
+    writeln!(out, "digraph cfg {{")?;
+    writeln!(out, "  rankdir=TB;")?;
+    writeln!(
+        out,
+        "  node [shape=box, fontname=\"monospace\", fontsize=10];"
+    )?;
+    writeln!(out, "  edge [fontname=\"monospace\", fontsize=9];")?;
+    for b in &cfg.blocks {
+        let head_mnemonic = b
+            .instruction_indices
+            .first()
+            .and_then(|i| instructions.get(*i))
+            .and_then(|instr| instr.mnemonic)
+            .unwrap_or("(empty)");
+        let term = match b.terminator {
+            TerminatorKind::Fallthrough => "",
+            TerminatorKind::Unconditional => " | jmp",
+            TerminatorKind::UnconditionalElse => " | else",
+            TerminatorKind::Conditional => " | cond",
+            TerminatorKind::Return => " | ret",
+            TerminatorKind::ExitScript => " | exit",
+        };
+        let label = cfg
+            .labels
+            .get(&b.start_offset)
+            .map(String::as_str)
+            .unwrap_or("?");
+        writeln!(
+            out,
+            "  blk_{:04x} [label=\"{}\\n{:#06x}: {}{}\"];",
+            b.start_offset, label, b.start_offset, head_mnemonic, term
+        )?;
+    }
+    for b in &cfg.blocks {
+        for edge in &b.successors {
+            let color = match edge.kind {
+                EdgeKind::Fallthrough => "gray50",
+                EdgeKind::Unconditional => "black",
+                EdgeKind::ConditionalTaken => "darkgreen",
+                EdgeKind::ConditionalNotTaken => "firebrick",
+                EdgeKind::WhileBack => "blue",
+            };
+            // If the target isn't a block leader, draw to a
+            // synthetic offset node so the reader sees the
+            // mismatch.
+            let target_block = cfg
+                .blocks
+                .iter()
+                .find(|tb| tb.start_offset == edge.target_offset);
+            if let Some(tb) = target_block {
+                writeln!(
+                    out,
+                    "  blk_{:04x} -> blk_{:04x} [color=\"{}\"];",
+                    b.start_offset, tb.start_offset, color
+                )?;
+            } else {
+                writeln!(
+                    out,
+                    "  blk_{:04x} -> off_{:04x} [color=\"{}\", style=dashed];",
+                    b.start_offset, edge.target_offset, color
+                )?;
+                writeln!(
+                    out,
+                    "  off_{:04x} [shape=plaintext, label=\"{:#06x}\\n(off-graph)\"];",
+                    edge.target_offset, edge.target_offset
+                )?;
+            }
+        }
+    }
+    writeln!(out, "}}")
 }
 
 /// Find the first printable ASCII run of length `>= MIN_STRING_LEN`
@@ -1845,5 +2418,233 @@ mod tests {
             let (_sub, decoded, _n) = read_text(&buf, 0).unwrap();
             assert_eq!(decoded, *s, "round trip for {s:?}");
         }
+    }
+
+    // ---------- CFG tests (v0.3.0) ----------
+
+    /// Build a chunk:
+    ///   0x00: gpl global ret (0x19)              ; placeholder
+    ///   0x01: gpl load accum (0x18) with simple immediate
+    ///         — too complex for a hand-written test; instead
+    ///         use bare-opcode branches with literal params:
+    /// Synthetic: jump 5; (offset 3) gpl endif (0x67); ret (0x15)
+    fn fake_instr(offset: usize, opcode: u8, target: Option<u16>) -> Instruction {
+        let params = match target {
+            Some(v) => vec![vec![Expression::Immediate14 { value: v }]],
+            None => vec![],
+        };
+        let length = 1 + match target {
+            Some(_) => 2, // Immediate14 is 2 bytes
+            None => 0,
+        };
+        Instruction {
+            offset,
+            length,
+            opcode,
+            mnemonic: opcode_name(opcode),
+            params,
+            best_effort: false,
+            string_run: None,
+        }
+    }
+
+    #[test]
+    fn cfg_classifies_jump_opcode() {
+        // jump (0x12) target=5; endif (0x67) at 3; ret (0x15) at 4;
+        // chunk ends at 5.
+        let instrs = vec![
+            fake_instr(0, 0x12, Some(5)),
+            fake_instr(3, 0x67, None),
+            fake_instr(4, 0x15, None),
+        ];
+        let (cfg, _) = build_cfg(&instrs, 5);
+        // Leaders: 0 (entry), 3 (after the jump), target=5 (chunk
+        // end, not a block). After filter: 0, 3 → 2 blocks.
+        assert_eq!(cfg.blocks.len(), 2);
+        let jump_block = &cfg.blocks[0];
+        assert_eq!(jump_block.terminator, TerminatorKind::Unconditional);
+        assert_eq!(jump_block.successors.len(), 1);
+        assert_eq!(jump_block.successors[0].target_offset, 5);
+        assert_eq!(jump_block.successors[0].kind, EdgeKind::Unconditional);
+    }
+
+    #[test]
+    fn cfg_classifies_if_opcode_with_two_successors() {
+        // if (0x3E) at 0 jumps to 6 on false; endif (0x67) at 6
+        // Layout: if(target=6) at 0 (3 bytes), endif at 3 (1 byte),
+        // ret at 4 (1 byte), endif at 6 (1 byte).
+        // The if at 0 jumps to offset 6.
+        let instrs = vec![
+            fake_instr(0, 0x3E, Some(6)),
+            fake_instr(3, 0x67, None),
+            fake_instr(4, 0x15, None),
+            fake_instr(6, 0x67, None),
+        ];
+        let (cfg, _) = build_cfg(&instrs, 7);
+        let if_block = &cfg.blocks[0];
+        assert_eq!(if_block.terminator, TerminatorKind::Conditional);
+        assert_eq!(if_block.successors.len(), 2);
+        // First successor is the taken/fallthrough (next instr at 3).
+        assert_eq!(if_block.successors[0].target_offset, 3);
+        assert_eq!(if_block.successors[0].kind, EdgeKind::ConditionalTaken);
+        // Second is the not-taken (param target = 6).
+        assert_eq!(if_block.successors[1].target_offset, 6);
+        assert_eq!(
+            if_block.successors[1].kind,
+            EdgeKind::ConditionalNotTaken
+        );
+    }
+
+    #[test]
+    fn cfg_classifies_else_opcode_as_unconditional() {
+        // else (0x3F) at 0 with target=6.
+        let instrs = vec![
+            fake_instr(0, 0x3F, Some(6)),
+            fake_instr(3, 0x67, None),
+            fake_instr(6, 0x67, None),
+        ];
+        let (cfg, _) = build_cfg(&instrs, 7);
+        let else_block = &cfg.blocks[0];
+        assert_eq!(else_block.terminator, TerminatorKind::UnconditionalElse);
+        assert_eq!(else_block.successors.len(), 1);
+        assert_eq!(else_block.successors[0].target_offset, 6);
+        assert_eq!(else_block.successors[0].kind, EdgeKind::Unconditional);
+    }
+
+    #[test]
+    fn cfg_classifies_wend_as_backward_edge() {
+        // while (0x63) at 0 target=10; endif at 3; wend (0x64) at 5
+        // target=0 (back to while); endif at 8.
+        // The wend is the terminator of the block that starts at
+        // 3 (it's a leader because while's next_offset added it).
+        let instrs = vec![
+            fake_instr(0, 0x63, Some(10)),
+            fake_instr(3, 0x67, None),
+            fake_instr(5, 0x64, Some(0)),
+            fake_instr(8, 0x67, None),
+        ];
+        let (cfg, _) = build_cfg(&instrs, 10);
+        let wend_block = cfg
+            .blocks
+            .iter()
+            .find(|b| {
+                b.successors
+                    .iter()
+                    .any(|e| e.kind == EdgeKind::WhileBack)
+            })
+            .expect("block with WhileBack edge");
+        assert_eq!(wend_block.terminator, TerminatorKind::Unconditional);
+        assert_eq!(wend_block.successors.len(), 1);
+        assert_eq!(wend_block.successors[0].target_offset, 0);
+        assert_eq!(wend_block.successors[0].kind, EdgeKind::WhileBack);
+    }
+
+    #[test]
+    fn cfg_treats_local_sub_target_as_entry_point() {
+        // local sub (0x13) target=5; ret (0x15) at 3; func body at 5;
+        // ret at 6.
+        let instrs = vec![
+            fake_instr(0, 0x13, Some(5)),
+            fake_instr(3, 0x15, None),
+            fake_instr(5, 0x67, None),
+            fake_instr(6, 0x15, None),
+        ];
+        let (cfg, _) = build_cfg(&instrs, 7);
+        assert!(
+            cfg.entry_points.contains(&5),
+            "entry_points={:?}",
+            cfg.entry_points
+        );
+    }
+
+    #[test]
+    fn cfg_records_global_sub_as_cross_chunk_call() {
+        // global sub (0x14) target=42 file=7.
+        let instr = Instruction {
+            offset: 0,
+            length: 5,
+            opcode: 0x14,
+            mnemonic: opcode_name(0x14),
+            params: vec![
+                vec![Expression::Immediate14 { value: 42 }],
+                vec![Expression::Immediate14 { value: 7 }],
+            ],
+            best_effort: false,
+            string_run: None,
+        };
+        let instrs = vec![instr, fake_instr(5, 0x15, None)];
+        let (_, calls) = build_cfg(&instrs, 6);
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].from_offset, 0);
+        assert_eq!(calls[0].target_offset, 42);
+        assert_eq!(calls[0].target_file_id, 7);
+    }
+
+    #[test]
+    fn cfg_classifies_ifcompare_with_two_successors() {
+        // ifcompare (0x27) value=2 target=8.
+        let instr = Instruction {
+            offset: 0,
+            length: 5,
+            opcode: 0x27,
+            mnemonic: opcode_name(0x27),
+            params: vec![
+                vec![Expression::ImmediateByte { value: 2 }],
+                vec![Expression::Immediate14 { value: 8 }],
+            ],
+            best_effort: false,
+            string_run: None,
+        };
+        let instrs = vec![
+            instr,
+            fake_instr(5, 0x67, None),
+            fake_instr(8, 0x67, None),
+        ];
+        let (cfg, _) = build_cfg(&instrs, 9);
+        let ic = &cfg.blocks[0];
+        assert_eq!(ic.terminator, TerminatorKind::Conditional);
+        assert_eq!(ic.successors.len(), 2);
+        // Fallthrough on match.
+        assert_eq!(ic.successors[0].target_offset, 5);
+        assert_eq!(ic.successors[0].kind, EdgeKind::ConditionalTaken);
+        // Param[1] target on mismatch.
+        assert_eq!(ic.successors[1].target_offset, 8);
+        assert_eq!(
+            ic.successors[1].kind,
+            EdgeKind::ConditionalNotTaken
+        );
+    }
+
+    #[test]
+    fn cfg_labels_use_entry_or_label_form() {
+        // Entry points get `entry_0x...`; non-entry leaders get
+        // `label_0x...`.
+        let instrs = vec![
+            fake_instr(0, 0x12, Some(3)),
+            fake_instr(3, 0x15, None),
+        ];
+        let (cfg, _) = build_cfg(&instrs, 4);
+        assert_eq!(cfg.labels.get(&0).map(String::as_str), Some("entry_0x0000"));
+        // 3 is a leader because it's after a Jump; not an entry.
+        assert_eq!(cfg.labels.get(&3).map(String::as_str), Some("label_0x0003"));
+    }
+
+    #[test]
+    fn cfg_skipped_when_disassembly_not_aligned() {
+        // 0xFF is unknown; the decoder marks the instruction
+        // best-effort. disassemble() should leave cfg = None.
+        let result = disassemble(&[0xFF, 0x00]);
+        assert!(!result.aligned);
+        assert!(result.cfg.is_none());
+    }
+
+    #[test]
+    fn cfg_present_when_disassembly_aligned() {
+        // 0x67 endif is a no-param marker; clean disassemble.
+        let result = disassemble(&[0x67]);
+        assert!(result.aligned);
+        assert!(result.cfg.is_some());
+        let cfg = result.cfg.unwrap();
+        assert_eq!(cfg.blocks.len(), 1);
     }
 }

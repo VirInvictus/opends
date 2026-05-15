@@ -141,12 +141,157 @@ elements). `gpl_setrecord` (0x40) is a first-class
 complex-write path now decodes too. Corpus alignment: **100% on
 all 600 DS1+DS2 GPL/MAS chunks**.
 
-**v0.3.0 — control flow.** Recursive-descent over jumps and
-calls. Basic-block annotation, jump-target labels.
+**v0.3.0 — control flow (current).** Every disassembled chunk
+now carries a [`Cfg`] of basic blocks, entry points, and
+labeled successors. The default text listing renders
+`gpl if label_0x0020` instead of `gpl if 32`, with `label_*:` /
+`entry_*:` lines preceding each block leader. New CLI flags:
+`--entries`, `--cfg <path>`, `--no-labels`. JSON output gains
+an additive `cfg` field. Verified on the full DS1+DS2 corpus:
+**600 / 600 chunks build a CFG where every successor offset
+(71,403 edges) resolves to a known instruction boundary, with
+0 computed-target edges and 1,384 cross-chunk `global sub`
+call sites recorded for v0.4.0+ inter-chunk analysis.** The
+underlying jump semantics for the eight branch opcodes were
+verified in a pre-implementation spike; the findings are in
+§5a below.
 
 **v0.4.0+ — symbol import** (DSO debug symbols), opcode
 discovery via `opcode-fuzz` (Phase 5), MAS/GPLX cross-
-reference.
+reference, inter-chunk CFG following `global sub` edges.
+
+### §5a — Branch opcode semantics (v0.3.0 spike)
+
+Before committing to a recursive-descent walker, we verified
+what the first parameter of each branch opcode actually means.
+The question: is it an absolute byte offset into the chunk, a
+relative offset, a label id, or something else?
+
+**Sources consulted.**
+
+1. `.dsoageofheroes/soloscuro-archive/src/gpl/gpl-lua.c` (MIT).
+   The closest public runtime: paulofthewest's Lua emitter.
+   It does not execute jumps directly (it lowers GPL to Lua
+   control flow) but its bookkeeping reveals the unit:
+   - `print_label()` (line 265) computes `label = data_ptr -
+     gpl_lua_start_ptr`, i.e. **bytes since chunk start**.
+   - `lua_goto(str)` (line 218) parses the stringified
+     parameter into an integer and uses it as a label index
+     in the same unit.
+   - `gpl_lua_if` (1111) and `gpl_lua_else` (1119) both
+     consume one parameter via `gpl_lua_get_parameters(1)`
+     and comment "in the original it probably was the address
+     to jump to if the if was not taken."
+   - `gpl_lua_local_sub` (1528) emits `if func<N>() then
+     return true end`, treating the parameter as a function
+     identifier (effectively the function's start offset).
+   - `gpl_lua_global_sub` (1534) consumes two parameters and
+     comments `// Jump to addr %s in file %s`: the first is
+     the address, the second is the GPL file id.
+   - `gpl_lua_jump` (1524) is `lua_exit("jump not
+     implemented!\n")` — paulofthewest never lowered the
+     unconditional jump opcode. Not a blocker; the consistent
+     unit ("bytes since chunk start") still applies.
+
+2. `.dsoageofheroes/libgff/src/gpl/parse.c` (MIT). libgff is a
+   pure parser, not a runtime, but it confirms each branch
+   opcode's parameter count:
+   - `gpl_jump` (0x12) → 1 param.
+   - `gpl_call_local` (0x13, "local sub") → 1 param.
+   - `gpl_call_global` (0x14, "global sub") → 2 params; the
+     printf at line 1320 literally labels them `(ADDR, FILE)`.
+   - `gpl_local_ret` (0x15) → 0 params.
+   - `gpl_if` (0x3E) → 1 param.
+   - `gpl_else` (0x3F) → 1 param.
+   - `gpl_while` (0x63) → 1 param.
+   - `gpl_wend` (0x64) → 1 param.
+
+   Matches our `PARAM_COUNTS` table in
+   `tools/gpl-disasm/src/lib.rs`.
+
+3. **Hand-trace of DS1 GPLDATA.GFF GPL chunk 9** (554 bytes;
+   the smallest GPL chunk in DS1). Eight branch instructions:
+
+   | Branch at offset | Param value | Target offset | Lands on |
+   |------------------|-------------|---------------|----------|
+   | `if` @ 0x000E    | 32  (0x020) | 0x0020        | `endif` |
+   | `if` @ 0x0031    | 98  (0x062) | 0x0062        | `endif` |
+   | `if` @ 0x003F    | 80  (0x050) | 0x0050        | `else`  |
+   | `else` @ 0x0050  | 97  (0x061) | 0x0061        | `endif` |
+   | `if` @ 0x0069    | 109 (0x06D) | 0x006D        | `endif` |
+   | `if` @ 0x0128    | 300 (0x12C) | 0x012C        | `endif` |
+   | `if` @ 0x013B    | 324 (0x144) | 0x0144        | `endif` |
+   | `if` @ 0x0156    | 478 (0x1DE) | 0x01DE        | `endif` |
+
+   8 / 8 land exactly on a sibling instruction boundary; every
+   `if` targets its matching `else` or `endif`, every `else`
+   targets its matching `endif`. No off-by-one, no relative
+   encoding, no extra bias byte.
+
+4. **Cross-trace on DS1 GPLDATA.GFF GPL chunk 3** for the
+   `local sub` path. Two distinct call sites both target two
+   real function entry points:
+
+   | Call at offset    | Param value  | Target offset | Lands on |
+   |-------------------|--------------|---------------|----------|
+   | `local sub` @ 0x0171 | 1 (0x001) | 0x0001        | `load accum` (chunk's first real instruction; `local ret` at 0x0043) |
+   | `local sub` @ 0x06F0 | 1984 (0x7C0) | 0x07C0    | `clearpic` (`local ret` at 0x084E) |
+   | `local sub` @ 0x0751 | 1984 (0x7C0) | 0x07C0    | same target as above (the same function called twice) |
+
+   Confirms the parameter is an absolute byte offset of a
+   function entry within the same chunk, terminated by
+   `local ret` (0x15).
+
+**Conclusion.** The first parameter of every branch opcode is
+the **absolute byte offset of the target instruction within
+the same GPL chunk**, parsed via the standard
+`gpl_read_number` expression decoder. Per-opcode semantics:
+
+| Opcode | First param meaning |
+|--------|---------------------|
+| `gpl jump` (0x12) | unconditional target |
+| `gpl local sub` (0x13) | function entry; matching `local ret` (0x15) returns |
+| `gpl global sub` (0x14) | function entry; second param is the GPL file id (cross-chunk) |
+| `gpl local ret` (0x15) | (no params; returns from local sub) |
+| `gpl global ret` (0x19) | (no params; returns from global sub) |
+| `gpl if` (0x3E) | fallthrough target when accum is false (the matching `else` or `endif`) |
+| `gpl else` (0x3F) | fallthrough target when reaching `else` from the true branch (matching `endif`) |
+| `gpl while` (0x63) | fallthrough target when accum is false (past the matching `wend`) |
+| `gpl wend` (0x64) | backward target: matching `while` |
+
+**Implication for v0.3.0.** The recursive-descent walker is
+unblocked. Entry points = chunk start + every observed `local
+sub` / `global sub` target inside the chunk. Successors at a
+branch instruction = the target offset (in the first param)
+plus the fallthrough offset (next instruction) for conditional
+branches, target-only for unconditional `jump` and `wend`.
+Backward edges via `wend` are expected and not an error.
+
+**Open follow-ups (not blocking v0.3.0).**
+
+- Whether `chunk[0]` is always `gpl global ret` (0x19) as a
+  one-byte epilogue placeholder, and whether the *real* entry
+  is `chunk[1]`. Both chunks in this spike began that way. The
+  v0.3.0 walker should treat both offsets 0 and 1 as candidate
+  entries until a wider corpus confirms.
+- `gpl global sub` (0x14) crosses chunks; v0.3.0 doesn't need
+  to follow those edges (the second param's GPL file id is
+  enough to *list* the call). Inter-chunk CFG is v0.4.0+ work.
+- `gpl ifcompare` (0x27) **verified** in a follow-up
+  hand-trace (DS1 GPLDATA GPL chunk 199): 2 parameters where
+  param[0] is the comparison value (the case label) and
+  param[1] is the jump target taken **on mismatch**. The
+  pattern emits a fall-through switch:
+  ```
+  0251  27  gpl ifcompare  2i8, 609   ; if accum != 2: jump 0x261
+  0256  ...  case-2 body
+  0261  27  gpl ifcompare  3i8, 625   ; if accum != 3: jump 0x271
+  ```
+  All five chained mismatch-targets land on the next
+  ifcompare's offset; the chain terminates at `gpl cmpend`
+  (0x61). CFG model: 2 successors — fallthrough (match) +
+  param[1] (mismatch). Important: the target is **param[1]**,
+  not param[0], unlike the single-param branches above.
 
 ### Opcode discovery loop
 
