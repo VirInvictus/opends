@@ -4,6 +4,48 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/save-inspect/` v0.2.0** ships CHAR record body
+  decoding. v0.1.0 emitted an opaque hex preview of every
+  CHAR's data; v0.2.0 walks the RDFF sub-blocks and decodes
+  combat / character / item records to structured JSON.
+  - **CHAR body shape** (per libsoloscuro `src/entity.c`
+    `sol_entity_load_from_gff`, MIT): a sequence of
+    RDFF-headed sub-blocks in positional order: `sub[0]` is
+    combat, `sub[1]` is the character record, `sub[2..N-1]` are
+    item slots, optionally followed by an `RDFF_END` terminator
+    (`load_action == -1`, `len == 0`). The first sub-block's
+    `blocknum` field gives the total count.
+  - **DS1 schemas**: `ds1_combat_t` (58 bytes; hp / psp / AC /
+    THAC0 / stats / 18-char name), `ds_character_t` (71 bytes;
+    XP / HP / PSP / race / gender / alignment / stats / class /
+    level / saves / sound IDs), `ds1_item_t` (21 bytes; slot /
+    item_index / quantity / value / charges / bonus). Ported
+    from `libgff` `include/gff/object.h` + `item.h` (MIT;
+    annotated `Not confirmed at all` for the item struct by
+    upstream).
+  - **DS2 schemas differ** (combat 49 bytes, character 66 bytes,
+    item 23 bytes). v0.2.0 decodes DS2 items fully and surfaces
+    DS2 character names via an ASCII-run heuristic
+    (`_likely_name`), but emits combat and character bodies as
+    raw hex with `_format: "ds2_or_unknown_..._layout"` rather
+    than producing wrong-looking field values. Full DS2 schemas
+    are v0.3.0 work.
+  - **Enum lookups** added: `gff_race_e` (MONSTER / HUMAN /
+    DWARF / ELF / HALFELF / HALFGIANT / HALFLING / MUL /
+    THRIKREEN), gender, alignment (9-cell D&D 2e), item slot
+    (ARM / AMMO / MISSILE / HAND0..HAND1 / FINGER0..FINGER1 /
+    WAIST / LEGS / HEAD / NECK / CHEST / CLOAK / FOOT). Each
+    field renders as `{ "value": N, "name": "ENUM" }`.
+  - **Back-compat**: the existing `rdff_header`,
+    `body_length`, `body_hex_preview` keys still appear on
+    every CHAR chunk. The new `body` key is additive.
+  - **Empirical** (GOG 1.10): DS1 CHARSAVE.GFF decodes 5/5
+    CHARs cleanly (Garn, Aticus, Seneca, Deestan, plus PC).
+    DS2 CHARSAVE.GFF decodes 19 CHARs with full item slots;
+    DS2 character names surface ("Caron the Unsur", "Anathea",
+    "Cermak", "Frin'kal", ...) via the heuristic.
+  - Stdlib-only Python; no new dependencies.
+  - Roadmap Phase 4 save-inspect v0.2.0 box ticked.
 - **`tools/gpl-disasm/` v0.2.1** closes every case v0.2.0
   deferred. The 600 DS1+DS2 GPL/MAS chunks now disassemble at
   **100% alignment** (was 10.7% in v0.2.0).

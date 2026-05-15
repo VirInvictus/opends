@@ -56,7 +56,13 @@ comments next to the relevant code.
 | `gff_char_entry_t` (RDFF header + opaque `data[]`) | `dsoageofheroes/libgff` `include/gff/char.h` | MIT |
 | `gff_psin_t` (`uint8_t types[7]` — psionic discipline byte codes) | `dsoageofheroes/libgff` `include/gff/psionic.h` | MIT |
 | `gff_psionic_list_t` / `gff_psst_t` (`uint8_t psionics[34]` — psionic mastery array) | `dsoageofheroes/libgff` `include/gff/psionic.h` | MIT |
-| Per-game RDFF schemas (DS1 vs DS2 character record byte layouts) — planned for save-inspect v0.2.0 | `dsoageofheroes/libsoloscuro` `src/dude.c` + `src/entity.c` + `src/stats.c` + `inc/soloscuro/*.h` | no LICENSE file (single-author dsoageofheroes org; treated as honor-system MIT pending confirmation) |
+| `ds_character_t` (72-byte computed; DS1 on-disk is 71 bytes per actual save files): current_xp / high_xp / base_hp / high_hp / base_psp / id / legal_class / race / gender / alignment / stats (str/dex/con/intel/wis/cha) / real_class[3] / level[3] / base_ac / base_move / magic_resistance / num_blows / num_attacks[3] / num_dice[3] / num_sides[3] / num_bonuses[3] / saving_throw[5] / allegiance / size / spell_group / high_level[3] / sound_fx / attack_sound / psi_group / palette | `dsoageofheroes/libgff` `include/gff/object.h` `ds_character_s` | MIT |
+| `ds1_combat_t` (58 bytes): hp / psp / char_index / id / ready_item_index / weapon_index / pack_index / data_block[8] / special_attack / special_defense / icon / ac / move / status / allegiance / data / thac0 / priority / flags / stats / name[18] | `dsoageofheroes/libgff` `include/gff/object.h` `_ds_combat_t` | MIT |
+| `ds1_item_t` (~23 bytes computed; DS1 on-disk is 21): id / quantity / next / value / pack_index / item_index / icon / charges / special / slot / name_idx / bonus / priority / data0 | `dsoageofheroes/libgff` `include/gff/item.h` `ds1_item_s` | MIT (annotated "Not confirmed at all" by upstream) |
+| Positional sub-block reader for CHAR bodies (combat → character → item × N, terminated by RDFF_END): the engine reads sub-blocks by position, not by `rdff.type`. The first sub-block's `blocknum` gives the total count. | `dsoageofheroes/libsoloscuro` `src/entity.c` `sol_entity_load_from_gff` | MIT |
+| `gff_race_e` (MONSTER / HUMAN / DWARF / ELF / HALFELF / HALFGIANT / HALFLING / MUL / THRIKREEN) | `dsoageofheroes/libgff` `include/gff/object.h` `enum gff_race_e` | MIT |
+| Item slot enum (ARM / AMMO / MISSILE / HAND0 / FINGER0 / WAIST / LEGS / HEAD / NECK / CHEST / HAND1 / FINGER1 / CLOAK / FOOT) | `dsoageofheroes/libgff` `include/gff/item.h` slot enum | MIT |
+| DS2 RDFF schemas (combat 49 bytes, character 66 bytes) — defer; v0.2.0 surfaces character names heuristically and emits raw hex for DS2 sub-blocks rather than producing wrong-looking fields. | `dsoageofheroes/libsoloscuro` (TBD) | TBD |
 
 **OpenDS code that consumes the above:**
 - `tools/save-inspect/save-inspect.py` — `decode_rdff_header`, PSIN / PSST branches in `decode_chunk`

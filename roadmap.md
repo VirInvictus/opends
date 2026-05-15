@@ -197,10 +197,12 @@ look at the maps directly.
 - [x] Read `CHARSAVE.GFF` and dump as JSON. (save-inspect
       v0.1.0; decodes PSIN/PSST/TEXT plus the CHAR RDFF header;
       opaque hex preview for CHAR body, SPST, CACT, PREF, GREQ.)
-- [ ] Decode CHAR record body per DS1 / DS2 RDFF schemas
-      (stats, inventory, spell slots). Per-game work blocked
-      on `docs/file-formats.md` §2's per-game schema research.
-      (save-inspect v0.2.0)
+- [x] Decode CHAR record body per DS1 RDFF schemas (combat,
+      character, item sub-blocks): hp/psp/stats/AC/THAC0, race/
+      alignment/class/level enums, item slots and indices.
+      (save-inspect v0.2.0; DS1 fully decoded, DS2 surfaces
+      names + raw hex as a heuristic until DS2 schema is
+      fully RE'd in v0.3.0+.)
 - [ ] Diff two saves: party state, inventory, flags.
       (save-inspect v0.3.0)
 - [x] Tagged: `save-inspect-v0.1.0`. (this release)
