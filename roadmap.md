@@ -179,11 +179,11 @@ look at the maps directly.
 - [x] Search-friendly: `dialog-extract --grep "Magnolia"` finds
       chunks whose inline strings match the pattern.
       (dialog-extract v0.1.0.)
-- [ ] Resolve text-id references (`gpl_get_gstr(id)`,
+- [x] Resolve text-id references (`gpl_get_gstr(id)`,
       `gpl_get_lstr(id)`) into the matching TEXT chunks for a
-      complete dialog set. Currently only inline strings are
-      captured. (dialog-extract v0.2.0; depends on gpl-disasm
-      v0.2.0 + cross-chunk reference resolution.)
+      complete dialog set. (dialog-extract v0.2.0: GSTRING refs
+      resolve against `--text-source RESOURCE.GFF`; LSTRING refs
+      are surfaced but await per-region resolution in v0.3.0.)
 - [ ] Output a richer `{ speaker, lines, branches, gpl_refs }`
       tree once instruction boundaries from gpl-disasm v0.2.0
       let us correlate strings to the surrounding control flow.

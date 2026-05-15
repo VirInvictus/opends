@@ -16,7 +16,7 @@ implementation-language split.
 | [`gff-edit`](gff-edit/)                  | Rust   | 0.4.0   | Pure-Rust GFF read/write (library `gff_edit` + CLI `gff-cat`). Read/write + bulk extract + text codec + JSON + catalogue.|
 | [`gpl-disasm`](gpl-disasm/)              | Rust   | 0.2.0   | GPL bytecode disassembler. v0.2 ports libgff's `gpl_read_number` + the 7-bit packed-string decoder, so output is one row per instruction with decoded parameters. `--json` mode for downstream tools.|
 | [`save-inspect`](save-inspect/)          | Python | 0.1.0   | Dump a CHARSAVE.GFF as JSON. Decodes PSIN/PSST/TEXT and the CHAR RDFF header; opaque hex preview for CHAR body, SPST, CACT, PREF, GREQ.|
-| [`dialog-extract`](dialog-extract/)      | Python | 0.1.0   | Pull GPL inline strings (NPC dialog, prompts) from GPL/MAS chunks via heuristic IMMED_STRING scan + 7-bit decoder.|
+| [`dialog-extract`](dialog-extract/)      | Python | 0.2.0   | Pull GPL strings (NPC dialog, prompts, NPC names) from GPL/MAS chunks. v0.2 consumes `gpl-disasm --json` instruction-aware; `--text-source RESOURCE.GFF` resolves GSTRING text-id references.|
 
 ## Planned
 

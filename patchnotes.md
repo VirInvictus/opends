@@ -4,6 +4,47 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/dialog-extract/` v0.2.0** ships an instruction-aware
+  rewrite that consumes `gpl-disasm --json` (gpl-disasm v0.2.0+).
+  The heuristic byte-scan from v0.1.0 is retired; byte boundaries
+  are now real, eliminating false positives, and text-id
+  references resolve via a new `--text-source <RESOURCE.GFF>`
+  flag.
+  - **New surface**: `GSTRING[id]` references in
+    `gpl print string`, `gpl menu`, etc. now resolve to the
+    corresponding TEXT chunk in the sibling GFF. NPC names
+    ("Garn", "Dag", "Halton", "Sarthana") and dialog snippets
+    that lived in `RESOURCE.GFF` rather than inline now surface
+    in the JSON.
+  - **Surfaced opcodes**: `0x2C gpl log`, `0x42 gpl input string`,
+    `0x48 gpl menu`, `0x4F gpl print string`,
+    `0x5A gpl string compare`, `0x0A gpl string copy`.
+  - **`LSTRING[id]` refs** are captured with `text_id` but
+    emitted as `unresolved: true`; resolving them needs a
+    per-region / per-script text source that v0.3.0+ will add.
+  - **Output shape** gains `source` (`"inline"` /
+    `"text:gstring"` / `"text:lstring"`), `text_id` (for refs),
+    `unresolved` (true when a ref couldn't be resolved),
+    `opcode` and `opcode_name` (the consuming opcode), and
+    per-chunk `aligned` (mirrors gpl-disasm's `aligned` flag so
+    consumers can filter on best-effort chunks).
+  - **Empirical**: DS1 GPLDATA = 17,560 strings (up from
+    13,938); DS2 GPLDATA = 27,857 (up from 22,431). Combined
+    **45,417** (up from 36,369). The v0.1 inline count was
+    slightly higher than v0.2's inline count because v0.1's
+    heuristic accepted misaligned-byte garbage decodes; v0.2
+    drops those while picking up far more legitimate strings
+    via GSTRING resolution.
+  - Stdlib-only Python. Shells out to `gpl-disasm --all -o
+    <tmpdir> --json` to produce per-chunk JSON files, and to
+    `gff-cat extract --all` (only when `--text-source` is used)
+    to load the TEXT chunks.
+  - CLI: `dialog-extract <file> [--pretty] [-o <out>]
+    [--grep <regex>] [--text-source <gff>] [--gpl-disasm <path>]
+    [--gff-cat <path>]`. Renamed `--gff-cat` semantics: it's now
+    a fallback locator for the text-source workflow, no longer
+    the primary extractor.
+  - Roadmap Phase 4 dialog-extract v0.2.0 box ticked.
 - **`.dso-online/` reference checkout** lands.
   [`greg-kennedy/DarkSunOnline`](https://github.com/greg-kennedy/DarkSunOnline)
   cloned at depth 1 (~2.3 MB) to `.dso-online/` (gitignored).
