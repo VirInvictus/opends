@@ -1,0 +1,50 @@
+# gpl-disasm symbol catalogue — function entry names.
+#
+# Each [[function]] table names one entry point in one chunk. The
+# resulting label decoration appears in both text and JSON output:
+#
+#   entry_0x0001 (iniya_dialog_start):
+#
+# Schema (all fields required unless marked optional):
+#
+#   [[function]]
+#   file = "GPLDATA.GFF"           # source GFF basename (case-insensitive)
+#   kind = "GPL "                  # 4-char FOURCC including trailing space
+#   chunk_id = 1                   # integer chunk id
+#   offset = 0x0001                # entry-point byte offset in chunk
+#   name = "iniya_dialog_start"    # display name
+#   notes = "..."                  # optional: provenance / rationale
+#
+# Curation rule: only commit rows where the function's purpose has
+# been cross-checked against the actual bytecode behavior or
+# in-game observation. Reading the chunk's dialog strings is
+# usually enough to identify NPC-dialog functions. Mechanical
+# functions (combat triggers, etc.) need stronger verification.
+
+[[function]]
+file = "GPLDATA.GFF"
+kind = "GPL "
+chunk_id = 1
+offset = 0x0001
+name = "iniya_first_meeting"
+notes = """
+The "Free! Finally free! I will destroy you all!" opener at \
+offset 0x0017 is unambiguously Iniya, the imprisoned mage NPC in \
+the DS1 starting cell-block. This entry point is the first \
+encounter dialog handler (the player approaching Iniya's cell \
+for the first time).
+"""
+
+[[function]]
+file = "GPLDATA.GFF"
+kind = "GPL "
+chunk_id = 1
+offset = 0x0095
+name = "iniya_dialog_menu"
+notes = """
+Reached after the initial "I will destroy you all" / "Please help \
+me" greeting sequence (which is itself prefaced by a HUMAN-class \
+recognition check). This entry hosts the recurring dialog menu \
+("How can I free you?", "What is a heart-crystal?", etc.) the \
+player triggers on subsequent talks with Iniya.
+"""

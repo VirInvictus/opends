@@ -4,6 +4,41 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gpl-disasm/` v0.4.0** ships symbol-import plumbing.
+  Hand-curated TOML catalogues at `tools/gpl-disasm/syms/`
+  decorate function-entry labels in both text and JSON output.
+  When a `functions.toml` row matches a chunk's entry point,
+  the rendered label becomes `entry_0xNNNN (function_name)`.
+  Downstream consumers (`dialog-extract` in particular) inherit
+  the enriched labels through the JSON without code changes.
+  - **Schema**: `syms/functions.toml` is a list of `[[function]]`
+    tables with `file` (GFF basename, case-insensitive),
+    `kind` (4-char FOURCC), `chunk_id`, `offset`, `name`, and
+    optional `notes`. `syms/opcodes.toml` reserves the opcode-
+    override slot for v0.4.1+; the loader reads it but the
+    renderer does not yet rewrite mnemonics.
+  - **CLI**: new `--syms <dir>` flag (explicit catalogue path)
+    and `--no-syms` flag (disable lookup entirely). Default
+    resolves `tools/gpl-disasm/syms/` next to the binary by
+    walking up the workspace tree.
+  - **Starter catalogue**: 2 verified entries for DS1 GPLDATA
+    chunk 1 (`iniya_first_meeting` at 0x0001 and
+    `iniya_dialog_menu` at 0x0095), seeded from the
+    unambiguous "Free! Finally free!" cross-reference. The
+    catalogue grows over time as more function purposes are
+    cross-checked.
+  - **New types** (`lib.rs`): `Symbols`, `OpcodeSymbol`,
+    `FunctionSymbol`, `SymbolsLoadError`, plus
+    `Symbols::load_from_dir`, `Symbols::function_name`, and
+    `Symbols::apply_to_labels` for mutating a `Cfg` in place.
+  - **Tests**: 2 new unit tests
+    (`symbols_apply_to_entry_labels_only`,
+    `symbols_case_insensitive_file_match`); gpl-disasm test
+    count: 38 unit + 2 integration.
+  - **Workspace**: adds `toml = "0.8"` as a workspace dep
+    (pre-approved per spec §7a as format I/O).
+  - Roadmap Phase 3 v0.4.0 symbol-import bullet ticked.
+
 - **`tools/dialog-extract/` v0.3.0** adds a CFG-aware
   `dialog_tree` field per chunk alongside the existing flat
   `strings` list. Built on top of `gpl-disasm v0.3.1`'s CFG. The

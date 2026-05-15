@@ -38,9 +38,11 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
+use std::fs;
 use std::io::{self, Write};
+use std::path::Path;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 // ---------- GPL_* constants (from libgff include/gpl/var.h) ----------
 
@@ -839,6 +841,175 @@ pub struct CrossChunkCall {
 pub struct UnresolvedEdge {
     pub from_offset: usize,
     pub reason: &'static str,
+}
+
+// ---------- Symbols (v0.4.0) ----------
+
+/// Hand-curated symbol catalogue. Seeded from the DSO v1.0
+/// client's debug symbols (greg-kennedy/DarkSunOnline,
+/// `tools/symbols.txt`) and cross-checked against game content.
+/// Each row is verified before it lands here; see
+/// `docs/dso-symbols.md` for the curation surface.
+///
+/// v0.4.0 covers function-entry naming (chunk + offset → name).
+/// Opcode-mnemonic overrides and global-variable naming land in
+/// v0.4.1+.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Symbols {
+    /// Opcode-byte → DSO-derived display name. Pre-populated via
+    /// `tools/gpl-disasm/syms/opcodes.toml`. v0.4.0 loads the map
+    /// but does not yet rewrite mnemonics on output.
+    #[serde(default)]
+    pub opcodes: BTreeMap<String, OpcodeSymbol>,
+    /// Function entries by `(file_basename, chunk_kind, chunk_id,
+    /// offset)` → name. The file basename matches the source GFF
+    /// (e.g. `GPLDATA.GFF`); chunk_kind is `"GPL "` or `"MAS "`
+    /// (4-char FOURCC, trailing space preserved); chunk_id is the
+    /// integer id; offset is the function entry's byte offset in
+    /// the chunk.
+    #[serde(default)]
+    pub functions: Vec<FunctionSymbol>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OpcodeSymbol {
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dso_source: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub verified_by: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FunctionSymbol {
+    /// Source GFF basename, e.g. `GPLDATA.GFF`. Matched
+    /// case-insensitively.
+    pub file: String,
+    /// Chunk FOURCC including any trailing space, e.g. `GPL ` or
+    /// `MAS `.
+    pub kind: String,
+    pub chunk_id: i32,
+    pub offset: usize,
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
+}
+
+impl Symbols {
+    /// Load `Symbols` from a directory containing `opcodes.toml`
+    /// and `functions.toml`. Missing files are silently treated as
+    /// empty (the loader returns a sparse `Symbols` rather than
+    /// erroring). Malformed TOML is a hard error.
+    pub fn load_from_dir(dir: &Path) -> Result<Self, SymbolsLoadError> {
+        let mut syms = Symbols::default();
+        let opcodes_path = dir.join("opcodes.toml");
+        if opcodes_path.is_file() {
+            let body = fs::read_to_string(&opcodes_path).map_err(|e| {
+                SymbolsLoadError::Io {
+                    path: opcodes_path.display().to_string(),
+                    source: e,
+                }
+            })?;
+            let parsed: OpcodesFile =
+                toml::from_str(&body).map_err(|e| SymbolsLoadError::Parse {
+                    path: opcodes_path.display().to_string(),
+                    source: e,
+                })?;
+            syms.opcodes = parsed.opcodes;
+        }
+        let functions_path = dir.join("functions.toml");
+        if functions_path.is_file() {
+            let body = fs::read_to_string(&functions_path).map_err(|e| {
+                SymbolsLoadError::Io {
+                    path: functions_path.display().to_string(),
+                    source: e,
+                }
+            })?;
+            let parsed: FunctionsFile =
+                toml::from_str(&body).map_err(|e| SymbolsLoadError::Parse {
+                    path: functions_path.display().to_string(),
+                    source: e,
+                })?;
+            syms.functions = parsed.function.unwrap_or_default();
+        }
+        Ok(syms)
+    }
+
+    /// Look up a function name for a specific (file, kind, chunk_id,
+    /// offset). File matching is case-insensitive on basename; kind
+    /// matching is byte-exact on the 4-char FOURCC (caller normalises).
+    pub fn function_name(
+        &self,
+        file_basename: &str,
+        kind: &str,
+        chunk_id: i32,
+        offset: usize,
+    ) -> Option<&str> {
+        let target = file_basename.to_ascii_lowercase();
+        self.functions
+            .iter()
+            .find(|f| {
+                f.file.to_ascii_lowercase() == target
+                    && f.kind == kind
+                    && f.chunk_id == chunk_id
+                    && f.offset == offset
+            })
+            .map(|f| f.name.as_str())
+    }
+
+    /// Apply function-name decorations to `cfg.labels` in place.
+    /// Each matching entry-point label becomes `entry_0xNNNN
+    /// (name)`. Non-entry labels are left alone. JSON consumers
+    /// (notably `dialog-extract`) pick up the enriched form
+    /// automatically.
+    pub fn apply_to_labels(
+        &self,
+        cfg: &mut Cfg,
+        file_basename: &str,
+        kind: &str,
+        chunk_id: i32,
+    ) {
+        if self.functions.is_empty() {
+            return;
+        }
+        let entry_set: BTreeSet<usize> = cfg.entry_points.iter().copied().collect();
+        for (offset, name) in cfg.labels.iter_mut() {
+            if !entry_set.contains(offset) {
+                continue;
+            }
+            if let Some(sym) = self.function_name(file_basename, kind, chunk_id, *offset) {
+                *name = format!("{name} ({sym})");
+            }
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct OpcodesFile {
+    #[serde(default)]
+    opcodes: BTreeMap<String, OpcodeSymbol>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct FunctionsFile {
+    #[serde(default)]
+    function: Option<Vec<FunctionSymbol>>,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum SymbolsLoadError {
+    #[error("reading {path}: {source}")]
+    Io {
+        path: String,
+        #[source]
+        source: io::Error,
+    },
+    #[error("parsing {path}: {source}")]
+    Parse {
+        path: String,
+        #[source]
+        source: toml::de::Error,
+    },
 }
 
 // ---------- Decoder ----------
@@ -2756,6 +2927,70 @@ mod tests {
         let result = disassemble(&[0xFF, 0x00]);
         assert!(!result.aligned);
         assert!(result.cfg.is_none());
+    }
+
+    #[test]
+    fn symbols_apply_to_entry_labels_only() {
+        // Build a tiny CFG with one entry point at offset 0 and
+        // one non-entry leader at offset 5.
+        let instrs = vec![
+            fake_instr(0, 0x12, Some(5)),  // jump to 5 (entry-style synthetic)
+            fake_instr(3, 0x67, None),
+            fake_instr(5, 0x15, None),     // local ret
+        ];
+        let (mut cfg, _) = build_cfg(&instrs, 6);
+        assert_eq!(cfg.labels.get(&0).map(String::as_str), Some("entry_0x0000"));
+        let syms = Symbols {
+            opcodes: BTreeMap::new(),
+            functions: vec![
+                FunctionSymbol {
+                    file: "TEST.GFF".to_string(),
+                    kind: "GPL ".to_string(),
+                    chunk_id: 7,
+                    offset: 0,
+                    name: "test_function".to_string(),
+                    notes: None,
+                },
+                // Non-entry leader; should NOT be decorated.
+                FunctionSymbol {
+                    file: "TEST.GFF".to_string(),
+                    kind: "GPL ".to_string(),
+                    chunk_id: 7,
+                    offset: 5,
+                    name: "should_not_apply".to_string(),
+                    notes: None,
+                },
+            ],
+        };
+        syms.apply_to_labels(&mut cfg, "TEST.GFF", "GPL ", 7);
+        assert_eq!(
+            cfg.labels.get(&0).map(String::as_str),
+            Some("entry_0x0000 (test_function)")
+        );
+        // Non-entry leader at 5 stays untouched.
+        assert_eq!(
+            cfg.labels.get(&5).map(String::as_str),
+            Some("label_0x0005")
+        );
+    }
+
+    #[test]
+    fn symbols_case_insensitive_file_match() {
+        let syms = Symbols {
+            opcodes: BTreeMap::new(),
+            functions: vec![FunctionSymbol {
+                file: "GPLDATA.GFF".to_string(),
+                kind: "GPL ".to_string(),
+                chunk_id: 1,
+                offset: 1,
+                name: "n".to_string(),
+                notes: None,
+            }],
+        };
+        assert_eq!(syms.function_name("gpldata.gff", "GPL ", 1, 1), Some("n"));
+        assert_eq!(syms.function_name("GPLDATA.GFF", "GPL ", 1, 1), Some("n"));
+        assert_eq!(syms.function_name("OTHER.GFF", "GPL ", 1, 1), None);
+        assert_eq!(syms.function_name("GPLDATA.GFF", "MAS ", 1, 1), None);
     }
 
     #[test]

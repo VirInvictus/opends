@@ -1,0 +1,21 @@
+# gpl-disasm symbol catalogue — opcode names.
+#
+# Format:
+#
+#   [opcodes."0xNN"]
+#   name = "..."                         # required: display name
+#   dso_source = "DSO::gpl_op_..."       # optional: DSO v1.0 symbol
+#   verified_by = "..."                   # optional: how the mapping was verified
+#
+# The default mnemonics in `gpl-disasm`'s built-in OPCODES table
+# come from libgff's `gpl_commands` and are already battle-tested;
+# entries here override those names for display purposes. Add a
+# row only after the DSO name is cross-checked against actual
+# bytecode behavior.
+#
+# v0.4.0 loads this table but does NOT yet apply the overrides to
+# mnemonics on output. v0.4.1+ will wire them through. Curation
+# can start now so the names are ready when the renderer lands.
+#
+# Empty for v0.4.0. Populate from `docs/dso-symbols.md` as rows
+# are hand-verified.

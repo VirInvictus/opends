@@ -14,6 +14,47 @@ chunks so modders can read what a script does.
 
 Depends on `gff-edit` for GFF I/O.
 
+## What `gpl-disasm v0.4.0` ships
+
+**Symbol import plumbing.** Hand-curated catalogues at
+`tools/gpl-disasm/syms/` decorate function-entry labels in both
+text and JSON output. `entry_0x0001` becomes
+`entry_0x0001 (iniya_first_meeting)` when the matching row is
+present in `functions.toml`. Downstream consumers
+(`dialog-extract` etc.) pick up the enriched labels through the
+JSON automatically.
+
+TOML schemas (see the files themselves for the full comments):
+
+```toml
+# syms/opcodes.toml — opcode mnemonic overrides (loaded but not
+# yet applied; v0.4.1+ work)
+[opcodes."0x4F"]
+name = "print_string_v2"
+dso_source = "DSO::gpl_op_print_string"
+
+# syms/functions.toml — function entry names
+[[function]]
+file = "GPLDATA.GFF"
+kind = "GPL "            # 4-char FOURCC, trailing space preserved
+chunk_id = 1
+offset = 0x0001
+name = "iniya_first_meeting"
+notes = "Reasoning / provenance"
+```
+
+New CLI flags:
+
+- `--syms <dir>` — explicit catalogue path. Defaults to
+  `tools/gpl-disasm/syms/` next to the binary (walks up to 8
+  directories looking for it).
+- `--no-syms` — disable the catalogue lookup entirely (useful
+  for diff-friendly output when curation is in flux).
+
+Starter catalogue: two verified entries for DS1 GPLDATA chunk 1
+(Iniya's dialog). `opcodes.toml` ships empty pending v0.4.1+
+mnemonic-override wiring.
+
 ## What `gpl-disasm v0.3.1` ships
 
 **`gpl else` edge fix.** v0.3.0's CFG routed the if-not-taken
@@ -191,13 +232,18 @@ gpl-disasm .games/ds1/GPLDATA.GFF --kind GPL --id 9 --cfg - | dot -Tpng -o chunk
   entry-point discovery, labeled jump targets, Graphviz DOT
   output. Initial corpus: 71,403 edges, 1,384 cross-chunk
   call sites.
-- **v0.3.1 (current)** — `gpl else` edge fix. v0.3.0 routed
-  if-not-taken edges to the else opcode itself, missing the
-  else-body on 27% of corpus conditionals. v0.3.1 redirects
-  past the else opcode and adds a `target_aliases` map for
-  raw-target-to-label rendering. 66,028 edges resolved on the
-  corpus (the ~5,400 difference is Fallthrough edges absorbed
-  into the now-merged blocks). See patchnotes for details.
+- v0.3.1 — `gpl else` edge fix. v0.3.0 routed if-not-taken
+  edges to the else opcode itself, missing the else-body on
+  27% of corpus conditionals. v0.3.1 redirects past the else
+  opcode and adds a `target_aliases` map for raw-target-to-
+  label rendering. 66,028 edges resolved on the corpus.
+- **v0.4.0 (current)** — symbol import plumbing. Hand-curated
+  `tools/gpl-disasm/syms/{opcodes,functions}.toml` decorate
+  function-entry labels in both text and JSON output. New
+  `--syms <dir>` and `--no-syms` flags. Starter catalogue ships
+  with 2 verified entries (DS1 chunk 1 Iniya); curation grows
+  the file over time without code changes. v0.4.1+ extends the
+  loader to opcode mnemonic overrides and variable naming.
 - v0.4.0+ — DSO debug-symbol import; inter-chunk CFG following
   `global sub` edges; integration with `opcode-fuzz` (Phase 5)
   for opcode discovery.

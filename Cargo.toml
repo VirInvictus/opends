@@ -27,6 +27,10 @@ thiserror = "2"
 # Format I/O (per spec §7a: pre-approved when format I/O is needed)
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# TOML I/O for hand-curated catalogues (`tools/gpl-disasm/syms/`,
+# patch manifests, etc.). Per spec §7a, format-I/O deps are
+# pre-approved when a specific tool needs them.
+toml = "0.8"
 # Image format I/O for image-extract (PNG palette-indexed output).
 # Per spec §7a, pre-approved as format I/O when a specific tool
 # needs it (image-extract v0.1.0). Pulls in flate2 + miniz_oxide

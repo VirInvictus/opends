@@ -156,9 +156,13 @@ runs through it.
       COMPLEX_*, `gpl_setrecord`, complex-write of
       `gpl_load_variable`) closed in v0.2.1. **100% corpus
       alignment on all 600 DS1+DS2 GPL/MAS chunks.**
-- [ ] Cross-reference with `the-dark-lens` and DSO v1.0 debug
+- [x] Cross-reference with `the-dark-lens` and DSO v1.0 debug
       symbols; emit a `syms.toml` we curate by hand and grow
-      over time. (gpl-disasm v0.4.0+)
+      over time. (gpl-disasm v0.4.0: `tools/gpl-disasm/syms/`
+      with `opcodes.toml` + `functions.toml` schemas; function-
+      entry decoration wired through text and JSON output;
+      starter catalogue ships 2 verified entries. v0.4.1+ adds
+      opcode-name overrides and variable naming.)
 
 **Done when**: `gpl-disasm extracted/ds1/GPLDATA.GFF` produces
 output that lets a reader locate a quest-script function by

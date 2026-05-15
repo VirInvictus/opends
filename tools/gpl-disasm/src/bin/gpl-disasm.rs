@@ -6,7 +6,8 @@ use anyhow::{Context, Result, anyhow};
 use clap::Parser;
 use gff_edit::{FourCC, Gff};
 use gpl_disasm::{
-    Cfg, DisasmResult, EdgeKind, Expression, Instruction, OPCODES, disassemble, write_dot,
+    Cfg, DisasmResult, EdgeKind, Expression, Instruction, OPCODES, Symbols, disassemble,
+    write_dot,
 };
 
 #[derive(Parser)]
@@ -62,6 +63,19 @@ struct Cli {
     /// `cfg` field is always present).
     #[arg(long = "no-labels")]
     no_labels: bool,
+    /// Directory containing hand-curated `opcodes.toml` /
+    /// `functions.toml`. When provided, function-entry labels in
+    /// both text and JSON output are decorated with the matching
+    /// symbol name (`entry_0x0001 (iniya_dialog_start)`). Default:
+    /// `tools/gpl-disasm/syms/` next to the binary if present,
+    /// else no symbols are loaded.
+    #[arg(long)]
+    syms: Option<PathBuf>,
+    /// Disable the default `tools/gpl-disasm/syms/` lookup. Useful
+    /// for diff-friendly output when the curation catalogue is in
+    /// flux.
+    #[arg(long = "no-syms")]
+    no_syms: bool,
 }
 
 fn main() -> Result<()> {
@@ -79,6 +93,12 @@ fn main() -> Result<()> {
         .file
         .ok_or_else(|| anyhow!("file path is required (or pass --opcodes)"))?;
     let gff = Gff::open(&file).with_context(|| format!("opening {}", file.display()))?;
+    let file_basename = file
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("")
+        .to_string();
+    let symbols = load_symbols(cli.syms.as_deref(), cli.no_syms)?;
 
     if cli.all {
         let out_dir = cli
@@ -98,7 +118,12 @@ fn main() -> Result<()> {
                 continue;
             }
             let bytes = gff.read_chunk(c);
-            let result = disassemble(bytes);
+            let mut result = disassemble(bytes);
+            if let (Some(syms), Some(cfg)) = (symbols.as_ref(), result.cfg.as_mut()) {
+                let kind_str_padded =
+                    String::from_utf8_lossy(c.kind.as_bytes()).into_owned();
+                syms.apply_to_labels(cfg, &file_basename, &kind_str_padded, c.id);
+            }
             if result.aligned {
                 aligned_count += 1;
             }
@@ -155,7 +180,11 @@ fn main() -> Result<()> {
     let bytes = gff
         .read(fourcc, id)
         .ok_or_else(|| anyhow!("no chunk '{}' id={} in {}", fourcc, id, file.display()))?;
-    let result = disassemble(bytes);
+    let mut result = disassemble(bytes);
+    if let (Some(syms), Some(cfg)) = (symbols.as_ref(), result.cfg.as_mut()) {
+        let kind_str_padded = String::from_utf8_lossy(fourcc.as_bytes()).into_owned();
+        syms.apply_to_labels(cfg, &file_basename, &kind_str_padded, id);
+    }
 
     if cli.entries {
         let body = result
@@ -356,6 +385,59 @@ fn branch_target_param(instr: &Instruction) -> Option<(usize, usize)> {
 
 #[allow(dead_code)] // keep `Cfg` and `EdgeKind` re-exports compile-time-reachable
 fn _ensure_imports(_c: &Cfg, _e: EdgeKind) {}
+
+/// Resolve the symbols directory and load the catalogue. Precedence:
+/// 1. `--no-syms`: skip entirely (returns `None`).
+/// 2. `--syms <path>`: required to exist; loads from there.
+/// 3. Default: `tools/gpl-disasm/syms/` next to the running binary
+///    (one workspace level up from `target/release/`), if present.
+fn load_symbols(
+    explicit: Option<&std::path::Path>,
+    no_syms: bool,
+) -> Result<Option<Symbols>> {
+    if no_syms {
+        return Ok(None);
+    }
+    let dir = if let Some(p) = explicit {
+        if !p.is_dir() {
+            return Err(anyhow!(
+                "--syms directory does not exist: {}",
+                p.display()
+            ));
+        }
+        Some(p.to_path_buf())
+    } else {
+        default_syms_dir()
+    };
+    let Some(dir) = dir else {
+        return Ok(None);
+    };
+    let syms = Symbols::load_from_dir(&dir)
+        .with_context(|| format!("loading symbols from {}", dir.display()))?;
+    if syms.opcodes.is_empty() && syms.functions.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(syms))
+}
+
+/// Walk up from the binary's directory looking for a sibling
+/// `tools/gpl-disasm/syms/` directory. Returns `None` if not
+/// found, which is the expected case when running outside the
+/// workspace.
+fn default_syms_dir() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    let mut dir = exe.parent()?.to_path_buf();
+    for _ in 0..8 {
+        let candidate = dir.join("tools/gpl-disasm/syms");
+        if candidate.is_dir() {
+            return Some(candidate);
+        }
+        if !dir.pop() {
+            break;
+        }
+    }
+    None
+}
 
 /// Parse a 3- or 4-character FOURCC string, padding with a
 /// trailing space for 3-char inputs (DOS convention: `GPL` →
