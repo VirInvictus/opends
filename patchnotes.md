@@ -4,6 +4,19 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **[`CREDITS.md`](CREDITS.md)** lands as a per-feature
+  attribution manifest. Each OpenDS feature (FileHeader, TOC
+  layout, segmented chunk resolution, writer policy, chunk-type
+  catalogue, GPL opcode catalogue, GPL_* constants, 7-bit
+  packed-string decoder, RDFF header, PSIN/PSST structs)
+  maps to the specific upstream file or function it was
+  ported from in `dsoageofheroes/libgff`,
+  `dsoageofheroes/soloscuro-archive`, or
+  `JohnGlassmyer/dsun_music`. README.md Credits section
+  expanded to point at CREDITS.md. Inline citations added
+  alongside save-inspect's PSIN / PSST / RDFF-header
+  decoders. Existing inline citations in gff-edit, gpl-disasm,
+  and dialog-extract verified.
 - **`tools/dialog-extract/` v0.1.0** ships (new Python tool;
   Phase 4 Goal-1 deliverable). Pulls inline NPC dialog strings
   from `GPL ` and `MAS ` chunks as JSON.

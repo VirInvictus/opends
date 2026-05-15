@@ -92,16 +92,26 @@ their own.
 Standing on the shoulders of every prior attempt:
 
 - **paulofthewest** and the [dsoageofheroes](https://github.com/dsoageofheroes)
-  organization (`libgff`, `soloscuro` and family) — the deepest
-  public GFF reverse-engineering work; OpenDS would not be
-  feasible without it.
+  organization (`libgff`, `soloscuro-archive`, `libsoloscuro`, and
+  family) — the deepest public GFF and GPL reverse-engineering
+  work. The GFF on-disk layout, the 129-entry GPL opcode
+  catalogue, the GPL_* constants, and the 7-bit packed inline
+  string decoder all came from these projects. OpenDS would
+  not be feasible without them.
 - **John Glassmyer** ([dsun_music](https://github.com/JohnGlassmyer/dsun_music))
-  — the GFF *writer* that makes data patches possible.
+  — the GFF *writer* policy (in-place if it fits, append
+  otherwise) and the GFFI segmented-chunk cross-reference
+  layout (`SecondaryGffiTable`) come from `GffFile.java`.
 - **Greg Kennedy** ([DarkSunOnline](https://github.com/greg-kennedy/DarkSunOnline))
   — DSO protocol RE; the v1.0 client's debug symbols
-  cross-reference WotR engine internals.
+  cross-reference WotR engine internals. Future reference for
+  symbol curation in `gpl-disasm`.
 
-See [`docs/upstream-projects.md`](docs/upstream-projects.md) for
-the full upstream catalog. If you've worked on Dark Sun
-reverse-engineering and aren't listed, open an issue — we'd
-rather over-credit than under-credit.
+[`CREDITS.md`](CREDITS.md) is the per-feature attribution
+manifest: it maps each OpenDS feature to the specific upstream
+file or function it was ported from.
+[`docs/upstream-projects.md`](docs/upstream-projects.md) is the
+broader catalogue of every upstream project we read or might
+read. If you've worked on Dark Sun reverse-engineering and
+aren't listed, open an issue — we'd rather over-credit than
+under-credit.

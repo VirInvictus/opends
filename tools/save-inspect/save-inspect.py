@@ -97,7 +97,11 @@ def parse_gff(path: Path) -> dict[str, Any]:
 
 
 def decode_rdff_header(payload: bytes) -> dict[str, Any]:
-    """Decode the 10-byte gff_rdff_header_t at the start of a record."""
+    """Decode the 10-byte gff_rdff_header_t at the start of a record.
+
+    Layout from dsoageofheroes/libgff include/gff/rdff.h
+    `gff_rdff_header_t` (MIT). See CREDITS.md.
+    """
     if len(payload) < 10:
         return {"_truncated": True, "raw_bytes": len(payload)}
     (load_action, blocknum, rdff_type, index, from_, length) = struct.unpack_from(
@@ -145,7 +149,8 @@ def decode_chunk(chunk: dict[str, Any]) -> dict[str, Any]:
         base["body_length"] = len(body)
         base["body_hex_preview"] = hex_preview(body)
     elif kind == "PSIN":
-        # gff_psin_t = uint8_t types[7].
+        # gff_psin_t = uint8_t types[7] — dsoageofheroes/libgff
+        # include/gff/psionic.h (MIT). See CREDITS.md.
         if len(payload) >= 7:
             base["types"] = list(payload[:7])
             if len(payload) > 7:
@@ -154,7 +159,9 @@ def decode_chunk(chunk: dict[str, Any]) -> dict[str, Any]:
             base["truncated"] = True
             base["raw_hex"] = hex_preview(payload)
     elif kind == "PSST":
-        # gff_psionic_list_t = uint8_t psionics[34].
+        # gff_psionic_list_t = uint8_t psionics[34] —
+        # dsoageofheroes/libgff include/gff/psionic.h (MIT).
+        # See CREDITS.md.
         if len(payload) >= 34:
             base["psionics"] = list(payload[:34])
             if len(payload) > 34:
