@@ -82,49 +82,69 @@ a few weeks.
 
 ## 5. `gpl-disasm` design
 
-Located at `tools/gpl-disasm/` (TBD). Python 3 first; can be
-ported to Rust if we ever spin up the engine project.
+Lives at `tools/gpl-disasm/` (Rust crate; workspace member).
+Depends on `gff-edit` for GFF I/O. Per [`../spec.md`](../spec.md)
+§7a, heavy-lifting tools are Rust; `gpl-disasm` is the
+keystone tool that everything else in this corner relies on.
 
 ### Inputs
 
-- A GFF file (we extract `GPL ` / `MAS ` chunks ourselves rather
-  than going through `gff-tool`, so we can iterate quickly).
-- Optional: a symbol file (`syms.toml`) mapping known function
-  IDs to names — bootstrapped from greg-kennedy's DSO debug
-  symbols and grown by hand.
+- A GFF file. We use the `gff-edit` library to find `GPL ` /
+  `MAS ` chunks by `(kind, id)` and borrow their bytes.
+- Optional in later versions: a symbol file (`syms.toml`)
+  mapping known function ids to names, bootstrapped from
+  greg-kennedy's DSO debug symbols.
 
 ### Outputs
 
 - Per-chunk text dump with:
-  - Header comment: chunk type, ID, size, optional symbol name.
-  - Annotated bytes: address, hex, mnemonic, operands.
-  - Cross-references: every jump target labeled.
-  - Strings: any embedded ASCII auto-detected and shown.
-  - Unknown opcodes: emitted as `db 0xNN` with a TODO marker.
-- An overall summary: counts of opcodes, biggest functions,
-  longest-running chunks.
+  - Header comment: chunk type, id, size.
+  - Annotated bytes: offset, hex, mnemonic (when known),
+    operands (v0.2.0+).
+  - Cross-references: every jump target labeled (v0.2.0+).
+  - Strings: embedded ASCII runs auto-detected and shown
+    inline.
+  - Unknown opcodes: `db 0xNN ; ??`.
 
-### Bootstrap order
+### Versioning
 
-1. Parse the chunk wrapper, find the entry-point byte.
-2. Linear sweep: assume opcodes are sequential, decode what we
-   know, emit `db` for the rest.
-3. After enough opcodes are known, switch to a recursive-descent
-   pass that follows jumps and produces basic blocks.
-4. After basic blocks work, add symbolic labels.
+**v0.1.0 — byte-annotation pass.** Each byte is treated as a
+potential opcode. We look up its mnemonic in the 129-entry
+catalogue sourced from libgff's `gpl_commands` table (sourced
+under MIT with attribution). We do *not* yet decode parameter
+bytes; every byte gets its own line. The output is a
+candidate disassembly: useful for grepping mnemonics and
+strings, but instruction boundaries are not aligned. Modders
+can already locate strings, find probable opcode density, and
+draw byte-level patch targets from the output.
+
+**v0.2.0 — parameter decoding.** Port libgff's
+`gpl_read_number` / `gpl_get_parameters` / `gpl_load_variable`
+logic so each instruction's parameter bytes are consumed
+together. Output aligns to true instruction boundaries; the
+"every byte gets a line" pattern goes away.
+
+**v0.3.0 — control flow.** Recursive-descent over jumps and
+calls. Basic-block annotation, jump-target labels.
+
+**v0.4.0+ — symbol import** (DSO debug symbols), opcode
+discovery via `opcode-fuzz` (Phase 5), MAS/GPLX cross-
+reference.
 
 ### Opcode discovery loop
 
-We discover opcodes by:
+We grow the catalogue by:
 
-- Reading `soloscuro-archive`'s partial parser and hand-translating.
-- Reading `DSUN.EXE` in radare2 to find the dispatch table — once
-  located, the table itself enumerates the opcodes.
-- Cross-referencing with the DSO debug-symbol function names
-  (e.g., a function called `gpl_op_set_flag` is highly suggestive).
-- For each unknown opcode, finding a chunk that uses it, running
-  the original game in DOSBox to that point, and observing
-  state changes to infer the opcode's effect.
+- Reading libgff's `gpl_commands` table (the seed) and the
+  per-handler functions in `src/gpl/parse.c`.
+- Cross-checking against soloscuro-archive's `src/gpl/`.
+- Cross-referencing with the DSO v1.0 debug-symbol function
+  names from greg-kennedy's DSO wiki (e.g. a name like
+  `gpl_op_set_flag` is highly suggestive).
+- For each unknown opcode, finding a chunk that uses it,
+  running the original game in DOSBox to that point, and
+  observing state changes to infer the opcode's effect.
+  (This is `opcode-fuzz`; see Phase 5.)
 
 ## 6. Authoring a GPL fix
 
@@ -137,11 +157,14 @@ End-to-end, once `gpl-disasm` exists:
    disassembly).
 4. Identify the bug (missing branch, wrong flag, etc.).
 5. Compute the byte-level edit required to fix it.
-6. Patch via the per-fix script (Python — opens the GFF, finds
-   the chunk by (type, id), edits bytes at offset N, writes back
-   via `gff-tool` or a direct GFF writer once we have one).
-7. Verify: re-extract, re-run `gpl-disasm`, confirm the disassembly
-   reads correctly. Run the bug repro — bug should not fire.
+6. Patch via the per-fix script (Python; opens the GFF, finds
+   the chunk by `(kind, id)`, edits bytes at offset N, writes
+   back. Today the script shells out to `gff-cat replace` from
+   `gff-edit` v0.3.0+; a Python binding to `gff_edit` is
+   future work).
+7. Verify: re-extract, re-run `gpl-disasm`, confirm the
+   disassembly reads correctly. Run the bug repro; bug should
+   not fire.
 
 ## 7. The reassembler ("`gpl-asm`") — not in v1
 

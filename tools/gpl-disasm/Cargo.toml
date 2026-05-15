@@ -1,0 +1,23 @@
+[package]
+name = "gpl-disasm"
+version = "0.1.0"
+description = "Disassembler for SSI's GPL (Game Programming Language) bytecode (Dark Sun)."
+readme = "README.md"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lib]
+name = "gpl_disasm"
+path = "src/lib.rs"
+
+[[bin]]
+name = "gpl-disasm"
+path = "src/bin/gpl-disasm.rs"
+
+[dependencies]
+gff-edit = { path = "../gff-edit" }
+anyhow.workspace = true
+thiserror.workspace = true
+clap.workspace = true

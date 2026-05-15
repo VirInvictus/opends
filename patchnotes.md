@@ -4,6 +4,42 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gpl-disasm/` v0.1.0** ships (new Rust crate, the
+  Phase 3 keystone). Byte-annotation pass: each byte of a GPL
+  or MAS chunk gets a row tagged with libgff's opcode name.
+  Parameter decoding is deferred to v0.2.0 (the v0.1.0 output
+  treats every byte as a potential opcode, so instruction
+  boundaries are not yet aligned with the real program flow).
+  CLI subcommands: single-chunk to stdout/file, `--all` bulk
+  dump to a directory as `<kind>-<id>.asm`, and `--opcodes` to
+  print the embedded catalogue.
+  - Opcode catalogue: 129 entries covering bytes `0x00`..`0x80`,
+    sourced verbatim from libgff's `gpl_commands` table
+    (`dsoageofheroes/libgff` `src/gpl/parse.c` lines
+    1554-1684, MIT-licensed, attributed in code).
+  - Inline ASCII detection: runs of ≥4 printable bytes get
+    a `; "..."` comment annotation on the row that starts them.
+  - SIGPIPE-safe (`gpl-disasm ... | head` exits cleanly).
+  - 6 unit tests; new corpus integration test
+    `tests/corpus_smoke.rs` disassembles every `GPL ` and
+    `MAS ` chunk in DS1+DS2 `GPLDATA.GFF` (600 chunks; 2.37M
+    input bytes -> 2.37M annotation rows) without panics.
+- **`docs/gpl-opcodes.md`** lands: the catalogue table with
+  source citation. "Safe in RETVAL context" annotations
+  preserved from libgff `gpl_retval` switch (parse.c lines
+  1791-1826).
+- **`docs/gpl-bytecode.md`** refreshed: Rust (was Python),
+  depends on `gff-edit` library (was `gff-tool` JVM jar),
+  per-version scope documented (v0.1 byte-annotation → v0.2
+  parameter decoding → v0.3 control flow → v0.4 symbols).
+- Workspace gains `tools/gpl-disasm` as a member crate;
+  depends on `gff-edit` via local path. tools/README.md
+  "Shipped" table extended; "Planned" entry for gpl-disasm
+  removed.
+- Roadmap Phase 3: v0.1.0 boxes ticked (GFF integration,
+  annotation, string detection, opcode catalogue, README).
+  Parameter decoding and control flow annotated as v0.2.0 /
+  v0.3.0 followups.
 - **`tools/gff-edit/` v0.4.0**: modder readability layer.
   - `gff-cat extract --all -o <dir>` bulk-dumps every chunk as
     `<kind>-<id>.bin` under a directory.

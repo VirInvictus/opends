@@ -116,6 +116,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gpl-disasm"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "gff-edit",
+ "thiserror",
+]
+
+[[package]]
 name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

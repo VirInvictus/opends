@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "tools/gff-edit",
+    "tools/gpl-disasm",
 ]
 resolver = "2"
 

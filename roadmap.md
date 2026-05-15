@@ -129,21 +129,34 @@ runs through it.
 **Ships**: `tools/gpl-disasm/` (Rust). Tagged release:
 `gpl-disasm-v0.1.0`.
 
-- [ ] Read GPL chunks via our `gff-edit` library.
+- [x] Read GPL and MAS chunks via our `gff-edit` library.
+      (gpl-disasm v0.1.0; smoke-tested against 600 chunks in
+      DS1+DS2 GPLDATA.GFF.)
+- [x] Print annotated assembly with offset markers.
+      (gpl-disasm v0.1.0; byte-annotation pass.)
+- [x] String detection: embedded ASCII auto-shown next to the
+      bytes that reference it. (gpl-disasm v0.1.0; runs of
+      ≥4 printable bytes annotated inline.)
+- [x] Document the opcode table as we learn it
+      (`docs/gpl-opcodes.md`). (Seed catalogue of 129 entries
+      0x00..0x80 from libgff `gpl_commands`; gpl-disasm
+      v0.1.0.)
+- [x] Tool README with usage examples on real game files.
+      (gpl-disasm v0.1.0.)
 - [ ] Identify entry points and basic-block boundaries.
-- [ ] Print annotated assembly with offset markers.
-- [ ] String detection: embedded ASCII auto-shown next to the
-      bytes that reference it.
+      (gpl-disasm v0.3.0; needs parameter decoding first.)
+- [ ] Decode each opcode's parameters (port libgff's
+      `gpl_read_number` / `gpl_get_parameters`). True
+      instruction-boundary alignment. (gpl-disasm v0.2.0)
 - [ ] Cross-reference with `the-dark-lens` and DSO v1.0 debug
-      symbols where available; emit a `syms.toml` we curate by
-      hand and grow over time.
-- [ ] Document the opcode table as we learn it
-      (`docs/gpl-opcodes.md`).
-- [ ] Tool README with usage examples on real game files.
+      symbols; emit a `syms.toml` we curate by hand and grow
+      over time. (gpl-disasm v0.4.0+)
 
 **Done when**: `gpl-disasm extracted/ds1/GPLDATA.GFF` produces
 output that lets a reader locate a quest-script function by
-name (or by nearby string reference) and read its control flow.
+name (or by nearby string reference) and read its control
+flow. v0.1.0 ships the byte-annotation foundation;
+true-boundaries-and-control-flow comes in v0.2.0 and v0.3.0.
 
 ## Phase 4 — Exploration tools
 
