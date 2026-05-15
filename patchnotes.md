@@ -118,6 +118,14 @@ Released versions appear here, newest first.
   resolution (primary GFFI table, secondary table layout,
   resource-id reconstruction from segment runs). §5 open
   question on segmented chunk layout struck through; resolved.
+- **Reference checkout**: `JohnGlassmyer/dsun_music` cloned to
+  `.dsun_music/` (gitignored). MIT-licensed Java/Maven project
+  with four CLI tools (gff/image/region/xmi) and a shared
+  `common` library. Its `GffFile.replaceResource` is the
+  source-of-truth reference for our writer's in-place-or-append
+  policy; its `PrimaryGffiTable` + `SecondaryGffiTable` confirm
+  the segmented chunk resolution layout. Future reference for
+  Phase 4 region-view and image extraction work too.
 - **`tools/gff-edit/` v0.1.0** ships (Rust crate + `gff-cat`
   binary). Read-only first pass: parses the 28-byte GFF file
   header and the full TOC, including both indexed and segmented
