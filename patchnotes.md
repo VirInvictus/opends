@@ -4,6 +4,38 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/save-inspect/` v0.1.0** ships (new Python tool;
+  Phase 4 Goal-1 deliverable). Dumps a `CHARSAVE.GFF` as JSON
+  with per-chunk decoding:
+  - `PSIN` chunks decode as a 7-element `types[]` array
+    (psionic discipline byte codes; per libgff
+    `include/gff/psionic.h` `gff_psin_t`).
+  - `PSST` chunks decode as a 34-element `psionics[]` array
+    (psionic mastery; per `gff_psionic_list_t`).
+  - `TEXT` chunks decode as plain text (CRLF normalised to
+    `\n` in JSON output).
+  - `CHAR` chunks decode the leading 10-byte
+    `gff_rdff_header_t` (load_action, blocknum, type, index,
+    from, len) and emit the remaining body as an opaque hex
+    preview. Full record schema decoding is per-game (DS1 vs
+    DS2 byte layouts differ per `docs/file-formats.md` §2)
+    and lands in save-inspect v0.2.0.
+  - `SPST`, `CACT`, `PREF`, `GREQ` (DS2-only) chunks emit
+    hex previews until their layouts are documented.
+  - Stdlib-only Python (no dependency on `gff-cat`
+    subprocess). Embedded GFF parser handles indexed chunks
+    only; `CHARSAVE.GFF` never uses segmented types, so the
+    simplification is sound for this tool.
+  - CLI: `save-inspect <file> [-o out.json] [--pretty]`.
+    JSON to stdout by default.
+  - Verified against DS1 (4.4 KB, 42 chunks, 8 character
+    slots) and DS2 (11.7 KB, 98 chunks, 19 character slots);
+    "Caron the Unsur..." surfaces as plain bytes in the first
+    DS2 CHAR body, confirming the underlying record format is
+    a mix of fixed fields and ASCII names.
+- Roadmap Phase 4: save-inspect v0.1.0 box ticked; the
+  per-game CHAR decoding work and save diffing roll forward
+  to v0.2.0 and v0.3.0.
 - **`tools/gpl-disasm/` v0.1.0** ships (new Rust crate, the
   Phase 3 keystone). Byte-annotation pass: each byte of a GPL
   or MAS chunk gets a row tagged with libgff's opcode name.

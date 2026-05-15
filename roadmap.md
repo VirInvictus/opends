@@ -179,10 +179,16 @@ look at the maps directly.
 
 ### `tools/save-inspect/` (Python)
 
-- [ ] Read `CHARSAVE.GFF` and dump character data as JSON.
+- [x] Read `CHARSAVE.GFF` and dump as JSON. (save-inspect
+      v0.1.0; decodes PSIN/PSST/TEXT plus the CHAR RDFF header;
+      opaque hex preview for CHAR body, SPST, CACT, PREF, GREQ.)
+- [ ] Decode CHAR record body per DS1 / DS2 RDFF schemas
+      (stats, inventory, spell slots). Per-game work blocked
+      on `docs/file-formats.md` §2's per-game schema research.
+      (save-inspect v0.2.0)
 - [ ] Diff two saves: party state, inventory, flags.
-- [ ] Half-step toward writable saves; v0 is read-only.
-- [ ] Tagged: `save-inspect-v0.1.0`.
+      (save-inspect v0.3.0)
+- [x] Tagged: `save-inspect-v0.1.0`. (this release)
 
 ### `tools/region-view/` (Rust + sdl2)
 
