@@ -31,10 +31,12 @@ the per-handler bodies in the same file; see
   - **search**: one expression + two bytes + a do-while loop
     reading optional `0x53` (SEARCH_QUAL), field byte, type byte,
     and a conditional expression when type is in `0x04..=0x06`.
-  - **custom**: libgff handler is `gpl_unknown` or has a custom
-    shape we have not yet modelled (`gpl_setrecord`). The
+  - **setrecord**: `gpl_setrecord` (0x40): an `access_complex`
+    block + one expression.
+  - **custom**: libgff handler is `gpl_unknown`. The
     disassembler consumes only the opcode byte and marks the
     instruction `best_effort`; later instructions may misalign.
+    These don't appear in real game scripts.
 
 ## Table
 
@@ -104,7 +106,7 @@ the per-handler bodies in the same file; see
 | 0x3D | gpl readorders          | 1      | safe in RETVAL context |
 | 0x3E | gpl if                  | 1      | control flow |
 | 0x3F | gpl else                | 1      | control flow |
-| 0x40 | gpl setrecord           | custom | uses `access_complex`; deferred |
+| 0x40 | gpl setrecord           | setrecord | `access_complex` + one expression |
 | 0x41 | gpl setother            | 1      | safe in RETVAL context |
 | 0x42 | gpl input string        | 1      |       |
 | 0x43 | gpl input number        | 1      |       |

@@ -90,6 +90,29 @@ pub const MIN_STRING_LEN: usize = 4;
 /// `TEXTSTRINGSIZE`).
 pub const MAX_PACKED_STRING_LEN: usize = 1024;
 
+/// Maximum nested `GPL_RETVAL` recursion. libgff's `gpl_retval`
+/// itself doesn't gate on depth, but every safe-subset opcode
+/// reads at most a fixed number of `gpl_read_number` parameters,
+/// and each `gpl_read_number` can recurse into another RETVAL.
+/// In practice we see at most one level of nesting; we cap at 4
+/// to bound worst-case parse time on malformed input.
+pub const MAX_RETVAL_DEPTH: u8 = 4;
+
+/// Inner opcodes libgff permits inside a `GPL_RETVAL` dispatch
+/// (per `parse.c` `gpl_retval` lines 1791-1826). All of these are
+/// "safe in RETVAL context" per the row notes in
+/// [`docs/gpl-opcodes.md`](../docs/gpl-opcodes.md).
+pub const RETVAL_SAFE_OPCODES: &[u8] = &[
+    0x0F, 0x10, 0x1A, 0x1E, 0x1F, 0x20, 0x22, 0x25, 0x2F, 0x33,
+    0x34, 0x38, 0x39, 0x3D, 0x41, 0x49, 0x52, 0x59, 0x5A, 0x5C,
+    0x80,
+];
+
+#[inline]
+fn is_retval_safe(opcode: u8) -> bool {
+    RETVAL_SAFE_OPCODES.contains(&opcode)
+}
+
 // ---------- Opcode catalogue (carried verbatim from v0.1.0) ----------
 
 /// Embedded opcode catalogue. Index = opcode byte (0x00..=0x80).
@@ -266,9 +289,14 @@ pub enum ParamSpec {
     /// a do-while loop reading optional `0x53` (SEARCH_QUAL),
     /// field byte, type byte, and a conditional read_number.
     Search,
+    /// `gpl_setrecord` (0x40): a `gpl_access_complex` block
+    /// followed by one expression (the value being written).
+    /// All three branches of libgff `parse.c` 689-726 produce
+    /// the same byte shape.
+    SetRecord,
     /// Handlers whose parameter consumption is not yet modelled
-    /// (gpl_setrecord) or unknown (gpl_unknown). Best-effort:
-    /// consume only the opcode byte.
+    /// or unknown (gpl_unknown). Best-effort: consume only the
+    /// opcode byte.
     Custom,
 }
 
@@ -350,7 +378,7 @@ pub const PARAM_COUNTS: [ParamSpec; 0x81] = [
     ParamSpec::Fixed(1), // 0x3D gpl readorders
     ParamSpec::Fixed(1), // 0x3E gpl if
     ParamSpec::Fixed(1), // 0x3F gpl else
-    ParamSpec::Custom,   // 0x40 gpl setrecord (uses access_complex)
+    ParamSpec::SetRecord, // 0x40 gpl setrecord (access_complex + read_number)
     ParamSpec::Fixed(1), // 0x41 gpl setother
     ParamSpec::Fixed(1), // 0x42 gpl input string
     ParamSpec::Fixed(1), // 0x43 gpl input number
@@ -595,14 +623,31 @@ pub enum Expression {
     OpenParen,
     /// `)`. The decoder leaves an inner expression read.
     CloseParen,
-    /// `GPL_RETVAL | 0x80` (`0x8C`). v0.2.0 captures the inner
-    /// opcode byte but does not recursively decode the nested
-    /// call. The decoder resyncs on the next operator byte.
-    RetVal { inner_opcode: u8 },
-    /// `GPL_COMPLEX_VAL` (`0x31`, dispatch `0xB1`) and the `0x33`
-    /// passive-flag special case. v0.2.0 records the dispatch tag
-    /// but treats the rest as opaque. Best-effort resync.
-    Complex { tag: u8 },
+    /// `GPL_RETVAL | 0x80` (`0x8C`). Nested function call. v0.2.1
+    /// recursively dispatches the inner opcode's parameter shape
+    /// (when the opcode is in libgff's safe-subset; otherwise
+    /// `best_effort` is set and `inner_params` is empty).
+    /// Recursion is bounded by [`MAX_RETVAL_DEPTH`].
+    RetVal {
+        inner_opcode: u8,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        inner_mnemonic: Option<&'static str>,
+        inner_params: Vec<Vec<Expression>>,
+    },
+    /// A record-field access via `gpl_access_complex`. The dispatch
+    /// byte (`tag`) is `GPL_COMPLEX_PTR=0x30 .. GPL_COMPLEX_HIGH=0x3F`
+    /// or the `0xb3` "passive-flag" special case.
+    ///
+    /// libgff's `gpl_access_complex` reads `word obj_name + byte
+    /// depth + depth bytes element`. `obj_name >= 0x8000` indicates
+    /// a context-keyword (`obj_name & 0x7FFF` ∈ {POV, ACTIVE,
+    /// PASSIVE, OTHER, OTHER1, THING}); else it's a record id.
+    ComplexAccess {
+        tag: u8,
+        obj_name: i32,
+        depth: u8,
+        elements: Vec<u8>,
+    },
     /// `GPL_ACCM` accum-here-is-a-bug case (libgff aborts).
     AccmError,
     /// `GPL_IMMED_WORD` (`0x90`). libgff aborts with
@@ -670,6 +715,32 @@ struct ReadNumber {
     best_effort: bool,
 }
 
+/// Read a `gpl_access_complex` block from `bytes` starting at
+/// `cursor`. Layout per libgff `parse.c` 235-288:
+///
+///   word obj_name  (2 bytes, big-endian)
+///   byte depth     (1 byte)
+///   byte element[depth]  (depth bytes)
+///
+/// Returns `(obj_name, depth, elements, bytes_consumed)`.
+///
+/// Ported from `dsoageofheroes/libgff` `src/gpl/parse.c`
+/// `gpl_access_complex` (MIT).
+fn read_complex_access(bytes: &[u8], cursor: usize) -> Option<(i32, u8, Vec<u8>, usize)> {
+    if cursor + 3 > bytes.len() {
+        return None;
+    }
+    let obj_name = (((bytes[cursor] as u16) << 8) | bytes[cursor + 1] as u16) as i32;
+    let depth = bytes[cursor + 2];
+    let body_start = cursor + 3;
+    let body_end = body_start + depth as usize;
+    if body_end > bytes.len() {
+        return None;
+    }
+    let elements = bytes[body_start..body_end].to_vec();
+    Some((obj_name, depth, elements, body_end - cursor))
+}
+
 /// Read one expression from `bytes` starting at `cursor`.
 ///
 /// Ported from `dsoageofheroes/libgff` `src/gpl/parse.c`
@@ -679,7 +750,12 @@ struct ReadNumber {
 /// 0)` loop is preserved: after each value, peek the next byte
 /// and continue if it is an operator (`0xD0 < b <= 0xDF`); the
 /// loop also continues while paren depth is positive.
+#[cfg(test)]
 fn read_expression(bytes: &[u8], cursor: usize) -> ReadNumber {
+    read_expression_with_depth(bytes, cursor, 0)
+}
+
+fn read_expression_with_depth(bytes: &[u8], cursor: usize, retval_depth: u8) -> ReadNumber {
     let mut pos = cursor;
     let mut tokens: Vec<Expression> = Vec::with_capacity(2);
     let mut paren_level: i32 = 0;
@@ -748,7 +824,7 @@ fn read_expression(bytes: &[u8], cursor: usize) -> ReadNumber {
                         let value = ((hi as i32) << 16) + (lo as i32);
                         tokens.push(Expression::ImmediateBigNum { value });
                     }
-                    // GPL_RETVAL | 0x80: nested function call (deferred).
+                    // GPL_RETVAL | 0x80: nested function call.
                     x if x == (GPL_RETVAL | 0x80) => {
                         if pos >= bytes.len() {
                             tokens.push(Expression::Unknown { byte: cop });
@@ -757,13 +833,33 @@ fn read_expression(bytes: &[u8], cursor: usize) -> ReadNumber {
                         }
                         let inner = bytes[pos];
                         pos += 1;
-                        tokens.push(Expression::RetVal {
-                            inner_opcode: inner,
-                        });
-                        best_effort = true;
-                        // We can't reliably know how many bytes the
-                        // nested call would consume; resync on the
-                        // next operator byte via the do_next peek.
+                        if retval_depth >= MAX_RETVAL_DEPTH || !is_retval_safe(inner) {
+                            // Bail before recursing too deep, or
+                            // before dispatching an opcode libgff
+                            // wouldn't accept here.
+                            tokens.push(Expression::RetVal {
+                                inner_opcode: inner,
+                                inner_mnemonic: opcode_name(inner),
+                                inner_params: Vec::new(),
+                            });
+                            best_effort = true;
+                        } else {
+                            let inner_result = read_instruction_params_with_depth(
+                                inner,
+                                bytes,
+                                pos,
+                                retval_depth + 1,
+                            );
+                            pos += inner_result.consumed;
+                            if inner_result.best_effort {
+                                best_effort = true;
+                            }
+                            tokens.push(Expression::RetVal {
+                                inner_opcode: inner,
+                                inner_mnemonic: opcode_name(inner),
+                                inner_params: inner_result.params,
+                            });
+                        }
                     }
                     // GPL_IMMED_BYTE | 0x80
                     x if x == (GPL_IMMED_BYTE | 0x80) => {
@@ -827,20 +923,28 @@ fn read_expression(bytes: &[u8], cursor: usize) -> ReadNumber {
                         tokens.push(Expression::BinaryOp { op });
                         do_next = true;
                     }
-                    // GPL_COMPLEX_* range and 0xb3 special case.
+                    // GPL_COMPLEX_* range (and the 0xb3 special case,
+                    // which lives inside this same range).
                     b if (b >= (GPL_COMPLEX_LOW | 0x80))
                         && (b <= (GPL_COMPLEX_HIGH | 0x80)) =>
                     {
-                        tokens.push(Expression::Complex { tag: b & 0x7F });
-                        best_effort = true;
-                        // Can't know how many bytes the complex
-                        // record consumes; resync on next op.
-                    }
-                    b if b == (GPL_PASSIVE_FLAG_TAG | 0x80) || b == 0xB3 => {
-                        // 0xb3 special case ("setting passive's
-                        // flag value") — treat as complex.
-                        tokens.push(Expression::Complex { tag: b & 0x7F });
-                        best_effort = true;
+                        let tag = b & 0x7F;
+                        match read_complex_access(bytes, pos) {
+                            Some((obj_name, depth, elements, consumed)) => {
+                                pos += consumed;
+                                tokens.push(Expression::ComplexAccess {
+                                    tag,
+                                    obj_name,
+                                    depth,
+                                    elements,
+                                });
+                            }
+                            None => {
+                                tokens.push(Expression::Unknown { byte: cop });
+                                best_effort = true;
+                                break;
+                            }
+                        }
                     }
                     _ => {
                         tokens.push(Expression::Unknown { byte: cop });
@@ -974,13 +1078,196 @@ fn string_from_lossy(bytes: &[u8]) -> String {
     bytes.iter().map(|&b| b as char).collect()
 }
 
+/// Result of one [`read_instruction_params_with_depth`] call.
+struct InstructionParams {
+    params: Vec<Vec<Expression>>,
+    consumed: usize,
+    best_effort: bool,
+}
+
+/// Read all parameters for a single opcode according to its
+/// [`ParamSpec`]. Pulled out of [`disassemble`] so the
+/// `GPL_RETVAL` recursion in [`read_expression_with_depth`] can
+/// reuse it.
+fn read_instruction_params_with_depth(
+    opcode: u8,
+    bytes: &[u8],
+    cursor: usize,
+    retval_depth: u8,
+) -> InstructionParams {
+    let mut pos = cursor;
+    let mut params: Vec<Vec<Expression>> = Vec::new();
+    let mut be = false;
+
+    match param_spec(opcode) {
+        ParamSpec::None => {}
+        ParamSpec::Fixed(n) => {
+            for _ in 0..n {
+                let r = read_expression_with_depth(bytes, pos, retval_depth);
+                pos += r.consumed;
+                be |= r.best_effort;
+                params.push(r.tokens);
+                if r.consumed == 0 {
+                    be = true;
+                    break;
+                }
+            }
+        }
+        ParamSpec::Log => {
+            if let Some((sub_type, value, consumed)) = read_text(bytes, pos) {
+                pos += consumed;
+                params.push(vec![Expression::ImmediateString { sub_type, value }]);
+            } else {
+                be = true;
+            }
+        }
+        ParamSpec::LoadVar => {
+            let r = read_expression_with_depth(bytes, pos, retval_depth);
+            pos += r.consumed;
+            be |= r.best_effort;
+            params.push(r.tokens);
+            if pos < bytes.len() {
+                let raw = bytes[pos];
+                let stripped = raw & 0x7F;
+                let extended = (stripped & EXTENDED_VAR) != 0;
+                let datatype = if extended { stripped & !EXTENDED_VAR } else { stripped };
+                pos += 1;
+                if datatype < 0x10 {
+                    if let Some(var_kind) = VarKind::from_tag(datatype) {
+                        let (id, n) = read_simple_num_var(bytes, pos, extended);
+                        pos += n;
+                        params.push(vec![Expression::Variable {
+                            var_kind,
+                            id,
+                            extended,
+                        }]);
+                    } else {
+                        be = true;
+                        params.push(vec![Expression::Unknown { byte: raw }]);
+                    }
+                } else {
+                    // Complex variable write: read the access_complex
+                    // block.
+                    match read_complex_access(bytes, pos) {
+                        Some((obj_name, depth, elements, consumed)) => {
+                            pos += consumed;
+                            params.push(vec![Expression::ComplexAccess {
+                                tag: datatype,
+                                obj_name,
+                                depth,
+                                elements,
+                            }]);
+                        }
+                        None => {
+                            be = true;
+                        }
+                    }
+                }
+            } else {
+                be = true;
+            }
+        }
+        ParamSpec::SetRecord => {
+            // gpl_setrecord: access_complex + read_number (per all
+            // three branches of libgff parse.c 689-726).
+            match read_complex_access(bytes, pos) {
+                Some((obj_name, depth, elements, consumed)) => {
+                    pos += consumed;
+                    params.push(vec![Expression::ComplexAccess {
+                        tag: 0,
+                        obj_name,
+                        depth,
+                        elements,
+                    }]);
+                    let r = read_expression_with_depth(bytes, pos, retval_depth);
+                    pos += r.consumed;
+                    be |= r.best_effort;
+                    params.push(r.tokens);
+                }
+                None => {
+                    be = true;
+                }
+            }
+        }
+        ParamSpec::Menu => {
+            let r = read_expression_with_depth(bytes, pos, retval_depth);
+            pos += r.consumed;
+            be |= r.best_effort;
+            params.push(r.tokens);
+            let mut items = 0;
+            while items < 24 && pos < bytes.len() && bytes[pos] != 0x4A {
+                for _ in 0..3 {
+                    let r = read_expression_with_depth(bytes, pos, retval_depth);
+                    if r.consumed == 0 {
+                        be = true;
+                        break;
+                    }
+                    pos += r.consumed;
+                    be |= r.best_effort;
+                    params.push(r.tokens);
+                }
+                items += 1;
+            }
+            if pos < bytes.len() && bytes[pos] == 0x4A {
+                pos += 1;
+            }
+        }
+        ParamSpec::Search => {
+            let r = read_expression_with_depth(bytes, pos, retval_depth);
+            pos += r.consumed;
+            be |= r.best_effort;
+            params.push(r.tokens);
+            if pos + 2 > bytes.len() {
+                be = true;
+            } else {
+                pos += 2;
+                loop {
+                    if pos < bytes.len() && bytes[pos] == 0x53 {
+                        pos += 1;
+                    }
+                    if pos + 2 > bytes.len() {
+                        be = true;
+                        break;
+                    }
+                    let _field = bytes[pos];
+                    pos += 1;
+                    let type_ = bytes[pos];
+                    pos += 1;
+                    if (4..=6).contains(&type_) {
+                        let r = read_expression_with_depth(bytes, pos, retval_depth);
+                        if r.consumed == 0 {
+                            be = true;
+                            break;
+                        }
+                        pos += r.consumed;
+                        be |= r.best_effort;
+                        params.push(r.tokens);
+                    }
+                    if pos >= bytes.len() || bytes[pos] != 0x53 {
+                        break;
+                    }
+                }
+            }
+        }
+        ParamSpec::Custom => {
+            // Best-effort: consume nothing beyond the opcode byte.
+            // Mark misalignment.
+            be = true;
+        }
+    }
+
+    InstructionParams {
+        params,
+        consumed: pos - cursor,
+        best_effort: be,
+    }
+}
+
 /// Disassemble a GPL chunk into instructions.
 ///
 /// Walks the byte stream linearly. For each opcode, looks up its
 /// [`ParamSpec`] and reads the corresponding parameters via
-/// [`read_expression`] or [`read_text`]. Stops at end of input or
-/// on an unrecoverable bailout (unknown opcode after a best-effort
-/// resync attempt at the top of a fresh instruction).
+/// [`read_instruction_params_with_depth`]. Stops at end of input.
 pub fn disassemble(bytes: &[u8]) -> DisasmResult {
     let mut cursor = 0usize;
     let mut instructions: Vec<Instruction> = Vec::new();
@@ -991,154 +1278,10 @@ pub fn disassemble(bytes: &[u8]) -> DisasmResult {
         let opcode = bytes[cursor];
         cursor += 1;
         let mnemonic = opcode_name(opcode);
-        let spec = param_spec(opcode);
-        let mut params: Vec<Vec<Expression>> = Vec::new();
-        let mut be = false;
-
-        match spec {
-            ParamSpec::None => {}
-            ParamSpec::Fixed(n) => {
-                for _ in 0..n {
-                    let r = read_expression(bytes, cursor);
-                    cursor += r.consumed;
-                    be |= r.best_effort;
-                    params.push(r.tokens);
-                    if r.consumed == 0 {
-                        // Guard against zero-progress: avoids
-                        // infinite loops if the chunk is malformed.
-                        be = true;
-                        break;
-                    }
-                }
-            }
-            ParamSpec::Log => {
-                if let Some((sub_type, value, consumed)) = read_text(bytes, cursor) {
-                    cursor += consumed;
-                    params.push(vec![Expression::ImmediateString { sub_type, value }]);
-                } else {
-                    be = true;
-                }
-            }
-            ParamSpec::LoadVar => {
-                // load_accum (1 expression) + datatype byte +
-                // simple-varnum (1 or 2 bytes) OR access_complex.
-                let r = read_expression(bytes, cursor);
-                cursor += r.consumed;
-                be |= r.best_effort;
-                params.push(r.tokens);
-                if cursor < bytes.len() {
-                    let raw = bytes[cursor];
-                    let stripped = raw & 0x7F;
-                    let extended = (stripped & EXTENDED_VAR) != 0;
-                    let datatype = if extended { stripped & !EXTENDED_VAR } else { stripped };
-                    cursor += 1;
-                    if datatype < 0x10 {
-                        // Simple variable. 1 (or 2 if extended) varnum bytes.
-                        if let Some(var_kind) = VarKind::from_tag(datatype) {
-                            let (id, n) = read_simple_num_var(bytes, cursor, extended);
-                            cursor += n;
-                            params.push(vec![Expression::Variable {
-                                var_kind,
-                                id,
-                                extended,
-                            }]);
-                        } else {
-                            // datatype is GPL_ACCM / GPL_RETVAL / IMMED_*
-                            // — not a storable variable. Mark best-effort.
-                            be = true;
-                            params.push(vec![Expression::Unknown { byte: raw }]);
-                        }
-                    } else {
-                        // Complex variable write. Defer.
-                        be = true;
-                        params.push(vec![Expression::Complex { tag: datatype }]);
-                    }
-                } else {
-                    be = true;
-                }
-            }
-            ParamSpec::Menu => {
-                // 1 read_number (menu name).
-                let r = read_expression(bytes, cursor);
-                cursor += r.consumed;
-                be |= r.best_effort;
-                params.push(r.tokens);
-                // Loop: while next byte != 0x4A and items < MAX_MENU,
-                // read 3 expressions per entry. Then consume the 0x4A.
-                let mut items = 0;
-                while items < 24 && cursor < bytes.len() && bytes[cursor] != 0x4A {
-                    for _ in 0..3 {
-                        let r = read_expression(bytes, cursor);
-                        if r.consumed == 0 {
-                            be = true;
-                            break;
-                        }
-                        cursor += r.consumed;
-                        be |= r.best_effort;
-                        params.push(r.tokens);
-                    }
-                    items += 1;
-                }
-                // Consume the 0x4A terminator if present.
-                if cursor < bytes.len() && bytes[cursor] == 0x4A {
-                    cursor += 1;
-                }
-            }
-            ParamSpec::Search => {
-                // 1 read_number + 2 bytes (low, high) + do-while
-                // loop reading optional 0x53, field byte, type byte,
-                // and a conditional read_number when type is in
-                // EQU_SEARCH..=GT_SEARCH (4..=6).
-                let r = read_expression(bytes, cursor);
-                cursor += r.consumed;
-                be |= r.best_effort;
-                params.push(r.tokens);
-                if cursor + 2 > bytes.len() {
-                    be = true;
-                } else {
-                    cursor += 2; // low + high bytes
-                    // Loop until preview != SEARCH_QUAL (0x53).
-                    // libgff's loop terminator is `while (btmp == 0x53)`
-                    // but the body also runs at least once even when
-                    // btmp != 0x53 on entry. Match exactly: enter body,
-                    // peek, if 0x53 consume; read field+type; if type
-                    // in 4..=6 read a number; loop while peek == 0x53.
-                    loop {
-                        // Optional SEARCH_QUAL consume.
-                        if cursor < bytes.len() && bytes[cursor] == 0x53 {
-                            cursor += 1;
-                        }
-                        if cursor + 2 > bytes.len() {
-                            be = true;
-                            break;
-                        }
-                        let _field = bytes[cursor];
-                        cursor += 1;
-                        let type_ = bytes[cursor];
-                        cursor += 1;
-                        if (4..=6).contains(&type_) {
-                            let r = read_expression(bytes, cursor);
-                            if r.consumed == 0 {
-                                be = true;
-                                break;
-                            }
-                            cursor += r.consumed;
-                            be |= r.best_effort;
-                            params.push(r.tokens);
-                        }
-                        if cursor >= bytes.len() || bytes[cursor] != 0x53 {
-                            break;
-                        }
-                    }
-                }
-            }
-            ParamSpec::Custom => {
-                // Best-effort: consume only the opcode byte and
-                // mark misalignment. Subsequent instructions may
-                // be wrong.
-                be = true;
-            }
-        }
+        let r = read_instruction_params_with_depth(opcode, bytes, cursor, 0);
+        cursor += r.consumed;
+        let be = r.best_effort;
+        let params = r.params;
 
         if be {
             any_best_effort = true;
@@ -1222,10 +1365,55 @@ impl fmt::Display for Expression {
             Expression::BinaryOp { op } => write!(f, "{}", op.symbol()),
             Expression::OpenParen => write!(f, "("),
             Expression::CloseParen => write!(f, ")"),
-            Expression::RetVal { inner_opcode } => {
-                write!(f, "RETVAL(0x{inner_opcode:02x})")
+            Expression::RetVal {
+                inner_opcode,
+                inner_mnemonic,
+                inner_params,
+            } => {
+                let name = inner_mnemonic.unwrap_or("?");
+                write!(f, "RETVAL({name}")?;
+                for (i, param) in inner_params.iter().enumerate() {
+                    write!(f, "{}", if i == 0 { " " } else { ", " })?;
+                    for tok in param {
+                        write!(f, "{tok}")?;
+                    }
+                }
+                let _ = inner_opcode;
+                write!(f, ")")
             }
-            Expression::Complex { tag } => write!(f, "COMPLEX(0x{tag:02x})"),
+            Expression::ComplexAccess {
+                tag,
+                obj_name,
+                depth,
+                elements,
+            } => {
+                let ctx = if *obj_name >= 0x8000 {
+                    match (*obj_name as u32) & 0x7FFF {
+                        0x25 => "POV",
+                        0x26 => "ACTIVE",
+                        0x27 => "PASSIVE",
+                        0x28 => "OTHER",
+                        0x2B => "THING",
+                        0x2C => "OTHER1",
+                        _ => "?",
+                    }
+                    .to_string()
+                } else {
+                    format!("id={obj_name}")
+                };
+                write!(f, "COMPLEX(0x{tag:02x}, {ctx}, depth={depth}")?;
+                if !elements.is_empty() {
+                    write!(f, ", [")?;
+                    for (i, e) in elements.iter().enumerate() {
+                        if i > 0 {
+                            write!(f, ",")?;
+                        }
+                        write!(f, "{e}")?;
+                    }
+                    write!(f, "]")?;
+                }
+                write!(f, ")")
+            }
             Expression::AccmError => write!(f, "ACCM_ERROR"),
             Expression::ImmediWordUnimplemented => write!(f, "IMMED_WORD_UNIMPL"),
             Expression::Unknown { byte } => write!(f, "??0x{byte:02x}"),
@@ -1315,7 +1503,7 @@ mod tests {
         assert_eq!(PARAM_COUNTS[0x2C], ParamSpec::Log); // gpl_log reads packed string
         assert_eq!(PARAM_COUNTS[0x16], ParamSpec::LoadVar);
         assert_eq!(PARAM_COUNTS[0x33], ParamSpec::Search);
-        assert_eq!(PARAM_COUNTS[0x40], ParamSpec::Custom); // setrecord still deferred
+        assert_eq!(PARAM_COUNTS[0x40], ParamSpec::SetRecord);
         assert_eq!(PARAM_COUNTS[0x48], ParamSpec::Menu);
     }
 
@@ -1413,23 +1601,115 @@ mod tests {
     }
 
     #[test]
-    fn read_expression_retval_marks_best_effort() {
-        // 0x8C (RETVAL|0x80) + inner opcode 0x52 (rand) — RETVAL is
-        // deferred for v0.2.0.
-        let r = read_expression(&[0x8C, 0x52], 0);
-        assert!(r.best_effort);
-        assert_eq!(
-            r.tokens,
-            vec![Expression::RetVal { inner_opcode: 0x52 }]
-        );
+    fn read_expression_retval_with_safe_inner_opcode() {
+        // 0x8C (RETVAL|0x80) + inner 0x52 (gpl rand, ParamSpec::Fixed(1))
+        // + a 14-bit immediate (0x00 0x05 = 5). The RETVAL should
+        // recursively consume the inner opcode's one parameter and
+        // NOT be best-effort.
+        let r = read_expression(&[0x8C, 0x52, 0x00, 0x05], 0);
+        assert!(!r.best_effort, "tokens={:?}", r.tokens);
+        assert_eq!(r.consumed, 4);
+        match &r.tokens[0] {
+            Expression::RetVal {
+                inner_opcode,
+                inner_mnemonic,
+                inner_params,
+            } => {
+                assert_eq!(*inner_opcode, 0x52);
+                assert_eq!(*inner_mnemonic, Some("gpl rand"));
+                assert_eq!(inner_params.len(), 1);
+                assert_eq!(
+                    inner_params[0],
+                    vec![Expression::Immediate14 { value: 5 }]
+                );
+            }
+            other => panic!("expected RetVal, got {other:?}"),
+        }
     }
 
     #[test]
-    fn read_expression_complex_marks_best_effort() {
-        // 0xB1 (COMPLEX_VAL|0x80) — deferred to v0.2.1.
-        let r = read_expression(&[0xB1, 0x00, 0x00, 0x00], 0);
+    fn read_expression_retval_with_unsafe_inner_marks_best_effort() {
+        // 0x8C + 0x12 (gpl jump) is not in the libgff safe-subset;
+        // mark best-effort and don't recurse.
+        let r = read_expression(&[0x8C, 0x12], 0);
         assert!(r.best_effort);
-        assert_eq!(r.tokens, vec![Expression::Complex { tag: 0x31 }]);
+        match &r.tokens[0] {
+            Expression::RetVal {
+                inner_opcode,
+                inner_params,
+                ..
+            } => {
+                assert_eq!(*inner_opcode, 0x12);
+                assert!(inner_params.is_empty());
+            }
+            other => panic!("expected RetVal, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn read_complex_access_consumes_expected_bytes() {
+        // word obj_name (big-endian) + byte depth + depth bytes.
+        // 0x80 0x25 → obj_name = 0x8025 (POV), depth = 2, elements [4, 7].
+        let (obj_name, depth, elements, consumed) =
+            read_complex_access(&[0x80, 0x25, 0x02, 0x04, 0x07], 0).unwrap();
+        assert_eq!(obj_name, 0x8025);
+        assert_eq!(depth, 2);
+        assert_eq!(elements, vec![4, 7]);
+        assert_eq!(consumed, 5);
+    }
+
+    #[test]
+    fn read_expression_complex_access() {
+        // 0xB1 (GPL_COMPLEX_VAL|0x80) + obj_name 0x8027 (PASSIVE)
+        // + depth 0 + (no elements). Should fully decode, not be
+        // best-effort.
+        let r = read_expression(&[0xB1, 0x80, 0x27, 0x00], 0);
+        assert!(!r.best_effort, "tokens={:?}", r.tokens);
+        assert_eq!(r.consumed, 4);
+        match &r.tokens[0] {
+            Expression::ComplexAccess {
+                tag,
+                obj_name,
+                depth,
+                elements,
+            } => {
+                assert_eq!(*tag, 0x31);
+                assert_eq!(*obj_name, 0x8027);
+                assert_eq!(*depth, 0);
+                assert!(elements.is_empty());
+            }
+            other => panic!("expected ComplexAccess, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn disassemble_setrecord_fully_aligned() {
+        // 0x40 (setrecord) + complex (obj_name=0x8025 POV, depth=1,
+        // element=4) + 14-bit immediate (0x00 0x05 = 5).
+        let r = disassemble(&[0x40, 0x80, 0x25, 0x01, 0x04, 0x00, 0x05]);
+        assert!(r.aligned, "{r:?}");
+        assert_eq!(r.instructions.len(), 1);
+        assert_eq!(r.instructions[0].params.len(), 2);
+    }
+
+    #[test]
+    fn retval_recursion_capped_at_max_depth() {
+        // A chain of nested RETVALs that exceeds MAX_RETVAL_DEPTH
+        // should bail out with best_effort, not blow the stack.
+        // Build: 0x8C 0x52 0x8C 0x52 0x8C 0x52 0x8C 0x52 0x8C 0x52 ...
+        // Each RETVAL's safe-subset inner (0x52 gpl rand) expects
+        // 1 read_number param, which can itself be another 0x8C.
+        let mut bytes = Vec::new();
+        for _ in 0..(MAX_RETVAL_DEPTH as usize + 2) {
+            bytes.extend_from_slice(&[0x8C, 0x52]);
+        }
+        bytes.extend_from_slice(&[0x00, 0x01]); // terminating immediate
+        let r = read_expression(&bytes, 0);
+        assert!(
+            r.best_effort,
+            "expected best_effort at depth {}, got tokens={:?}",
+            MAX_RETVAL_DEPTH, r.tokens
+        );
     }
 
     #[test]
@@ -1498,9 +1778,9 @@ mod tests {
 
     #[test]
     fn disassemble_custom_opcode_marks_best_effort() {
-        // gpl setrecord (0x40) is still Custom; consume only the
-        // opcode byte and mark best-effort.
-        let r = disassemble(&[0x40, 0x00, 0x01]);
+        // gpl joinparty (0x45) is Custom in libgff (gpl_unknown);
+        // consume only the opcode byte and mark best-effort.
+        let r = disassemble(&[0x45, 0x00, 0x01]);
         assert!(!r.aligned);
         assert!(r.instructions[0].best_effort);
         assert_eq!(r.instructions[0].length, 1);

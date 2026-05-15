@@ -4,6 +4,40 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gpl-disasm/` v0.2.1** closes every case v0.2.0
+  deferred. The 600 DS1+DS2 GPL/MAS chunks now disassemble at
+  **100% alignment** (was 10.7% in v0.2.0).
+  - **`gpl_access_complex` ported** (libgff `parse.c` 235-288):
+    word `obj_name` + byte `depth` + `depth` bytes of element
+    data. `obj_name >= 0x8000` keyword set (POV / ACTIVE /
+    PASSIVE / OTHER / OTHER1 / THING) rendered by name.
+  - **`GPL_COMPLEX_*` range (`0xB0..=0xBF`)** decodes as
+    `Expression::ComplexAccess { tag, obj_name, depth,
+    elements }`. The `0xb3` special case is now just one entry
+    in that range.
+  - **`GPL_RETVAL | 0x80` (`0x8C`)** recursively dispatches the
+    inner opcode's parameter shape, using a 21-entry safe-subset
+    matching libgff's `gpl_retval` switch
+    (`parse.c` 1791-1826). Inner params land in
+    `Expression::RetVal { inner_opcode, inner_mnemonic,
+    inner_params }`. Recursion bounded by `MAX_RETVAL_DEPTH = 4`.
+  - **`gpl_setrecord` (0x40)** promoted from `ParamSpec::Custom`
+    to `ParamSpec::SetRecord`: `access_complex + read_number`
+    per all three branches of libgff's handler.
+  - **`gpl_load_variable` (0x16)** complex-write path now
+    decodes via `access_complex` instead of bailing.
+  - **Display impl**: ComplexAccess renders as
+    `COMPLEX(0x31, POV, depth=2, [4,7])`; RetVal as
+    `RETVAL(gpl rand 5)`.
+  - **Tests**: 25 unit tests (4 new in v0.2.1 for the new
+    cases). Corpus smoke test reports `600/600 aligned`.
+  - **Downstream**: `dialog-extract` v0.2.0 picks up 1,194 more
+    strings (DS1 17,560 → 17,926; DS2 27,857 → 28,685;
+    combined 45,417 → **46,611**). Every dialog-bearing chunk
+    now reports `aligned: true`.
+  - The factoring also extracted `read_instruction_params_with_depth`
+    as a helper shared between the top-level `disassemble()` and
+    the RETVAL recursion path.
 - **`tools/dialog-extract/` v0.2.0** ships an instruction-aware
   rewrite that consumes `gpl-disasm --json` (gpl-disasm v0.2.0+).
   The heuristic byte-scan from v0.1.0 is retired; byte boundaries

@@ -147,9 +147,11 @@ runs through it.
       (gpl-disasm v0.3.0; needs parameter decoding first.)
 - [x] Decode each opcode's parameters (port libgff's
       `gpl_read_number` / `gpl_get_parameters`). True
-      instruction-boundary alignment for the common path; nested
-      RETVAL, COMPLEX_* and `gpl_setrecord` deferred to v0.2.1.
-      (gpl-disasm v0.2.0)
+      instruction-boundary alignment for the common path
+      (gpl-disasm v0.2.0); deferred cases (RETVAL recursion,
+      COMPLEX_*, `gpl_setrecord`, complex-write of
+      `gpl_load_variable`) closed in v0.2.1. **100% corpus
+      alignment on all 600 DS1+DS2 GPL/MAS chunks.**
 - [ ] Cross-reference with `the-dark-lens` and DSO v1.0 debug
       symbols; emit a `syms.toml` we curate by hand and grow
       over time. (gpl-disasm v0.4.0+)

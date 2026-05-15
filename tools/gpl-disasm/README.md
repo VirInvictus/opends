@@ -14,21 +14,47 @@ chunks so modders can read what a script does.
 
 Depends on `gff-edit` for GFF I/O.
 
-## What `gpl-disasm v0.2.0` ships
+## What `gpl-disasm v0.2.1` ships
 
-**Parameter decoding**. Each opcode now consumes its
-variable-length parameter bytes, so output is **one row per
-instruction** rather than one per byte. Parameters render as a
-short infix expression: `gpl print string  115, "Free! Finally
-free!..."`, `gpl load accum  GNUM[1] == 0i8`, `gpl tport
-NAME(-22), 255, 99i8, 99i8, 0i8`.
+**The deferred cases are closed.** v0.2.0 deferred `GPL_RETVAL`
+(nested function calls), the `GPL_COMPLEX_*` range (record-field
+access via `gpl_access_complex`), `gpl_setrecord`, and the
+`0xb3` "passive flag" special case as opaque best-effort. v0.2.1
+ports them faithfully:
+
+- `gpl_access_complex` (libgff `parse.c` 235-288): word obj_name
+  + byte depth + depth bytes of element data. Decoded as
+  `Expression::ComplexAccess { tag, obj_name, depth, elements }`
+  with the `obj_name >= 0x8000` keyword set (POV, ACTIVE,
+  PASSIVE, OTHER, OTHER1, THING) rendered by name.
+- `GPL_RETVAL` (libgff `parse.c` 1791-1826): recursively
+  dispatches to the inner opcode's `ParamSpec` if the inner
+  opcode is in libgff's safe-subset (21 opcodes). Bounded by
+  `MAX_RETVAL_DEPTH = 4`.
+- `gpl_setrecord` (opcode `0x40`): now a first-class
+  `ParamSpec::SetRecord` reading `access_complex + read_number`.
+- `gpl_load_variable` (opcode `0x16`): the complex-write path
+  now decodes via `access_complex` instead of bailing.
+
+**Corpus alignment: 100%.** All 600 GPL/MAS chunks across DS1
+and DS2 GPLDATA.GFF now disassemble fully aligned with no
+best-effort fallback. (v0.2.0 was 10.7%.)
+
+## v0.2.0 baseline
+
+**Parameter decoding**. Each opcode consumes its variable-length
+parameter bytes, so output is **one row per instruction** rather
+than one per byte. Parameters render as a short infix
+expression: `gpl print string  115, "Free! Finally free!..."`,
+`gpl load accum  GNUM[1] == 0i8`, `gpl tport NAME(-22), 255,
+99i8, 99i8, 0i8`.
 
 The decoder is a port of libgff's `gpl_read_number` (the
 variable-length expression decoder), `gpl_read_simple_num_var`
-(variable references with `EXTENDED_VAR`), and the 7-bit packed
-string decoder from soloscuro-archive's `gpl-string.c`. All
-ports MIT-licensed and attributed inline in
-[`src/lib.rs`](src/lib.rs) and in
+(variable references with `EXTENDED_VAR`), `gpl_access_complex`
+(record-field access), and the 7-bit packed string decoder from
+soloscuro-archive's `gpl-string.c`. All ports MIT-licensed and
+attributed inline in [`src/lib.rs`](src/lib.rs) and in
 [`../../CREDITS.md`](../../CREDITS.md).
 
 Structural handlers also decode:
@@ -41,16 +67,14 @@ Structural handlers also decode:
   matching libgff's `parse.c` 901-955.
 - `gpl_log` (0x2C): one packed-string payload.
 
-Deferred to v0.2.1 (decoded as opaque, marked `best_effort`):
+Still best-effort (`Custom` ParamSpec) in v0.2.1:
 
-- Nested `GPL_RETVAL | 0x80` (recursive opcode dispatch).
-- `GPL_COMPLEX_*` range (`0x30..=0x3F` after stripping the high
-  bit) and the `0xb3` "passive flag" special case.
-- `gpl_setrecord` (uses `access_complex`).
 - `gpl_unknown` handlers: bytes the engine reserves but libgff
   treats as unknown. Soloscuro-archive's parallel implementation
   in `gpl-lua.c` fills in `0x5F music` (1 parameter); the rest
-  remain unimplemented in both upstream repos.
+  remain unimplemented in both upstream repos. These don't
+  appear in real game scripts so they don't hurt corpus
+  alignment, but a chunk that uses one would still misalign.
 
 ## Library
 
@@ -101,11 +125,14 @@ $ gpl-disasm .games/ds1/GPLDATA.GFF --kind 'GPL ' --id 1 | head
 ## Roadmap
 
 - v0.1.0 — byte-annotation pass.
-- **v0.2.0 (current)** — parameter decoding. True instruction
-  boundaries on the common path; `--json` output. Inline string
-  decoding via the 7-bit packed-string port.
-- v0.2.1 — close the deferred cases: nested RETVAL, COMPLEX_*
-  range, `gpl_setrecord`. Boost corpus alignment percentage.
+- v0.2.0 — parameter decoding. True instruction boundaries on
+  the common path; `--json` output. Inline string decoding via
+  the 7-bit packed-string port.
+- **v0.2.1 (current)** — close the deferred cases: nested
+  RETVAL recursion, `gpl_access_complex` (COMPLEX_* range and
+  the `0xb3` special case), `gpl_setrecord`, and the complex-
+  write path of `gpl_load_variable`. Corpus alignment hits
+  100% on all 600 DS1+DS2 GPL/MAS chunks.
 - v0.3.0 — recursive descent. Follow jumps and calls; emit
   basic blocks and labels.
 - v0.4.0+ — DSO debug-symbol import; integration with

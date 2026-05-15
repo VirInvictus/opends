@@ -130,13 +130,16 @@ infix syntax (`GFLAG[12] == 1i8`, `"Free! Finally free!..."`,
 too. Adds a `--json` output mode for tools downstream
 (`dialog-extract` v0.2.0 will consume it).
 
-Deferred to v0.2.1 (marked `best_effort` in the output):
-nested `GPL_RETVAL | 0x80` (recursive dispatch), `GPL_COMPLEX_*`
-range (record-field access via `gpl_access_complex`),
-`gpl_setrecord` (uses access_complex), and the `0xb3` "passive's
-flag value" special case. Chunks that hit any of these get
-correct decoding up to the deferred case and best-effort scan
-after.
+**v0.2.1** closes the deferred cases. Nested `GPL_RETVAL | 0x80`
+recursively dispatches the inner opcode's parameter shape (when
+the opcode is in libgff's safe-subset of 21 opcodes), bounded
+at four levels of nesting. `GPL_COMPLEX_*` and the `0xb3`
+"passive flag" special case decode via a port of
+`gpl_access_complex` (word obj_name + byte depth + depth bytes
+elements). `gpl_setrecord` (0x40) is a first-class
+`access_complex + read_number`. `gpl_load_variable` (0x16)'s
+complex-write path now decodes too. Corpus alignment: **100% on
+all 600 DS1+DS2 GPL/MAS chunks**.
 
 **v0.3.0 — control flow.** Recursive-descent over jumps and
 calls. Basic-block annotation, jump-target labels.
