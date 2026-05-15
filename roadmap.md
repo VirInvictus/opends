@@ -190,10 +190,13 @@ look at the maps directly.
       complete dialog set. (dialog-extract v0.2.0: GSTRING refs
       resolve against `--text-source RESOURCE.GFF`; LSTRING refs
       are surfaced but await per-region resolution in v0.3.0.)
-- [ ] Output a richer `{ speaker, lines, branches, gpl_refs }`
+- [x] Output a richer `{ speaker, lines, branches, gpl_refs }`
       tree once instruction boundaries from gpl-disasm v0.2.0
       let us correlate strings to the surrounding control flow.
-      (dialog-extract v0.3.0.)
+      (dialog-extract v0.3.0: CFG-aware `dialog_tree` built on
+      `gpl-disasm v0.3.1`'s CFG. 46,611 lines across 4,229
+      declared + 15,027 discovered entry-point walks; 0
+      invariant violations on the DS1+DS2 corpus.)
 - [x] Tagged: `dialog-extract-v0.1.0`. (this release)
 
 ### `tools/save-inspect/` (Python)

@@ -12,6 +12,56 @@ that appear in `GPL ` and `MAS ` bytecode chunks.
 - **Version**: see [`VERSION`](VERSION).
 - **License**: MIT.
 
+## What v0.3.0 ships
+
+**CFG-aware structured `dialog_tree`** alongside the existing
+flat `strings` list. Per chunk, one subtree per entry point.
+Each subtree is a recursive structure of:
+
+- `block` nodes — straight-line instruction runs; carry their
+  `lines` (the same string records v0.2.0 emits), `gpl_refs`
+  (`local sub` / `global sub` call sites), a `speaker_state_entry`
+  snapshot (observed `gpl setother` / `gpl setthing` state at
+  block entry), and one or more `children` for the block's
+  terminator.
+- `if` nodes — synthesised from `gpl if` (0x3E) conditionals.
+  Have `then` and `else` subtrees plus a `join_offset` (the
+  matching endif). If-with-else is detected by checking whether
+  the then-path ends with a `gpl else` terminator.
+- `ifcompare` nodes — `gpl ifcompare` (0x27) switch-style
+  branches. Carry `case_value` (the comparison literal) plus
+  `match` and `miss` subtrees.
+- `loop` nodes — `gpl while` (0x63) bodies. Single `body`
+  subtree; the backward `gpl wend` edge is implicit.
+- `goto` / `revisit` / `depth_cut` markers — explicit cut
+  points where the walk stops (a `gpl jump`, a previously-
+  visited block in a DAG-shaped tree, or the MAX_TREE_DEPTH=32
+  limit).
+
+Each chunk surfaces both **declared** entries (chunk start and
+every `gpl local sub` target) and **discovered** entries
+(locally-unreachable block leaders, almost always
+externally-called functions invoked via `gpl global sub` from
+another chunk). The discovered pass ensures every block leader's
+dialog is visible even without inter-chunk CFG (which is
+v0.4.1 work in gpl-disasm).
+
+**Corpus**: 600 / 600 DS1+DS2 chunks build a tree containing
+46,611 line records across 4,229 declared + 15,027 discovered
+entry-point walks. 7,438 `revisit` cuts (shared sub-paths). 0
+invariant violations (every line's offset resolves to an
+instruction in its chunk; every gpl_ref's `at` resolves; every
+subtree terminates).
+
+Speaker-state tracking is **deliberately heuristic**: we only
+track `gpl setother` (0x41) and `gpl setthing` (0x49) — the two
+confirmed speaker-mutators — and emit the snapshot of which
+NPC was most recently set in each slot. We do NOT claim a line
+is "spoken by" anyone; the snapshot is the engine context at
+the time of the line. v0.4.0+ work could expand the speaker
+opcodes list and add `gpl setpov` / `gpl setactive` if
+identified.
+
 ## What v0.2.0 ships
 
 v0.2.0 is an **instruction-aware** extractor built on
@@ -151,12 +201,18 @@ in Python.
 ## What's deferred
 
 - **LSTRING resolution**: needs a per-region or per-script text
-  source map; defer to v0.3.0+.
+  source map; defer to v0.4.0+.
 - **gpl-disasm best-effort handling**: when the disassembler
   marks an instruction `best_effort` (RetVal, Complex, etc.),
   its params may be incomplete. The extractor reports the chunk
   as `aligned: false` in the per-chunk JSON; consumers can
-  filter on that field.
-- **Structured dialog trees**: the roadmap's v0.3.0 plan
-  (`{speaker, lines, branches, gpl_refs}`). Needs control-flow
-  analysis from `gpl-disasm v0.3.0`.
+  filter on that field. Aligned chunks always get a
+  `dialog_tree`; non-aligned chunks get an empty one.
+- **Resolved speaker attribution**: v0.3.0 surfaces engine
+  context (which NPC was last set as "other" / "thing") but
+  does NOT claim who's speaking. Resolving "X says Y" needs a
+  richer engine state model. v0.4.0+ candidate.
+- **Inter-chunk tree walking**: `gpl global sub` call sites are
+  recorded as `gpl_refs` entries but not followed across chunks.
+  Inter-chunk CFG is `gpl-disasm v0.4.1`; once that lands,
+  dialog-extract could weave full multi-chunk dialog flows.

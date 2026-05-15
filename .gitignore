@@ -25,3 +25,7 @@
 # Extracted/derived assets used for analysis but not redistributable
 /extracted/
 /scratch/
+
+# Python bytecode caches
+__pycache__/
+*.pyc

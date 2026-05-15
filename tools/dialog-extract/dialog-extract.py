@@ -2,6 +2,16 @@
 """dialog-extract: pull GPL inline strings and text-id references
 from a GFF file as JSON.
 
+v0.3.0 adds a `dialog_tree` field per chunk: a CFG-aware
+structured tree that groups strings by their containing basic
+block, threads observed speaker-state through the walk, and
+synthesizes branches (`if` / `ifcompare`) and loops (`while`)
+as nested children. Built on top of gpl-disasm v0.3.1's `cfg`
+field. Use case: read the actual dialog flow, see what choices
+lead where, locate a particular line within a particular branch
+of the script. v0.2.0's flat `strings` list is preserved
+unchanged (back-compat).
+
 v0.2.0 consumes `gpl-disasm --json` (gpl-disasm v0.2.0+) instead
 of doing a heuristic byte scan. The disassembler decodes each
 instruction's parameters in full, so we no longer need to guess
@@ -20,9 +30,8 @@ Strings appear in two forms:
    global strings). v0.1.0 could not see these at all. Use
    `--text-source <RESOURCE.GFF>` to resolve them.
 
-Output is one record per string with the chunk it lives in,
-its offset, the opcode that consumed it, the source (inline vs
-text id), and the decoded text.
+Output per chunk: chunk metadata, the flat `strings` list, and
+a `dialog_tree` list (one subtree per entry point).
 """
 from __future__ import annotations
 
@@ -65,6 +74,22 @@ RESOLVABLE_VAR_KINDS = {"gstring"}
 # 7-bit packed strings shorter than this are usually garbage from
 # a misaligned read; keep the same threshold as v0.1.0.
 MIN_STRING_LEN = 3
+
+# Opcodes that mutate the engine's "speaker" state. We track them
+# during the dialog-tree walk so each line is annotated with the
+# observed snapshot of which named-NPC slot was last set. NOT a
+# claim about who's actually speaking — just the engine context
+# the runtime carries forward. Expand this map as more speaker-
+# mutating opcodes are identified.
+SPEAKER_OPCODES = {
+    0x41: "other",     # gpl setother
+    0x49: "thing",     # gpl setthing
+}
+
+# Max depth of nested branches in a single dialog tree. Practical
+# DS scripts nest 5-6 levels deep at most. The limit guards against
+# pathological CFGs (none observed in the corpus).
+MAX_TREE_DEPTH = 32
 
 
 def locate_binary(name: str, hint: str | None) -> str | None:
@@ -201,6 +226,426 @@ def extract_strings_from_instruction(
     return out
 
 
+def _last_instruction_in_block(block: dict, instr_by_offset: dict[int, dict]) -> dict | None:
+    """Return the highest-offset instruction inside `block`'s
+    [start_offset, end_offset) range, or None if the block is empty."""
+    best: dict | None = None
+    for off in range(block["start_offset"], block["end_offset"]):
+        if off in instr_by_offset:
+            best = instr_by_offset[off]
+    return best
+
+
+def _format_param(param: list[dict]) -> str:
+    """Light-weight string rendering of a single parameter
+    (list of Expression tokens) for ifcompare case values etc.
+    Mirrors gpl-disasm's `write_param_tokens` for common cases."""
+    out: list[str] = []
+    prev_was_value = False
+    for tok in param:
+        kind = tok.get("kind")
+        is_open = kind == "open_paren"
+        is_close = kind == "close_paren"
+        is_op = kind == "binary_op"
+        if prev_was_value and not is_close and not is_op:
+            out.append(" ")
+        if kind == "immediate14":
+            out.append(str(tok["value"]))
+        elif kind == "immediate_byte":
+            out.append(f"{tok['value']}i8")
+        elif kind == "immediate_bignum":
+            out.append(f"{tok['value']}i32")
+        elif kind == "immediate_name":
+            out.append(f"NAME({tok['value']})")
+        elif kind == "immediate_string":
+            sub = tok.get("sub_type")
+            if sub == "introduce":
+                out.append("INTRODUCE")
+            elif sub == "uncompressed":
+                out.append("UNCOMPRESSED")
+            else:
+                out.append(f'"{tok.get("value", "")}"')
+        elif kind == "variable":
+            short = {
+                "accm": "ACCUM",
+                "lstring": "LSTR",
+                "lnum": "LNUM",
+                "lbyte": "LBYTE",
+                "lname": "LNAME",
+                "lbignum": "LBIGNUM",
+                "gstring": "GSTR",
+                "gnum": "GNUM",
+                "gbyte": "GBYTE",
+                "gname": "GNAME",
+                "gbignum": "GBIGNUM",
+                "gflag": "GF",
+                "lflag": "LF",
+            }.get(tok.get("var_kind", ""), tok.get("var_kind", "?").upper())
+            suffix = "+" if tok.get("extended") else ""
+            out.append(f"{short}{suffix}[{tok.get('id')}]")
+        elif kind == "binary_op":
+            out.append(f" {tok.get('op', '?')} ")
+        elif kind == "open_paren":
+            out.append("(")
+        elif kind == "close_paren":
+            out.append(")")
+        else:
+            out.append(f"<{kind}?>")
+        prev_was_value = not is_open and not is_op
+    return "".join(out)
+
+
+def _extract_gpl_ref(
+    instr: dict,
+    labels: dict[str, str],
+) -> dict | None:
+    """Return a gpl_refs entry for `local sub` (0x13) and
+    `global sub` (0x14) instructions, else None."""
+    opcode = instr.get("opcode", 0)
+    if opcode == 0x13:
+        params = instr.get("params") or []
+        if not params:
+            return None
+        target = _literal_target(params[0])
+        if target is None:
+            return None
+        return {
+            "kind": "local_sub",
+            "at": instr["offset"],
+            "target": target,
+            "target_label": labels.get(str(target)),
+        }
+    if opcode == 0x14:
+        params = instr.get("params") or []
+        if len(params) < 2:
+            return None
+        target = _literal_target(params[0])
+        file_id = _literal_target(params[1])
+        if target is None or file_id is None:
+            return None
+        return {
+            "kind": "global_sub",
+            "at": instr["offset"],
+            "target": target,
+            "file_id": file_id,
+        }
+    return None
+
+
+def _literal_target(param: list[dict]) -> int | None:
+    """Extract a literal integer from a single-token immediate
+    param. Returns None for compound expressions, variables, etc."""
+    if len(param) != 1:
+        return None
+    tok = param[0]
+    if tok.get("kind") in ("immediate14", "immediate_byte", "immediate_bignum"):
+        return int(tok["value"])
+    return None
+
+
+def _update_speaker_state(instr: dict, state: dict[str, str | None]) -> None:
+    """Mutate `state` in place to reflect a speaker-setter opcode.
+    For unrecognised opcodes the state is unchanged."""
+    opcode = instr.get("opcode", 0)
+    slot = SPEAKER_OPCODES.get(opcode)
+    if slot is None:
+        return
+    params = instr.get("params") or []
+    if not params:
+        return
+    state[slot] = _format_param(params[0])
+
+
+def _walk_tree(
+    cur: int | None,
+    blocks: dict[int, dict],
+    instr_by_offset: dict[int, dict],
+    labels: dict[str, str],
+    text_chunks: dict[int, str] | None,
+    speaker_state: dict[str, str | None],
+    visited: set[int],
+    stop_at: int | None,
+    depth: int,
+) -> list[dict]:
+    """Walk forward from `cur` through CFG blocks. Stops at
+    `stop_at`, terminators (Return/ExitScript), previously-visited
+    blocks (emits a `revisit` marker), or off-graph offsets. The
+    returned list contains one node per visited block; each block
+    node may have a synthesized `if` / `ifcompare` / `loop` / `goto`
+    child describing its terminator."""
+    if depth > MAX_TREE_DEPTH:
+        return [{"kind": "depth_cut", "at": cur}]
+    nodes: list[dict] = []
+    while cur is not None:
+        if stop_at is not None and cur == stop_at:
+            break
+        if cur in visited:
+            nodes.append(
+                {
+                    "kind": "revisit",
+                    "target": cur,
+                    "target_label": labels.get(str(cur)),
+                }
+            )
+            break
+        if cur not in blocks:
+            break
+        visited.add(cur)
+        block = blocks[cur]
+        block_node = {
+            "kind": "block",
+            "offset": cur,
+            "label": labels.get(str(cur)),
+            "speaker_state_entry": dict(speaker_state),
+            "lines": [],
+            "gpl_refs": [],
+            "terminator": block["terminator"],
+            "children": [],
+        }
+        # Walk this block's instructions: collect strings, refs,
+        # and mutate speaker_state in order.
+        for off in range(block["start_offset"], block["end_offset"]):
+            instr = instr_by_offset.get(off)
+            if instr is None:
+                continue
+            for s in extract_strings_from_instruction(instr, text_chunks):
+                s["speaker_state"] = dict(speaker_state)
+                block_node["lines"].append(s)
+            ref = _extract_gpl_ref(instr, labels)
+            if ref is not None:
+                block_node["gpl_refs"].append(ref)
+            _update_speaker_state(instr, speaker_state)
+        nodes.append(block_node)
+
+        term = block["terminator"]
+        succ = block.get("successors") or []
+        last_instr = _last_instruction_in_block(block, instr_by_offset)
+        last_at = last_instr["offset"] if last_instr else cur
+        last_opcode = last_instr.get("opcode", 0) if last_instr else 0
+
+        if term in ("Return", "ExitScript"):
+            cur = None
+        elif term == "Conditional":
+            taken = succ[0]["target_offset"] if succ else None
+            not_taken = succ[1]["target_offset"] if len(succ) > 1 else None
+            if last_opcode == 0x63:  # gpl while
+                body = _walk_tree(
+                    taken,
+                    blocks,
+                    instr_by_offset,
+                    labels,
+                    text_chunks,
+                    dict(speaker_state),
+                    visited,
+                    stop_at=not_taken,
+                    depth=depth + 1,
+                )
+                block_node["children"].append(
+                    {
+                        "kind": "loop",
+                        "at": last_at,
+                        "body": body,
+                        "join_offset": not_taken,
+                    }
+                )
+                cur = not_taken
+            elif last_opcode == 0x27:  # gpl ifcompare
+                case_value = (
+                    _format_param(last_instr["params"][0])
+                    if last_instr and len(last_instr.get("params", [])) >= 1
+                    else None
+                )
+                match_path = _walk_tree(
+                    taken,
+                    blocks,
+                    instr_by_offset,
+                    labels,
+                    text_chunks,
+                    dict(speaker_state),
+                    visited,
+                    stop_at=stop_at,
+                    depth=depth + 1,
+                )
+                miss_path = _walk_tree(
+                    not_taken,
+                    blocks,
+                    instr_by_offset,
+                    labels,
+                    text_chunks,
+                    dict(speaker_state),
+                    visited,
+                    stop_at=stop_at,
+                    depth=depth + 1,
+                )
+                block_node["children"].append(
+                    {
+                        "kind": "ifcompare",
+                        "at": last_at,
+                        "case_value": case_value,
+                        "match": match_path,
+                        "miss": miss_path,
+                    }
+                )
+                cur = None
+            else:  # gpl if (0x3E)
+                then_path = _walk_tree(
+                    taken,
+                    blocks,
+                    instr_by_offset,
+                    labels,
+                    text_chunks,
+                    dict(speaker_state),
+                    visited,
+                    stop_at=not_taken,
+                    depth=depth + 1,
+                )
+                # Detect if-with-else: the then-path's last block
+                # terminator is UnconditionalElse, whose successor
+                # is the matching endif (the natural join).
+                join = not_taken
+                else_path: list[dict] = []
+                if then_path:
+                    last_then = then_path[-1]
+                    if (
+                        isinstance(last_then, dict)
+                        and last_then.get("kind") == "block"
+                        and last_then.get("terminator") == "UnconditionalElse"
+                    ):
+                        last_block_offset = last_then["offset"]
+                        last_block = blocks.get(last_block_offset)
+                        if last_block and last_block.get("successors"):
+                            join = last_block["successors"][0]["target_offset"]
+                            else_path = _walk_tree(
+                                not_taken,
+                                blocks,
+                                instr_by_offset,
+                                labels,
+                                text_chunks,
+                                dict(speaker_state),
+                                visited,
+                                stop_at=join,
+                                depth=depth + 1,
+                            )
+                block_node["children"].append(
+                    {
+                        "kind": "if",
+                        "at": last_at,
+                        "then": then_path,
+                        "else": else_path,
+                        "join_offset": join,
+                    }
+                )
+                cur = join
+        elif term == "Unconditional":
+            target = succ[0]["target_offset"] if succ else None
+            if last_opcode == 0x64:  # gpl wend — backward edge
+                cur = None
+            else:  # gpl jump
+                block_node["children"].append(
+                    {
+                        "kind": "goto",
+                        "at": last_at,
+                        "target": target,
+                        "target_label": labels.get(str(target)) if target is not None else None,
+                    }
+                )
+                cur = target
+        elif term == "UnconditionalElse":
+            # `gpl else`'s own goto to endif. Reached as a
+            # continuation of a then-block. Stop here; the
+            # post-else continuation is the caller's join.
+            cur = None
+        elif term == "Fallthrough":
+            cur = succ[0]["target_offset"] if succ else None
+        else:
+            cur = None
+    return nodes
+
+
+def build_dialog_tree(
+    disasm: dict,
+    text_chunks: dict[int, str] | None,
+) -> list[dict]:
+    """Build the dialog tree for one chunk's DisasmResult. Returns
+    a list of subtrees, one per entry point. Empty list if the
+    disassembly was not aligned (CFG absent)."""
+    cfg = disasm.get("cfg")
+    if cfg is None:
+        return []
+    blocks_by_offset: dict[int, dict] = {
+        b["start_offset"]: b for b in cfg.get("blocks", [])
+    }
+    instr_by_offset: dict[int, dict] = {
+        i["offset"]: i for i in disasm.get("instructions", [])
+    }
+    # gpl-disasm serialises BTreeMap<usize, String> with usize
+    # keys as JSON strings; normalise to int-keyed for lookups.
+    labels_raw = cfg.get("labels", {})
+    labels: dict[str, str] = {str(k): v for k, v in labels_raw.items()}
+    trees: list[dict] = []
+    visited: set[int] = set()
+    # Walk declared entry points first (chunk start + every offset
+    # observed as a `local sub` target).
+    for entry_offset in cfg.get("entry_points", []):
+        if entry_offset not in blocks_by_offset:
+            continue
+        if entry_offset in visited:
+            continue
+        speaker_state: dict[str, str | None] = {"other": None, "thing": None}
+        subtree = _walk_tree(
+            entry_offset,
+            blocks_by_offset,
+            instr_by_offset,
+            labels,
+            text_chunks,
+            speaker_state,
+            visited,
+            stop_at=None,
+            depth=0,
+        )
+        trees.append(
+            {
+                "entry_offset": entry_offset,
+                "entry_label": labels.get(str(entry_offset)),
+                "discovered": False,
+                "tree": subtree,
+            }
+        )
+    # Some block leaders are not reachable from any declared entry
+    # point — typically externally-called functions invoked via
+    # `gpl global sub` from another chunk. Walk those too, treating
+    # each as a discovered entry. Cross-chunk inter-procedural CFG
+    # is v0.4.1 work; here we just expose the locally-unreachable
+    # blocks so their dialog is visible.
+    for block in cfg.get("blocks", []):
+        start = block["start_offset"]
+        if start in visited:
+            continue
+        speaker_state = {"other": None, "thing": None}
+        subtree = _walk_tree(
+            start,
+            blocks_by_offset,
+            instr_by_offset,
+            labels,
+            text_chunks,
+            speaker_state,
+            visited,
+            stop_at=None,
+            depth=0,
+        )
+        if not subtree:
+            continue
+        trees.append(
+            {
+                "entry_offset": start,
+                "entry_label": labels.get(str(start)),
+                "discovered": True,
+                "tree": subtree,
+            }
+        )
+    return trees
+
+
 def build_summary(
     source: Path,
     disasm_results: list[dict],
@@ -227,6 +672,7 @@ def build_summary(
             if s.get("unresolved"):
                 total_unresolved += 1
         total_strings += len(strings)
+        dialog_tree = build_dialog_tree(disasm, text_chunks)
         chunks_out.append(
             {
                 "chunk": f"{entry['chunk_kind'].strip()}-{entry['chunk_id']}",
@@ -235,6 +681,7 @@ def build_summary(
                 "aligned": disasm.get("aligned", False),
                 "string_count": len(strings),
                 "strings": strings,
+                "dialog_tree": dialog_tree,
             }
         )
 

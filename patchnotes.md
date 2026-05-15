@@ -4,6 +4,62 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/dialog-extract/` v0.3.0** adds a CFG-aware
+  `dialog_tree` field per chunk alongside the existing flat
+  `strings` list. Built on top of `gpl-disasm v0.3.1`'s CFG. The
+  tree is a recursive structure of `block`, `if`, `ifcompare`,
+  `loop`, `goto`, `revisit`, and `depth_cut` nodes mirroring the
+  chunk's control flow.
+  - **Block nodes** carry `lines` (the same string records v0.2.0
+    emits, now also tagged with a `speaker_state` snapshot),
+    `gpl_refs` (`local sub` / `global sub` call sites with
+    `at` / `target` / `target_label` / `file_id`), a
+    `speaker_state_entry` snapshot, and `children` for the
+    block's terminator.
+  - **If detection** picks up the if-with-else case by checking
+    whether the then-path ends in a `gpl else` terminator;
+    when it does, the matching endif (the else's own param
+    target) becomes the join offset for an `else` subtree
+    walked from the if's not-taken edge.
+  - **Ifcompare nodes** surface `gpl ifcompare`'s case-value
+    pattern (the comparison literal as a rendered param). The
+    chained switch dispatch in DS scripts (e.g. DS1 GPL-199)
+    now reads as nested `ifcompare` nodes with `match` and
+    `miss` subtrees.
+  - **Loop nodes** wrap `gpl while` bodies; the implicit
+    backward `gpl wend` edge is not modelled as a child (just
+    stops the recursive walk).
+  - **Discovered entries**: each chunk's `cfg.entry_points`
+    only includes the chunk start and locally-observed
+    `gpl local sub` targets. Most block leaders are reached
+    instead by `gpl global sub` from another chunk; the v0.3.0
+    walker discovers these as additional top-level entries
+    after the declared walks finish, so every block leader's
+    dialog is visible. (Full inter-chunk CFG walking is
+    `gpl-disasm v0.4.1` work.)
+  - **Speaker-state tracking** is deliberately heuristic:
+    only `gpl setother` (0x41) and `gpl setthing` (0x49) are
+    tracked. We do NOT claim a line is spoken by anyone; the
+    snapshot just surfaces the engine context (which NPC was
+    last set) at the time of each line.
+  - **Corpus** (GOG 1.10): 600 / 600 chunks build a tree.
+    46,611 lines total across 4,229 declared + 15,027
+    discovered entry-point walks (exact match to v0.2.0's
+    flat-strings count, confirming the tree captures every
+    line). 7,438 `revisit` cuts (shared sub-paths between
+    entries). 0 invariant violations (every line / gpl_ref
+    offset resolves to a chunk instruction).
+  - **Back-compat**: the existing `strings` per-chunk field
+    stays byte-identical. v0.2.0 consumers parse the new JSON
+    unchanged; the `dialog_tree` field is additive.
+  - Stdlib-only Python; no new dependencies. The walker is in
+    `tools/dialog-extract/dialog-extract.py` as `build_dialog_tree`
+    and `_walk_tree`. Tested via inline corpus validation
+    (run-once script in the README's empirical-results notes;
+    no formal test framework — matches the other Python tools
+    in this repo).
+  - Roadmap Phase 4 dialog-extract v0.3.0 box ticked.
+
 - **`tools/gpl-disasm/` v0.3.1** fixes the `gpl else` (0x3F)
   control-flow edge. v0.3.0's CFG treated the else opcode's
   offset as a first-class block leader and routed `gpl if` /
