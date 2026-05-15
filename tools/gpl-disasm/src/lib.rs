@@ -843,6 +843,220 @@ pub struct UnresolvedEdge {
     pub reason: &'static str,
 }
 
+// ---------- Global CFG (v0.4.1) ----------
+
+/// Whole-file inter-chunk control-flow graph. Nodes are GPL/MAS
+/// chunks; edges are `gpl global sub` (0x14) call sites. Each
+/// chunk's per-chunk [`Cfg`] models intra-chunk flow only; the
+/// `GlobalCfg` is the union view across all chunks in a single
+/// GFF.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct GlobalCfg {
+    /// Source GFF basename (e.g. `GPLDATA.GFF`), preserved for
+    /// downstream consumers and rendering.
+    pub source: String,
+    pub nodes: Vec<ChunkNode>,
+    pub edges: Vec<CrossEdge>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ChunkNode {
+    /// 4-char FOURCC including any trailing space (`GPL ` / `MAS `).
+    pub kind: String,
+    pub chunk_id: i32,
+    /// Number of entry points (chunk start + every `local sub`
+    /// target inside this chunk).
+    pub entry_count: usize,
+    /// Number of basic blocks in the chunk's intra-chunk CFG.
+    pub block_count: usize,
+    /// Number of `gpl global sub` call sites originating in this
+    /// chunk.
+    pub outbound_calls: usize,
+    /// Number of `gpl global sub` call sites in other chunks
+    /// (or this chunk, via self-call) targeting this chunk.
+    /// Computed from the cross-chunk edge list.
+    pub inbound_calls: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CrossEdge {
+    pub from_kind: String,
+    pub from_chunk: i32,
+    pub from_offset: usize,
+    /// Destination chunk id within the same GFF.
+    pub to_chunk: i32,
+    pub to_offset: usize,
+    /// Optional symbol-derived name for the entry point that
+    /// contains `from_offset` (the calling site's nearest
+    /// enclosing entry).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub from_function_name: Option<String>,
+    /// Optional symbol-derived name for `to_offset` when it
+    /// matches an entry point in the destination chunk.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub to_function_name: Option<String>,
+}
+
+/// A single chunk's contribution to a [`GlobalCfg`]. Builder
+/// callers iterate over every GPL/MAS chunk in the GFF, build
+/// the per-chunk [`Cfg`], and pass the resulting tuple into
+/// [`build_global_cfg`].
+#[derive(Debug)]
+pub struct ChunkSummary<'a> {
+    pub kind: String,
+    pub chunk_id: i32,
+    pub cfg: &'a Cfg,
+    pub cross_chunk_calls: &'a [CrossChunkCall],
+}
+
+/// Aggregate per-chunk Cfgs into a whole-file inter-chunk graph.
+/// Symbols (if provided) annotate the from/to function names on
+/// each cross-chunk edge.
+pub fn build_global_cfg(
+    source: &str,
+    chunks: &[ChunkSummary<'_>],
+    symbols: Option<&Symbols>,
+) -> GlobalCfg {
+    let mut nodes: Vec<ChunkNode> = Vec::with_capacity(chunks.len());
+    let mut edges: Vec<CrossEdge> = Vec::new();
+    let mut inbound: BTreeMap<i32, usize> = BTreeMap::new();
+
+    // Per-chunk: build a sorted entry-offset list for "nearest
+    // enclosing entry" lookups when resolving from_function_name.
+    let chunk_entries: BTreeMap<i32, Vec<usize>> = chunks
+        .iter()
+        .map(|cs| (cs.chunk_id, cs.cfg.entry_points.clone()))
+        .collect();
+
+    for cs in chunks {
+        for call in cs.cross_chunk_calls {
+            let to_chunk = call.target_file_id;
+            *inbound.entry(to_chunk).or_insert(0) += 1;
+            let from_function_name = nearest_entry_symbol(
+                symbols,
+                source,
+                &cs.kind,
+                cs.chunk_id,
+                call.from_offset,
+                chunk_entries.get(&cs.chunk_id).map(|v| v.as_slice()).unwrap_or(&[]),
+            );
+            let to_offset = if call.target_offset >= 0 {
+                call.target_offset as usize
+            } else {
+                0
+            };
+            let to_function_name = symbols.and_then(|s| {
+                s.function_name(source, "GPL ", to_chunk, to_offset)
+                    .map(String::from)
+            });
+            edges.push(CrossEdge {
+                from_kind: cs.kind.clone(),
+                from_chunk: cs.chunk_id,
+                from_offset: call.from_offset,
+                to_chunk,
+                to_offset,
+                from_function_name,
+                to_function_name,
+            });
+        }
+    }
+
+    for cs in chunks {
+        nodes.push(ChunkNode {
+            kind: cs.kind.clone(),
+            chunk_id: cs.chunk_id,
+            entry_count: cs.cfg.entry_points.len(),
+            block_count: cs.cfg.blocks.len(),
+            outbound_calls: cs.cross_chunk_calls.len(),
+            inbound_calls: *inbound.get(&cs.chunk_id).unwrap_or(&0),
+        });
+    }
+
+    GlobalCfg {
+        source: source.to_string(),
+        nodes,
+        edges,
+    }
+}
+
+/// Find the symbol name for the entry point whose offset is the
+/// largest value ≤ `call_offset` (i.e., the nearest enclosing
+/// entry). Returns None if no symbol matches.
+fn nearest_entry_symbol(
+    symbols: Option<&Symbols>,
+    file_basename: &str,
+    kind: &str,
+    chunk_id: i32,
+    call_offset: usize,
+    entries: &[usize],
+) -> Option<String> {
+    let syms = symbols?;
+    let entry_offset = entries
+        .iter()
+        .rev()
+        .find(|e| **e <= call_offset)
+        .copied()?;
+    syms.function_name(file_basename, kind, chunk_id, entry_offset)
+        .map(String::from)
+}
+
+/// Emit a Graphviz DOT graph for `gcfg`. Nodes are labelled by
+/// kind+id (and inbound/outbound counts in the label tooltip);
+/// edges are styled by source chunk. Self-loops get a special
+/// style. Suitable for whole-file callgraph visualisation.
+pub fn write_global_cfg_dot(
+    gcfg: &GlobalCfg,
+    out: &mut impl Write,
+) -> io::Result<()> {
+    writeln!(out, "digraph global_cfg {{")?;
+    writeln!(out, "  rankdir=LR;")?;
+    writeln!(
+        out,
+        "  node [shape=box, fontname=\"monospace\", fontsize=9];"
+    )?;
+    writeln!(out, "  edge [fontname=\"monospace\", fontsize=8];")?;
+    writeln!(
+        out,
+        "  label=\"global callgraph for {} ({} chunks, {} cross-chunk calls)\";",
+        gcfg.source,
+        gcfg.nodes.len(),
+        gcfg.edges.len()
+    )?;
+    for n in &gcfg.nodes {
+        let kind_trim = n.kind.trim_end();
+        writeln!(
+            out,
+            "  c_{}_{} [label=\"{}-{}\\n{} entries, {} blocks\\nin:{} out:{}\"];",
+            kind_trim,
+            n.chunk_id,
+            kind_trim,
+            n.chunk_id,
+            n.entry_count,
+            n.block_count,
+            n.inbound_calls,
+            n.outbound_calls
+        )?;
+    }
+    for e in &gcfg.edges {
+        let from_trim = e.from_kind.trim_end();
+        let is_self = e.from_chunk == e.to_chunk && from_trim == "GPL";
+        let attrs = if is_self {
+            " [style=dashed, color=gray50]"
+        } else {
+            ""
+        };
+        // For DS1/DS2 GPLDATA we observe `gpl global sub` targets
+        // landing only in GPL chunks (never MAS), so the to-node
+        // is always `c_GPL_<id>`.
+        writeln!(
+            out,
+            "  c_{}_{} -> c_GPL_{}{};",
+            from_trim, e.from_chunk, e.to_chunk, attrs
+        )?;
+    }
+    writeln!(out, "}}")
+}
+
 // ---------- Symbols (v0.4.0) ----------
 
 /// Hand-curated symbol catalogue. Seeded from the DSO v1.0
@@ -2927,6 +3141,121 @@ mod tests {
         let result = disassemble(&[0xFF, 0x00]);
         assert!(!result.aligned);
         assert!(result.cfg.is_none());
+    }
+
+    #[test]
+    fn global_cfg_aggregates_inbound_outbound_counts() {
+        // Two chunks: GPL-1 calls GPL-2 twice; GPL-2 calls GPL-1
+        // once (and itself once via self-call).
+        let cfg1 = Cfg {
+            entry_points: vec![0, 1],
+            blocks: vec![],
+            labels: BTreeMap::new(),
+            target_aliases: BTreeMap::new(),
+            unresolved: vec![],
+        };
+        let cfg2 = cfg1.clone();
+        let calls1 = vec![
+            CrossChunkCall {
+                from_offset: 0x10,
+                target_offset: 0x100,
+                target_file_id: 2,
+            },
+            CrossChunkCall {
+                from_offset: 0x20,
+                target_offset: 0x200,
+                target_file_id: 2,
+            },
+        ];
+        let calls2 = vec![
+            CrossChunkCall {
+                from_offset: 0x40,
+                target_offset: 0x40,
+                target_file_id: 1,
+            },
+            CrossChunkCall {
+                from_offset: 0x50,
+                target_offset: 0x50,
+                target_file_id: 2,
+            },
+        ];
+        let summaries = vec![
+            ChunkSummary {
+                kind: "GPL ".to_string(),
+                chunk_id: 1,
+                cfg: &cfg1,
+                cross_chunk_calls: &calls1,
+            },
+            ChunkSummary {
+                kind: "GPL ".to_string(),
+                chunk_id: 2,
+                cfg: &cfg2,
+                cross_chunk_calls: &calls2,
+            },
+        ];
+        let gcfg = build_global_cfg("TEST.GFF", &summaries, None);
+        assert_eq!(gcfg.nodes.len(), 2);
+        assert_eq!(gcfg.edges.len(), 4);
+        let n1 = gcfg.nodes.iter().find(|n| n.chunk_id == 1).unwrap();
+        let n2 = gcfg.nodes.iter().find(|n| n.chunk_id == 2).unwrap();
+        // GPL-1 outbound: 2 (both to GPL-2). Inbound: 1 (from GPL-2).
+        assert_eq!(n1.outbound_calls, 2);
+        assert_eq!(n1.inbound_calls, 1);
+        // GPL-2 outbound: 2 (one each to GPL-1 and GPL-2 self).
+        // Inbound: 3 (2 from GPL-1 + 1 self-call).
+        assert_eq!(n2.outbound_calls, 2);
+        assert_eq!(n2.inbound_calls, 3);
+    }
+
+    #[test]
+    fn global_cfg_annotates_edges_with_symbols() {
+        let cfg = Cfg {
+            entry_points: vec![0, 0x80],
+            blocks: vec![],
+            labels: BTreeMap::new(),
+            target_aliases: BTreeMap::new(),
+            unresolved: vec![],
+        };
+        let calls = vec![CrossChunkCall {
+            from_offset: 0x90,
+            target_offset: 0x80,
+            target_file_id: 5,
+        }];
+        let summaries = vec![ChunkSummary {
+            kind: "GPL ".to_string(),
+            chunk_id: 1,
+            cfg: &cfg,
+            cross_chunk_calls: &calls,
+        }];
+        let syms = Symbols {
+            opcodes: BTreeMap::new(),
+            functions: vec![
+                FunctionSymbol {
+                    file: "TEST.GFF".to_string(),
+                    kind: "GPL ".to_string(),
+                    chunk_id: 1,
+                    offset: 0x80,
+                    name: "caller_function".to_string(),
+                    notes: None,
+                },
+                FunctionSymbol {
+                    file: "TEST.GFF".to_string(),
+                    kind: "GPL ".to_string(),
+                    chunk_id: 5,
+                    offset: 0x80,
+                    name: "callee_function".to_string(),
+                    notes: None,
+                },
+            ],
+        };
+        let gcfg = build_global_cfg("TEST.GFF", &summaries, Some(&syms));
+        assert_eq!(gcfg.edges.len(), 1);
+        let e = &gcfg.edges[0];
+        // from_offset 0x90 is after entry 0x80, so nearest enclosing
+        // entry is 0x80 → "caller_function".
+        assert_eq!(e.from_function_name.as_deref(), Some("caller_function"));
+        // to_offset 0x80 matches the chunk-5 entry directly.
+        assert_eq!(e.to_function_name.as_deref(), Some("callee_function"));
     }
 
     #[test]

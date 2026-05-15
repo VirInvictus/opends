@@ -14,6 +14,33 @@ chunks so modders can read what a script does.
 
 Depends on `gff-edit` for GFF I/O.
 
+## What `gpl-disasm v0.4.1` ships
+
+**Inter-chunk control-flow graph (global callgraph).** Builds a
+whole-file graph where nodes are GPL/MAS chunks and edges are
+`gpl global sub` (0x14) call sites. Each chunk node carries
+inbound / outbound call counts; each edge optionally carries the
+symbol-derived names for the caller (nearest enclosing entry)
+and callee.
+
+New CLI flag:
+
+```sh
+gpl-disasm GPLDATA.GFF --global-cfg out.dot          # DOT
+gpl-disasm GPLDATA.GFF --global-cfg out.json --json  # structured JSON
+gpl-disasm GPLDATA.GFF --global-cfg -                # stdout
+```
+
+Mutually exclusive with the single-chunk path; consumes the
+whole GFF.
+
+**Corpus results** (GOG 1.10): DS1 GPLDATA has 250 chunks and
+587 inter-chunk edges; DS2 GPLDATA has 350 chunks and 797 edges.
+The most-called chunk in DS1 is GPL-74 (169 inbound calls,
+2 outbound) — a heavily-shared utility. The 1,384 total edges
+match the per-chunk `cross_chunk_calls` count reported by the
+corpus soundness test from v0.3.0+.
+
 ## What `gpl-disasm v0.4.0` ships
 
 **Symbol import plumbing.** Hand-curated catalogues at
@@ -217,6 +244,13 @@ Pipe `--cfg -` into Graphviz `dot` for a visual:
 gpl-disasm .games/ds1/GPLDATA.GFF --kind GPL --id 9 --cfg - | dot -Tpng -o chunk9.png
 ```
 
+Whole-file inter-chunk callgraph (v0.4.1+):
+
+```sh
+gpl-disasm .games/ds1/GPLDATA.GFF --global-cfg - | dot -Tpng -o ds1-callgraph.png
+gpl-disasm .games/ds1/GPLDATA.GFF --global-cfg gcfg.json --json
+```
+
 ## Roadmap
 
 - v0.1.0 — byte-annotation pass.
@@ -237,13 +271,17 @@ gpl-disasm .games/ds1/GPLDATA.GFF --kind GPL --id 9 --cfg - | dot -Tpng -o chunk
   27% of corpus conditionals. v0.3.1 redirects past the else
   opcode and adds a `target_aliases` map for raw-target-to-
   label rendering. 66,028 edges resolved on the corpus.
-- **v0.4.0 (current)** — symbol import plumbing. Hand-curated
+- v0.4.0 — symbol import plumbing. Hand-curated
   `tools/gpl-disasm/syms/{opcodes,functions}.toml` decorate
   function-entry labels in both text and JSON output. New
   `--syms <dir>` and `--no-syms` flags. Starter catalogue ships
-  with 2 verified entries (DS1 chunk 1 Iniya); curation grows
-  the file over time without code changes. v0.4.1+ extends the
-  loader to opcode mnemonic overrides and variable naming.
+  with 2 verified entries (DS1 chunk 1 Iniya).
+- **v0.4.1 (current)** — inter-chunk CFG. `--global-cfg <path>`
+  emits a whole-file callgraph following the `gpl global sub`
+  (0x14) cross-chunk call sites. 587 edges across 250 DS1
+  chunks; 797 edges across 350 DS2 chunks. Symbol annotations
+  flow through: when caller / callee offsets match entries in
+  `functions.toml`, the edge metadata names them.
 - v0.4.0+ — DSO debug-symbol import; inter-chunk CFG following
   `global sub` edges; integration with `opcode-fuzz` (Phase 5)
   for opcode discovery.

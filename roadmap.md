@@ -163,6 +163,13 @@ runs through it.
       entry decoration wired through text and JSON output;
       starter catalogue ships 2 verified entries. v0.4.1+ adds
       opcode-name overrides and variable naming.)
+- [x] Inter-chunk control-flow graph (gpl-disasm v0.4.1):
+      `--global-cfg <path>` aggregates per-chunk
+      `cross_chunk_calls` into a whole-GFF callgraph. 250 nodes
+      / 587 edges for DS1; 350 nodes / 797 edges for DS2;
+      combined 1,384 edges matches the v0.3.0 corpus soundness
+      count exactly. Symbol-derived caller/callee names flow
+      through edge metadata.
 
 **Done when**: `gpl-disasm extracted/ds1/GPLDATA.GFF` produces
 output that lets a reader locate a quest-script function by

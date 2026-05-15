@@ -4,6 +4,44 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gpl-disasm/` v0.4.1** adds inter-chunk control-flow
+  analysis. New `--global-cfg <path>` flag emits a whole-file
+  callgraph where nodes are GPL/MAS chunks and edges are the
+  `gpl global sub` (0x14) cross-chunk call sites we've been
+  indexing since v0.3.0. Output is DOT by default or JSON with
+  `--json`; `-` writes to stdout. Mutually exclusive with the
+  single-chunk path.
+  - **New types** (`lib.rs`): `GlobalCfg` (source, nodes, edges),
+    `ChunkNode` (kind, chunk_id, entry/block/in/out counts),
+    `CrossEdge` (from_kind, from_chunk, from_offset, to_chunk,
+    to_offset, optional from/to function names), `ChunkSummary`
+    (per-chunk input to the builder).
+  - **Symbol propagation**: when the caller's `from_offset`
+    falls inside an entry-point range whose `functions.toml`
+    row exists, that name is set as `from_function_name`. When
+    the callee's `to_offset` matches an entry point in the
+    destination chunk and a symbol exists, `to_function_name`
+    is set. JSON consumers see the resolved names directly.
+  - **Corpus** (GOG 1.10):
+    - DS1 GPLDATA: 250 chunks, 587 inter-chunk edges.
+    - DS2 GPLDATA: 350 chunks, 797 inter-chunk edges.
+    - Combined: 1,384 edges — exactly the figure the v0.3.0
+      corpus soundness test has been reporting since the cross-
+      chunk indexing landed.
+  - **Most-called chunk in DS1**: GPL-74 with 169 inbound
+    calls and 2 outbound. The shape suggests it's a heavily-
+    shared utility worth naming first in the curation backlog.
+  - **Tests**: 2 new unit tests
+    (`global_cfg_aggregates_inbound_outbound_counts`,
+    `global_cfg_annotates_edges_with_symbols`). gpl-disasm
+    test count: 40 unit + 2 integration.
+  - **DOT renderer**: self-loops (a chunk calling itself via
+    `global sub` — we observe a few of these, e.g. GPL-106 /
+    GPL-107 in DS1) get a dashed-gray style to distinguish them
+    from inter-chunk edges. Each chunk node carries inbound /
+    outbound counts in its label.
+  - Roadmap Phase 3 inter-chunk-CFG bullet ticked.
+
 - **`tools/gpl-disasm/` v0.4.0** ships symbol-import plumbing.
   Hand-curated TOML catalogues at `tools/gpl-disasm/syms/`
   decorate function-entry labels in both text and JSON output.

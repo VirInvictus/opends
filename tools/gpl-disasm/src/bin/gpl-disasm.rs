@@ -6,8 +6,8 @@ use anyhow::{Context, Result, anyhow};
 use clap::Parser;
 use gff_edit::{FourCC, Gff};
 use gpl_disasm::{
-    Cfg, DisasmResult, EdgeKind, Expression, Instruction, OPCODES, Symbols, disassemble,
-    write_dot,
+    Cfg, ChunkSummary, DisasmResult, EdgeKind, Expression, Instruction, OPCODES, Symbols,
+    build_global_cfg, disassemble, write_dot, write_global_cfg_dot,
 };
 
 #[derive(Parser)]
@@ -76,6 +76,14 @@ struct Cli {
     /// flux.
     #[arg(long = "no-syms")]
     no_syms: bool,
+    /// Emit a whole-file inter-chunk control-flow graph: nodes
+    /// are GPL/MAS chunks, edges are `gpl global sub` (0x14) call
+    /// sites. Argument is the output path (or `-` for stdout).
+    /// Output format follows `--json`: DOT by default, JSON when
+    /// `--json` is set. Mutually exclusive with the single-chunk
+    /// (`--kind`/`--id`) path.
+    #[arg(long = "global-cfg")]
+    global_cfg: Option<PathBuf>,
 }
 
 fn main() -> Result<()> {
@@ -99,6 +107,59 @@ fn main() -> Result<()> {
         .unwrap_or("")
         .to_string();
     let symbols = load_symbols(cli.syms.as_deref(), cli.no_syms)?;
+
+    if let Some(ref out_path) = cli.global_cfg {
+        // Whole-file inter-chunk callgraph mode. Disassemble every
+        // GPL/MAS chunk, collect cross-chunk calls, build the
+        // GlobalCfg, render DOT (or JSON).
+        let mut chunks: Vec<(String, i32, DisasmResult)> = Vec::new();
+        for c in gff.chunks() {
+            if c.kind != FourCC(*b"GPL ") && c.kind != FourCC(*b"MAS ") {
+                continue;
+            }
+            let bytes = gff.read_chunk(c);
+            let mut result = disassemble(bytes);
+            let kind_str_padded = String::from_utf8_lossy(c.kind.as_bytes()).into_owned();
+            if let (Some(syms), Some(cfg)) = (symbols.as_ref(), result.cfg.as_mut()) {
+                syms.apply_to_labels(cfg, &file_basename, &kind_str_padded, c.id);
+            }
+            chunks.push((kind_str_padded, c.id, result));
+        }
+        let summaries: Vec<ChunkSummary> = chunks
+            .iter()
+            .filter_map(|(kind, id, res)| {
+                res.cfg.as_ref().map(|cfg| ChunkSummary {
+                    kind: kind.clone(),
+                    chunk_id: *id,
+                    cfg,
+                    cross_chunk_calls: &res.cross_chunk_calls,
+                })
+            })
+            .collect();
+        let gcfg = build_global_cfg(&file_basename, &summaries, symbols.as_ref());
+        let body = if cli.json {
+            serde_json::to_string_pretty(&gcfg)? + "\n"
+        } else {
+            let mut buf: Vec<u8> = Vec::new();
+            write_global_cfg_dot(&gcfg, &mut buf).context("rendering global CFG DOT")?;
+            String::from_utf8(buf).context("DOT bytes not utf-8")?
+        };
+        if out_path.as_os_str() == "-" {
+            std::io::stdout()
+                .write_all(body.as_bytes())
+                .context("writing global CFG to stdout")?;
+        } else {
+            std::fs::write(out_path, body)
+                .with_context(|| format!("writing global CFG to {}", out_path.display()))?;
+        }
+        eprintln!(
+            "global CFG: {} chunks, {} cross-chunk edges from {}",
+            gcfg.nodes.len(),
+            gcfg.edges.len(),
+            file_basename
+        );
+        return Ok(());
+    }
 
     if cli.all {
         let out_dir = cli
