@@ -34,7 +34,11 @@ comments next to the relevant code.
 | Opcode catalogue (129 entries 0x00–0x80 with mnemonic names) | `dsoageofheroes/libgff` `src/gpl/parse.c` `gpl_commands` table (lines 1554–1684) | MIT |
 | GPL_* constants (operator offsets, parens, variable types, IMMED_* markers, `EXTENDED_VAR`, `OPERATOR_OFFSET`, `OPERATOR_LAST`) | `dsoageofheroes/libgff` `include/gpl/var.h` | MIT |
 | "Safe in RETVAL context" opcode annotations | `dsoageofheroes/libgff` `src/gpl/parse.c` `gpl_retval` switch (lines 1791–1826) | MIT |
-| Variable-length expression decoder (`gpl_read_number`) — planned for gpl-disasm v0.2.0 | `dsoageofheroes/libgff` `src/gpl/parse.c` `gpl_read_number` + helpers | MIT |
+| Variable-length expression decoder (`gpl_read_number`, lines 369-635): 14-bit immediate, IMMED_BYTE / BIGNUM / NAME / STRING, variable references with `EXTENDED_VAR`, operator loop, parens. Deferred-but-detected: `GPL_RETVAL`, `GPL_COMPLEX_*`, `0xb3`. | `dsoageofheroes/libgff` `src/gpl/parse.c` `gpl_read_number` | MIT |
+| Variable-reference helper (`gpl_read_simple_num_var`, lines 134-233): 1 or 2 byte vid, per-type dispatch (GFLAG/LFLAG/GNUM/LNUM/GBIGNUM/LBIGNUM/GSTRING/LSTRING/GNAME). | `dsoageofheroes/libgff` `src/gpl/parse.c` `gpl_read_simple_num_var` | MIT |
+| Per-opcode parameter-count table (`PARAM_COUNTS`): 129 entries 0x00..0x80, derived from each handler body's `gpl_get_parameters(gpl, N)` / `gpl_read_number(gpl)` calls. Wrappers (`gpl_template`, `gpl_type_op_equal`) expanded inline. | `dsoageofheroes/libgff` `src/gpl/parse.c` per-handler bodies (lines 660-1552) | MIT |
+| `0x5F music` parameter count (1 expression): libgff treats as `gpl_unknown`; soloscuro-archive reads 1 `read_number`. | `dsoageofheroes/soloscuro-archive` `src/gpl/gpl-lua.c` `gpl_lua_music` | MIT |
+| Structural handler ports (gpl-disasm v0.2.0): `gpl_load_variable` (0x16, simple-variable path), `gpl_menu` (0x48, three-expression entries terminated by 0x4A), `gpl_search` (0x33, do-while loop with SEARCH_QUAL 0x53 marker), `gpl_log` (0x2C, packed string only). | `dsoageofheroes/libgff` `src/gpl/parse.c` lines 1339, 1052, 901, 812 | MIT |
 | 7-bit packed inline-string decoder (sub-type markers `0x01` INTRODUCE / `0x02` UNCOMPRESSED / `0x05` COMPRESSED; 7-bit packed stream terminated by `0x03`; non-printable bytes replaced with space) | `dsoageofheroes/soloscuro-archive` `src/gpl/gpl-string.c` `sol_gpl_read_text` + `read_compressed` | MIT |
 
 **OpenDS code that consumes the above:**

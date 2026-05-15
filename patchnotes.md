@@ -4,6 +4,73 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gpl-disasm/` v0.2.0** ships parameter decoding.
+  Output is now **one row per instruction** (was one row per
+  byte) with formatted parameters: `gpl print string  115,
+  "Free! Finally free! I will destroy you all!..."`,
+  `gpl load accum  GNUM[1] == 0i8`, `gpl tport  NAME(-22), 255,
+  99i8, 99i8, 0i8`. Decoded inline strings now surface
+  directly in the disassembly without the v0.1.0 ASCII-run
+  heuristic.
+  - **Ports** from `dsoageofheroes/libgff` (MIT, attributed
+    inline and in `CREDITS.md`):
+    - `gpl_read_number` (the variable-length expression
+      decoder): 14-bit immediates, `GPL_IMMED_BYTE` / `BIGNUM` /
+      `NAME` / `STRING`, variable references with
+      `EXTENDED_VAR`, infix operators (`0xD1..=0xDF`), and
+      parens. Mirrors libgff's `do_next` operator-loop semantics.
+    - `gpl_read_simple_num_var` (variable reference id, 1 or 2
+      bytes per `EXTENDED_VAR`).
+    - Per-opcode parameter-count table `PARAM_COUNTS[0x81]`,
+      derived by reading every handler body in
+      `parse.c`.
+  - **Port** from `dsoageofheroes/soloscuro-archive` (MIT,
+    same author): the 7-bit packed string decoder
+    (`read_compressed`) so `GPL_IMMED_STRING` payloads decode
+    directly. Same algorithm as the existing Python port in
+    `tools/dialog-extract/`.
+  - **Structural handlers**: `gpl_load_variable` (0x16, simple
+    path; complex-write deferred), `gpl_menu` (0x48, three-
+    expression entries terminated by 0x4A), `gpl_search` (0x33,
+    SEARCH_QUAL loop), `gpl_log` (0x2C, packed-string only).
+  - **Deferred to v0.2.1** (decoded as opaque, marked
+    `best_effort`): nested `GPL_RETVAL | 0x80`,
+    `GPL_COMPLEX_*` (`0xB0..0xBF`), `gpl_setrecord` (uses
+    `access_complex`), and the `0xb3` "passive flag" special
+    case. The decoder records the dispatch byte and continues
+    best-effort; subsequent instructions inside the same chunk
+    may misalign past the deferred case.
+  - **New types** (all `serde::Serialize`-derived):
+    `DisasmResult` (`{ instructions, bytes_consumed, total_bytes,
+    aligned }`), `Instruction` (`{ offset, length, opcode,
+    mnemonic, params, best_effort, string_run }`), `Expression`
+    (a token in one `gpl_read_number` result), plus `VarKind`,
+    `Op`, `StringSubType`, `ParamSpec`.
+  - **CLI `--json` flag** emits structured output for downstream
+    tools (`dialog-extract` v0.2.0 will consume it).
+  - **Workspace**: `serde` and `serde_json` added to
+    `tools/gpl-disasm/Cargo.toml` (both already in
+    `workspace.dependencies` per spec §7a).
+  - **Tests**: 21 unit tests (each Expression case, helpers,
+    end-to-end small programs). Corpus integration test now
+    tracks two metrics: `bytes_consumed` (every byte must be
+    accounted for; asserted equal to `chunk_bytes.len()`) and
+    `aligned` percentage (fraction of chunks where no
+    `best_effort` was hit and the whole chunk parses cleanly).
+    Current corpus: **600 GPL/MAS chunks**, 2.37 M input bytes
+    decode into **198,744 instructions** (vs. v0.1.0's 2.37 M
+    annotation rows). 10.7% of chunks parse fully aligned;
+    the rest hit at least one deferred case (mostly nested
+    RETVAL on `gpl_search` / `gpl_clone` / `gpl_request`, or
+    a `GPL_COMPLEX_*` record-field access). v0.2.1 closes the
+    gap.
+  - `docs/gpl-opcodes.md` adds a per-opcode `Params` column
+    backed by the new `PARAM_COUNTS` table.
+  - `docs/gpl-bytecode.md` §5: v0.2.0 description updated
+    (parameter decoding shipped); v0.2.1 carries the deferred
+    cases.
+  - Roadmap Phase 3 v0.2.0 box ticked.
+  - `pick-it-up.md` retired (transient handoff primer).
 - **[`CREDITS.md`](CREDITS.md)** lands as a per-feature
   attribution manifest. Each OpenDS feature (FileHeader, TOC
   layout, segmented chunk resolution, writer policy, chunk-type

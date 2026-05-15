@@ -1,6 +1,6 @@
 [package]
 name = "gpl-disasm"
-version = "0.1.0"
+version = "0.2.0"
 description = "Disassembler for SSI's GPL (Game Programming Language) bytecode (Dark Sun)."
 readme = "README.md"
 edition.workspace = true
@@ -21,3 +21,5 @@ gff-edit = { path = "../gff-edit" }
 anyhow.workspace = true
 thiserror.workspace = true
 clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true

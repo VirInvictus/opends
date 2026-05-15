@@ -98,31 +98,45 @@ keystone tool that everything else in this corner relies on.
 ### Outputs
 
 - Per-chunk text dump with:
-  - Header comment: chunk type, id, size.
-  - Annotated bytes: offset, hex, mnemonic (when known),
-    operands (v0.2.0+).
-  - Cross-references: every jump target labeled (v0.2.0+).
+  - One row per instruction (v0.2.0+).
+  - Each row: offset, opcode byte, mnemonic, formatted
+    parameters (decoded values, variable references, infix
+    operators, parens).
+  - Cross-references: every jump target labeled (v0.3.0+).
   - Strings: embedded ASCII runs auto-detected and shown
-    inline.
+    inline as a comment.
   - Unknown opcodes: `db 0xNN ; ??`.
+- JSON output mode (v0.2.0+): structured `DisasmResult` with
+  alignment metadata and full Instruction / Expression tree.
 
 ### Versioning
 
-**v0.1.0 — byte-annotation pass.** Each byte is treated as a
-potential opcode. We look up its mnemonic in the 129-entry
+**v0.1.0 — byte-annotation pass.** Each byte was treated as a
+potential opcode. We looked up its mnemonic in the 129-entry
 catalogue sourced from libgff's `gpl_commands` table (sourced
-under MIT with attribution). We do *not* yet decode parameter
-bytes; every byte gets its own line. The output is a
-candidate disassembly: useful for grepping mnemonics and
-strings, but instruction boundaries are not aligned. Modders
-can already locate strings, find probable opcode density, and
-draw byte-level patch targets from the output.
+under MIT with attribution). v0.1.0 did *not* decode parameter
+bytes; every byte got its own line. Useful for grepping
+mnemonics and strings, but instruction boundaries were not
+aligned with the real program flow.
 
-**v0.2.0 — parameter decoding.** Port libgff's
-`gpl_read_number` / `gpl_get_parameters` / `gpl_load_variable`
-logic so each instruction's parameter bytes are consumed
-together. Output aligns to true instruction boundaries; the
-"every byte gets a line" pattern goes away.
+**v0.2.0 — parameter decoding (current).** Port of libgff's
+`gpl_read_number` (the variable-length expression decoder), the
+`gpl_read_simple_num_var` helper, and the 7-bit packed-string
+decoder (`read_compressed`, from soloscuro-archive). Output is
+now **one row per instruction**, with parameters formatted in an
+infix syntax (`GFLAG[12] == 1i8`, `"Free! Finally free!..."`,
+`NAME(-22)`). Structural handlers (`gpl_load_variable`,
+`gpl_search`, `gpl_menu`, `gpl_log`) decode their custom layouts
+too. Adds a `--json` output mode for tools downstream
+(`dialog-extract` v0.2.0 will consume it).
+
+Deferred to v0.2.1 (marked `best_effort` in the output):
+nested `GPL_RETVAL | 0x80` (recursive dispatch), `GPL_COMPLEX_*`
+range (record-field access via `gpl_access_complex`),
+`gpl_setrecord` (uses access_complex), and the `0xb3` "passive's
+flag value" special case. Chunks that hit any of these get
+correct decoding up to the deferred case and best-effort scan
+after.
 
 **v0.3.0 — control flow.** Recursive-descent over jumps and
 calls. Basic-block annotation, jump-target labels.

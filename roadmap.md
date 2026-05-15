@@ -145,9 +145,11 @@ runs through it.
       (gpl-disasm v0.1.0.)
 - [ ] Identify entry points and basic-block boundaries.
       (gpl-disasm v0.3.0; needs parameter decoding first.)
-- [ ] Decode each opcode's parameters (port libgff's
+- [x] Decode each opcode's parameters (port libgff's
       `gpl_read_number` / `gpl_get_parameters`). True
-      instruction-boundary alignment. (gpl-disasm v0.2.0)
+      instruction-boundary alignment for the common path; nested
+      RETVAL, COMPLEX_* and `gpl_setrecord` deferred to v0.2.1.
+      (gpl-disasm v0.2.0)
 - [ ] Cross-reference with `the-dark-lens` and DSO v1.0 debug
       symbols; emit a `syms.toml` we curate by hand and grow
       over time. (gpl-disasm v0.4.0+)
@@ -155,8 +157,9 @@ runs through it.
 **Done when**: `gpl-disasm extracted/ds1/GPLDATA.GFF` produces
 output that lets a reader locate a quest-script function by
 name (or by nearby string reference) and read its control
-flow. v0.1.0 ships the byte-annotation foundation;
-true-boundaries-and-control-flow comes in v0.2.0 and v0.3.0.
+flow. v0.1.0 shipped the byte-annotation foundation; v0.2.0
+ships true instruction boundaries on the common path; control
+flow comes in v0.3.0.
 
 ## Phase 4 — Exploration tools
 
