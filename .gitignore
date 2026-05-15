@@ -4,6 +4,7 @@
 # Upstream reference repos cloned for reverse-engineering research.
 # Each is its own checkout under a dot-prefixed directory.
 .dsun_music/
+.dsoageofheroes/
 
 # Build artifacts
 /build/
