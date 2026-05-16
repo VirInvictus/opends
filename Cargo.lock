@@ -169,7 +169,7 @@ dependencies = [
 
 [[package]]
 name = "gpl-asm"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -182,7 +182,7 @@ dependencies = [
 
 [[package]]
 name = "gpl-disasm"
-version = "0.4.4"
+version = "0.4.5"
 dependencies = [
  "anyhow",
  "clap",

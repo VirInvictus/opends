@@ -4,6 +4,43 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gpl-asm/` v0.1.1 + `tools/gpl-disasm/` v0.4.5** close
+  the corpus round-trip to **600 / 600 byte-identical**. v0.1.0
+  shipped at 456/600 because `gpl_search` (0x33) has side bytes
+  (a 2-byte range argument plus per-iteration field / type / 0x53
+  markers) that the disasm IR didn't capture. v0.4.5 adds two
+  optional preservation fields and v0.1.1 consumes them.
+  - **New `gpl-disasm` fields** (both `#[serde(default,
+    skip_serializing_if = "Option::is_none")]` so JSON for
+    non-Search instructions is byte-identical to v0.4.4):
+    - `Instruction.raw_tail: Option<Vec<u8>>` — top-level Search.
+    - `Expression::RetVal::inner_raw_tail: Option<Vec<u8>>` —
+      Search nested inside `GPL_RETVAL` (143 of 144 cases).
+    Captured by `read_instruction_params_with_depth` from the
+    bytes consumed past the first expression. `params[1..]`
+    still gets the trailing expressions populated for
+    downstream text/dialog consumers; the reassembler uses
+    `params[0] + raw_tail` exclusively.
+  - **Encoder logic** in `gpl-asm`: when handling
+    `ParamSpec::Search` (either top-level or via the `RetVal`
+    branch's inner-Search case), write `opcode +
+    encode(params[0]) + raw_tail`. If `raw_tail` is None — i.e.
+    the JSON came from a pre-v0.4.5 disassembler — the encoder
+    errors with a clear "needs gpl-disasm v0.4.5+" message
+    rather than silently emitting wrong bytes.
+  - **Corpus test** in `tests/corpus_roundtrip.rs`: no more
+    Search skip-list. Asserts every aligned GPL/MAS chunk in
+    DS1+DS2 GPLDATA round-trips byte-identical. **600 / 600.**
+  - **Breaking API change** (additive on data, additive on
+    pattern surface): `Expression::RetVal` pattern matches need
+    a `..` rest pattern or to name `inner_raw_tail`. Internal
+    `gpl-disasm` Display impl and tests updated; external
+    consumers in this workspace (`dialog-extract`,
+    `region-render`, `image-extract`) don't pattern-match
+    `RetVal` so they're unaffected.
+  - VERSIONs: `gpl-disasm` 0.4.4 -> 0.4.5; `gpl-asm` 0.1.0 ->
+    0.1.1.
+
 - **`tools/gpl-asm/` v0.1.0** ships (new Rust crate; Phase 5
   first deliverable). Round-trip reassembler that takes the
   `gpl-disasm --json` output and emits byte-identical bytecode.

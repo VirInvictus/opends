@@ -247,11 +247,31 @@ pub fn encode_instruction(out: &mut Vec<u8>, instr: &Instruction) -> Result<()> 
             encode_param(out, instr.offset, &instr.params[1])?;
         }
         ParamSpec::Search => {
-            return Err(EncodeError::UnsupportedOpcode {
-                offset: instr.offset,
-                opcode: instr.opcode,
-                reason: "gpl_search has side-bytes not captured by the v0.1.0 disasm IR",
-            });
+            // gpl_search: param[0] is the search target, captured as
+            // a normal expression. The remaining side bytes (2-byte
+            // range argument + per-iteration optional-0x53 + field +
+            // type markers + any conditional trailing expressions)
+            // live in `raw_tail`. Encode param[0] then append
+            // raw_tail verbatim.
+            if instr.params.is_empty() {
+                return Err(EncodeError::BadParamShape {
+                    offset: instr.offset,
+                    opcode: instr.opcode,
+                    param_index: 0,
+                    detail: "gpl_search expects at least the target param",
+                });
+            }
+            encode_param(out, instr.offset, &instr.params[0])?;
+            match &instr.raw_tail {
+                Some(tail) => out.extend_from_slice(tail),
+                None => {
+                    return Err(EncodeError::UnsupportedOpcode {
+                        offset: instr.offset,
+                        opcode: instr.opcode,
+                        reason: "gpl_search instruction has no raw_tail; needs gpl-disasm v0.4.5+",
+                    });
+                }
+            }
         }
         ParamSpec::Custom => {
             return Err(EncodeError::UnsupportedOpcode {
@@ -336,6 +356,7 @@ pub fn encode_expression(out: &mut Vec<u8>, instr_offset: usize, expr: &Expressi
         Expression::RetVal {
             inner_opcode,
             inner_params,
+            inner_raw_tail,
             ..
         } => {
             out.push(GPL_RETVAL | 0x80);
@@ -363,11 +384,35 @@ pub fn encode_expression(out: &mut Vec<u8>, instr_offset: usize, expr: &Expressi
                         encode_param(out, instr_offset, param)?;
                     }
                 }
+                ParamSpec::Search => {
+                    // Same shape as a top-level Search: encode the
+                    // first param (the target expression) then
+                    // append the captured `inner_raw_tail`.
+                    if inner_params.is_empty() {
+                        return Err(EncodeError::BadParamShape {
+                            offset: instr_offset,
+                            opcode: *inner_opcode,
+                            param_index: 0,
+                            detail: "RETVAL+search expects at least the target param",
+                        });
+                    }
+                    encode_param(out, instr_offset, &inner_params[0])?;
+                    match inner_raw_tail {
+                        Some(tail) => out.extend_from_slice(tail),
+                        None => {
+                            return Err(EncodeError::UnsupportedOpcode {
+                                offset: instr_offset,
+                                opcode: *inner_opcode,
+                                reason: "RETVAL+search has no inner_raw_tail; needs gpl-disasm v0.4.5+",
+                            });
+                        }
+                    }
+                }
                 _ => {
                     return Err(EncodeError::UnsupportedOpcode {
                         offset: instr_offset,
                         opcode: *inner_opcode,
-                        reason: "RETVAL inner opcodes with non-Fixed param specs not supported in v0.1.0",
+                        reason: "RETVAL inner opcodes with non-Fixed/Search specs not supported in v0.1.1",
                     });
                 }
             }

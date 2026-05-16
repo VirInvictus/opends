@@ -13,6 +13,25 @@ Depends on `gpl-disasm` for the [`DisasmResult`] type (and the
 `Deserialize` impls added there in v0.4.4 specifically so this
 crate can consume the same JSON the disassembler emits).
 
+## What `gpl-asm v0.1.1` ships
+
+**Full 600/600 corpus round-trip.** Closes the v0.1.0 gap by
+consuming the `raw_tail` / `inner_raw_tail` preservation fields
+that `gpl-disasm` v0.4.5 added on `Instruction` and
+`Expression::RetVal`.
+
+| Game | Chunks | Round-tripped | Skipped |
+|------|-------:|---------------:|--------:|
+| DS1+DS2 GPLDATA | 600 | **600** | 0 |
+
+For `gpl_search` (0x33) at the top level: the encoder writes
+`opcode + encode(param[0]) + raw_tail`. For `gpl_search` nested
+inside `GPL_RETVAL`: same pattern, using `inner_raw_tail`. The
+two cases together cover the 144 chunks v0.1.0 had to skip.
+
+No CLI or public-API changes; v0.1.0 callers don't have to do
+anything to pick up the broader coverage.
+
 ## What `gpl-asm v0.1.0` ships
 
 The **round-trip reassembler**. Given a `DisasmResult` parsed
@@ -33,8 +52,9 @@ byte-identical. The 144 skipped chunks contain `gpl_search`
 (0x33) either at the top level or nested inside `GPL_RETVAL`;
 that opcode has side bytes (a 2-byte range argument plus
 per-loop-iteration field / type tag bytes) that `gpl-disasm`'s
-current IR doesn't preserve. Adding a preservation field lands
-in `gpl-asm` / `gpl-disasm` v0.1.x.
+current IR doesn't preserve. v0.1.1 closes the gap by consuming
+the new `raw_tail` field on `Instruction` and
+`Expression::RetVal::inner_raw_tail`.
 
 ## Usage
 
@@ -119,10 +139,8 @@ that the original chunks ship inside dialog strings.
 
 ## Roadmap
 
-- **v0.1.x**: add a preservation field to `Instruction` (or a
-  per-Expression `raw_tail` field on `Search`) so the 144
-  Search-containing chunks round-trip too. Targets 100% on the
-  corpus.
+- **v0.1.1** (this release): preservation field for
+  `gpl_search` side bytes; corpus round-trip 600/600.
 - **v0.2.0**: text-listing parser. Consume `gpl-disasm`'s text
   output as input alongside JSON.
 - **v0.3.0**: structural edits. `insert_instruction(at, instr)`

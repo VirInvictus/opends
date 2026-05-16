@@ -14,6 +14,35 @@ chunks so modders can read what a script does.
 
 Depends on `gff-edit` for GFF I/O.
 
+## What `gpl-disasm v0.4.5` ships
+
+**Side-byte preservation for `gpl_search` (0x33).** Closes the
+last v0.1.0-era gap in the reassembler: with v0.4.5, every
+aligned GPL/MAS chunk in DS1+DS2 GPLDATA round-trips
+byte-identical through `disassemble -> encode`. The corpus
+metric: **600 / 600**.
+
+New optional fields:
+
+- `Instruction.raw_tail: Option<Vec<u8>>` — populated for the
+  top-level `gpl_search` case with the bytes consumed past
+  `params[0]` (the 2-byte range argument plus per-loop-iteration
+  field / type / 0x53 markers).
+- `Expression::RetVal::inner_raw_tail: Option<Vec<u8>>` — same,
+  for `gpl_search` nested inside a `GPL_RETVAL`. 143 corpus
+  chunks have this shape.
+
+Both fields are `#[serde(default, skip_serializing_if =
+"Option::is_none")]`, so JSON output for non-Search instructions
+is byte-identical to v0.4.4. The `params` vec still gets the
+trailing expressions from Search's conditional-expression loop
+populated for downstream consumers (dialog-extract, text
+listings); the reassembler uses only `params[0] + raw_tail`.
+
+This is purely additive on the public API. Pattern-match users
+of `Expression::RetVal { .. }` need to add a `..` rest pattern
+or name the new field (the type-system error is helpful).
+
 ## What `gpl-disasm v0.4.4` ships
 
 **`Deserialize` impls on every public Serialize-able type**, so

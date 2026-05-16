@@ -10,44 +10,7 @@ use std::path::Path;
 
 use gff_edit::{FourCC, Gff};
 use gpl_asm::{EncodeError, encode};
-use gpl_disasm::{Expression, Instruction, disassemble};
-
-/// Returns true if `instr` is a `gpl_search` (0x33) call or
-/// contains one nested inside a `GPL_RETVAL`. Search has side
-/// bytes that the v0.4.3 disassembly IR doesn't capture, so the
-/// encoder can't reproduce its bytes. Tracked as v0.1.x work.
-fn contains_search(instr: &Instruction) -> bool {
-    if instr.opcode == 0x33 {
-        return true;
-    }
-    for param in &instr.params {
-        if param_contains_search(param) {
-            return true;
-        }
-    }
-    false
-}
-
-fn param_contains_search(tokens: &[Expression]) -> bool {
-    for tok in tokens {
-        if let Expression::RetVal {
-            inner_opcode,
-            inner_params,
-            ..
-        } = tok
-        {
-            if *inner_opcode == 0x33 {
-                return true;
-            }
-            for ip in inner_params {
-                if param_contains_search(ip) {
-                    return true;
-                }
-            }
-        }
-    }
-    false
-}
+use gpl_disasm::disassemble;
 
 const CORPUS: &[&str] = &[
     "/home/bdkl/.gitrepos/opends/.games/ds1/GPLDATA.GFF",
@@ -66,7 +29,6 @@ fn every_aligned_gpl_chunk_roundtrips_byte_identical() {
     let mut encode_failures: Vec<(String, EncodeError)> = Vec::new();
     let mut mismatch_samples: Vec<String> = Vec::new();
     let mut skipped_unaligned = 0usize;
-    let mut skipped_search = 0usize;
     let mut skipped_custom = 0usize;
 
     for path in CORPUS {
@@ -85,13 +47,6 @@ fn every_aligned_gpl_chunk_roundtrips_byte_identical() {
             let result = disassemble(src);
             if !result.aligned {
                 skipped_unaligned += 1;
-                continue;
-            }
-            // Skip chunks containing gpl_search (0x33) anywhere
-            // (top-level OR nested inside GPL_RETVAL) until
-            // v0.1.x adds a preservation field for its side bytes.
-            if result.instructions.iter().any(contains_search) {
-                skipped_search += 1;
                 continue;
             }
             match encode(&result) {
@@ -142,8 +97,8 @@ fn every_aligned_gpl_chunk_roundtrips_byte_identical() {
 
     eprintln!(
         "gpl-asm corpus: tested={tested} roundtripped={roundtripped} mismatched={mismatched} \
-         unaligned_skipped={skipped_unaligned} search_skipped={skipped_search} \
-         custom_skipped={skipped_custom} encode_failures={}",
+         unaligned_skipped={skipped_unaligned} custom_skipped={skipped_custom} \
+         encode_failures={}",
         encode_failures.len()
     );
     for s in &mismatch_samples {

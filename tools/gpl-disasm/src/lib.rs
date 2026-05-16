@@ -696,6 +696,15 @@ pub enum Expression {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         inner_mnemonic: Option<Cow<'static, str>>,
         inner_params: Vec<Vec<Expression>>,
+        /// Side bytes the recursive `gpl_read_number` handler
+        /// consumed but didn't capture in `inner_params`. Currently
+        /// populated only for the nested `gpl_search` (0x33) case;
+        /// the v0.4.4 IR couldn't reproduce those bytes, which
+        /// blocked round-trip on 143 corpus chunks. v0.4.5 captures
+        /// them verbatim so the reassembler can append them after
+        /// `inner_params`'s expressions.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        inner_raw_tail: Option<Vec<u8>>,
     },
     /// A record-field access via `gpl_access_complex`. The dispatch
     /// byte (`tag`) is `GPL_COMPLEX_PTR=0x30 .. GPL_COMPLEX_HIGH=0x3F`
@@ -750,6 +759,14 @@ pub struct Instruction {
     /// heuristic for inline strings).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub string_run: Option<String>,
+    /// Side bytes the handler consumed past the last captured
+    /// expression. Currently populated only for top-level
+    /// `gpl_search` (0x33), whose `ParamSpec::Search` decoder reads
+    /// 2-byte range arguments and per-iteration field/type markers
+    /// that the `params` vec doesn't reproduce. The encoder appends
+    /// these bytes verbatim after `params[0]` to round-trip.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub raw_tail: Option<Vec<u8>>,
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
@@ -1439,6 +1456,7 @@ fn read_expression_with_depth(bytes: &[u8], cursor: usize, retval_depth: u8) -> 
                                 inner_opcode: inner,
                                 inner_mnemonic: opcode_name(inner).map(Cow::Borrowed),
                                 inner_params: Vec::new(),
+                                inner_raw_tail: None,
                             });
                             best_effort = true;
                         } else {
@@ -1456,6 +1474,7 @@ fn read_expression_with_depth(bytes: &[u8], cursor: usize, retval_depth: u8) -> 
                                 inner_opcode: inner,
                                 inner_mnemonic: opcode_name(inner).map(Cow::Borrowed),
                                 inner_params: inner_result.params,
+                                inner_raw_tail: inner_result.raw_tail,
                             });
                         }
                     }
@@ -1689,6 +1708,12 @@ struct InstructionParams {
     params: Vec<Vec<Expression>>,
     consumed: usize,
     best_effort: bool,
+    /// Side bytes the handler consumed past the last captured
+    /// expression. Populated only by [`ParamSpec::Search`] today.
+    /// `disassemble` propagates this to [`Instruction::raw_tail`];
+    /// the `GPL_RETVAL` recursion propagates it to
+    /// [`Expression::RetVal::inner_raw_tail`].
+    raw_tail: Option<Vec<u8>>,
 }
 
 /// Read all parameters for a single opcode according to its
@@ -1704,6 +1729,7 @@ fn read_instruction_params_with_depth(
     let mut pos = cursor;
     let mut params: Vec<Vec<Expression>> = Vec::new();
     let mut be = false;
+    let mut raw_tail: Option<Vec<u8>> = None;
 
     match param_spec(opcode) {
         ParamSpec::None => {}
@@ -1823,6 +1849,15 @@ fn read_instruction_params_with_depth(
             pos += r.consumed;
             be |= r.best_effort;
             params.push(r.tokens);
+            // Capture every byte the Search handler consumes past
+            // `param[0]` as `raw_tail`. The reassembler appends
+            // these bytes verbatim after encoding `param[0]`, since
+            // the per-iteration field/type markers (and the 2-byte
+            // range argument) aren't reconstructible from the
+            // captured params. params[1..] still get populated for
+            // downstream consumers (dialog-extract, listings) but
+            // the reassembler doesn't need them.
+            let tail_start = pos;
             if pos + 2 > bytes.len() {
                 be = true;
             } else {
@@ -1854,6 +1889,7 @@ fn read_instruction_params_with_depth(
                     }
                 }
             }
+            raw_tail = Some(bytes[tail_start..pos].to_vec());
         }
         ParamSpec::Custom => {
             // Best-effort: consume nothing beyond the opcode byte.
@@ -1866,6 +1902,7 @@ fn read_instruction_params_with_depth(
         params,
         consumed: pos - cursor,
         best_effort: be,
+        raw_tail,
     }
 }
 
@@ -1888,6 +1925,7 @@ pub fn disassemble(bytes: &[u8]) -> DisasmResult {
         cursor += r.consumed;
         let be = r.best_effort;
         let params = r.params;
+        let raw_tail = r.raw_tail;
 
         if be {
             any_best_effort = true;
@@ -1907,6 +1945,7 @@ pub fn disassemble(bytes: &[u8]) -> DisasmResult {
             params,
             best_effort: be,
             string_run,
+            raw_tail,
         });
     }
 
@@ -2484,6 +2523,7 @@ impl fmt::Display for Expression {
                 inner_opcode,
                 inner_mnemonic,
                 inner_params,
+                ..
             } => {
                 let name = inner_mnemonic.as_deref().unwrap_or("?");
                 write!(f, "RETVAL({name}")?;
@@ -2729,6 +2769,7 @@ mod tests {
                 inner_opcode,
                 inner_mnemonic,
                 inner_params,
+                ..
             } => {
                 assert_eq!(*inner_opcode, 0x52);
                 assert_eq!(inner_mnemonic.as_deref(), Some("gpl rand"));
@@ -3007,6 +3048,7 @@ mod tests {
             params,
             best_effort: false,
             string_run: None,
+            raw_tail: None,
         }
     }
 
@@ -3182,6 +3224,7 @@ mod tests {
             ],
             best_effort: false,
             string_run: None,
+            raw_tail: None,
         };
         let instrs = vec![instr, fake_instr(5, 0x15, None)];
         let (_, calls) = build_cfg(&instrs, 6);
@@ -3205,6 +3248,7 @@ mod tests {
             ],
             best_effort: false,
             string_run: None,
+            raw_tail: None,
         };
         let instrs = vec![
             instr,

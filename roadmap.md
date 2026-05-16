@@ -299,13 +299,12 @@ just read it. Be able to discover unknown opcodes systematically.
 
 - [x] Round-trip reassembler: `gpl-disasm --json` → bytecode.
       (gpl-asm v0.1.0; 456/600 DS1+DS2 chunks round-trip
-      byte-identical; remaining 144 contain `gpl_search` whose
-      side bytes need preservation in the disasm IR, queued for
-      v0.1.x.)
-- [ ] Preservation field for `gpl_search` (0x33) side bytes:
-      raw payload bytes captured on Instruction so the encoder
-      can reproduce them. v0.1.x; pushes the corpus round-trip
-      to 600/600.
+      byte-identical out of the box.)
+- [x] Preservation field for `gpl_search` (0x33) side bytes:
+      raw payload bytes captured on `Instruction` and on
+      `Expression::RetVal::inner_raw_tail` so the encoder can
+      reproduce them. **(gpl-disasm v0.4.5 + gpl-asm v0.1.1:
+      corpus round-trip is now 600/600 byte-identical.)**
 - [ ] Text-listing parser: consume `gpl-disasm`'s text output
       as input alongside the JSON path. v0.2.0.
 - [ ] Structural edits: `insert_instruction(at, instr)` /
