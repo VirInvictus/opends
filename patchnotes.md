@@ -4,6 +4,54 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gpl-asm/` v0.2.0** adds a **text-listing parser**.
+  Modders can edit `gpl-disasm`'s human-readable output and
+  reassemble. Same encoder, new front-end.
+  - **`gpl_asm::parse(&str) -> Result<DisasmResult, ParseError>`**
+    is the new entry point. Accepts the exact format
+    `Instruction::Display` produces with `--no-labels`:
+    `OOOO  HH  MNEMONIC               <params>  ; trailer`,
+    one instruction per line. Comments (`;`-prefixed) and label
+    declaration lines (`label_0x...:`, `entry_0x...:`) are
+    ignored; v0.2.x will resolve labels.
+  - **Expression parser**: every Display form is invertible.
+    Integer literals (`5`, `5i8`, `5i32`, `-5i8`), strings
+    (`"escaped"` / `INTRODUCE` / `UNCOMPRESSED`), variables
+    (`GNUM[1]`, `GNUM+[300]`, ...), `NAME(-5)`, `RETVAL(mnem
+    args)`, `COMPLEX(0xtag, ctx, depth=N, [elements])`, parens,
+    and the 15 binary operators (longest-match: `&~` beats `&`,
+    `>=` beats `>`, etc.). Sign vs operator on `-`: `-DIGIT` is
+    a sign (no surrounding spaces); ` - ` is the op (the
+    renderer always wraps top-level ops in spaces). `+` is
+    always an operator (i8/i32 literals never render with an
+    explicit `+`).
+  - **CLI**: input format is auto-detected from the file
+    extension (`.json` -> JSON, anything else -> text);
+    `--json` / `--text` force a mode. `--all-from <dir>` reads
+    both `.json` and `.asm`/`.txt` files per-entry, encoding
+    each to a matching `.bin`.
+  - **Text-roundtrip corpus** (GOG 1.10 DS1+DS2 GPLDATA, 600
+    aligned chunks): `bytes -> disassemble -> render text ->
+    parse -> encode` is byte-identical for **456 / 456**
+    non-Search chunks. The 144 Search-containing chunks are
+    skipped — same reason as v0.1.0 had to skip them in JSON
+    mode before v0.1.1: their `raw_tail` side bytes aren't in
+    the text format. v0.2.x adds a `; raw_tail=hex...` trailer
+    annotation to close that gap.
+  - **Encoder relaxation**: dropped a `LengthMismatch`
+    sanity-check in `encode`. The parser can only estimate
+    `DisasmResult.total_bytes` by re-doing the encoder's work;
+    the corpus round-trip already catches real encoder bugs by
+    comparing against the source bytes, so the redundant check
+    was making the encoder over-strict on parsed input. A
+    `debug_assert_eq!` still fires in debug builds when the
+    field disagrees with the encoded length.
+  - **Tests**: new `tests/text_roundtrip.rs` (1 test, 456
+    chunks asserted byte-identical). Existing JSON-mode corpus
+    round-trip (`tests/corpus_roundtrip.rs`) still passes
+    600/600.
+  - **VERSION**: 0.1.1 -> 0.2.0.
+
 - **`tools/gpl-asm/` v0.1.1 + `tools/gpl-disasm/` v0.4.5** close
   the corpus round-trip to **600 / 600 byte-identical**. v0.1.0
   shipped at 456/600 because `gpl_search` (0x33) has side bytes

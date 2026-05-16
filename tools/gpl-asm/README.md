@@ -13,6 +13,43 @@ Depends on `gpl-disasm` for the [`DisasmResult`] type (and the
 `Deserialize` impls added there in v0.4.4 specifically so this
 crate can consume the same JSON the disassembler emits).
 
+## What `gpl-asm v0.2.0` ships
+
+**Text-listing parser.** Consume `gpl-disasm`'s human-readable
+listing as input, alongside the existing `--json` path. Modder
+workflow:
+
+```sh
+gpl-disasm GPLDATA.GFF --kind GPL --id 199 --no-labels --no-syms \
+    -o chunk.asm
+# Edit chunk.asm in your editor.
+gpl-asm chunk.asm -o chunk.bin
+```
+
+The parser is **strict about format** — it accepts exactly the
+output `gpl-disasm` produces with `--no-labels`. Future v0.2.x
+releases will resolve label-form branch targets so modders can
+work with the labelled listing too.
+
+**Corpus** (GOG 1.10 DS1+DS2 GPLDATA, 600 aligned chunks): when
+the text listing is what `gpl-disasm --no-labels` would emit,
+**456 / 456 non-Search chunks round-trip byte-identical**
+through `bytes -> disasm -> text -> parse -> encode`. The 144
+Search-containing chunks are skipped because the text format
+doesn't preserve their `raw_tail` side bytes; v0.2.x will add a
+`; raw_tail=hex...` trailer annotation.
+
+CLI:
+
+| Input | How it's detected |
+|-------|-------------------|
+| `chunk.json` | extension `.json` |
+| `chunk.asm` / `chunk.txt` / any other | text by default |
+| any extension | `--json` or `--text` overrides |
+
+`--all-from <dir>` works for both: each file is parsed using
+its own extension-detected mode.
+
 ## What `gpl-asm v0.1.1` ships
 
 **Full 600/600 corpus round-trip.** Closes the v0.1.0 gap by
@@ -139,10 +176,14 @@ that the original chunks ship inside dialog strings.
 
 ## Roadmap
 
-- **v0.1.1** (this release): preservation field for
-  `gpl_search` side bytes; corpus round-trip 600/600.
-- **v0.2.0**: text-listing parser. Consume `gpl-disasm`'s text
-  output as input alongside JSON.
+- **v0.1.1**: preservation field for `gpl_search` side bytes;
+  JSON-mode corpus round-trip 600/600.
+- **v0.2.0** (this release): text-listing parser for the
+  `--no-labels` form; text-mode round-trip 456/456 non-Search.
+- **v0.2.x**: parse the labelled form (resolve `label_0x...:`
+  and `entry_0x...:` declarations + label-form branch params);
+  add `; raw_tail=hex...` annotation so Search chunks
+  round-trip through text too.
 - **v0.3.0**: structural edits. `insert_instruction(at, instr)`
   / `delete_instruction(at, length)` APIs that recompute branch
   targets and labels.

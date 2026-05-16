@@ -305,8 +305,11 @@ just read it. Be able to discover unknown opcodes systematically.
       `Expression::RetVal::inner_raw_tail` so the encoder can
       reproduce them. **(gpl-disasm v0.4.5 + gpl-asm v0.1.1:
       corpus round-trip is now 600/600 byte-identical.)**
-- [ ] Text-listing parser: consume `gpl-disasm`'s text output
-      as input alongside the JSON path. v0.2.0.
+- [x] Text-listing parser: consume `gpl-disasm`'s text output
+      as input alongside the JSON path. (gpl-asm v0.2.0;
+      456/456 non-Search chunks round-trip byte-identical via
+      `bytes -> disasm -> text -> parse -> encode`. CLI auto-
+      detects JSON vs text from extension.)
 - [ ] Structural edits: `insert_instruction(at, instr)` /
       `delete_instruction(at, length)` API that recomputes
       branch targets and labels. Unblocks fixes that need to
