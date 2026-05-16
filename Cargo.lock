@@ -279,6 +279,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "region-render"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "gff-edit",
+ "image-extract",
+ "png",
+ "thiserror",
+]
+
+[[package]]
 name = "serde"
 version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"

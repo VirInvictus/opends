@@ -246,18 +246,36 @@ look at the maps directly.
       animated PNG / spritesheet).
 - [x] Tagged: `image-extract-v0.1.0`. (this release)
 
-### `tools/region-view/` (Rust + sdl2)
+### `tools/region-render/` (Rust)
 
-- [ ] Minimal SDL2 window that opens a single region GFF and
-      draws the tilemap + sprite layer + entities.
-- [ ] No interaction yet — just a view.
-- [ ] Camera pan + zoom for inspection.
-- [ ] Useful for "what does this region actually look like" and
-      "is this entity placed where I think it is."
-- [ ] Tagged: `region-view-v0.1.0`.
+The interactive SDL2 viewer was descoped in favour of a static
+PNG emitter for v0.1.0: ships sooner, fits the "screenshot first,
+interactive later" pattern the toolkit follows elsewhere, and
+gives modders the visual artifact without an SDL2 dependency.
+Interactive viewing rolls into a future `region-view` release if
+the friction is felt.
+
+- [x] Open a single region GFF and composite the background-tile
+      layer (`RMAP` for DS1, `MAP ` for DS2 + per-region `TILE`
+      bitmaps) into a 2048 x 1568 palette-indexed PNG.
+      (region-render v0.1.0; corpus smoke renders 35 DS1 + 18
+      DS2 regions cleanly, 0 missing-tile bytes across the
+      corpus.)
+- [x] Palette discovery for DS2 (inline `PAL ` chunk).
+- [x] Palette fallback for DS1 (sibling
+      `RESOURCE.GFF:PAL :1000`) plus `--palette <gff>:<kind>:<id>`
+      and `--palette-file <raw>` override flags.
+- [ ] Walls (`GMAP` lower 5 bits + per-region `WALL` chunks).
+      v0.2.0.
+- [ ] Entity sprites (`ETAB` + `OJFF` + `BMP `). v0.3.0.
+- [ ] Animated palette colours. v0.4.0.
+- [ ] Per-region palette discovery for DS1 (current default may
+      surface "off-camera void" colours; interior playable area
+      already renders correctly). v0.2.0.
+- [x] Tagged: `region-render-v0.1.0`. (this release)
 
 **Done when**: dialog-extract, save-inspect, image-extract, and
-region-view all exist with their own READMEs, each tagged at
+region-render all exist with their own READMEs, each tagged at
 `v0.1.0`, and `tools/README.md` indexes them.
 
 ## Phase 5 — `gpl-asm` + `opcode-fuzz`

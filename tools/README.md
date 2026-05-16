@@ -18,6 +18,7 @@ implementation-language split.
 | [`save-inspect`](save-inspect/)          | Python | 0.2.0   | Dump a CHARSAVE.GFF as JSON. v0.2 walks the CHAR record body into combat / character / item sub-blocks (DS1 full schema; DS2 surfaces names + raw hex). PSIN/PSST/TEXT decoded too.|
 | [`dialog-extract`](dialog-extract/)      | Python | 0.2.0   | Pull GPL strings (NPC dialog, prompts, NPC names) from GPL/MAS chunks. v0.2 consumes `gpl-disasm --json` instruction-aware; `--text-source RESOURCE.GFF` resolves GSTRING text-id references.|
 | [`image-extract`](image-extract/)        | Rust   | 0.1.0   | Extract Dark Sun bitmap chunks (`BMP `, `PORT`, `ICON`, `BMAP`, `OMAP`, `TILE`) as palette-indexed PNG. Decodes DS1 RLE and PLNR frame formats; pulls palettes from `PAL ` / `CPAL` chunks in the same GFF.|
+| [`region-render`](region-render/)        | Rust   | 0.1.0   | Render a region GFF's background-tile layer (`RMAP` DS1 / `MAP ` DS2 + `TILE`) to a 2048x1568 palette-indexed PNG. Static; walls and entities are v0.2+. Closes Phase 4.|
 
 ## Planned
 
@@ -26,7 +27,6 @@ In roadmap order. See [`../roadmap.md`](../roadmap.md).
 | Tool             | Lang             | Phase | Purpose                                              |
 |------------------|------------------|-------|------------------------------------------------------|
 | `repro`          | Shell + Python   | 2     | DOSBox repro harness with per-bug save library.      |
-| `region-view`    | Rust + SDL2      | 4     | Render a region GFF (tilemap + sprites + entities).  |
 | `gpl-asm`        | Rust             | 5     | GPL bytecode reassembler.                            |
 | `opcode-fuzz`    | Python           | 5     | DOSBox-driven opcode discovery harness.              |
 | `extract.sh`     | Shell            | (deferred) | GOG installer → flat extracted file tree.       |

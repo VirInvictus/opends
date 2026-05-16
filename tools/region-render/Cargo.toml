@@ -1,0 +1,25 @@
+[package]
+name = "region-render"
+version = "0.1.0"
+description = "Render Dark Sun region GFFs (background tile layer) as palette-indexed PNG."
+readme = "README.md"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lib]
+name = "region_render"
+path = "src/lib.rs"
+
+[[bin]]
+name = "region-render"
+path = "src/bin/region-render.rs"
+
+[dependencies]
+gff-edit = { path = "../gff-edit" }
+image-extract = { path = "../image-extract" }
+anyhow.workspace = true
+thiserror.workspace = true
+clap.workspace = true
+png.workspace = true

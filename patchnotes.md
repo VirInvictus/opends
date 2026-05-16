@@ -4,6 +4,58 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/region-render/` v0.1.0** ships (new Rust crate; closes
+  Phase 4). Renders a region GFF's background tile layer
+  (`RMAP` for DS1 or `MAP ` for DS2) as a 2048 x 1568
+  palette-indexed PNG. Walls (`GMAP` lower 5 bits + `WALL`
+  chunks), entities (`ETAB` + `OJFF`), animated colours, and
+  GMAP flag visualisation are all v0.2+ work.
+  - **Ports from `JohnGlassmyer/dsun_music`** (MIT,
+    `region-tool/RegionTool.java`):
+    - Region geometry constants (128 x 98 tiles, 16 x 16 px).
+    - `RMAP` / `MAP ` layout (row-major byte grid, each byte =
+      TILE resource id).
+    - Palette discovery rule (inline first, explicit `--pal`
+      override second).
+  - **Reuses `image-extract`**: `Palette::from_bytes` for the
+    768-byte `PAL `/`CPAL` chunks; `Bitmap::from_bytes` +
+    `decode_frame(0)` for each `TILE`. v0.1 expects 16 x 16
+    frames and treats anything else as a soft decode failure.
+  - **Soft-decode of malformed TILEs**: DS2 region GFFs ship a
+    15-byte sentinel `TILE` id `0` that can't be parsed as a
+    bitmap. v0.1 records these as `TileDecodeFailure` rows
+    rather than hard-failing; the sentinel isn't referenced by
+    `MAP ` so it has no visible effect.
+  - **CLI**: `region-render <RGN.GFF> -o out.png` with optional
+    `--palette <gff>:<KIND>:<id>` or `--palette-file <raw>`. The
+    DS1 default fallback is `RESOURCE.GFF:PAL :1000` in the same
+    directory as the input.
+  - **Library**: `RegionMap::from_gff(&Gff, Palette)`,
+    `RegionMap::render_indexed() -> Vec<u8>`,
+    `RegionMap::write_png(path)`, plus `inline_palette(&Gff) ->
+    Option<Palette>` for callers building their own resolution.
+  - **Tests**: 6 unit + 1 corpus smoke. The corpus test renders
+    every `RGN*.GFF` in DS1+DS2 and asserts the rendered buffer
+    is exactly `REGION_PIXEL_WIDTH * REGION_PIXEL_HEIGHT` bytes;
+    no panics required.
+  - **Corpus results** (GOG 1.10): 53 regions rendered (35 DS1 +
+    18 DS2). **0 missing-tile bytes** across the whole corpus
+    (every RMAP / MAP byte resolved to a present TILE chunk in
+    the same GFF). 18 soft TILE decode failures, one per DS2
+    region (the sentinel id 0 case).
+  - **DS1 palette caveat surfaced**: DS1 stores only four
+    palettes in `RESOURCE.GFF` and none are keyed on region
+    number. v0.1 defaults to `PAL :1000`; the rendered output is
+    structurally correct but the "off-camera" tile cells use the
+    palette's high-index colours (visibly pink/magenta). The
+    interior playable area renders with plausible terrain
+    colours. Per-region palette discovery is queued for v0.2+.
+  - **Docs**: `docs/file-formats.md` expanded with a "Region
+    geometry" subsection covering RMAP/MAP/GMAP/TILE/PAL/ETAB
+    layouts (deferred sections are flagged for v0.2+).
+  - Roadmap Phase 4 region-render bullet ticked; Phase 4 is now
+    done.
+
 - **`tools/gpl-disasm/` v0.4.2** wires opcode-mnemonic overrides
   through to text and JSON output. The `syms/opcodes.toml`
   catalogue loaded since v0.4.0 is now applied: a row of the form

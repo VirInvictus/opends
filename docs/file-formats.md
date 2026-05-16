@@ -213,12 +213,103 @@ during `opends-image` implementation against libgff's `gff_image*.c`.
 
 #### Maps and world
 
-| FOURCC | Purpose                                       |
-|--------|-----------------------------------------------|
-| `RMAP` | Region tile map                               |
-| `GMAP` | Region map flags (passability, height, etc.) |
-| `ETAB` | Object entry table (entities placed in region)|
-| `MONR` | Monsters by region IDs and level             |
+| FOURCC | Purpose                                                   |
+|--------|-----------------------------------------------------------|
+| `RMAP` | Region tile map (DS1, also `MAP ` with trailing space)    |
+| `MAP ` | Region tile map (DS2; same layout as `RMAP`)              |
+| `GMAP` | Region map flags (wall index + passability/flag bits)     |
+| `ETAB` | Object entry table (entities placed in region)            |
+| `OJFF` | Object definition (used by ETAB to resolve sprite bitmaps)|
+| `WALL` | Wall sprite bitmap (referenced by GMAP wall index)        |
+| `MONR` | Monsters by region IDs and level                          |
+
+##### Region geometry
+
+Every region in both DS1 and DS2 uses the same on-screen grid:
+
+| Quantity              | Value          | Source                       |
+|-----------------------|----------------|------------------------------|
+| Tiles wide            | 128            | `RegionTool.java:167`        |
+| Tiles tall            | 98             | `RegionTool.java:168`        |
+| Tile size             | 16 x 16 pixels | `RegionTool.java:169`        |
+| Region width (px)     | 2048           | derived                      |
+| Region height (px)    | 1568           | derived                      |
+
+A region GFF contains exactly one each of `RMAP` / `MAP `, `GMAP`,
+and `ETAB`, plus the per-region `TILE` chunks for the background
+art and (sometimes) a `PAL ` chunk. The `RMAP`/`GMAP`/`ETAB`
+chunks share the same resource id, which is the region number.
+
+##### `RMAP` / `MAP ` (background tile grid)
+
+Exactly 12,544 bytes (`128 * 98`). One byte per tile, row-major
+(`map[y * 128 + x]`), value is the resource id of a `TILE` chunk
+in the same GFF.
+
+DS1 region GFFs (`RGN??.GFF`) use `RMAP`; DS2 region GFFs
+(`RGN???.GFF`) use `MAP ` (with a trailing space). Layout is
+identical; a reader picks whichever the GFF actually has.
+
+Indices that do not correspond to a `TILE` chunk in the GFF are
+treated as "no tile here." The reference Java tool throws NPE in
+that case; `region-render` v0.1 fills the affected 16x16 cell
+with palette index 0 (typically pure black or transparent on the
+DS palettes) and counts the misses for the summary.
+
+##### `GMAP` (wall + flags grid)
+
+Also 12,544 bytes, row-major like `RMAP`. Each byte packs two
+fields:
+
+| Bits | Field            | Notes                                                     |
+|------|------------------|-----------------------------------------------------------|
+| 0-4  | Wall sprite index | `0` = no wall; `>0` indexes a `WALL` chunk (see below).  |
+| 5-7  | Flag bits         | Passability / height / interaction (not modelled in v0.1).|
+
+`GMAP_WALL_INDEX_BITMASK = 0x1F` (`RegionTool.java:172`). Wall
+sprite resolution uses `regionNumber * 100 + wallIndex - 1` to
+build the global `WALL` chunk id, looked up across the merged
+GFF set (`RegionTool.java:274`-`276`). `region-render` v0.1
+ignores `GMAP` entirely; the wall layer is v0.2+ work.
+
+##### `TILE` chunks (background tile bitmaps)
+
+Standard Dark Sun bitmap container with one or more frames; the
+`image-extract` v0.1 decoder handles the DS1 RLE and PLNR frame
+formats. `region-render` consumes frame 0 of each `TILE` and
+expects the dimensions to be exactly `16 x 16`.
+
+##### `PAL ` (palette source)
+
+Standard 768-byte VGA palette (`PAL ` and `CPAL` are identical
+on disk; `image-extract`'s `Palette::from_bytes` decodes either).
+DS1 and DS2 differ in where the palette ships:
+
+| Game | Inline `PAL ` in `RGN??.GFF`? | Resolution                                |
+|------|-------------------------------|-------------------------------------------|
+| DS1  | No.                           | Use `RESOURCE.GFF:PAL :1000` by default.  |
+| DS2  | Yes (id `1`).                 | Use the inline chunk.                     |
+
+`RegionTool.java:196`-`198` follows the same rule, with the
+`--pal <path>` CLI flag as an explicit override.
+
+##### `ETAB` (entity placements)
+
+8-byte records, little-endian
+(`RegionTool.java:300`-`317`):
+
+| Offset | Type   | Field           |
+|--------|--------|-----------------|
+| 0      | s16    | `x`             |
+| 2      | s16    | `y`             |
+| 4      | s8     | `y_offset`      |
+| 5      | u8     | `byte5` (bit 7 = `mirrored`) |
+| 6      | s16    | `ojff_number`   |
+
+Each record places an `OJFF`-defined sprite at `(x, y - yOffset)`
+with optional horizontal mirroring. v0.1 of `region-render` does
+not draw entities; this row is here so future readers do not
+mistake the format. Entities (with `WALL`s) come in v0.2+.
 
 #### Audio
 

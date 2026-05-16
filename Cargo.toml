@@ -3,6 +3,7 @@ members = [
     "tools/gff-edit",
     "tools/gpl-disasm",
     "tools/image-extract",
+    "tools/region-render",
 ]
 resolver = "2"
 
