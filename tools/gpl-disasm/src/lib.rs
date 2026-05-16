@@ -36,6 +36,7 @@
 //! `dsoageofheroes/soloscuro-archive` `src/gpl/gpl-string.c`
 //! `read_compressed`.
 
+use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::fs;
@@ -682,7 +683,10 @@ pub struct Instruction {
     /// The opcode byte.
     pub opcode: u8,
     /// libgff mnemonic, or `None` for bytes above `MAX_KNOWN_OPCODE`.
-    pub mnemonic: Option<&'static str>,
+    /// `Cow::Borrowed` for the default libgff names from
+    /// [`OPCODES`]; `Cow::Owned` after [`Symbols::apply_to_mnemonics`]
+    /// rewrites it with a hand-curated override from `opcodes.toml`.
+    pub mnemonic: Option<Cow<'static, str>>,
     /// Decoded parameters, one [`Vec`] per `gpl_read_number` call.
     pub params: Vec<Vec<Expression>>,
     /// True if this instruction encountered a deferred case
@@ -1193,6 +1197,30 @@ impl Symbols {
             }
             if let Some(sym) = self.function_name(file_basename, kind, chunk_id, *offset) {
                 *name = format!("{name} ({sym})");
+            }
+        }
+    }
+
+    /// Apply opcode-mnemonic overrides to every instruction in
+    /// `result`. For each instruction whose opcode byte has an entry
+    /// in `self.opcodes` (keyed as `"0xNN"` lowercase hex), the
+    /// `mnemonic` field is replaced with the curated name. Bytes
+    /// with no entry keep the libgff default from [`OPCODES`].
+    ///
+    /// JSON consumers (e.g. `dialog-extract`) see the override
+    /// directly through serde; they should continue to key on the
+    /// `opcode` byte rather than `mnemonic` text. Inner mnemonics
+    /// inside [`Expression::RetVal`] are intentionally left alone
+    /// for v0.4.2; a follow-up release can extend the override to
+    /// that path if curation finds a case where it matters.
+    pub fn apply_to_mnemonics(&self, result: &mut DisasmResult) {
+        if self.opcodes.is_empty() {
+            return;
+        }
+        for instr in &mut result.instructions {
+            let key = format!("0x{:02x}", instr.opcode);
+            if let Some(sym) = self.opcodes.get(&key) {
+                instr.mnemonic = Some(Cow::Owned(sym.name.clone()));
             }
         }
     }
@@ -1797,7 +1825,7 @@ pub fn disassemble(bytes: &[u8]) -> DisasmResult {
         let start = cursor;
         let opcode = bytes[cursor];
         cursor += 1;
-        let mnemonic = opcode_name(opcode);
+        let mnemonic = opcode_name(opcode).map(Cow::Borrowed);
         let r = read_instruction_params_with_depth(opcode, bytes, cursor, 0);
         cursor += r.consumed;
         let be = r.best_effort;
@@ -2281,7 +2309,7 @@ pub fn write_dot(
             .instruction_indices
             .first()
             .and_then(|i| instructions.get(*i))
-            .and_then(|instr| instr.mnemonic)
+            .and_then(|instr| instr.mnemonic.as_deref())
             .unwrap_or("(empty)");
         let term = match b.terminator {
             TerminatorKind::Fallthrough => "",
@@ -2465,7 +2493,7 @@ fn escape_text(s: &str) -> String {
 
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let m = self.mnemonic.unwrap_or("db");
+        let m = self.mnemonic.as_deref().unwrap_or("db");
         write!(f, "{:04x}  {:02x}  {:<22}", self.offset, self.opcode, m)?;
         if self.mnemonic.is_none() {
             write!(f, "  ; ??")?;
@@ -2897,7 +2925,7 @@ mod tests {
             offset,
             length,
             opcode,
-            mnemonic: opcode_name(opcode),
+            mnemonic: opcode_name(opcode).map(Cow::Borrowed),
             params,
             best_effort: false,
             string_run: None,
@@ -3069,7 +3097,7 @@ mod tests {
             offset: 0,
             length: 5,
             opcode: 0x14,
-            mnemonic: opcode_name(0x14),
+            mnemonic: opcode_name(0x14).map(Cow::Borrowed),
             params: vec![
                 vec![Expression::Immediate14 { value: 42 }],
                 vec![Expression::Immediate14 { value: 7 }],
@@ -3092,7 +3120,7 @@ mod tests {
             offset: 0,
             length: 5,
             opcode: 0x27,
-            mnemonic: opcode_name(0x27),
+            mnemonic: opcode_name(0x27).map(Cow::Borrowed),
             params: vec![
                 vec![Expression::ImmediateByte { value: 2 }],
                 vec![Expression::Immediate14 { value: 8 }],
@@ -3330,5 +3358,131 @@ mod tests {
         assert!(result.cfg.is_some());
         let cfg = result.cfg.unwrap();
         assert_eq!(cfg.blocks.len(), 1);
+    }
+
+    #[test]
+    fn symbols_apply_to_mnemonics_overrides_known_opcode() {
+        // Two-instruction synthetic chunk: jump (0x12) target=3,
+        // followed by endif (0x67). The override targets 0x12 only.
+        let mut result = disassemble(&[0x12, 0x00, 0x03, 0x67]);
+        assert_eq!(
+            result.instructions[0].mnemonic.as_deref(),
+            Some("gpl jump")
+        );
+        let mut opcodes = BTreeMap::new();
+        opcodes.insert(
+            "0x12".to_string(),
+            OpcodeSymbol {
+                name: "gpl jmp_renamed".to_string(),
+                dso_source: None,
+                verified_by: None,
+            },
+        );
+        let syms = Symbols {
+            opcodes,
+            functions: vec![],
+        };
+        syms.apply_to_mnemonics(&mut result);
+        assert_eq!(
+            result.instructions[0].mnemonic.as_deref(),
+            Some("gpl jmp_renamed")
+        );
+        // 0x67 was not in the override map; libgff name preserved.
+        assert_eq!(
+            result.instructions[1].mnemonic.as_deref(),
+            Some("gpl endif")
+        );
+    }
+
+    #[test]
+    fn symbols_apply_to_mnemonics_leaves_unrelated_alone() {
+        // Empty override map: every mnemonic stays at the libgff
+        // default. Mirror of apply_to_labels's empty-functions path.
+        let mut result = disassemble(&[0x12, 0x00, 0x03, 0x67]);
+        let before: Vec<Option<String>> = result
+            .instructions
+            .iter()
+            .map(|i| i.mnemonic.as_deref().map(str::to_string))
+            .collect();
+        let syms = Symbols::default();
+        syms.apply_to_mnemonics(&mut result);
+        let after: Vec<Option<String>> = result
+            .instructions
+            .iter()
+            .map(|i| i.mnemonic.as_deref().map(str::to_string))
+            .collect();
+        assert_eq!(before, after);
+    }
+
+    #[test]
+    fn symbols_apply_to_mnemonics_preserves_none_for_unknown_byte() {
+        // Bytes above MAX_KNOWN_OPCODE produce mnemonic=None at
+        // disassembly time. Override should not invent a mnemonic
+        // for a byte that has no entry in the override map.
+        let unknown_byte = MAX_KNOWN_OPCODE + 1;
+        let mut result = disassemble(&[unknown_byte]);
+        assert!(result.instructions[0].mnemonic.is_none());
+        // Override targets the unknown byte explicitly: now it gets
+        // a name (this is the expected behavior; curation can fill
+        // in opcodes > 0x80 if they appear in real chunks).
+        let mut opcodes = BTreeMap::new();
+        opcodes.insert(
+            format!("0x{:02x}", unknown_byte),
+            OpcodeSymbol {
+                name: "gpl curated_unknown".to_string(),
+                dso_source: None,
+                verified_by: None,
+            },
+        );
+        let syms = Symbols {
+            opcodes,
+            functions: vec![],
+        };
+        syms.apply_to_mnemonics(&mut result);
+        assert_eq!(
+            result.instructions[0].mnemonic.as_deref(),
+            Some("gpl curated_unknown")
+        );
+    }
+
+    #[test]
+    fn symbols_load_opcodes_from_toml() {
+        // Round-trip: write opcodes.toml + functions.toml into a
+        // tempdir, load via Symbols::load_from_dir, verify both
+        // maps populated. Stdlib-only (no tempfile crate dep).
+        use std::time::SystemTime;
+        let nanos = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let dir = std::env::temp_dir().join(format!("gpl-disasm-sym-{nanos}"));
+        std::fs::create_dir_all(&dir).expect("create tempdir");
+        std::fs::write(
+            dir.join("opcodes.toml"),
+            r#"
+[opcodes."0x12"]
+name = "gpl jmp"
+verified_by = "test"
+"#,
+        )
+        .expect("write opcodes.toml");
+        std::fs::write(
+            dir.join("functions.toml"),
+            r#"
+[[function]]
+file = "TEST.GFF"
+kind = "GPL "
+chunk_id = 1
+offset = 0
+name = "test_fn"
+"#,
+        )
+        .expect("write functions.toml");
+        let syms = Symbols::load_from_dir(&dir).expect("load");
+        let _ = std::fs::remove_dir_all(&dir);
+        assert_eq!(syms.opcodes.len(), 1);
+        assert_eq!(syms.opcodes.get("0x12").map(|s| s.name.as_str()), Some("gpl jmp"));
+        assert_eq!(syms.functions.len(), 1);
+        assert_eq!(syms.functions[0].name, "test_fn");
     }
 }

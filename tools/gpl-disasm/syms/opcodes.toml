@@ -1,21 +1,49 @@
 # gpl-disasm symbol catalogue — opcode names.
 #
-# Format:
+# Each row overrides the libgff default mnemonic for one opcode
+# byte. The override is applied by `Symbols::apply_to_mnemonics`
+# and lands in both the text listing and the JSON output. Format:
 #
 #   [opcodes."0xNN"]
-#   name = "..."                         # required: display name
-#   dso_source = "DSO::gpl_op_..."       # optional: DSO v1.0 symbol
+#   name = "..."                          # required: display name
+#   dso_source = "DSO::gpl_op_..."        # optional: DSO v1.0 symbol or other reference
 #   verified_by = "..."                   # optional: how the mapping was verified
 #
-# The default mnemonics in `gpl-disasm`'s built-in OPCODES table
-# come from libgff's `gpl_commands` and are already battle-tested;
-# entries here override those names for display purposes. Add a
-# row only after the DSO name is cross-checked against actual
-# bytecode behavior.
+# Curation rule (do not relax without surfacing it).
 #
-# v0.4.0 loads this table but does NOT yet apply the overrides to
-# mnemonics on output. v0.4.1+ will wire them through. Curation
-# can start now so the names are ready when the renderer lands.
+#   Add a row only when one of these is true:
 #
-# Empty for v0.4.0. Populate from `docs/dso-symbols.md` as rows
-# are hand-verified.
+#     1. The libgff mnemonic is unambiguously wrong, with the
+#        correction cross-checked against in-game bytecode
+#        behavior (or a DSO debug-symbol function-call context
+#        that makes the actual semantics unambiguous).
+#
+#     2. The libgff mnemonic is technically correct but misleading
+#        enough that overriding it improves every reader's
+#        understanding of the disassembly. The new name must still
+#        be accurate; this is not a rename-for-style pass.
+#
+#   Cosmetic aliases (`gpl p damage` -> `gpl player damage`,
+#   `gpl tport` -> `gpl teleport`, etc.) do NOT meet the bar. The
+#   libgff names came out of real RE work and stand unless we
+#   have evidence they're wrong.
+#
+# Provenance baseline:
+#
+#   - libgff `gpl_commands` (src/gpl/parse.c lines 1554-1684) is
+#     the source of the defaults baked into `OPCODES` in
+#     `tools/gpl-disasm/src/lib.rs`.
+#   - soloscuro-archive's `gpl_lua_operations[]`
+#     (src/gpl/gpl-lua.c lines 287-417) uses an opcode-name table
+#     that is **character-identical** to libgff's. It is not an
+#     independent verification source.
+#   - The DSO v1.0 symbol table (`.dso-online/tools/symbols.txt`)
+#     names *callbacks and dispatcher routines* (e.g.
+#     `ExecuteGpl`, `GplChangeRegion`, `GplTileCheck`); it does
+#     not enumerate opcode-byte→handler-name mappings. Useful for
+#     correlating engine entry points, not opcode renames.
+#
+# v0.4.2 ships the override plumbing with an empty body by
+# design. Curation grows when evidence exists. The unit tests in
+# `lib.rs` (`symbols_apply_to_mnemonics_*`) prove the override
+# pipe works without a row in this file.

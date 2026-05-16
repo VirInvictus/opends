@@ -120,8 +120,11 @@ fn main() -> Result<()> {
             let bytes = gff.read_chunk(c);
             let mut result = disassemble(bytes);
             let kind_str_padded = String::from_utf8_lossy(c.kind.as_bytes()).into_owned();
-            if let (Some(syms), Some(cfg)) = (symbols.as_ref(), result.cfg.as_mut()) {
-                syms.apply_to_labels(cfg, &file_basename, &kind_str_padded, c.id);
+            if let Some(syms) = symbols.as_ref() {
+                if let Some(cfg) = result.cfg.as_mut() {
+                    syms.apply_to_labels(cfg, &file_basename, &kind_str_padded, c.id);
+                }
+                syms.apply_to_mnemonics(&mut result);
             }
             chunks.push((kind_str_padded, c.id, result));
         }
@@ -180,10 +183,13 @@ fn main() -> Result<()> {
             }
             let bytes = gff.read_chunk(c);
             let mut result = disassemble(bytes);
-            if let (Some(syms), Some(cfg)) = (symbols.as_ref(), result.cfg.as_mut()) {
+            if let Some(syms) = symbols.as_ref() {
                 let kind_str_padded =
                     String::from_utf8_lossy(c.kind.as_bytes()).into_owned();
-                syms.apply_to_labels(cfg, &file_basename, &kind_str_padded, c.id);
+                if let Some(cfg) = result.cfg.as_mut() {
+                    syms.apply_to_labels(cfg, &file_basename, &kind_str_padded, c.id);
+                }
+                syms.apply_to_mnemonics(&mut result);
             }
             if result.aligned {
                 aligned_count += 1;
@@ -242,9 +248,12 @@ fn main() -> Result<()> {
         .read(fourcc, id)
         .ok_or_else(|| anyhow!("no chunk '{}' id={} in {}", fourcc, id, file.display()))?;
     let mut result = disassemble(bytes);
-    if let (Some(syms), Some(cfg)) = (symbols.as_ref(), result.cfg.as_mut()) {
+    if let Some(syms) = symbols.as_ref() {
         let kind_str_padded = String::from_utf8_lossy(fourcc.as_bytes()).into_owned();
-        syms.apply_to_labels(cfg, &file_basename, &kind_str_padded, id);
+        if let Some(cfg) = result.cfg.as_mut() {
+            syms.apply_to_labels(cfg, &file_basename, &kind_str_padded, id);
+        }
+        syms.apply_to_mnemonics(&mut result);
     }
 
     if cli.entries {
@@ -352,7 +361,7 @@ fn render_instruction(
                 .get(&target_offset)
                 .or_else(|| target_aliases.and_then(|t| t.get(&target_offset)));
             if let Some(label) = resolved_label {
-                let m = instr.mnemonic.unwrap_or("db");
+                let m = instr.mnemonic.as_deref().unwrap_or("db");
                 out.push_str(&format!(
                     "{:04x}  {:02x}  {:<22}",
                     instr.offset, instr.opcode, m

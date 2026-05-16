@@ -4,6 +4,53 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gpl-disasm/` v0.4.2** wires opcode-mnemonic overrides
+  through to text and JSON output. The `syms/opcodes.toml`
+  catalogue loaded since v0.4.0 is now applied: a row of the form
+  `[opcodes."0xNN"] name = "..."` replaces the libgff default
+  mnemonic for that opcode byte everywhere the disassembler
+  emits a mnemonic. Defaults remain for any byte without an
+  entry. No new CLI flags; existing `--syms` / `--no-syms` still
+  control catalogue loading.
+  - **Internal change**: `Instruction.mnemonic` is now
+    `Option<Cow<'static, str>>` (was `Option<&'static str>`).
+    Default path is zero-allocation (`Cow::Borrowed` from the
+    static `OPCODES` table); `Cow::Owned` after an override
+    applies. JSON shape is unchanged (serde serializes Cow as a
+    string). The inner-mnemonic field inside `Expression::RetVal`
+    stays `&'static str` for v0.4.2; extending overrides there
+    is a follow-up if curation needs it.
+  - **New API**: `Symbols::apply_to_mnemonics(&mut DisasmResult)`
+    iterates instructions, looks up `format!("0x{:02x}", opcode)`
+    in `self.opcodes`, and rewrites the mnemonic on hit. The
+    binary calls it right after `apply_to_labels` in all three
+    paths (`single-chunk`, `--all`, `--global-cfg`).
+  - **`syms/opcodes.toml` ships empty by design.** The file
+    header now documents the curation rule explicitly: a row
+    lands only when the libgff mnemonic is unambiguously wrong
+    (cross-checked against in-game behavior or DSO debug-symbol
+    context), or when the alternate name is materially clearer
+    and still accurate. Cosmetic aliases (e.g. `gpl tport` →
+    `gpl teleport`) do not meet the bar. Honest finding from
+    this release: libgff's `gpl_commands` and soloscuro-archive's
+    `gpl_lua_operations[]` are character-identical, and the DSO
+    v1.0 symbol table names callbacks (`ExecuteGpl`,
+    `GplTileCheck`), not opcode-byte handlers. The plumbing
+    lands without seed rows; the unit tests prove the override
+    pipe works.
+  - **Tests**: 4 new unit tests
+    (`symbols_apply_to_mnemonics_overrides_known_opcode`,
+    `_leaves_unrelated_alone`,
+    `_preserves_none_for_unknown_byte`,
+    `symbols_load_opcodes_from_toml`). gpl-disasm test count: 44
+    unit + 2 integration (was 40 + 2).
+  - **VERSION file**: bumped from `0.2.1` to `0.4.2`. The
+    `VERSION` file silently fell behind `Cargo.toml` between
+    v0.3.0 and v0.4.1; per `docs/versioning.md` it is the single
+    source of truth, so this release catches it back up. No
+    behavioural change.
+  - Roadmap Phase 3 opcode-mnemonic-override bullet ticked.
+
 - **`tools/gpl-disasm/` v0.4.1** adds inter-chunk control-flow
   analysis. New `--global-cfg <path>` flag emits a whole-file
   callgraph where nodes are GPL/MAS chunks and edges are the

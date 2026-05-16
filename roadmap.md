@@ -161,8 +161,9 @@ runs through it.
       over time. (gpl-disasm v0.4.0: `tools/gpl-disasm/syms/`
       with `opcodes.toml` + `functions.toml` schemas; function-
       entry decoration wired through text and JSON output;
-      starter catalogue ships 2 verified entries. v0.4.1+ adds
-      opcode-name overrides and variable naming.)
+      starter catalogue ships 2 verified entries. v0.4.2 ships
+      opcode-mnemonic override wiring; variable naming remains
+      a follow-up.)
 - [x] Inter-chunk control-flow graph (gpl-disasm v0.4.1):
       `--global-cfg <path>` aggregates per-chunk
       `cross_chunk_calls` into a whole-GFF callgraph. 250 nodes
@@ -170,6 +171,11 @@ runs through it.
       combined 1,384 edges matches the v0.3.0 corpus soundness
       count exactly. Symbol-derived caller/callee names flow
       through edge metadata.
+- [x] Opcode-mnemonic overrides (gpl-disasm v0.4.2):
+      `syms/opcodes.toml` rows rewrite `Instruction.mnemonic` in
+      both text and JSON output via
+      `Symbols::apply_to_mnemonics`. Ships with the catalogue
+      empty by design and a documented curation rule.
 
 **Done when**: `gpl-disasm extracted/ds1/GPLDATA.GFF` produces
 output that lets a reader locate a quest-script function by

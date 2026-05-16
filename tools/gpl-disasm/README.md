@@ -14,6 +14,44 @@ chunks so modders can read what a script does.
 
 Depends on `gff-edit` for GFF I/O.
 
+## What `gpl-disasm v0.4.2` ships
+
+**Opcode-mnemonic overrides.** The `syms/opcodes.toml` catalogue
+loaded since v0.4.0 is now applied to the rendered output. A row
+like
+
+```toml
+[opcodes."0x12"]
+name = "gpl jmp"
+verified_by = "..."
+```
+
+replaces the libgff default mnemonic for opcode `0x12` in both
+the text listing and the JSON output's `Instruction.mnemonic`
+field. Defaults stay for any byte without an entry. Downstream
+consumers (`dialog-extract`) continue to key on the `opcode`
+byte, not the mnemonic text, so they're unaffected.
+
+The override is plumbed through every disassembly path
+(`--all`, `--global-cfg`, and single-chunk). No new CLI flags;
+the existing `--syms` / `--no-syms` flags control the catalogue
+lookup.
+
+The shipped `opcodes.toml` is **empty by design**. See the file
+header for the curation rule: a row lands only when the libgff
+mnemonic is unambiguously wrong, or when the alternate name is
+materially clearer and still accurate. Cosmetic aliases are not
+sufficient. Curation grows when evidence exists.
+
+**Internal change**: `Instruction.mnemonic` is now
+`Option<Cow<'static, str>>` (was `Option<&'static str>`).
+Zero-allocation in the default path (`Cow::Borrowed` from the
+static `OPCODES` table); `Cow::Owned` after an override applies.
+JSON shape is unchanged. Inner mnemonics inside
+`Expression::RetVal::inner_mnemonic` are intentionally left as
+`&'static str` for v0.4.2; extending overrides there is a small
+follow-up if curation needs it.
+
 ## What `gpl-disasm v0.4.1` ships
 
 **Inter-chunk control-flow graph (global callgraph).** Builds a
@@ -54,8 +92,8 @@ JSON automatically.
 TOML schemas (see the files themselves for the full comments):
 
 ```toml
-# syms/opcodes.toml — opcode mnemonic overrides (loaded but not
-# yet applied; v0.4.1+ work)
+# syms/opcodes.toml — opcode mnemonic overrides
+# (applied to output starting in v0.4.2; ships empty by default)
 [opcodes."0x4F"]
 name = "print_string_v2"
 dso_source = "DSO::gpl_op_print_string"
@@ -79,8 +117,8 @@ New CLI flags:
   for diff-friendly output when curation is in flux).
 
 Starter catalogue: two verified entries for DS1 GPLDATA chunk 1
-(Iniya's dialog). `opcodes.toml` ships empty pending v0.4.1+
-mnemonic-override wiring.
+(Iniya's dialog). `opcodes.toml` shipped empty in v0.4.0;
+mnemonic-override wiring lands in v0.4.2.
 
 ## What `gpl-disasm v0.3.1` ships
 
