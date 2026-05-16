@@ -297,10 +297,25 @@ just read it. Be able to discover unknown opcodes systematically.
 
 ### `tools/gpl-asm/` (Rust)
 
-- [ ] Round-trip reassembler: `gpl-disasm` output → bytecode.
-- [ ] Unblocks fixes that need to insert or delete bytes
-      (currently we'd work around with no-op padding only).
-- [ ] Tagged: `gpl-asm-v0.1.0`.
+- [x] Round-trip reassembler: `gpl-disasm --json` → bytecode.
+      (gpl-asm v0.1.0; 456/600 DS1+DS2 chunks round-trip
+      byte-identical; remaining 144 contain `gpl_search` whose
+      side bytes need preservation in the disasm IR, queued for
+      v0.1.x.)
+- [ ] Preservation field for `gpl_search` (0x33) side bytes:
+      raw payload bytes captured on Instruction so the encoder
+      can reproduce them. v0.1.x; pushes the corpus round-trip
+      to 600/600.
+- [ ] Text-listing parser: consume `gpl-disasm`'s text output
+      as input alongside the JSON path. v0.2.0.
+- [ ] Structural edits: `insert_instruction(at, instr)` /
+      `delete_instruction(at, length)` API that recomputes
+      branch targets and labels. Unblocks fixes that need to
+      insert or delete bytes (currently the disasm-edit-asm
+      cycle requires no-op padding). v0.3.0.
+- [ ] High-level authoring DSL with named labels, comments,
+      macros, and forward references. v0.4.0.
+- [x] Tagged: `gpl-asm-v0.1.0`. (this release)
 
 ### `tools/opcode-fuzz/` (Python; drives DOSBox debugger over IPC)
 

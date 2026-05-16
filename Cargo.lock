@@ -168,8 +168,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "gpl-asm"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "gff-edit",
+ "gpl-disasm",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "gpl-disasm"
-version = "0.4.3"
+version = "0.4.4"
 dependencies = [
  "anyhow",
  "clap",

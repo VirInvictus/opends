@@ -471,7 +471,7 @@ pub fn param_spec(byte: u8) -> ParamSpec {
 
 /// Variable kind. Index matches libgff `var.h` value
 /// (`GPL_LSTRING = 0x1`, `GPL_LNUM = 0x2`, ...).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum VarKind {
     Lstring,
@@ -489,7 +489,12 @@ pub enum VarKind {
 }
 
 impl VarKind {
-    fn from_tag(tag: u8) -> Option<Self> {
+    /// Map a `GPL_*` tag (the low 7 bits of a typed-value dispatch
+    /// byte after the high bit and `EXTENDED_VAR` are stripped) to
+    /// its [`VarKind`]. Returns `None` for tags outside the
+    /// variable-kind range (which the decoder treats as a different
+    /// dispatch case, e.g. `GPL_RETVAL` or `GPL_COMPLEX_*`).
+    pub fn from_tag(tag: u8) -> Option<Self> {
         Some(match tag {
             GPL_LSTRING => VarKind::Lstring,
             GPL_LNUM => VarKind::Lnum,
@@ -505,6 +510,26 @@ impl VarKind {
             GPL_LFLAG => VarKind::Lflag,
             _ => return None,
         })
+    }
+
+    /// Inverse of [`Self::from_tag`]: produce the low-7-bit `GPL_*`
+    /// tag for this variable kind. Used by the `gpl-asm` reassembler
+    /// to reconstruct dispatch bytes (high bit + extended bit + tag).
+    pub fn to_tag(self) -> u8 {
+        match self {
+            VarKind::Lstring => GPL_LSTRING,
+            VarKind::Lnum => GPL_LNUM,
+            VarKind::Lbyte => GPL_LBYTE,
+            VarKind::Lname => GPL_LNAME,
+            VarKind::Lbignum => GPL_LBIGNUM,
+            VarKind::Gstring => GPL_GSTRING,
+            VarKind::Gnum => GPL_GNUM,
+            VarKind::Gbyte => GPL_GBYTE,
+            VarKind::Gname => GPL_GNAME,
+            VarKind::Gbignum => GPL_GBIGNUM,
+            VarKind::Gflag => GPL_GFLAG,
+            VarKind::Lflag => GPL_LFLAG,
+        }
     }
 
     fn short_name(self) -> &'static str {
@@ -527,7 +552,7 @@ impl VarKind {
 
 /// Binary operator. Index matches libgff `var.h` value
 /// (`GPL_OP_ADD = 0xD1`, ...).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Op {
     Add,
@@ -548,7 +573,9 @@ pub enum Op {
 }
 
 impl Op {
-    fn from_byte(b: u8) -> Option<Self> {
+    /// Map a byte in the operator range (`OPERATOR_OFFSET + 1
+    /// ..=OPERATOR_LAST`, i.e. `0xD1..=0xDF`) to its [`Op`].
+    pub fn from_byte(b: u8) -> Option<Self> {
         Some(match b {
             0xD1 => Op::Add,
             0xD2 => Op::Minus,
@@ -567,6 +594,29 @@ impl Op {
             0xDF => Op::Bclr,
             _ => return None,
         })
+    }
+
+    /// Inverse of [`Self::from_byte`]: produce the byte in the
+    /// `0xD1..=0xDF` range for this operator. Used by the `gpl-asm`
+    /// reassembler.
+    pub fn to_byte(self) -> u8 {
+        match self {
+            Op::Add => 0xD1,
+            Op::Minus => 0xD2,
+            Op::Times => 0xD3,
+            Op::Divide => 0xD4,
+            Op::And => 0xD5,
+            Op::Or => 0xD6,
+            Op::Equal => 0xD7,
+            Op::NotEqual => 0xD8,
+            Op::Greater => 0xD9,
+            Op::Less => 0xDA,
+            Op::GreaterEqual => 0xDB,
+            Op::LessEqual => 0xDC,
+            Op::Band => 0xDD,
+            Op::Bor => 0xDE,
+            Op::Bclr => 0xDF,
+        }
     }
 
     fn symbol(self) -> &'static str {
@@ -591,7 +641,7 @@ impl Op {
 }
 
 /// Sub-type marker on an `IMMED_STRING` (`0x92`) parameter.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StringSubType {
     Introduce,
@@ -604,7 +654,7 @@ pub enum StringSubType {
 /// `gpl_read_number` produces a flat, infix-ordered stream of
 /// values, operators, and parens (e.g. `[Variable, Op(Add),
 /// Immediate14]` for `gf12 + 7`). This enum is one such token.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Expression {
     /// 14-bit immediate, the `cop < 0x80` path. `cop * 0x100 + b`.
@@ -643,8 +693,8 @@ pub enum Expression {
     /// Recursion is bounded by [`MAX_RETVAL_DEPTH`].
     RetVal {
         inner_opcode: u8,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        inner_mnemonic: Option<&'static str>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        inner_mnemonic: Option<Cow<'static, str>>,
         inner_params: Vec<Vec<Expression>>,
     },
     /// A record-field access via `gpl_access_complex`. The dispatch
@@ -674,7 +724,7 @@ pub enum Expression {
 /// One row of disassembler output: the opcode plus its decoded
 /// parameter list. Each parameter is the result of one
 /// `gpl_read_number` call (a sequence of [`Expression`] tokens).
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Instruction {
     /// Byte offset of the opcode byte in the input chunk.
     pub offset: usize,
@@ -693,12 +743,12 @@ pub struct Instruction {
     /// (RetVal / Complex / unknown handler) or had its params
     /// best-effort-consumed. When true, instructions that follow
     /// may be misaligned.
-    #[serde(skip_serializing_if = "is_false")]
+    #[serde(default, skip_serializing_if = "is_false")]
     pub best_effort: bool,
     /// If this instruction's byte range contains an ASCII printable
     /// run of `>= MIN_STRING_LEN` bytes (carry-over from v0.1's
     /// heuristic for inline strings).
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub string_run: Option<String>,
 }
 
@@ -708,7 +758,7 @@ fn is_false(b: &bool) -> bool {
 }
 
 /// Full result of [`disassemble`].
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DisasmResult {
     pub instructions: Vec<Instruction>,
     /// Bytes the disassembler consumed. Equal to `total_bytes` when
@@ -724,7 +774,7 @@ pub struct DisasmResult {
     /// `aligned == false`: best-effort disassembly may misidentify
     /// branch instructions, so we skip CFG construction rather than
     /// emit a wrong one.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cfg: Option<Cfg>,
     /// Cross-chunk `gpl global sub` (0x14) call sites. Targets are
     /// in another GPL file and are not wired into [`Cfg`]; recorded
@@ -737,7 +787,7 @@ pub struct DisasmResult {
 
 /// Control-flow graph for one disassembled chunk. Branch semantics
 /// are documented in `docs/gpl-bytecode.md` §5a.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Cfg {
     /// Discovered entry offsets, sorted and deduplicated. Includes
     /// candidate offsets 0 and 1 (`chunk[0]` is consistently the
@@ -769,7 +819,7 @@ pub struct Cfg {
     pub unresolved: Vec<UnresolvedEdge>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BasicBlock {
     pub start_offset: usize,
     /// Exclusive: equals the next leader offset, or [`DisasmResult::total_bytes`]
@@ -782,7 +832,7 @@ pub struct BasicBlock {
     pub terminator: TerminatorKind,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TerminatorKind {
     /// Block ends because it ran into the next leader; control
     /// falls through. Used for `endif` / `cmpend` markers and for
@@ -806,13 +856,13 @@ pub enum TerminatorKind {
     ExitScript,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Edge {
     pub target_offset: usize,
     pub kind: EdgeKind,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EdgeKind {
     /// Natural fall-through to the next instruction.
     Fallthrough,
@@ -831,7 +881,7 @@ pub enum EdgeKind {
     WhileBack,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CrossChunkCall {
     /// Offset of the `gpl global sub` instruction in this chunk.
     pub from_offset: usize,
@@ -841,10 +891,10 @@ pub struct CrossChunkCall {
     pub target_file_id: i32,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UnresolvedEdge {
     pub from_offset: usize,
-    pub reason: &'static str,
+    pub reason: Cow<'static, str>,
 }
 
 // ---------- Global CFG (v0.4.1) ----------
@@ -854,7 +904,7 @@ pub struct UnresolvedEdge {
 /// chunk's per-chunk [`Cfg`] models intra-chunk flow only; the
 /// `GlobalCfg` is the union view across all chunks in a single
 /// GFF.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GlobalCfg {
     /// Source GFF basename (e.g. `GPLDATA.GFF`), preserved for
     /// downstream consumers and rendering.
@@ -863,7 +913,7 @@ pub struct GlobalCfg {
     pub edges: Vec<CrossEdge>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChunkNode {
     /// 4-char FOURCC including any trailing space (`GPL ` / `MAS `).
     pub kind: String,
@@ -882,7 +932,7 @@ pub struct ChunkNode {
     pub inbound_calls: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CrossEdge {
     pub from_kind: String,
     pub from_chunk: i32,
@@ -1387,7 +1437,7 @@ fn read_expression_with_depth(bytes: &[u8], cursor: usize, retval_depth: u8) -> 
                             // wouldn't accept here.
                             tokens.push(Expression::RetVal {
                                 inner_opcode: inner,
-                                inner_mnemonic: opcode_name(inner),
+                                inner_mnemonic: opcode_name(inner).map(Cow::Borrowed),
                                 inner_params: Vec::new(),
                             });
                             best_effort = true;
@@ -1404,7 +1454,7 @@ fn read_expression_with_depth(bytes: &[u8], cursor: usize, retval_depth: u8) -> 
                             }
                             tokens.push(Expression::RetVal {
                                 inner_opcode: inner,
-                                inner_mnemonic: opcode_name(inner),
+                                inner_mnemonic: opcode_name(inner).map(Cow::Borrowed),
                                 inner_params: inner_result.params,
                             });
                         }
@@ -2032,13 +2082,13 @@ pub fn build_cfg(
                     } else {
                         unresolved.push(UnresolvedEdge {
                             from_offset: instr.offset,
-                            reason: "target out of range",
+                            reason: Cow::Borrowed("target out of range"),
                         });
                     }
                 } else {
                     unresolved.push(UnresolvedEdge {
                         from_offset: instr.offset,
-                        reason: "non-literal target",
+                        reason: Cow::Borrowed("non-literal target"),
                     });
                 }
                 leaders.insert(next_offset);
@@ -2051,13 +2101,13 @@ pub fn build_cfg(
                     } else {
                         unresolved.push(UnresolvedEdge {
                             from_offset: instr.offset,
-                            reason: "target out of range",
+                            reason: Cow::Borrowed("target out of range"),
                         });
                     }
                 } else {
                     unresolved.push(UnresolvedEdge {
                         from_offset: instr.offset,
-                        reason: "non-literal target",
+                        reason: Cow::Borrowed("non-literal target"),
                     });
                 }
                 leaders.insert(next_offset);
@@ -2435,7 +2485,7 @@ impl fmt::Display for Expression {
                 inner_mnemonic,
                 inner_params,
             } => {
-                let name = inner_mnemonic.unwrap_or("?");
+                let name = inner_mnemonic.as_deref().unwrap_or("?");
                 write!(f, "RETVAL({name}")?;
                 for (i, param) in inner_params.iter().enumerate() {
                     write!(f, "{}", if i == 0 { " " } else { ", " })?;
@@ -2681,7 +2731,7 @@ mod tests {
                 inner_params,
             } => {
                 assert_eq!(*inner_opcode, 0x52);
-                assert_eq!(*inner_mnemonic, Some("gpl rand"));
+                assert_eq!(inner_mnemonic.as_deref(), Some("gpl rand"));
                 assert_eq!(inner_params.len(), 1);
                 assert_eq!(
                     inner_params[0],

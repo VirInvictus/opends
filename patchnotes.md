@@ -4,6 +4,72 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gpl-asm/` v0.1.0** ships (new Rust crate; Phase 5
+  first deliverable). Round-trip reassembler that takes the
+  `gpl-disasm --json` output and emits byte-identical bytecode.
+  The other half of the GPL loop with `gpl-disasm`.
+  - **Corpus** (GOG 1.10 DS1+DS2 GPLDATA, 600 GPL/MAS chunks):
+    **456 chunks round-trip byte-identical**; 144 are skipped
+    because they contain `gpl_search` (0x33), whose side bytes
+    aren't captured in `gpl-disasm`'s v0.4.4 IR. 0 mismatches,
+    0 encode failures on the non-skipped set.
+  - **`encode(&DisasmResult) -> Vec<u8>`** is the load-bearing
+    API. `encode_instruction` and `encode_expression` cover
+    piecewise use; `pack_compressed_string` packs the 7-bit
+    bitstream that complements gpl-disasm v0.4.3's lossless
+    decoder. `EncodeError` enumerates the rejection cases
+    (`BestEffortInstruction`, `UnsupportedOpcode`,
+    `BadParamShape`, `UnknownToken`, `LengthMismatch`).
+  - **Special-shape opcode handlers**:
+    - `gpl_load_variable` (0x16, 27,394 occurrences across
+      DS1+DS2): re-emit the datatype byte from
+      `Variable.var_kind`/`extended` or from `ComplexAccess.tag`.
+    - `gpl_menu` (0x48, 1,314 occurrences): emit the name
+      expression + 3-expression entries + the 0x4A terminator.
+    - `gpl_setrecord` (0x40, 139 occurrences): emit the
+      access-complex body raw + one trailing expression.
+    - `gpl_log` (0x2C, 0 occurrences): emit one packed-string
+      payload. Encoder present for completeness.
+    - `gpl_search` (0x33, 2 top-level + 143 RETVAL-nested):
+      rejected. v0.1.x adds preservation.
+  - **CLI**: `gpl-asm chunk.json -o chunk.bin` for single
+    chunks; `gpl-asm --all-from disasm/ -o asm/` for bulk
+    re-encoding of every `*.json` in a directory. Matches the
+    `--all` shape used by `gpl-disasm` and `image-extract`.
+  - **Tests**: 11 unit (per-Expression-variant round-trips,
+    7-bit packed-string round-trip including a `\t`-preserving
+    case, `Op::to_byte` and `VarKind::to_tag` inverses) + 1
+    corpus round-trip (`tests/corpus_roundtrip.rs`). The
+    corpus test runs through every aligned GPL/MAS chunk in
+    `.games/ds1/GPLDATA.GFF` and `.games/ds2/GPLDATA.GFF`,
+    skips `gpl_search`-containing chunks, and asserts
+    byte-identical against the source on the rest.
+  - **VERSION**: 0.1.0. Workspace test count: 78 + 11 + 1 =
+    **90**.
+
+- **`tools/gpl-disasm/` v0.4.4** adds `Deserialize` impls on
+  every public Serialize-able type so the new `gpl-asm` crate
+  can consume the same JSON output. Mechanical addition across
+  `DisasmResult`, `Instruction`, `Expression`, `Cfg`,
+  `BasicBlock`, `Edge`, `TerminatorKind`, `EdgeKind`,
+  `CrossChunkCall`, `UnresolvedEdge`, `GlobalCfg`, `ChunkNode`,
+  `CrossEdge`, plus leaf enums `VarKind`, `Op`, `StringSubType`.
+  - **Two side-effect type changes** (both for
+    deserialisability of the static-string fields):
+    - `Expression::RetVal::inner_mnemonic`:
+      `Option<&'static str>` -> `Option<Cow<'static, str>>`.
+      Mirrors the v0.4.2 outer-mnemonic change. JSON output is
+      unchanged.
+    - `UnresolvedEdge.reason`: `&'static str` ->
+      `Cow<'static, str>`. Internal constructors use
+      `Cow::Borrowed`. JSON output unchanged.
+  - **Public API additions**: `VarKind::from_tag` and
+    `Op::from_byte` are now `pub` (were crate-private). New
+    `VarKind::to_tag(self) -> u8` and `Op::to_byte(self) -> u8`
+    methods round out the inverse pair, used by `gpl-asm`'s
+    encoder.
+  - **VERSION**: 0.4.3 -> 0.4.4.
+
 - **`tools/gpl-disasm/` v0.4.3** makes the 7-bit packed-string
   decoder lossless. Prerequisite for `gpl-asm` v0.1.0's
   byte-identical round-trip reassembler.

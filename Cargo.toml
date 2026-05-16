@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "tools/gff-edit",
+    "tools/gpl-asm",
     "tools/gpl-disasm",
     "tools/image-extract",
     "tools/region-render",

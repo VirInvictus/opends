@@ -14,6 +14,34 @@ chunks so modders can read what a script does.
 
 Depends on `gff-edit` for GFF I/O.
 
+## What `gpl-disasm v0.4.4` ships
+
+**`Deserialize` impls on every public Serialize-able type**, so
+`gpl-asm` (the round-trip reassembler) can consume the same JSON
+this crate emits. Additive across `DisasmResult`, `Instruction`,
+`Expression`, `Cfg`, `BasicBlock`, `Edge`, `TerminatorKind`,
+`EdgeKind`, `CrossChunkCall`, `UnresolvedEdge`, `GlobalCfg`,
+`ChunkNode`, `CrossEdge`, plus the leaf enums `VarKind`, `Op`,
+`StringSubType`.
+
+Two side changes that come with this:
+
+- `Instruction.mnemonic`'s mate inside `Expression::RetVal` —
+  `inner_mnemonic` — changes from `Option<&'static str>` to
+  `Option<Cow<'static, str>>`. Mirrors the v0.4.2 change to the
+  outer `mnemonic` field. Zero-allocation default path remains
+  via `Cow::Borrowed`. JSON output shape is unchanged (serde
+  serialises `Cow` as a plain string).
+- `UnresolvedEdge.reason` changes from `&'static str` to
+  `Cow<'static, str>` for the same reason. Internal constructors
+  use `Cow::Borrowed("...")`; downstream consumers (the DOT
+  writer and JSON output) work unchanged.
+
+`VarKind::from_tag` / `VarKind::to_tag` and `Op::from_byte` /
+`Op::to_byte` are now `pub` so the encoder can use them as a
+symmetric inverse pair. `to_tag` and `to_byte` are new this
+release.
+
 ## What `gpl-disasm v0.4.3` ships
 
 **Lossless 7-bit packed-string decoder**, prerequisite for the
