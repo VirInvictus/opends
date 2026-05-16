@@ -1590,10 +1590,21 @@ fn read_text(bytes: &[u8], cursor: usize) -> Option<(StringSubType, String, usiz
 }
 
 /// Inner 7-bit packed-string decoder. Mirrors soloscuro-archive
-/// `read_compressed` exactly: a sliding 16-bit window with `idx`
-/// cycling 1..=7, 0 (drop a fresh byte on idx > 0, extract 7 bits
-/// at `idx`). `0x03` terminates; non-printables are replaced with
-/// space. Returns `(string, bytes_consumed_including_terminator)`.
+/// `read_compressed` structurally: a sliding 16-bit window with
+/// `idx` cycling 1..=7, 0 (drop a fresh byte on idx > 0, extract
+/// 7 bits at `idx`). `0x03` terminates. Returns
+/// `(string, bytes_consumed_including_terminator)`.
+///
+/// **Lossless** as of gpl-disasm v0.4.3: every 7-bit value other
+/// than `0x03` is emitted verbatim. Earlier versions mapped
+/// values outside `0x20..=0x7E` to `0x20` (space) for display
+/// safety, which broke byte-identical round-trip on the 0.05% of
+/// corpus strings that ship formatting codes (TAB, newline, ...)
+/// inside packed-string payloads. The spike for gpl-asm v0.1.0
+/// surfaced 19 such strings across DS1+DS2 GPLDATA; the
+/// reassembler corpus round-trip would have failed on each one.
+/// Downstream consumers (dialog-extract etc.) now see the real
+/// bytes; JSON serialisation escapes them as `\u00XX`.
 fn decode_compressed(bytes: &[u8], cursor: usize) -> Option<(String, usize)> {
     let mut buffer: u32 = 0;
     let mut idx: u8 = 1;
@@ -1605,12 +1616,9 @@ fn decode_compressed(bytes: &[u8], cursor: usize) -> Option<(String, usize)> {
             buffer |= bytes[i] as u32;
             i += 1;
         }
-        let mut ch = ((buffer >> idx) & 0x7F) as u8;
+        let ch = ((buffer >> idx) & 0x7F) as u8;
         if ch == STRING_TERMINATOR {
             return Some((string_from_lossy(&chars), i - cursor));
-        }
-        if !(0x20..=0x7E).contains(&ch) {
-            ch = 0x20;
         }
         chars.push(ch);
         idx = idx.wrapping_add(1);
@@ -2778,6 +2786,26 @@ mod tests {
         let (sub, s, _consumed) = read_text(&bytes, 0).unwrap();
         assert_eq!(sub, StringSubType::Compressed);
         assert_eq!(s, "Hello!");
+    }
+
+    #[test]
+    fn read_text_compressed_preserves_non_printable_bytes() {
+        // Regression for the v0.4.3 lossless decoder change. A
+        // packed payload whose first char is 0x09 (TAB) must
+        // decode to a string with 0x09 in it, NOT 0x20 (space).
+        // Two source bytes encoding `\x09` then 0x03 terminator:
+        //   byte0 = 0x09 << 1 = 0x12  (idx=1, ch = byte0 >> 1 = 0x09)
+        //   byte1 = ?         (idx=2, needs ch = 0x03)
+        //     buffer = (0x12 << 8) | byte1 = 0x1200 | byte1
+        //     ch = ((0x1200 | byte1) >> 2) & 0x7F = 0x03
+        //     -> (0x1200 | byte1) >> 2 has low 7 bits = 0x03
+        //     -> byte1 >> 2 must be 0x03 (since 0x1200 >> 2 = 0x480, low 7 bits = 0)
+        //     -> byte1 = 0x0C
+        let buf = vec![STRING_COMPRESSED, 0x12, 0x0C];
+        let (sub, s, consumed) = read_text(&buf, 0).unwrap();
+        assert_eq!(sub, StringSubType::Compressed);
+        assert_eq!(s.as_bytes(), &[0x09]);
+        assert_eq!(consumed, 3);
     }
 
     #[test]

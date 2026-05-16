@@ -4,6 +4,37 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gpl-disasm/` v0.4.3** makes the 7-bit packed-string
+  decoder lossless. Prerequisite for `gpl-asm` v0.1.0's
+  byte-identical round-trip reassembler.
+  - **Behaviour change**: `decode_compressed` used to map every
+    7-bit value outside `0x20..=0x7E` to `0x20` (space) for
+    display safety. v0.4.3 emits every byte verbatim. The
+    original chunks ship real formatting codes (TAB, line feed)
+    inside packed-string payloads; the lossy mapping made
+    byte-identical re-encoding impossible.
+  - **Corpus impact**: 19 strings across DS1+DS2 GPLDATA (0.05%)
+    now decode to their original byte sequence rather than to
+    a sequence of spaces. The visible glyph for a TAB or LF
+    when rendered as text is still close to a space, so
+    consumers may not notice the difference; JSON consumers see
+    `\u00XX` escapes for those bytes.
+  - **Spike methodology**: a standalone Python encoder
+    prototype (see commit's pre-implementation work for
+    gpl-asm v0.1.0) round-tripped 36,700 / 36,719 (99.95%) of
+    corpus `ImmediateString` payloads byte-identical before this
+    change; the 19 misses were exactly the lossy-decode cases.
+    After v0.4.3 the encoder algorithm has the correct byte
+    sequence to reproduce on every string; the formal corpus
+    round-trip test lands with gpl-asm v0.1.0's
+    `tests/corpus_roundtrip.rs`.
+  - **Tests**: 1 new unit test
+    (`read_text_compressed_preserves_non_printable_bytes`)
+    pinning the lossless contract on a payload that encodes
+    `\x09` (TAB). gpl-disasm test count: 45 unit + 2
+    integration (was 44 + 2).
+  - **VERSION**: 0.4.2 -> 0.4.3. Cargo.toml synced.
+
 - **`tools/dialog-extract/` v0.4.0** resolves LSTRING references
   and expands `gpl global sub` calls inline. Combined effect on
   the corpus: **893 unresolved LSTRING refs (v0.3.0) drop to 32

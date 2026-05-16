@@ -14,6 +14,30 @@ chunks so modders can read what a script does.
 
 Depends on `gff-edit` for GFF I/O.
 
+## What `gpl-disasm v0.4.3` ships
+
+**Lossless 7-bit packed-string decoder**, prerequisite for the
+gpl-asm v0.1.0 round-trip reassembler coming next.
+
+`decode_compressed` previously mapped every 7-bit value outside
+`0x20..=0x7E` to `0x20` (space) for display safety. The original
+chunks ship real formatting codes (TAB, line feed, etc.) inside
+packed-string payloads; the lossy mapping made byte-identical
+re-encoding impossible. A pre-implementation spike for gpl-asm
+found 19 such strings across DS1+DS2 GPLDATA where the encoder's
+output would have legitimately differed from the source bytes.
+
+v0.4.3 emits every byte verbatim. Strings whose source contains
+non-printable formatting codes now decode to those exact bytes;
+JSON consumers see `\u00XX` escapes for them, and the gpl-asm
+v0.1.0 corpus round-trip will hit 100% on `ImmediateString` once
+that crate lands.
+
+Affected strings (DS1 4, DS2 15) make up 0.05% of the corpus.
+Visible-text decode behaviour is otherwise unchanged.
+
+New unit test: `read_text_compressed_preserves_non_printable_bytes`.
+
 ## What `gpl-disasm v0.4.2` ships
 
 **Opcode-mnemonic overrides.** The `syms/opcodes.toml` catalogue
