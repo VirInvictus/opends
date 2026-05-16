@@ -4,6 +4,59 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gpl-asm/` v0.2.1 + `tools/gpl-disasm/` v0.4.6** close
+  the labelled-text round-trip to **600 / 600 byte-identical**.
+  v0.2.0 hit 456/456 of the `--no-labels` form; v0.2.1 handles
+  the default (labelled) form including Search chunks.
+  - **`gpl-disasm v0.4.6` changes**:
+    - `render_text(&DisasmResult, labels_on: bool) -> String`
+      moves into the library (was in the binary).
+    - Branch params strip the `" (function_name)"` decoration
+      from label names. Declaration lines keep the full
+      decorated form. Modders still see the function name on
+      the label declaration; the param stays a clean
+      identifier the parser can round-trip.
+    - `target_aliases`-redirected branches (pointing at a
+      `gpl else` opcode) render as raw integers in the param.
+      The labelled form was lossy for those cases; the
+      integer is the round-trippable byte-level source of
+      truth. The label declaration still appears at the post-
+      else continuation offset.
+    - `Instruction::Display` and `render_text` emit a
+      `; raw_tail=HEX` trailer when the instruction has a
+      `raw_tail` (top-level `gpl_search`).
+    - `Expression::RetVal::Display` emits a `raw_tail=HEX`
+      sentinel inside `RETVAL(...)` when `inner_raw_tail` is
+      set (nested-Search case).
+  - **`gpl-asm v0.2.1` changes**:
+    - Pre-scan pass for `label_0xNNNN:` /
+      `entry_0xNNNN[ (function_name)]:` declarations, building
+      a `name -> offset` map. Function-name decoration is
+      stripped (matching the v0.4.6 renderer).
+    - Branch params that name a label resolve to
+      `Immediate14 { value: offset }` via the map.
+    - `; raw_tail=HEX` trailers parse into
+      `Instruction.raw_tail`.
+    - `raw_tail=HEX` sentinels inside `RETVAL(...)` parse
+      into `Expression::RetVal::inner_raw_tail`.
+    - Sign-vs-operator heuristic for `-` is now state-aware:
+      `-DIGIT` is a sign on a signed integer literal only at
+      the start of an expression sequence (or after an
+      open-paren / operator). After a value-producing token
+      (close-bracket, close-paren, end of a variable
+      identifier, end of an integer literal), `-DIGIT` is an
+      op followed by a positive value. This is needed for the
+      unspaced RetVal rendering: `GNAME[33]-2i8` is three
+      tokens (`Variable`, `Op::Minus`, `ImmediateByte`), not
+      a `Variable` followed by a signed literal.
+  - **Corpus test**: `tests/text_roundtrip.rs` no longer skips
+    Search-containing chunks and uses the labelled form
+    (`render_text(&result, true)`). **600 / 600** byte-identical
+    round-trip. The existing JSON-mode corpus test
+    (`tests/corpus_roundtrip.rs`) still passes 600/600.
+  - VERSIONs: `gpl-disasm` 0.4.5 -> 0.4.6; `gpl-asm` 0.2.0 ->
+    0.2.1. Workspace tests: 91 (unchanged).
+
 - **`tools/gpl-asm/` v0.2.0** adds a **text-listing parser**.
   Modders can edit `gpl-disasm`'s human-readable output and
   reassemble. Same encoder, new front-end.

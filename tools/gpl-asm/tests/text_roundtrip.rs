@@ -1,16 +1,18 @@
-//! Text-mode round-trip: every aligned, non-Search GPL/MAS
-//! chunk in DS1+DS2 GPLDATA goes through:
-//!     bytes -> disassemble -> render text -> parse -> encode
-//! and the final bytes are asserted byte-identical against the
-//! original. Search-containing chunks are skipped: the v0.2.0
-//! text format doesn't preserve `raw_tail`.
+//! Text-mode round-trip: every aligned GPL/MAS chunk in
+//! DS1+DS2 GPLDATA goes through:
+//!     bytes -> disassemble -> render labelled text -> parse
+//!         -> encode
+//! and the final bytes are asserted byte-identical. v0.2.1
+//! handles label declarations, label-form branch params, and
+//! `; raw_tail=HEX` trailers, so Search-containing chunks
+//! round-trip too. Target: 600/600.
 
 use std::fs;
 use std::path::Path;
 
 use gff_edit::{FourCC, Gff};
 use gpl_asm::{encode, parse};
-use gpl_disasm::{Expression, Instruction, disassemble};
+use gpl_disasm::{disassemble, render_text};
 
 const CORPUS: &[&str] = &[
     "/home/bdkl/.gitrepos/opends/.games/ds1/GPLDATA.GFF",
@@ -21,51 +23,6 @@ fn is_script(kind: FourCC) -> bool {
     matches!(kind.as_bytes(), b"GPL " | b"MAS ")
 }
 
-fn contains_search(instr: &Instruction) -> bool {
-    if instr.opcode == 0x33 {
-        return true;
-    }
-    for param in &instr.params {
-        if param_contains_search(param) {
-            return true;
-        }
-    }
-    false
-}
-
-fn param_contains_search(tokens: &[Expression]) -> bool {
-    for tok in tokens {
-        if let Expression::RetVal {
-            inner_opcode,
-            inner_params,
-            ..
-        } = tok
-        {
-            if *inner_opcode == 0x33 {
-                return true;
-            }
-            for ip in inner_params {
-                if param_contains_search(ip) {
-                    return true;
-                }
-            }
-        }
-    }
-    false
-}
-
-/// Render the disassembly to text using the same `Instruction::Display`
-/// implementation that `gpl-disasm` uses with `--no-labels`. One line
-/// per instruction.
-fn render_text(result: &gpl_disasm::DisasmResult) -> String {
-    let mut out = String::new();
-    for instr in &result.instructions {
-        out.push_str(&format!("{instr}"));
-        out.push('\n');
-    }
-    out
-}
-
 #[test]
 fn every_aligned_chunk_roundtrips_through_text() {
     let mut tested = 0usize;
@@ -74,7 +31,6 @@ fn every_aligned_chunk_roundtrips_through_text() {
     let mut parse_failures: Vec<(String, String)> = Vec::new();
     let mut encode_failures: Vec<(String, String)> = Vec::new();
     let mut mismatch_samples: Vec<String> = Vec::new();
-    let mut skipped_search = 0usize;
     let mut skipped_unaligned = 0usize;
 
     for path in CORPUS {
@@ -95,11 +51,7 @@ fn every_aligned_chunk_roundtrips_through_text() {
                 skipped_unaligned += 1;
                 continue;
             }
-            if result.instructions.iter().any(contains_search) {
-                skipped_search += 1;
-                continue;
-            }
-            let text = render_text(&result);
+            let text = render_text(&result, true);
             let chunk_id = format!(
                 "{}{}:{}-{}",
                 path,
@@ -145,7 +97,7 @@ fn every_aligned_chunk_roundtrips_through_text() {
     eprintln!(
         "gpl-asm text-roundtrip: tested={tested} roundtripped={roundtripped} \
          mismatched={mismatched} parse_failures={} encode_failures={} \
-         search_skipped={skipped_search} unaligned_skipped={skipped_unaligned}",
+         unaligned_skipped={skipped_unaligned}",
         parse_failures.len(),
         encode_failures.len()
     );

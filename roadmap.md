@@ -306,10 +306,12 @@ just read it. Be able to discover unknown opcodes systematically.
       reproduce them. **(gpl-disasm v0.4.5 + gpl-asm v0.1.1:
       corpus round-trip is now 600/600 byte-identical.)**
 - [x] Text-listing parser: consume `gpl-disasm`'s text output
-      as input alongside the JSON path. (gpl-asm v0.2.0;
-      456/456 non-Search chunks round-trip byte-identical via
-      `bytes -> disasm -> text -> parse -> encode`. CLI auto-
-      detects JSON vs text from extension.)
+      as input alongside the JSON path. (gpl-asm v0.2.0:
+      456/456 non-Search chunks via `--no-labels`. v0.2.1 +
+      `gpl-disasm` v0.4.6: labelled form + `; raw_tail=HEX`
+      trailers, **600 / 600** chunks round-trip byte-identical
+      through `bytes -> disasm -> labelled text -> parse ->
+      encode`. CLI auto-detects JSON vs text from extension.)
 - [ ] Structural edits: `insert_instruction(at, instr)` /
       `delete_instruction(at, length)` API that recomputes
       branch targets and labels. Unblocks fixes that need to

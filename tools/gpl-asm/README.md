@@ -13,6 +13,32 @@ Depends on `gpl-disasm` for the [`DisasmResult`] type (and the
 `Deserialize` impls added there in v0.4.4 specifically so this
 crate can consume the same JSON the disassembler emits).
 
+## What `gpl-asm v0.2.1` ships
+
+**Full labelled-text round-trip.** Closes the v0.2.0 gaps:
+
+- **Label declarations**: `label_0xNNNN:` and
+  `entry_0xNNNN[ (function_name)]:` lines are pre-scanned into
+  a `name -> offset` map. Branch params that name a label
+  resolve through the map to an `Immediate14` token with the
+  matching offset.
+- **`; raw_tail=HEX` trailers**: the per-instruction trailer
+  emitted by `gpl-disasm` v0.4.6 (for top-level `gpl_search`)
+  is parsed into `Instruction.raw_tail`.
+- **Inner `raw_tail` inside RETVAL**: the
+  ` raw_tail=HEX` sentinel `gpl-disasm` v0.4.6 emits inside
+  `RETVAL(...)` for the nested-Search case is parsed into
+  `Expression::RetVal::inner_raw_tail`.
+- **Sign-vs-op heuristic for `-`** is now state-aware: after a
+  value-producing token, `-DIGIT` is an op followed by a
+  positive value; only at the start of an expression (or after
+  an open-paren / op) does `-DIGIT` form a signed literal. This
+  matches the renderer's both spaced and unspaced forms.
+
+**Corpus result** (GOG 1.10 DS1+DS2 GPLDATA, 600 aligned
+chunks): `bytes -> disassemble -> render labelled text ->
+parse -> encode` is byte-identical for **600 / 600**.
+
 ## What `gpl-asm v0.2.0` ships
 
 **Text-listing parser.** Consume `gpl-disasm`'s human-readable
@@ -31,13 +57,13 @@ output `gpl-disasm` produces with `--no-labels`. Future v0.2.x
 releases will resolve label-form branch targets so modders can
 work with the labelled listing too.
 
-**Corpus** (GOG 1.10 DS1+DS2 GPLDATA, 600 aligned chunks): when
-the text listing is what `gpl-disasm --no-labels` would emit,
-**456 / 456 non-Search chunks round-trip byte-identical**
-through `bytes -> disasm -> text -> parse -> encode`. The 144
-Search-containing chunks are skipped because the text format
-doesn't preserve their `raw_tail` side bytes; v0.2.x will add a
-`; raw_tail=hex...` trailer annotation.
+**Corpus** (GOG 1.10 DS1+DS2 GPLDATA, 600 aligned chunks):
+v0.2.0 hit **456 / 456 non-Search chunks** byte-identical
+through `bytes -> disasm --no-labels -> text -> parse ->
+encode`. The 144 Search-containing chunks were skipped because
+the text format didn't preserve their `raw_tail` side bytes.
+v0.2.1 closes that gap with the `; raw_tail=HEX` trailer
+(see below); the labelled form hits 600 / 600.
 
 CLI:
 
@@ -178,12 +204,17 @@ that the original chunks ship inside dialog strings.
 
 - **v0.1.1**: preservation field for `gpl_search` side bytes;
   JSON-mode corpus round-trip 600/600.
-- **v0.2.0** (this release): text-listing parser for the
-  `--no-labels` form; text-mode round-trip 456/456 non-Search.
-- **v0.2.x**: parse the labelled form (resolve `label_0x...:`
-  and `entry_0x...:` declarations + label-form branch params);
-  add `; raw_tail=hex...` annotation so Search chunks
-  round-trip through text too.
+- **v0.2.0**: text-listing parser for the `--no-labels` form;
+  text-mode round-trip 456/456 non-Search.
+- **v0.2.1** (this release): labelled form support
+  (`label_0x...:` / `entry_0x...:` declarations + label-form
+  branch params) and `raw_tail` trailer parsing. Full corpus
+  round-trip 600/600.
+- **v0.3.0**: structural edits. `insert_instruction(at, instr)`
+  / `delete_instruction(at, length)` API that recomputes branch
+  targets and labels.
+- **v0.4.0**: high-level authoring DSL with named labels,
+  comments, macros, and forward references.
 - **v0.3.0**: structural edits. `insert_instruction(at, instr)`
   / `delete_instruction(at, length)` APIs that recompute branch
   targets and labels.

@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -6,8 +5,8 @@ use anyhow::{Context, Result, anyhow};
 use clap::Parser;
 use gff_edit::{FourCC, Gff};
 use gpl_disasm::{
-    Cfg, ChunkSummary, DisasmResult, EdgeKind, Expression, Instruction, OPCODES, Symbols,
-    build_global_cfg, disassemble, write_dot, write_global_cfg_dot,
+    Cfg, ChunkSummary, DisasmResult, EdgeKind, OPCODES, Symbols, build_global_cfg, disassemble,
+    render_text, write_dot, write_global_cfg_dot,
 };
 
 #[derive(Parser)]
@@ -315,143 +314,10 @@ fn write_or_stdout(
     }
 }
 
-fn render_text(result: &DisasmResult, labels_on: bool) -> String {
-    let mut out = String::with_capacity(result.instructions.len() * 48);
-    let cfg = if labels_on { result.cfg.as_ref() } else { None };
-    let labels: Option<&BTreeMap<usize, String>> = cfg.map(|c| &c.labels);
-    let target_aliases: Option<&BTreeMap<usize, String>> = cfg.map(|c| &c.target_aliases);
-    for instr in &result.instructions {
-        if let Some(map) = labels {
-            if let Some(name) = map.get(&instr.offset) {
-                out.push_str(name);
-                out.push_str(":\n");
-            }
-        }
-        render_instruction(&mut out, instr, labels, target_aliases);
-        out.push('\n');
-    }
-    let pct = if result.total_bytes > 0 {
-        (result.bytes_consumed as f64 / result.total_bytes as f64) * 100.0
-    } else {
-        100.0
-    };
-    if !result.aligned {
-        out.push_str(&format!(
-            "; aligned=false bytes_consumed={}/{} ({pct:.1}%)\n",
-            result.bytes_consumed, result.total_bytes
-        ));
-    }
-    out
-}
-
-/// Render a single instruction. If `labels` is `Some`, replace
-/// branch-instruction target parameters with the matching label
-/// name from `labels`, falling back to `target_aliases` (the
-/// gpl-disasm v0.3.1 else-redirect map). Otherwise defers to
-/// [`Instruction`]'s `Display` impl (integer targets).
-fn render_instruction(
-    out: &mut String,
-    instr: &Instruction,
-    labels: Option<&BTreeMap<usize, String>>,
-    target_aliases: Option<&BTreeMap<usize, String>>,
-) {
-    if let Some(map) = labels {
-        if let Some((target_param_idx, target_offset)) = branch_target_param(instr) {
-            let resolved_label = map
-                .get(&target_offset)
-                .or_else(|| target_aliases.and_then(|t| t.get(&target_offset)));
-            if let Some(label) = resolved_label {
-                let m = instr.mnemonic.as_deref().unwrap_or("db");
-                out.push_str(&format!(
-                    "{:04x}  {:02x}  {:<22}",
-                    instr.offset, instr.opcode, m
-                ));
-                for (i, param) in instr.params.iter().enumerate() {
-                    out.push_str(if i == 0 { "  " } else { ", " });
-                    if i == target_param_idx {
-                        out.push_str(label);
-                    } else {
-                        out.push_str(&format_param(param));
-                    }
-                }
-                if instr.best_effort {
-                    out.push_str("  ; best-effort");
-                }
-                if let Some(ref s) = instr.string_run {
-                    out.push_str("  ; \"");
-                    out.push_str(&escape_for_comment(s));
-                    out.push('"');
-                }
-                return;
-            }
-        }
-    }
-    out.push_str(&format!("{}", instr));
-}
-
-/// Render a parameter token list using the same convention as
-/// `gpl_disasm`'s internal `write_param_tokens` (kept in sync
-/// manually; if the lib renderer changes, mirror here).
-fn format_param(tokens: &[Expression]) -> String {
-    use std::fmt::Write;
-    let mut s = String::new();
-    let mut prev_was_value = false;
-    for tok in tokens {
-        let is_open = matches!(tok, Expression::OpenParen);
-        let is_close = matches!(tok, Expression::CloseParen);
-        let is_op = matches!(tok, Expression::BinaryOp { .. });
-        if prev_was_value && !is_close && !is_op {
-            s.push(' ');
-        }
-        if is_op {
-            let _ = write!(s, " {tok} ");
-        } else {
-            let _ = write!(s, "{tok}");
-        }
-        prev_was_value = !is_open && !is_op;
-    }
-    s
-}
-
-fn escape_for_comment(input: &str) -> String {
-    input
-        .chars()
-        .map(|c| match c {
-            '\\' => "\\\\".to_string(),
-            '\n' => "\\n".to_string(),
-            '\r' => "\\r".to_string(),
-            '\t' => "\\t".to_string(),
-            '"' => "\\\"".to_string(),
-            c if c.is_ascii_graphic() || c == ' ' => c.to_string(),
-            c => format!("\\x{:02x}", c as u8),
-        })
-        .collect()
-}
-
-/// Return `(param_index, target_offset)` for branch instructions
-/// whose first or second param is a literal target offset. The
-/// returned `param_index` is which params slot to replace with the
-/// label name (0 for most; 1 for `gpl ifcompare`).
-fn branch_target_param(instr: &Instruction) -> Option<(usize, usize)> {
-    let (idx, target_param) = match instr.opcode {
-        0x12 | 0x13 | 0x3E | 0x3F | 0x63 | 0x64 => (0, instr.params.first()?),
-        0x27 => (1, instr.params.get(1)?),
-        _ => return None,
-    };
-    if target_param.len() != 1 {
-        return None;
-    }
-    let v = match &target_param[0] {
-        Expression::Immediate14 { value } => *value as i64,
-        Expression::ImmediateByte { value } => *value as i64,
-        Expression::ImmediateBigNum { value } => *value as i64,
-        _ => return None,
-    };
-    if v < 0 {
-        return None;
-    }
-    Some((idx, v as usize))
-}
+// Text rendering moved into the gpl-disasm library (see
+// `render_text`). The binary just calls it; both the binary
+// output and the gpl-asm round-trip test go through the same
+// path.
 
 #[allow(dead_code)] // keep `Cfg` and `EdgeKind` re-exports compile-time-reachable
 fn _ensure_imports(_c: &Cfg, _e: EdgeKind) {}

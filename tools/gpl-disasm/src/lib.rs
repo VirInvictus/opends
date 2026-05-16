@@ -2523,7 +2523,7 @@ impl fmt::Display for Expression {
                 inner_opcode,
                 inner_mnemonic,
                 inner_params,
-                ..
+                inner_raw_tail,
             } => {
                 let name = inner_mnemonic.as_deref().unwrap_or("?");
                 write!(f, "RETVAL({name}")?;
@@ -2531,6 +2531,22 @@ impl fmt::Display for Expression {
                     write!(f, "{}", if i == 0 { " " } else { ", " })?;
                     for tok in param {
                         write!(f, "{tok}")?;
+                    }
+                }
+                // For nested `gpl_search` (the only opcode that
+                // populates `inner_raw_tail` today), emit the
+                // side bytes inside the RETVAL syntax. `gpl-asm`
+                // v0.2.1+ parses this sentinel to recover
+                // `inner_raw_tail` for round-trip encoding.
+                if let Some(tail) = inner_raw_tail {
+                    if !tail.is_empty() {
+                        if inner_params.is_empty() {
+                            write!(f, " ")?;
+                        }
+                        write!(f, " raw_tail=")?;
+                        for b in tail {
+                            write!(f, "{:02x}", b)?;
+                        }
                     }
                 }
                 let _ = inner_opcode;
@@ -2603,11 +2619,162 @@ impl fmt::Display for Instruction {
         if self.best_effort {
             write!(f, "  ; best-effort")?;
         }
+        if let Some(ref tail) = self.raw_tail {
+            write!(f, "  ; raw_tail=")?;
+            for b in tail {
+                write!(f, "{:02x}", b)?;
+            }
+        }
         if let Some(ref s) = self.string_run {
             write!(f, "  ; \"{}\"", escape_text(s))?;
         }
         Ok(())
     }
+}
+
+// ---------- Text rendering ----------
+
+/// Render a disassembled chunk as a human-readable text listing,
+/// one line per instruction. Two forms are supported:
+///
+/// - `labels_on = false`: each line is exactly
+///   [`Instruction`]'s `Display`. Branch params show raw integer
+///   offsets. No label declaration lines. This is the form
+///   `gpl-asm` v0.2.0 parses (and v0.2.1+ continues to accept).
+/// - `labels_on = true`: requires `result.cfg.is_some()`. Block
+///   leaders get `label_0xNNNN:` / `entry_0xNNNN[ (...)]:`
+///   declaration lines; branch params show the matching label
+///   name (with the trailing function-name decoration stripped).
+///   `target_aliases`-redirected branches (post-`gpl else`) keep
+///   their raw integer; the labelled form is for human reading
+///   only and the integer is the round-trippable byte-level
+///   source of truth. `gpl-asm` v0.2.1+ parses this form.
+///
+/// Each instruction's `raw_tail` bytes (only populated for
+/// `gpl_search` today) are appended as a `; raw_tail=HEX`
+/// trailer regardless of `labels_on`.
+pub fn render_text(result: &DisasmResult, labels_on: bool) -> String {
+    let mut out = String::with_capacity(result.instructions.len() * 48);
+    let cfg = if labels_on { result.cfg.as_ref() } else { None };
+    let labels: Option<&BTreeMap<usize, String>> = cfg.map(|c| &c.labels);
+    for instr in &result.instructions {
+        if let Some(map) = labels {
+            if let Some(name) = map.get(&instr.offset) {
+                out.push_str(name);
+                out.push_str(":\n");
+            }
+        }
+        render_instruction_into(&mut out, instr, labels);
+        out.push('\n');
+    }
+    let pct = if result.total_bytes > 0 {
+        (result.bytes_consumed as f64 / result.total_bytes as f64) * 100.0
+    } else {
+        100.0
+    };
+    if !result.aligned {
+        out.push_str(&format!(
+            "; aligned=false bytes_consumed={}/{} ({pct:.1}%)\n",
+            result.bytes_consumed, result.total_bytes
+        ));
+    }
+    out
+}
+
+/// Append one instruction's rendered text. With `labels` set, a
+/// branch param whose target is a known label leader is rendered
+/// as the label name (with the function-name decoration
+/// stripped). Otherwise defers to [`Instruction`]'s `Display`.
+fn render_instruction_into(
+    out: &mut String,
+    instr: &Instruction,
+    labels: Option<&BTreeMap<usize, String>>,
+) {
+    if let Some(map) = labels {
+        if let Some((target_param_idx, target_offset)) = branch_target_param(instr) {
+            if let Some(label) = map.get(&target_offset) {
+                let label_param = label.split_once(" (").map(|(l, _)| l).unwrap_or(label);
+                let m = instr.mnemonic.as_deref().unwrap_or("db");
+                out.push_str(&format!(
+                    "{:04x}  {:02x}  {:<22}",
+                    instr.offset, instr.opcode, m
+                ));
+                for (i, param) in instr.params.iter().enumerate() {
+                    out.push_str(if i == 0 { "  " } else { ", " });
+                    if i == target_param_idx {
+                        out.push_str(label_param);
+                    } else {
+                        let mut buf = String::new();
+                        let _ = format_param_into(&mut buf, param);
+                        out.push_str(&buf);
+                    }
+                }
+                if instr.best_effort {
+                    out.push_str("  ; best-effort");
+                }
+                if let Some(ref tail) = instr.raw_tail {
+                    out.push_str("  ; raw_tail=");
+                    for b in tail {
+                        out.push_str(&format!("{:02x}", b));
+                    }
+                }
+                if let Some(ref s) = instr.string_run {
+                    out.push_str("  ; \"");
+                    out.push_str(&escape_text(s));
+                    out.push('"');
+                }
+                return;
+            }
+        }
+    }
+    // No-label / non-branch path: use Display directly.
+    out.push_str(&format!("{}", instr));
+}
+
+/// Like [`write_param_tokens`] but writes into a `String`.
+fn format_param_into(out: &mut String, tokens: &[Expression]) -> fmt::Result {
+    use std::fmt::Write;
+    let mut prev_was_value = false;
+    for tok in tokens {
+        let is_open = matches!(tok, Expression::OpenParen);
+        let is_close = matches!(tok, Expression::CloseParen);
+        let is_op = matches!(tok, Expression::BinaryOp { .. });
+        if prev_was_value && !is_close && !is_op {
+            out.push(' ');
+        }
+        if is_op {
+            write!(out, " {tok} ")?;
+        } else {
+            write!(out, "{tok}")?;
+        }
+        prev_was_value = !is_open && !is_op;
+    }
+    Ok(())
+}
+
+/// Return `(param_index, target_offset)` for branch
+/// instructions whose first or second param is a literal target
+/// offset. The returned `param_index` is which params slot is
+/// the target (0 for most; 1 for `gpl ifcompare`).
+fn branch_target_param(instr: &Instruction) -> Option<(usize, usize)> {
+    let (idx, target_param) = match instr.opcode {
+        0x12 | 0x13 | 0x3E | 0x3F | 0x63 | 0x64 => (0, instr.params.first()?),
+        0x27 => (1, instr.params.get(1)?),
+        _ => return None,
+    };
+    if target_param.len() != 1 {
+        return None;
+    }
+    let v = match &target_param[0] {
+        Expression::Immediate14 { value } => *value as i64,
+        Expression::ImmediateByte { value } => *value as i64,
+        Expression::ImmediateBigNum { value } => *value as i64,
+        _ => return None,
+    };
+    if v < 0 {
+        return None;
+    }
+    Some((idx, v as usize))
 }
 
 fn write_param_tokens(f: &mut fmt::Formatter<'_>, tokens: &[Expression]) -> fmt::Result {

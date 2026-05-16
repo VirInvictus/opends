@@ -14,6 +14,36 @@ chunks so modders can read what a script does.
 
 Depends on `gff-edit` for GFF I/O.
 
+## What `gpl-disasm v0.4.6` ships
+
+Text-format tweaks that make the human-readable listing
+round-trippable through `gpl-asm` v0.2.1's parser.
+
+- **`render_text(&DisasmResult, labels_on: bool) -> String`** is
+  now a public library function. The binary's local copy was
+  moved here so both the binary and downstream consumers go
+  through the same path.
+- **Branch params drop the function-name decoration**: a label
+  like `entry_0x0001 (iniya_first_meeting)` renders as
+  `gpl if entry_0x0001` in a branch-param position. The label
+  DECLARATION line keeps the full decorated form so modders see
+  the function name there.
+- **`target_aliases`-redirected branches** (where a `gpl if`
+  targets a `gpl else` opcode) now render as raw integers in
+  the param. The labelled form was lossy for those cases; the
+  integer is the round-trippable byte-level source of truth.
+- **`raw_tail` is emitted** as a `; raw_tail=HEX` trailer on
+  instructions where it's populated (currently only top-level
+  `gpl_search`).
+- **`Expression::RetVal`'s Display** emits a ` raw_tail=HEX`
+  sentinel inside the `RETVAL(...)` body when
+  `inner_raw_tail` is set, so the nested-Search case round-trips
+  too.
+
+After v0.4.6, every aligned GPL/MAS chunk in the DS1+DS2 corpus
+round-trips through `bytes -> disassemble -> render labelled
+text -> gpl-asm parse -> encode` byte-identical: **600 / 600**.
+
 ## What `gpl-disasm v0.4.5` ships
 
 **Side-byte preservation for `gpl_search` (0x33).** Closes the
