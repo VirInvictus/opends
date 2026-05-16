@@ -12,6 +12,92 @@ that appear in `GPL ` and `MAS ` bytecode chunks.
 - **Version**: see [`VERSION`](VERSION).
 - **License**: MIT.
 
+## What v0.4.0 ships
+
+Two structural upgrades. The combined effect across the GOG 1.10
+corpus is **893 unresolved LSTRING refs (v0.3.0) down to 32
+unresolved (v0.4.0), a 96.4% reduction**.
+
+### LSTR slot resolution
+
+The runtime keeps 10 "local string" (`LSTR`) slots
+(`MAXLSTRINGS = 10` per libgff `include/gff/str.h`). Scripts
+populate the slots via `gpl_string_copy` (0x0A): `param[0]` is
+the LSTR destination, `param[1]` is the source (an inline string
+in ~96-97% of corpus occurrences). Later instructions like
+`gpl_menu` (0x48) and `gpl_print_string` (0x4F) read the slots
+back as menu choices, prompts, and screen text.
+
+v0.3.0 surfaced LSTR reads as `unresolved: true`. v0.4.0:
+
+- **Fixes an over-count bug**: v0.3.0 also emitted the `LSTR`
+  *destination* of each `gpl_string_copy` as an "unresolved
+  LSTRING ref". That's a write target, not a read. Skipped now.
+  The flat-`strings` list shrinks by exactly the number of LSTR
+  writes (~539 in DS1+DS2 combined).
+- **Path-aware LSTR tracking** in the `dialog_tree` walk: each
+  CFG path carries a per-slot `{kind, value | text_id |
+  source_id, ...}` snapshot updated on every
+  `gpl_string_copy` write. At branch points each path receives a
+  `dict(lstr_state)` copy. Reads inside string-bearing opcodes
+  resolve to the most-recently-written source on the active path.
+- **Linear-scan LSTR baseline** for the flat `strings` list:
+  a single forward pass over each chunk's instructions builds a
+  chunk-level snapshot used when the flat list extracts strings.
+  Less accurate than the path-aware tree (~80% vs ~95%) but
+  needs no CFG context.
+- **Source kinds**:
+  - `inline`: param[1] was an immediate literal. Direct
+    resolution.
+  - `gstring`: param[1] was a `GSTRING[id]` variable. Resolves
+    via `--text-source` like a normal GSTRING ref.
+  - `lstring`: param[1] was another LSTR slot. Chained
+    resolution with cycle protection.
+  - `computed`: anything else (accumulator math, record-field
+    access). Read resolves to `None` (still flagged
+    `unresolved: true`).
+
+Each `block` node in the tree now carries a `lstr_state_entry`
+snapshot alongside `speaker_state_entry`, so curators can see
+what was in each slot at block entry.
+
+### Inter-chunk dialog tree walking
+
+`gpl global sub` (0x14) calls now expand inline as
+`cross_chunk_call` subtrees under the calling block's
+`children`, using `gpl-disasm`'s per-chunk `cross_chunk_calls`
+metadata (v0.3.0+) and the in-memory chunks index built from
+all `GPL ` / `MAS ` chunks in the input GFF.
+
+Each `cross_chunk_call` node carries:
+
+- `at` — call-site offset in the caller.
+- `target_chunk` — `"GPL-N"` / `"MAS-N"` shorthand.
+- `target_offset`, `target_file_id` — exact destination.
+- `target_label` — the callee's entry label (decorated with the
+  function name from `gpl-disasm`'s `syms/functions.toml` when
+  available).
+- `subtree` — the recursive walk of the callee from
+  `target_offset`, OR
+- `unresolved: true` with a `reason`:
+  - `cycle`: the callee is already on the active call chain.
+  - `callee_not_loaded`: the callee chunk wasn't in the input
+    GFF (calls between separate `*.GFF` files).
+  - `callee_unaligned`: the callee disasm failed alignment.
+  - `target_offset_not_a_block_leader`: the call points into
+    the middle of a function.
+  - `depth_cut`: MAX_TREE_DEPTH = 32 hit.
+
+The caller's path-local `lstr_state` flows into the callee
+(shallow copy). The engine LSTR table is global, so this is
+the truthful semantics. Modifications inside the callee do NOT
+propagate back to the caller's continuation: dialog-extract is
+not a runtime simulator, and over-claiming would mislead.
+
+**Corpus result**: DS1 expands 889 `cross_chunk_call` nodes (662
+resolved + 223 cycle/non-leader/depth markers); DS2 expands
+1,014 (806 + 208).
+
 ## What v0.3.0 ships
 
 **CFG-aware structured `dialog_tree`** alongside the existing
@@ -83,11 +169,12 @@ Strings appear in two forms:
    to resolve them. Without the flag, these are emitted as
    `unresolved: true` so you still see where they live.
 
-`LSTRING` references are surfaced but never resolved against
-`--text-source`: they're per-context strings populated by the
-engine at runtime from sources we don't yet model (per-region
-GFFs, dynamic computations). They appear as `unresolved: true`
-with the `text_id` captured.
+In v0.2.0, `LSTRING` references were surfaced but never resolved:
+they're per-context strings populated by the engine at runtime
+and not present in `--text-source`'s `TEXT` chunks. They appeared
+as `unresolved: true` with the `text_id` captured. v0.4.0
+resolves them via path-aware LSTR-slot tracking; see the v0.4.0
+section above.
 
 Opcodes the extractor scans:
 
@@ -200,19 +287,29 @@ in Python.
 
 ## What's deferred
 
-- **LSTRING resolution**: needs a per-region or per-script text
-  source map; defer to v0.4.0+.
+- **LSTRING resolution for caller-populated slots**: 32 reads
+  across the DS1+DS2 corpus (mostly LSTR[0] in DS1 chunks 8,
+  166, 174 and DS2 chunks 165, 299, 331) have no upstream write
+  inside their own chunk. They're populated by a caller before
+  the chunk is invoked, and the v0.4.0 inter-chunk walker passes
+  the caller's `lstr_state` into the callee at the call site,
+  so they're resolved when the chunk is *reached via the
+  expansion*. They show as `unresolved: true` only when extracted
+  through a chunk's declared/discovered entry points without a
+  caller context. Cross-chunk LSTR liveness analysis is a
+  candidate for v0.5.0.
 - **gpl-disasm best-effort handling**: when the disassembler
   marks an instruction `best_effort` (RetVal, Complex, etc.),
   its params may be incomplete. The extractor reports the chunk
   as `aligned: false` in the per-chunk JSON; consumers can
   filter on that field. Aligned chunks always get a
   `dialog_tree`; non-aligned chunks get an empty one.
-- **Resolved speaker attribution**: v0.3.0 surfaces engine
-  context (which NPC was last set as "other" / "thing") but
-  does NOT claim who's speaking. Resolving "X says Y" needs a
-  richer engine state model. v0.4.0+ candidate.
-- **Inter-chunk tree walking**: `gpl global sub` call sites are
-  recorded as `gpl_refs` entries but not followed across chunks.
-  Inter-chunk CFG is `gpl-disasm v0.4.1`; once that lands,
-  dialog-extract could weave full multi-chunk dialog flows.
+- **Resolved speaker attribution**: v0.3.0+ surfaces engine
+  context (which NPC was last set as "other" / "thing") but does
+  NOT claim who's speaking. Resolving "X says Y" needs a richer
+  engine state model. Candidate for v0.5.0+.
+- **Cross-GFF call resolution**: a `gpl global sub` whose
+  `file_id` references a chunk not present in the input GFF
+  (e.g. calls between separate `*.GFF` files) emits
+  `unresolved: "callee_not_loaded"`. Multi-GFF input is a
+  candidate for v0.5.0+ if the curation backlog asks for it.

@@ -205,8 +205,11 @@ look at the maps directly.
 - [x] Resolve text-id references (`gpl_get_gstr(id)`,
       `gpl_get_lstr(id)`) into the matching TEXT chunks for a
       complete dialog set. (dialog-extract v0.2.0: GSTRING refs
-      resolve against `--text-source RESOURCE.GFF`; LSTRING refs
-      are surfaced but await per-region resolution in v0.3.0.)
+      resolve against `--text-source RESOURCE.GFF`. LSTRING refs
+      resolve via path-aware LSTR-slot tracking in
+      dialog-extract v0.4.0: 96.4% of corpus reads now resolve;
+      the remaining 32 reads are caller-populated slots resolved
+      via inter-chunk expansion.)
 - [x] Output a richer `{ speaker, lines, branches, gpl_refs }`
       tree once instruction boundaries from gpl-disasm v0.2.0
       let us correlate strings to the surrounding control flow.
@@ -214,6 +217,13 @@ look at the maps directly.
       `gpl-disasm v0.3.1`'s CFG. 46,611 lines across 4,229
       declared + 15,027 discovered entry-point walks; 0
       invariant violations on the DS1+DS2 corpus.)
+- [x] Inter-chunk dialog tree walking: `gpl global sub` call
+      sites expand inline under the calling block as
+      `cross_chunk_call` subtrees, using `gpl-disasm`'s per-
+      chunk `cross_chunk_calls` metadata. (dialog-extract
+      v0.4.0: 889 DS1 + 1,014 DS2 expansions; 666 + 806 fully
+      resolved; cycles, mid-function calls, and cross-GFF calls
+      surface as explicit unresolved markers with reasons.)
 - [x] Tagged: `dialog-extract-v0.1.0`. (this release)
 
 ### `tools/save-inspect/` (Python)

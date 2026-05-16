@@ -4,6 +4,72 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/dialog-extract/` v0.4.0** resolves LSTRING references
+  and expands `gpl global sub` calls inline. Combined effect on
+  the corpus: **893 unresolved LSTRING refs (v0.3.0) drop to 32
+  unresolved (v0.4.0), a 96.4% reduction**. DS1: 475 -> 25
+  (94.7%); DS2: 418 -> 7 (98.3%).
+  - **LSTR-slot resolution (path-aware)**: scripts populate one
+    of 10 runtime `LSTR` slots (`MAXLSTRINGS = 10` per libgff
+    `include/gff/str.h`) via `gpl_string_copy` (0x0A) writes;
+    `gpl_menu` / `gpl_print_string` reads then pull the slot's
+    contents. v0.4.0 tracks slot writes path-by-path inside
+    `_walk_tree` alongside the existing `speaker_state`. Each
+    block node gains a `lstr_state_entry` snapshot. Source
+    kinds recorded:
+    - `inline`: param[1] was an immediate literal. Direct
+      resolution.
+    - `gstring`: param[1] was a `GSTRING[id]` variable; recurses
+      through `--text-source`.
+    - `lstring`: param[1] was another LSTR slot; chained
+      resolution with cycle protection.
+    - `computed`: anything else (accumulator math, complex
+      record access). Read resolves to `None` so the slot
+      doesn't silently fall back to a stale value.
+  - **Linear-scan baseline** for the flat `strings` list: a
+    single forward pass over each chunk's instructions builds a
+    chunk-level snapshot. Less accurate than path-aware (~80%
+    vs ~96%) but needs no CFG context, so it works for non-tree
+    consumers.
+  - **LSTR over-count bug fix**: v0.3.0 emitted the `LSTR`
+    *destination* of every `gpl_string_copy` as a bogus
+    "unresolved LSTRING ref". v0.4.0 skips param[0] for that
+    opcode. Flat-list size shrinks by exactly the LSTR-write
+    count (220 DS1, 319 DS2).
+  - **Inter-chunk dialog tree walking**: `gpl global sub`
+    (0x14) call sites now expand inline as `cross_chunk_call`
+    subtrees under the calling block's `children`. v0.4.0
+    builds an in-memory chunks index keyed on `(kind, id)`,
+    walks the callee from `target_offset` with the caller's
+    `speaker_state` and `lstr_state` flowed through (shallow
+    copies), and recurses with a `cross_chunk_visited` set to
+    break cycles. Modifications inside the callee do NOT
+    propagate back to the caller's continuation: dialog-extract
+    is not a runtime simulator.
+    - Resolved expansions: 666 (DS1) + 806 (DS2) inlined call
+      trees.
+    - Cycle markers: 223 (DS1) + 192 (DS2) recursive references
+      properly halted.
+    - Other unresolved: 4 + 14 `target_offset_not_a_block_leader`
+      (mid-function calls), 2 `callee_not_loaded` (cross-GFF
+      calls), 0 `depth_cut` on the corpus.
+  - **New types in the JSON output**:
+    - Per `block` node: `lstr_state_entry: dict[int, dict]`
+      snapshot.
+    - Per `block` node `children`: optional
+      `{kind: "cross_chunk_call", at, target_chunk,
+      target_offset, target_file_id, target_label, subtree, ...}`
+      with `unresolved: true` + `reason` when the callee can't
+      be expanded.
+  - **Headline corpus** (GOG 1.10): 600 / 600 chunks build a
+    tree; DS1 17,699 string records (was 17,926); DS2 28,354
+    (was 28,685). The drop is the v0.4.0 over-count fix
+    removing 220 + 319 = 539 phantom unresolved entries.
+  - Stdlib-only Python; no new dependencies. Reuses gpl-disasm's
+    per-chunk `cross_chunk_calls` metadata (indexed since
+    gpl-disasm v0.3.0) for the inter-chunk walker.
+  - Roadmap Phase 4 dialog-extract v0.4.0 box ticked.
+
 - **`tools/region-render/` v0.1.0** ships (new Rust crate; closes
   Phase 4). Renders a region GFF's background tile layer
   (`RMAP` for DS1 or `MAP ` for DS2) as a 2048 x 1568

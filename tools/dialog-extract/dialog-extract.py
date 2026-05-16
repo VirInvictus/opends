@@ -62,13 +62,24 @@ STRING_OPCODES = {
 # TEXT chunks in a source GFF).
 TEXT_VAR_KINDS = {"gstring", "lstring"}
 
-# Only GSTRING refs resolve against the `--text-source` GFF
-# (typically RESOURCE.GFF). LSTRING refs are per-context and
-# would resolve against a different source (per-region, per-script
-# locals); v0.2.0 surfaces them but leaves them unresolved. The
-# engine populates the LSTR table at runtime from contexts we
-# don't yet model.
-RESOLVABLE_VAR_KINDS = {"gstring"}
+# GSTRING refs resolve against the `--text-source` GFF (typically
+# RESOURCE.GFF). LSTRING refs are 1 of 10 runtime "local string"
+# slots (`MAXLSTRINGS = 10` per libgff `include/gff/str.h`)
+# populated by `gpl_string_copy` (0x0A) writes inside each chunk;
+# v0.4.0 tracks those writes path-by-path and resolves reads to
+# the most-recently-written source on the active path.
+RESOLVABLE_VAR_KINDS = {"gstring", "lstring"}
+
+# Number of LSTR slots tracked by the runtime. Matches libgff
+# `include/gff/str.h` `MAXLSTRINGS`.
+MAX_LSTR_SLOTS = 10
+
+# Opcode that writes into an LSTR variable: `gpl_string_copy`
+# (0x0A). `param[0]` is the destination (LSTR variable),
+# `param[1]` is the source (inline literal in 96-97% of corpus
+# occurrences, occasionally a chained variable read). Empirically
+# confirmed during v0.4.0 RE; see `patchnotes.md` for the survey.
+LSTR_WRITER_OPCODE = 0x0A
 
 # Min printable characters for a decoded inline string to count.
 # 7-bit packed strings shorter than this are usually garbage from
@@ -177,15 +188,30 @@ def load_text_chunks(resource_gff: Path, gff_cat: str) -> dict[int, str]:
 def extract_strings_from_instruction(
     instr: dict,
     text_chunks: dict[int, str] | None,
+    lstr_state: dict[int, dict] | None = None,
 ) -> list[dict]:
     """Walk the params of one Instruction and emit one string
-    record per string-bearing parameter."""
+    record per string-bearing parameter.
+
+    `lstr_state` is the path-local LSTR-slot snapshot at this
+    instruction. When set, LSTRING reads in string-bearing
+    opcodes resolve against it; when None (e.g. flat-list mode
+    that doesn't simulate a CFG walk), LSTRING reads stay
+    unresolved with the v0.3.0 shape.
+    """
     out: list[dict] = []
     opcode = instr.get("opcode", 0)
     if opcode not in STRING_OPCODES:
         return out
     op_name = STRING_OPCODES[opcode]
-    for param in instr.get("params", []):
+    params = instr.get("params", []) or []
+    for idx, param in enumerate(params):
+        # `gpl_string_copy` (0x0A) has param[0] = LSTR destination
+        # (a write target, not a string-bearing read) and
+        # param[1] = the source string. v0.3.0 emitted the
+        # destination as an "unresolved LSTRING ref"; skip it.
+        if opcode == LSTR_WRITER_OPCODE and idx == 0:
+            continue
         for tok in param:
             kind = tok.get("kind")
             if kind == "immediate_string":
@@ -205,25 +231,130 @@ def extract_strings_from_instruction(
             elif kind == "variable" and tok.get("var_kind") in TEXT_VAR_KINDS:
                 var_kind = tok["var_kind"]
                 text_id = tok["id"]
-                record = {
+                record: dict = {
                     "offset": instr["offset"],
                     "opcode": opcode,
                     "opcode_name": op_name,
                     "source": f"text:{var_kind}",
                     "text_id": text_id,
                 }
-                resolvable = var_kind in RESOLVABLE_VAR_KINDS
-                if (
-                    resolvable
-                    and text_chunks is not None
-                    and text_id in text_chunks
-                ):
-                    record["value"] = text_chunks[text_id]
+                resolved_value: str | None = None
+                if var_kind == "gstring":
+                    if text_chunks is not None and text_id in text_chunks:
+                        resolved_value = text_chunks[text_id]
+                elif var_kind == "lstring":
+                    resolved_value = _resolve_lstr_read(
+                        text_id, lstr_state, text_chunks
+                    )
+                if resolved_value is not None:
+                    record["value"] = resolved_value
                 else:
                     record["value"] = None
                     record["unresolved"] = True
                 out.append(record)
     return out
+
+
+def _resolve_lstr_read(
+    lstr_id: int,
+    lstr_state: dict[int, dict] | None,
+    text_chunks: dict[int, str] | None,
+    _seen: set[int] | None = None,
+) -> str | None:
+    """Resolve one LSTR slot read against the path-local
+    `lstr_state` snapshot. Returns the source string when it can
+    be determined statically, else None.
+
+    Handles three source kinds recorded by `_update_lstr_state`:
+
+    - `inline`: the slot was written from an `immediate_string`.
+    - `gstring`: the slot was written from a GSTRING variable;
+      recurse into `text_chunks` if a text source was supplied.
+    - `lstring`: the slot was written from another LSTR slot
+      (chained); recurse with cycle protection.
+
+    Anything else (computed-from-record, accumulator, etc.) is
+    unresolvable today.
+    """
+    if lstr_state is None:
+        return None
+    record = lstr_state.get(lstr_id)
+    if record is None:
+        return None
+    kind = record.get("kind")
+    if kind == "inline":
+        return record.get("value")
+    if kind == "gstring":
+        text_id = record.get("text_id")
+        if text_id is None or text_chunks is None:
+            return None
+        return text_chunks.get(text_id)
+    if kind == "lstring":
+        chained_id = record.get("source_id")
+        if chained_id is None:
+            return None
+        seen = _seen if _seen is not None else set()
+        if chained_id in seen:
+            return None
+        seen.add(chained_id)
+        return _resolve_lstr_read(chained_id, lstr_state, text_chunks, seen)
+    return None
+
+
+def _update_lstr_state(instr: dict, lstr_state: dict[int, dict]) -> None:
+    """Mutate `lstr_state` in place when `instr` writes to an LSTR
+    slot. Recognises `gpl_string_copy` (0x0A) with `param[0]` = LSTR
+    variable. Sources are classified into:
+
+    - `inline`: param[1] is an `immediate_string`. The literal value
+      is captured for direct resolution.
+    - `gstring`: param[1] is a `gstring` variable; the text id is
+      captured for later resolution against `text_chunks`.
+    - `lstring`: param[1] is another `lstring` variable; the source
+      slot id is captured for chained resolution.
+    - `computed`: anything else (accumulator math, complex record
+      access, etc.). Recorded so the slot doesn't silently fall back
+      to an older value; reads resolve to `None` (unresolved).
+    """
+    if instr.get("opcode") != LSTR_WRITER_OPCODE:
+        return
+    params = instr.get("params") or []
+    if len(params) < 2:
+        return
+    dst = params[0]
+    src = params[1]
+    if len(dst) != 1:
+        return
+    dst_tok = dst[0]
+    if dst_tok.get("kind") != "variable" or dst_tok.get("var_kind") != "lstring":
+        return
+    lstr_id = dst_tok.get("id")
+    if lstr_id is None:
+        return
+    record: dict = {"kind": "computed", "src_offset": instr.get("offset")}
+    if len(src) == 1:
+        s0 = src[0]
+        s_kind = s0.get("kind")
+        if s_kind == "immediate_string":
+            record = {
+                "kind": "inline",
+                "value": s0.get("value", ""),
+                "sub_type": s0.get("sub_type"),
+                "src_offset": instr.get("offset"),
+            }
+        elif s_kind == "variable" and s0.get("var_kind") == "gstring":
+            record = {
+                "kind": "gstring",
+                "text_id": s0.get("id"),
+                "src_offset": instr.get("offset"),
+            }
+        elif s_kind == "variable" and s0.get("var_kind") == "lstring":
+            record = {
+                "kind": "lstring",
+                "source_id": s0.get("id"),
+                "src_offset": instr.get("offset"),
+            }
+    lstr_state[lstr_id] = record
 
 
 def _last_instruction_in_block(block: dict, instr_by_offset: dict[int, dict]) -> dict | None:
@@ -363,16 +494,33 @@ def _walk_tree(
     labels: dict[str, str],
     text_chunks: dict[int, str] | None,
     speaker_state: dict[str, str | None],
+    lstr_state: dict[int, dict],
     visited: set[int],
     stop_at: int | None,
     depth: int,
+    chunks_by_kind_id: dict[tuple[str, int], dict] | None = None,
+    chunk_kind: str | None = None,
+    chunk_id: int | None = None,
+    cross_chunk_visited: set[tuple[str, int]] | None = None,
 ) -> list[dict]:
     """Walk forward from `cur` through CFG blocks. Stops at
     `stop_at`, terminators (Return/ExitScript), previously-visited
     blocks (emits a `revisit` marker), or off-graph offsets. The
     returned list contains one node per visited block; each block
     node may have a synthesized `if` / `ifcompare` / `loop` / `goto`
-    child describing its terminator."""
+    child describing its terminator.
+
+    `lstr_state` carries per-path LSTR slot assignments
+    (`{id: {"kind": "inline"|"gstring"|"lstring"|"computed", ...}}`)
+    accumulated along the walk. At branch points each path gets a
+    `dict(lstr_state)` shallow copy; updates from
+    `gpl_string_copy` writes are local to that path.
+
+    If `chunks_by_kind_id` is set, `gpl global sub` call sites
+    inside each block expand inline as a `cross_chunk_call`
+    subtree under the block's `children`. `cross_chunk_visited`
+    is the chunk-level cycle guard (set of `(kind, id)` already
+    on the active call chain)."""
     if depth > MAX_TREE_DEPTH:
         return [{"kind": "depth_cut", "at": cur}]
     nodes: list[dict] = []
@@ -397,24 +545,56 @@ def _walk_tree(
             "offset": cur,
             "label": labels.get(str(cur)),
             "speaker_state_entry": dict(speaker_state),
+            "lstr_state_entry": dict(lstr_state),
             "lines": [],
             "gpl_refs": [],
             "terminator": block["terminator"],
             "children": [],
         }
         # Walk this block's instructions: collect strings, refs,
-        # and mutate speaker_state in order.
+        # and mutate speaker_state + lstr_state in order. Updates
+        # are applied AFTER string extraction at each instruction
+        # so a `gpl_string_copy` write inside a block doesn't
+        # retroactively resolve its own destination as a "read".
         for off in range(block["start_offset"], block["end_offset"]):
             instr = instr_by_offset.get(off)
             if instr is None:
                 continue
-            for s in extract_strings_from_instruction(instr, text_chunks):
+            for s in extract_strings_from_instruction(
+                instr, text_chunks, lstr_state
+            ):
                 s["speaker_state"] = dict(speaker_state)
                 block_node["lines"].append(s)
             ref = _extract_gpl_ref(instr, labels)
             if ref is not None:
                 block_node["gpl_refs"].append(ref)
             _update_speaker_state(instr, speaker_state)
+            _update_lstr_state(instr, lstr_state)
+        # Cross-chunk expansion (inter-chunk walking): for every
+        # `global sub` ref in this block, inline the callee's
+        # subtree under the block's children. The current path's
+        # LSTR state is passed through (the engine LSTR table is
+        # global; callees see what the caller has set up).
+        if chunks_by_kind_id is not None:
+            for ref in block_node["gpl_refs"]:
+                if ref.get("kind") != "global_sub":
+                    continue
+                callee_subtree = _expand_cross_chunk_call(
+                    ref,
+                    blocks,
+                    instr_by_offset,
+                    labels,
+                    text_chunks,
+                    speaker_state,
+                    lstr_state,
+                    chunks_by_kind_id,
+                    chunk_kind,
+                    chunk_id,
+                    cross_chunk_visited,
+                    depth,
+                )
+                if callee_subtree is not None:
+                    block_node["children"].append(callee_subtree)
         nodes.append(block_node)
 
         term = block["terminator"]
@@ -436,9 +616,14 @@ def _walk_tree(
                     labels,
                     text_chunks,
                     dict(speaker_state),
+                    dict(lstr_state),
                     visited,
                     stop_at=not_taken,
                     depth=depth + 1,
+                    chunks_by_kind_id=chunks_by_kind_id,
+                    chunk_kind=chunk_kind,
+                    chunk_id=chunk_id,
+                    cross_chunk_visited=cross_chunk_visited,
                 )
                 block_node["children"].append(
                     {
@@ -462,9 +647,14 @@ def _walk_tree(
                     labels,
                     text_chunks,
                     dict(speaker_state),
+                    dict(lstr_state),
                     visited,
                     stop_at=stop_at,
                     depth=depth + 1,
+                    chunks_by_kind_id=chunks_by_kind_id,
+                    chunk_kind=chunk_kind,
+                    chunk_id=chunk_id,
+                    cross_chunk_visited=cross_chunk_visited,
                 )
                 miss_path = _walk_tree(
                     not_taken,
@@ -473,9 +663,14 @@ def _walk_tree(
                     labels,
                     text_chunks,
                     dict(speaker_state),
+                    dict(lstr_state),
                     visited,
                     stop_at=stop_at,
                     depth=depth + 1,
+                    chunks_by_kind_id=chunks_by_kind_id,
+                    chunk_kind=chunk_kind,
+                    chunk_id=chunk_id,
+                    cross_chunk_visited=cross_chunk_visited,
                 )
                 block_node["children"].append(
                     {
@@ -495,9 +690,14 @@ def _walk_tree(
                     labels,
                     text_chunks,
                     dict(speaker_state),
+                    dict(lstr_state),
                     visited,
                     stop_at=not_taken,
                     depth=depth + 1,
+                    chunks_by_kind_id=chunks_by_kind_id,
+                    chunk_kind=chunk_kind,
+                    chunk_id=chunk_id,
+                    cross_chunk_visited=cross_chunk_visited,
                 )
                 # Detect if-with-else: the then-path's last block
                 # terminator is UnconditionalElse, whose successor
@@ -522,9 +722,14 @@ def _walk_tree(
                                 labels,
                                 text_chunks,
                                 dict(speaker_state),
+                                dict(lstr_state),
                                 visited,
                                 stop_at=join,
                                 depth=depth + 1,
+                                chunks_by_kind_id=chunks_by_kind_id,
+                                chunk_kind=chunk_kind,
+                                chunk_id=chunk_id,
+                                cross_chunk_visited=cross_chunk_visited,
                             )
                 block_node["children"].append(
                     {
@@ -562,13 +767,152 @@ def _walk_tree(
     return nodes
 
 
+def _expand_cross_chunk_call(
+    ref: dict,
+    caller_blocks: dict[int, dict],
+    caller_instr_by_offset: dict[int, dict],
+    caller_labels: dict[str, str],
+    text_chunks: dict[int, str] | None,
+    speaker_state: dict[str, str | None],
+    lstr_state: dict[int, dict],
+    chunks_by_kind_id: dict[tuple[str, int], dict],
+    caller_kind: str | None,
+    caller_id: int | None,
+    cross_chunk_visited: set[tuple[str, int]] | None,
+    depth: int,
+) -> dict | None:
+    """Build a `cross_chunk_call` subtree for one `global sub`
+    reference. Resolves the target's chunk via `chunks_by_kind_id`
+    using `(kind, file_id)`; if the callee is missing (e.g. not
+    in the same GFF or not aligned), emits an unresolved marker
+    instead of a recursive walk.
+
+    The caller's `lstr_state` and `speaker_state` flow into the
+    callee (shallow copies; the engine's LSTR table is global,
+    and observed speaker state is engine-wide too). Modifications
+    inside the callee do NOT propagate back: the call site loses
+    its post-return state on purpose, since dialog-extract is not
+    a runtime simulator and over-claiming would be misleading."""
+    if depth > MAX_TREE_DEPTH:
+        return {
+            "kind": "cross_chunk_call",
+            "at": ref.get("at"),
+            "target_offset": ref.get("target"),
+            "target_file_id": ref.get("file_id"),
+            "unresolved": True,
+            "reason": "depth_cut",
+        }
+    target_offset = ref.get("target")
+    target_file_id = ref.get("file_id")
+    if target_offset is None or target_file_id is None:
+        return None
+    # The `file_id` in `gpl global sub` is the resource id of the
+    # target chunk; the kind matches the caller's (GPL/MAS both
+    # use the same call space).
+    target_kind = caller_kind
+    if target_kind is None:
+        return None
+    target_key = (target_kind, target_file_id)
+    if cross_chunk_visited is not None and target_key in cross_chunk_visited:
+        return {
+            "kind": "cross_chunk_call",
+            "at": ref.get("at"),
+            "target_chunk": f"{target_kind.strip()}-{target_file_id}",
+            "target_offset": target_offset,
+            "target_file_id": target_file_id,
+            "unresolved": True,
+            "reason": "cycle",
+        }
+    callee_disasm = chunks_by_kind_id.get(target_key)
+    if callee_disasm is None:
+        return {
+            "kind": "cross_chunk_call",
+            "at": ref.get("at"),
+            "target_chunk": f"{target_kind.strip()}-{target_file_id}",
+            "target_offset": target_offset,
+            "target_file_id": target_file_id,
+            "unresolved": True,
+            "reason": "callee_not_loaded",
+        }
+    callee_cfg = callee_disasm.get("cfg")
+    if callee_cfg is None:
+        return {
+            "kind": "cross_chunk_call",
+            "at": ref.get("at"),
+            "target_chunk": f"{target_kind.strip()}-{target_file_id}",
+            "target_offset": target_offset,
+            "target_file_id": target_file_id,
+            "unresolved": True,
+            "reason": "callee_unaligned",
+        }
+    callee_blocks: dict[int, dict] = {
+        b["start_offset"]: b for b in callee_cfg.get("blocks", [])
+    }
+    callee_instr_by_offset: dict[int, dict] = {
+        i["offset"]: i for i in callee_disasm.get("instructions", [])
+    }
+    callee_labels_raw = callee_cfg.get("labels", {})
+    callee_labels: dict[str, str] = {
+        str(k): v for k, v in callee_labels_raw.items()
+    }
+    if target_offset not in callee_blocks:
+        return {
+            "kind": "cross_chunk_call",
+            "at": ref.get("at"),
+            "target_chunk": f"{target_kind.strip()}-{target_file_id}",
+            "target_offset": target_offset,
+            "target_file_id": target_file_id,
+            "unresolved": True,
+            "reason": "target_offset_not_a_block_leader",
+        }
+    new_visited: set[tuple[str, int]] = (
+        set(cross_chunk_visited) if cross_chunk_visited is not None else set()
+    )
+    new_visited.add(target_key)
+    callee_visited: set[int] = set()
+    subtree = _walk_tree(
+        target_offset,
+        callee_blocks,
+        callee_instr_by_offset,
+        callee_labels,
+        text_chunks,
+        dict(speaker_state),
+        dict(lstr_state),
+        callee_visited,
+        stop_at=None,
+        depth=depth + 1,
+        chunks_by_kind_id=chunks_by_kind_id,
+        chunk_kind=target_kind,
+        chunk_id=target_file_id,
+        cross_chunk_visited=new_visited,
+    )
+    return {
+        "kind": "cross_chunk_call",
+        "at": ref.get("at"),
+        "target_chunk": f"{target_kind.strip()}-{target_file_id}",
+        "target_offset": target_offset,
+        "target_file_id": target_file_id,
+        "target_label": callee_labels.get(str(target_offset)),
+        "subtree": subtree,
+    }
+
+
 def build_dialog_tree(
     disasm: dict,
     text_chunks: dict[int, str] | None,
+    chunks_by_kind_id: dict[tuple[str, int], dict] | None = None,
+    chunk_kind: str | None = None,
+    chunk_id: int | None = None,
 ) -> list[dict]:
     """Build the dialog tree for one chunk's DisasmResult. Returns
     a list of subtrees, one per entry point. Empty list if the
-    disassembly was not aligned (CFG absent)."""
+    disassembly was not aligned (CFG absent).
+
+    When `chunks_by_kind_id` is provided, `gpl global sub` call
+    sites in this chunk expand inline as `cross_chunk_call`
+    subtrees under the calling block (v0.4.0). The expansion uses
+    a per-walk `cross_chunk_visited` set keyed on
+    `(chunk_kind, chunk_id)` to break recursion."""
     cfg = disasm.get("cfg")
     if cfg is None:
         return []
@@ -584,6 +928,12 @@ def build_dialog_tree(
     labels: dict[str, str] = {str(k): v for k, v in labels_raw.items()}
     trees: list[dict] = []
     visited: set[int] = set()
+    # Initial cross-chunk-visited set marks the current chunk so a
+    # self-call (`gpl global sub` into our own kind+id) is treated
+    # as a cycle marker rather than recursive expansion.
+    initial_cross_visited: set[tuple[str, int]] | None = None
+    if chunks_by_kind_id is not None and chunk_kind is not None and chunk_id is not None:
+        initial_cross_visited = {(chunk_kind, chunk_id)}
     # Walk declared entry points first (chunk start + every offset
     # observed as a `local sub` target).
     for entry_offset in cfg.get("entry_points", []):
@@ -592,6 +942,7 @@ def build_dialog_tree(
         if entry_offset in visited:
             continue
         speaker_state: dict[str, str | None] = {"other": None, "thing": None}
+        lstr_state: dict[int, dict] = {}
         subtree = _walk_tree(
             entry_offset,
             blocks_by_offset,
@@ -599,9 +950,14 @@ def build_dialog_tree(
             labels,
             text_chunks,
             speaker_state,
+            lstr_state,
             visited,
             stop_at=None,
             depth=0,
+            chunks_by_kind_id=chunks_by_kind_id,
+            chunk_kind=chunk_kind,
+            chunk_id=chunk_id,
+            cross_chunk_visited=initial_cross_visited,
         )
         trees.append(
             {
@@ -614,14 +970,16 @@ def build_dialog_tree(
     # Some block leaders are not reachable from any declared entry
     # point — typically externally-called functions invoked via
     # `gpl global sub` from another chunk. Walk those too, treating
-    # each as a discovered entry. Cross-chunk inter-procedural CFG
-    # is v0.4.1 work; here we just expose the locally-unreachable
-    # blocks so their dialog is visible.
+    # each as a discovered entry. v0.4.0 inter-chunk expansion can
+    # cover many of these via call-graph expansion above, but
+    # locally-unreachable leaders still get a dedicated entry so
+    # nothing is hidden when expansion is disabled.
     for block in cfg.get("blocks", []):
         start = block["start_offset"]
         if start in visited:
             continue
         speaker_state = {"other": None, "thing": None}
+        lstr_state = {}
         subtree = _walk_tree(
             start,
             blocks_by_offset,
@@ -629,9 +987,14 @@ def build_dialog_tree(
             labels,
             text_chunks,
             speaker_state,
+            lstr_state,
             visited,
             stop_at=None,
             depth=0,
+            chunks_by_kind_id=chunks_by_kind_id,
+            chunk_kind=chunk_kind,
+            chunk_id=chunk_id,
+            cross_chunk_visited=initial_cross_visited,
         )
         if not subtree:
             continue
@@ -646,6 +1009,23 @@ def build_dialog_tree(
     return trees
 
 
+def _chunk_lstr_state_linear(disasm: dict) -> dict[int, dict]:
+    """Build a chunk-level LSTR-slot snapshot via a single forward
+    pass over the chunk's instructions (no CFG awareness). Used as
+    the LSTR context for the flat per-chunk `strings` list. The
+    path-aware `dialog_tree` walk maintains its own per-path
+    state via `_walk_tree`.
+
+    "Last write wins" along the linear instruction order. Catches
+    the dominant menu-setup pattern (write LSTR[0..N] then
+    `gpl_menu`) for ~80% of corpus reads; CFG-aware resolution in
+    the tree is strictly more accurate on the remaining cases."""
+    state: dict[int, dict] = {}
+    for instr in disasm.get("instructions", []):
+        _update_lstr_state(instr, state)
+    return state
+
+
 def build_summary(
     source: Path,
     disasm_results: list[dict],
@@ -657,11 +1037,26 @@ def build_summary(
     total_strings = 0
     total_unresolved = 0
 
+    # Index every chunk's disasm by (kind, id) so the inter-chunk
+    # walker can resolve `gpl global sub` targets.
+    chunks_by_kind_id: dict[tuple[str, int], dict] = {
+        (e["chunk_kind"], int(e["chunk_id"])): e["disasm"]
+        for e in disasm_results
+    }
+
     for entry in disasm_results:
-        strings: list[dict] = []
         disasm = entry["disasm"]
+        # Linear-scan LSTR snapshot, used only by the flat-list
+        # path. The dialog_tree builder runs its own path-aware
+        # tracker independently.
+        flat_lstr_state = _chunk_lstr_state_linear(disasm)
+        strings: list[dict] = []
         for instr in disasm.get("instructions", []):
-            strings.extend(extract_strings_from_instruction(instr, text_chunks))
+            strings.extend(
+                extract_strings_from_instruction(
+                    instr, text_chunks, flat_lstr_state
+                )
+            )
         if not strings:
             continue
         if grep is not None and not any(
@@ -672,7 +1067,13 @@ def build_summary(
             if s.get("unresolved"):
                 total_unresolved += 1
         total_strings += len(strings)
-        dialog_tree = build_dialog_tree(disasm, text_chunks)
+        dialog_tree = build_dialog_tree(
+            disasm,
+            text_chunks,
+            chunks_by_kind_id=chunks_by_kind_id,
+            chunk_kind=entry["chunk_kind"],
+            chunk_id=int(entry["chunk_id"]),
+        )
         chunks_out.append(
             {
                 "chunk": f"{entry['chunk_kind'].strip()}-{entry['chunk_id']}",
