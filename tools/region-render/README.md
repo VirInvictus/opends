@@ -12,6 +12,66 @@ without firing up the engine.
 Depends on `gff-edit` for GFF I/O and `image-extract` for the
 `Palette` + `Bitmap` decoders. PNG output uses the `png` crate.
 
+## What `region-render v0.4.0` ships
+
+**`--palette-preset` flag** for one-knob DS1 palette
+switching, plus an honest write-up of the
+per-region-palette-discovery effort.
+
+Available presets (all expect a sibling `RESOURCE.GFF`):
+
+| Preset | Resolves to | Visual look |
+|---|---|---|
+| `ds1-pink` | `RESOURCE.GFF:PAL :1000` | v0.1.0 default; bright pink off-camera void |
+| `ds1-rust` | `RESOURCE.GFF:CPAL:200` | Uniformly rusty-red Athasian |
+| `ds1-deep-red` | `RESOURCE.GFF:CPAL:300` | Darker, more saturated red |
+
+```sh
+region-render .games/ds1/RGN02.GFF --palette-preset ds1-rust -o rgn02.png
+```
+
+### The per-region DS1 palette discovery: negative result
+
+I went looking for how the engine selects which of DS1's four
+palettes (`PAL :1000`, `PAL :1001`, `CPAL:200`, `CPAL:300`) to
+use per region. None of the standard places carry that
+mapping:
+
+- `RESOURCE.GFF` has 2 undocumented `CMAT` chunks (id 200 +
+  300, paired with the CPAL ids), but libgff lists CMAT as
+  `"CMAT?"` and has no consumer code. They're large (41,368 +
+  21,643 bytes) which suggests substantial remap tables, but
+  cracking their layout needs an RE pass against `DSUN.EXE`
+  that's outside the scope of v0.4.0.
+- `DARKRUN.GFF` carries only the credits text; no palette
+  data.
+- No per-region palette chunk lives in the region GFFs
+  themselves.
+- The `dsun_music/region-tool` Java reference expects an
+  explicit `--pal` path, with `gffs.getResourceData("PAL ",
+  regionNumber)` as a fallback that only works for DS2
+  (where each `RGN???.GFF` has an inline `PAL ` at id 1; DS1
+  has no such inline palette).
+- `dso-online/tools/symbols.txt` (DSO v1.0 debug symbols) has
+  no obvious per-region-palette-selection routine surfaced
+  by name.
+
+The conclusion: per-region DS1 palette discovery needs
+`DSUN.EXE` reverse-engineering (likely tracing the engine's
+region-load path through the GPL VM). Queued for a future
+release; the `--palette-preset` flag is the workaround until
+then.
+
+### Animated palette colours: also queued
+
+The `dsun_music/region-tool` Java source has a top-level
+`// TODO: properly render animated colors` (`RegionTool.java`
+line 180). Dark Sun animates ranges of the palette at runtime
+(water shimmer, fire flicker, etc.); the animation tables
+live in `DSUN.EXE`, and the same DSUN.EXE RE that unlocks
+per-region palette selection probably surfaces them too.
+v0.5.0+ work.
+
 ## What `region-render v0.3.0` ships
 
 **Entity sprite layer.** The `ETAB` chunk's 8-byte records each

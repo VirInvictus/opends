@@ -4,6 +4,34 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/region-render/` v0.4.0** adds a `--palette-preset`
+  flag for one-knob DS1 palette switching and documents the
+  per-region-palette + animated-palette gaps honestly.
+  - **New CLI flag** `--palette-preset <name>` resolves to a
+    sibling `RESOURCE.GFF` chunk:
+    - `ds1-pink` -> `PAL :1000` (v0.1.0 default, bright pink
+      off-camera void)
+    - `ds1-rust` -> `CPAL:200` (rusty-red Athasian look)
+    - `ds1-deep-red` -> `CPAL:300` (darker variant)
+    The preset takes precedence over `--palette` /
+    `--palette-file` so modders reaching for "make my DS1
+    region look right" have the obvious knob.
+  - **Negative-result survey for per-region DS1 palette
+    selection**: checked `RESOURCE.GFF`'s 2 `CMAT` chunks
+    (undocumented in libgff; sizes 41,368 + 21,643 bytes,
+    suggest substantial remap tables but no consumer code),
+    `DARKRUN.GFF` (credits only), region GFFs themselves (no
+    palette chunks), `dsun_music/region-tool` (expects
+    explicit `--pal`), and `dso-online`'s symbol table (no
+    obvious selection routine). Conclusion: per-region DS1
+    palette selection needs `DSUN.EXE` reverse-engineering
+    that's beyond v0.4.0; queued. README v0.4.0 section
+    documents the trail.
+  - **Animated palette colours** also need DSUN.EXE RE (the
+    `dsun_music/region-tool` Java source carries a TODO at
+    line 180); queued for v0.5.0+.
+  - **VERSION**: 0.3.0 -> 0.4.0.
+
 - **`tools/region-render/` v0.3.0** adds the **entity sprite
   layer**. ETAB records (8 bytes each) place sprites at
   `(x - ojff.x_offset, y - ojff.y_offset - y_offset)` with

@@ -297,10 +297,16 @@ the friction is felt.
       v0.3.0: DS1 entities load from sibling `SEGOBJEX.GFF`,
       DS2 from `OBJEX.GFF`. Corpus: 26,587 ETAB records,
       8,223 distinct sprites, 0 missing ids, 0 decode failures.)
-- [ ] Animated palette colours. v0.4.0.
-- [ ] Per-region palette discovery for DS1 (current default may
-      surface "off-camera void" colours; interior playable area
-      already renders correctly). v0.2.0.
+- [ ] Animated palette colours. Needs `DSUN.EXE` RE; the
+      `dsun_music/region-tool` Java reference has a TODO at
+      line 180. Queued for v0.5.0.
+- [ ] Per-region palette discovery for DS1 (current default
+      may surface "off-camera void" colours; interior playable
+      area already renders correctly). Negative-result survey
+      in v0.4.0: `RESOURCE.GFF`'s `CMAT` chunks are
+      undocumented in libgff and need DSUN.EXE RE to crack.
+      `--palette-preset {ds1-pink, ds1-rust, ds1-deep-red}` is
+      the v0.4.0 workaround until then.
 - [x] Tagged: `region-render-v0.1.0`. (this release)
 
 **Done when**: dialog-extract, save-inspect, image-extract, and

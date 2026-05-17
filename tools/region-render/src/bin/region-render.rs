@@ -25,6 +25,15 @@ struct Cli {
     /// Takes precedence over inline-palette discovery.
     #[arg(long = "palette")]
     palette: Option<String>,
+    /// Curated DS1 palette presets. Equivalent to `--palette
+    /// <RESOURCE.GFF>:<kind>:<id>` with the matching values.
+    /// Available: `ds1-pink` (PAL:1000, the v0.1.0 default,
+    /// renders off-camera void as pink), `ds1-rust` (CPAL:200,
+    /// uniformly rusty-red Athasian look), `ds1-deep-red`
+    /// (CPAL:300, darker variant). Resolves a sibling
+    /// RESOURCE.GFF.
+    #[arg(long = "palette-preset", value_parser = ["ds1-pink", "ds1-rust", "ds1-deep-red"])]
+    palette_preset: Option<String>,
     /// Explicit palette from a raw 768-byte PAL/CPAL file. Wins
     /// over `--palette` if both are set.
     #[arg(long = "palette-file")]
@@ -62,6 +71,7 @@ fn main() -> Result<()> {
         cli.file.as_path(),
         cli.palette.as_deref(),
         cli.palette_file.as_deref(),
+        cli.palette_preset.as_deref(),
     )?;
 
     let mut region = RegionMap::from_gff(&gff, palette)
@@ -169,7 +179,38 @@ fn resolve_palette(
     region_path: &Path,
     palette_spec: Option<&str>,
     palette_file: Option<&Path>,
+    palette_preset: Option<&str>,
 ) -> Result<Palette> {
+    // 0. --palette-preset (curated DS1 sibling RESOURCE.GFF
+    //    lookups). Wins over --palette / --palette-file by
+    //    intent; modders reach for `--palette-preset ds1-rust`
+    //    as the obvious "make my DS1 region look right" knob.
+    //    A simultaneous explicit `--palette` is honoured below
+    //    only if the preset isn't set.
+    if let Some(name) = palette_preset {
+        let mut sibling = region_path.to_path_buf();
+        sibling.set_file_name("RESOURCE.GFF");
+        if !sibling.is_file() {
+            return Err(anyhow!(
+                "--palette-preset {name} expects a sibling RESOURCE.GFF next to {}",
+                region_path.display()
+            ));
+        }
+        let (kind, id) = match name {
+            "ds1-pink" => (FourCC(*b"PAL "), 1000),
+            "ds1-rust" => (FourCC(*b"CPAL"), 200),
+            "ds1-deep-red" => (FourCC(*b"CPAL"), 300),
+            other => {
+                return Err(anyhow!("unknown --palette-preset: {other:?}"));
+            }
+        };
+        let gff = Gff::open(&sibling)
+            .with_context(|| format!("opening preset source {}", sibling.display()))?;
+        let bytes = gff
+            .read(kind, id)
+            .ok_or_else(|| anyhow!("preset {name}: no {} {} in {}", kind, id, sibling.display()))?;
+        return Palette::from_bytes(bytes).map_err(Into::into);
+    }
     // 1. --palette-file
     if let Some(p) = palette_file {
         let bytes = std::fs::read(p)
