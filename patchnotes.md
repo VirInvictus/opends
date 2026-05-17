@@ -4,6 +4,54 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gpl-asm/` v0.4.0** ships the label-relative `Editor`
+  API and arbitrary user-chosen label names in the text parser.
+  Together they make `gpl-asm` author-friendly: modders can
+  reason about positions by name rather than raw byte offset.
+  - **Editor extensions**:
+    - `Editor::from_result` seeds a `name -> offset` map from
+      `result.cfg.labels` (with the v0.4.6
+      function-name decoration stripped). Persists through
+      edits.
+    - New methods: `label_offset(name)`, `labels()`,
+      `add_label(name, at_offset)`,
+      `insert_before_label(name, instr)`,
+      `delete_at_label(name)`,
+      `replace_at_label(name, with)`.
+    - `EditError::NoLabel { name }` is the new error variant
+      for missing labels.
+    - Every edit operation shifts the label map by the same
+      delta it applies to instruction offsets and branch
+      targets; labels at the deleted offset are removed.
+  - **Parser extensions**:
+    - `collect_labels` accepts any ASCII identifier (letter or
+      underscore head + alphanumerics / underscores) as a
+      label declaration. User-chosen labels resolve to the
+      offset of the instruction line that follows them.
+    - `try_parse_label_ref` resolves any identifier present in
+      the labels map, not just the `label_0x` / `entry_0x`
+      prefixes. Variable parsing (`SHORT[id]`) runs first so a
+      `GNUM[1]` token can never be confused with a label
+      called `GNUM`.
+    - `is_valid_label_ident` rejects names colliding with
+      operator words (`and`, `or`), keyword tokens (`NAME`,
+      `RETVAL`, `COMPLEX`, `INTRODUCE`, etc.), and variable
+      shorts (`GNUM`, `LSTR`, ...). These would shadow real
+      tokens during param parsing.
+  - **Tests**: 3 new editor unit tests
+    (`editor_seeds_labels_from_cfg`,
+    `insert_before_label_shifts_label_offsets`,
+    `user_chosen_label_resolves_via_add_label`) and 3 new
+    parser unit tests (`user_chosen_label_in_branch_param`,
+    `user_label_with_underscore_and_digits`,
+    `parser_rejects_label_named_after_variable_short`).
+    gpl-asm tests: 23 unit (was 17) + 2 corpus integration.
+    Workspace total: 97 -> 103.
+  - **Out of scope for v0.4.0**: macros / forward-reference
+    syntax beyond `label:`; `gpl_search` raw_tail composition
+    sugar in user-authored text. Queued for v0.5.0.
+  - **VERSION**: 0.3.0 -> 0.4.0.
+
 - **`tools/gpl-asm/` v0.3.0** ships **structural edits**. New
   `Editor` API wraps a `DisasmResult` and exposes
   `insert_instruction(before_offset, instr)`,

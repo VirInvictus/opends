@@ -113,34 +113,112 @@ pub fn parse(input: &str) -> Result<DisasmResult> {
     })
 }
 
-/// Pre-scan pass: find every line of the form `label_0xNNNN:`,
-/// `entry_0xNNNN:`, or `entry_0xNNNN (function_name):`. Build a
-/// `bare-name -> offset` map; the function-name decoration is
-/// dropped because the branch-param renderer strips it too
-/// (gpl-disasm v0.4.6+).
+/// Pre-scan pass: find every line ending in `:` whose head is a
+/// valid identifier, and record its byte offset. v0.4.0 accepts
+/// arbitrary user-chosen labels in addition to the
+/// `label_0xNNNN` / `entry_0xNNNN[ (function_name)]:` shapes
+/// `gpl-disasm` emits.
+///
+/// The byte offset for a user-chosen label is the offset of the
+/// instruction that follows it (the line after the declaration).
+/// For `label_0xNNNN:` and `entry_0xNNNN:` the offset is the
+/// hex value baked into the name; this is faithful to what
+/// `gpl-disasm` emits.
+///
+/// Names that collide with binary operator words (`and`, `or`)
+/// or variable shorts (`GNUM`, `LSTR`, ...) are rejected, since
+/// they'd ambiguate with branch-param tokens during parsing.
 fn collect_labels(input: &str) -> HashMap<String, usize> {
     let mut out: HashMap<String, usize> = HashMap::new();
+    let mut pending_label: Option<String> = None;
+
     for raw_line in input.lines() {
         let line = raw_line.trim();
-        let Some(stripped) = line.strip_suffix(':') else {
-            continue;
-        };
-        // Bare name: take everything up to the first `(` or
-        // whitespace. `entry_0x0001 (iniya_first_meeting):` ->
-        // `entry_0x0001`. `label_0x0011:` -> `label_0x0011`.
-        let bare = stripped
-            .split_once(' ')
-            .map(|(l, _)| l)
-            .unwrap_or(stripped);
-        if !(bare.starts_with("label_0x") || bare.starts_with("entry_0x")) {
+
+        if let Some(stripped) = line.strip_suffix(':') {
+            // Bare name: take everything up to the first space.
+            let bare = stripped
+                .split_once(' ')
+                .map(|(l, _)| l)
+                .unwrap_or(stripped);
+            if !is_valid_label_ident(bare) {
+                continue;
+            }
+            if bare.starts_with("label_0x") || bare.starts_with("entry_0x") {
+                // Self-encoding offset; trust the hex.
+                let hex_len = bare.len() - "label_0x".len();
+                if hex_len > 0 && hex_len <= 4 {
+                    if let Ok(offset) =
+                        usize::from_str_radix(&bare[bare.len() - hex_len..], 16)
+                    {
+                        out.insert(bare.to_string(), offset);
+                    }
+                }
+            } else {
+                // User-chosen label; will be bound to the
+                // offset of the next instruction line.
+                pending_label = Some(bare.to_string());
+            }
             continue;
         }
-        let hex = &bare[bare.len() - 4..];
-        if let Ok(offset) = usize::from_str_radix(hex, 16) {
-            out.insert(bare.to_string(), offset);
+
+        // Non-label line. If it's an instruction line and we
+        // have a pending user-chosen label, bind it to the
+        // instruction's offset.
+        if let Some(name) = pending_label.take() {
+            if line.is_empty() || line.starts_with(';') {
+                pending_label = Some(name);
+                continue;
+            }
+            if line.len() >= 4 {
+                if let Ok(offset) = usize::from_str_radix(&line[0..4], 16) {
+                    out.insert(name, offset);
+                }
+            }
         }
     }
     out
+}
+
+fn is_valid_label_ident(s: &str) -> bool {
+    if s.is_empty() {
+        return false;
+    }
+    let bytes = s.as_bytes();
+    if !(bytes[0].is_ascii_alphabetic() || bytes[0] == b'_') {
+        return false;
+    }
+    if !s.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_') {
+        return false;
+    }
+    // Disallow names that collide with token-vocabulary words
+    // the param parser already recognises (operators, special
+    // tokens, variable shorts).
+    !matches!(
+        s,
+        "and"
+            | "or"
+            | "INTRODUCE"
+            | "UNCOMPRESSED"
+            | "ACCM_ERROR"
+            | "IMMED_WORD_UNIMPL"
+            | "NAME"
+            | "RETVAL"
+            | "COMPLEX"
+            | "ACCUM"
+            | "GBYTE"
+            | "LBYTE"
+            | "GNAME"
+            | "LNAME"
+            | "GSTR"
+            | "LSTR"
+            | "GNUM"
+            | "LNUM"
+            | "GBN"
+            | "LBN"
+            | "GF"
+            | "LF"
+    )
 }
 
 fn parse_instruction_line(
@@ -522,9 +600,24 @@ fn parse_one_expression(
         return Ok((Expression::BinaryOp { op }, n));
     }
 
-    // Label-form branch target: `label_0xNNNN` or
-    // `entry_0xNNNN` resolves through the pre-scanned labels
-    // map to an `Immediate14` with the target byte offset.
+    // Variable: SHORT[id] or SHORT+[id]. Runs before label-ref
+    // so that if a user accidentally names a label after a
+    // variable short (e.g. "GNUM"), the variable token still
+    // wins when followed by `[id]`.
+    if let Some((vk, extended, id, n)) = try_parse_variable(s) {
+        return Ok((
+            Expression::Variable {
+                var_kind: vk,
+                id,
+                extended,
+            },
+            n,
+        ));
+    }
+
+    // Label-form branch target: any identifier present in the
+    // pre-scanned labels map resolves to an `Immediate14` with
+    // the target byte offset.
     if let Some((tok, n)) = try_parse_label_ref(s, labels) {
         return Ok((tok, n));
     }
@@ -588,17 +681,8 @@ fn parse_one_expression(
         return parse_complex(s, after_open, line_no);
     }
 
-    // Variable: SHORT[id] or SHORT+[id] (longest-match short name).
-    if let Some((vk, extended, id, n)) = try_parse_variable(s) {
-        return Ok((
-            Expression::Variable {
-                var_kind: vk,
-                id,
-                extended,
-            },
-            n,
-        ));
-    }
+    // (Variable parsing now happens earlier in this function;
+    // see above. The two arms must agree on order.)
 
     // ??0xNN unknown.
     if let Some(rest) = s.strip_prefix("??0x") {
@@ -975,17 +1059,19 @@ fn parse_complex_inner(inner: &str, consumed: usize, line_no: usize) -> Result<(
     ))
 }
 
-/// Match a `label_0xNNNN` or `entry_0xNNNN` identifier at the
-/// start of `s` and resolve it through `labels`. The match must
-/// be the start of an identifier token (followed by EOI, space,
-/// comma, or close-paren / close-bracket).
+/// Match an identifier token at the start of `s` and resolve
+/// it through `labels`. v0.4.0 accepts any user-chosen
+/// identifier in addition to the `label_0xNNNN` / `entry_0xNNNN`
+/// shapes `gpl-disasm` emits.
 fn try_parse_label_ref(s: &str, labels: &HashMap<String, usize>) -> Option<(Expression, usize)> {
-    if !(s.starts_with("label_0x") || s.starts_with("entry_0x")) {
+    let bytes = s.as_bytes();
+    if bytes.is_empty() {
         return None;
     }
-    // Identifier ends at first non-identifier character. The
-    // rendered bare name is letters + digits + underscore.
-    let bytes = s.as_bytes();
+    // Identifier head: letter or underscore.
+    if !(bytes[0].is_ascii_alphabetic() || bytes[0] == b'_') {
+        return None;
+    }
     let mut i = 0usize;
     while i < bytes.len() {
         let b = bytes[i];
@@ -1171,4 +1257,64 @@ fn parse_integer_immediate(s: &str, line_no: usize) -> Result<(Expression, usize
         detail: format!("Immediate14: {e}"),
     })?;
     Ok((Expression::Immediate14 { value }, i))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::encode;
+
+    #[test]
+    fn user_chosen_label_in_branch_param() {
+        // Two-instruction synthetic program. The user writes
+        // `gpl if some_target` and declares `some_target:`
+        // before the second instruction.
+        let text = "\
+            0000  3e  gpl if                  some_target\n\
+            some_target:\n\
+            0003  67  gpl endif             \n";
+        let result = parse(text).unwrap();
+        assert_eq!(result.instructions.len(), 2);
+        // First instruction: gpl if 3.
+        assert_eq!(result.instructions[0].opcode, 0x3E);
+        let target = &result.instructions[0].params[0];
+        assert_eq!(target.len(), 1);
+        match target[0] {
+            Expression::Immediate14 { value } => assert_eq!(value, 3),
+            ref other => panic!("expected Immediate14, got {other:?}"),
+        }
+        let bytes = encode(&result).unwrap();
+        assert_eq!(bytes, vec![0x3E, 0x00, 0x03, 0x67]);
+    }
+
+    #[test]
+    fn user_label_with_underscore_and_digits() {
+        let text = "\
+            0000  3e  gpl if                  block_1_end\n\
+            block_1_end:\n\
+            0003  67  gpl endif             \n";
+        let result = parse(text).unwrap();
+        let bytes = encode(&result).unwrap();
+        assert_eq!(bytes, vec![0x3E, 0x00, 0x03, 0x67]);
+    }
+
+    #[test]
+    fn parser_rejects_label_named_after_variable_short() {
+        // Reject `GNUM:` as a label declaration so it doesn't
+        // shadow the GNUM[id] variable parser. The label is
+        // silently ignored, so a branch later in the input
+        // referring to GNUM is left unresolved — the parser
+        // surfaces a clear error.
+        let text = "\
+            0000  3e  gpl if                  GNUM\n\
+            GNUM:\n\
+            0003  67  gpl endif             \n";
+        let err = parse(text).unwrap_err();
+        // We expect a parse error because `GNUM` looked like the
+        // start of a variable short but isn't followed by `[id]`.
+        match err {
+            ParseError::BadExpression { .. } => {}
+            other => panic!("unexpected: {other:?}"),
+        }
+    }
 }

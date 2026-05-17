@@ -25,12 +25,15 @@ use gpl_disasm::{
     opcode_name,
 };
 use std::borrow::Cow;
+use std::collections::HashMap;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum EditError {
     #[error("no instruction at offset {offset:#x}")]
     NoInstructionAt { offset: usize },
+    #[error("no label {name:?}")]
+    NoLabel { name: String },
     #[error("instruction at offset {offset:#x} fails to encode: {source}")]
     LengthComputation {
         offset: usize,
@@ -49,23 +52,69 @@ pub type Result<T> = std::result::Result<T, EditError>;
 pub struct Editor {
     instructions: Vec<Instruction>,
     total_bytes: usize,
-    /// CFG carried over from the source disassembly (read-only).
-    /// Stale after any edit; downstream consumers needing CFG
-    /// info should re-disassemble the edited bytes.
     aligned: bool,
+    /// Symbolic labels for branch targets, name -> byte offset.
+    /// Seeded from `result.cfg.labels` at construction; kept
+    /// up to date as edits shift offsets so label-relative APIs
+    /// resolve correctly through multiple edits. After any
+    /// edit, the bare label name still references "the original
+    /// instruction at this label", now at its new offset.
+    labels: HashMap<String, usize>,
 }
 
 impl Editor {
-    /// Wrap a [`DisasmResult`] in an editor. The source result's
-    /// CFG and cross-chunk metadata are dropped on `into_result`
-    /// because they become stale after any structural edit; the
-    /// caller can re-disassemble to rebuild them.
+    /// Wrap a [`DisasmResult`] in an editor. Pulls
+    /// `result.cfg.labels` into the editor's label map so
+    /// label-relative APIs (`insert_before_label` etc.) work
+    /// even though `cfg` is dropped on `into_result`.
     pub fn from_result(result: DisasmResult) -> Self {
+        let labels = result
+            .cfg
+            .as_ref()
+            .map(|c| {
+                c.labels
+                    .iter()
+                    .map(|(&offset, name)| {
+                        // Strip function-name decoration from
+                        // entry labels: "entry_0x0001
+                        // (iniya_first_meeting)" -> "entry_0x0001".
+                        let bare = name.split_once(" (").map(|(l, _)| l).unwrap_or(name);
+                        (bare.to_string(), offset)
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
         Editor {
             instructions: result.instructions,
             total_bytes: result.total_bytes,
             aligned: result.aligned,
+            labels,
         }
+    }
+
+    /// Look up a label's current byte offset. Tracks edits.
+    pub fn label_offset(&self, name: &str) -> Option<usize> {
+        self.labels.get(name).copied()
+    }
+
+    /// All known labels (name -> current offset).
+    pub fn labels(&self) -> &HashMap<String, usize> {
+        &self.labels
+    }
+
+    /// Define a user-chosen label at an existing instruction
+    /// offset (e.g. so callers can pin a name to a position
+    /// before an `insert_before_label` shift).
+    pub fn add_label(&mut self, name: String, at_offset: usize) -> Result<()> {
+        if !self.has_offset(at_offset) {
+            return Err(EditError::NoInstructionAt { offset: at_offset });
+        }
+        self.labels.insert(name, at_offset);
+        Ok(())
+    }
+
+    fn has_offset(&self, offset: usize) -> bool {
+        self.instructions.iter().any(|i| i.offset == offset)
     }
 
     pub fn instructions(&self) -> &[Instruction] {
@@ -108,6 +157,7 @@ impl Editor {
     /// `before_offset`. Every subsequent instruction's `offset`
     /// shifts by the new instruction's `length`. Every branch
     /// target `>= before_offset` shifts by the same amount.
+    /// Label offsets `>= before_offset` shift too.
     pub fn insert_instruction(
         &mut self,
         before_offset: usize,
@@ -134,15 +184,27 @@ impl Editor {
         // around the newly inserted code).
         retarget_in(&mut std::slice::from_mut(&mut instr), before_offset, delta)?;
         self.instructions.insert(idx, instr);
+        shift_labels(&mut self.labels, before_offset, delta);
         self.total_bytes = (self.total_bytes as isize + delta) as usize;
         Ok(())
+    }
+
+    /// Like [`Self::insert_instruction`] but locates the
+    /// instruction by label name. The label must currently
+    /// resolve to an instruction offset.
+    pub fn insert_before_label(&mut self, name: &str, instr: Instruction) -> Result<()> {
+        let offset = self
+            .label_offset(name)
+            .ok_or_else(|| EditError::NoLabel { name: name.to_string() })?;
+        self.insert_instruction(offset, instr)
     }
 
     /// Delete the instruction at `at_offset`. Subsequent
     /// instructions shift down by the deleted length; branch
     /// targets `> at_offset` shift by the same amount (a target
     /// equal to `at_offset` becomes invalid — the encoder will
-    /// surface that downstream).
+    /// surface that downstream). Labels at the deleted offset
+    /// are removed; labels at higher offsets shift down.
     pub fn delete_instruction(&mut self, at_offset: usize) -> Result<Instruction> {
         let idx = self.find_index(at_offset).ok_or(EditError::NoInstructionAt {
             offset: at_offset,
@@ -152,14 +214,21 @@ impl Editor {
         for later in &mut self.instructions[idx..] {
             later.offset = (later.offset as isize + delta) as usize;
         }
-        // Branches that targeted offsets STRICTLY GREATER than
-        // the deleted offset shift down. A branch that targeted
-        // exactly the deleted offset is now dangling and stays
-        // pointing at the byte that was at_offset (which now
-        // belongs to the next instruction).
         retarget_branches(&mut self.instructions, at_offset + 1, delta)?;
+        // Labels at the deleted offset are removed; labels above
+        // shift down.
+        self.labels.retain(|_, off| *off != at_offset);
+        shift_labels(&mut self.labels, at_offset + 1, delta);
         self.total_bytes = (self.total_bytes as isize + delta) as usize;
         Ok(removed)
+    }
+
+    /// Like [`Self::delete_instruction`] but addresses by label.
+    pub fn delete_at_label(&mut self, name: &str) -> Result<Instruction> {
+        let offset = self
+            .label_offset(name)
+            .ok_or_else(|| EditError::NoLabel { name: name.to_string() })?;
+        self.delete_instruction(offset)
     }
 
     /// Replace the instruction at `at_offset` with `new`. The
@@ -190,9 +259,18 @@ impl Editor {
                 later.offset = (later.offset as isize + delta) as usize;
             }
             retarget_branches(&mut self.instructions, after_offset, delta)?;
+            shift_labels(&mut self.labels, after_offset, delta);
         }
         self.total_bytes = (self.total_bytes as isize + delta) as usize;
         Ok(old)
+    }
+
+    /// Like [`Self::replace_instruction`] but addresses by label.
+    pub fn replace_at_label(&mut self, name: &str, with: Instruction) -> Result<Instruction> {
+        let offset = self
+            .label_offset(name)
+            .ok_or_else(|| EditError::NoLabel { name: name.to_string() })?;
+        self.replace_instruction(offset, with)
     }
 
     /// Materialize the edited state as a [`DisasmResult`]. The
@@ -213,6 +291,18 @@ impl Editor {
 
     fn find_index(&self, offset: usize) -> Option<usize> {
         self.instructions.iter().position(|i| i.offset == offset)
+    }
+}
+
+/// Shift label offsets `>= cutoff` by `delta` in place.
+fn shift_labels(labels: &mut HashMap<String, usize>, cutoff: usize, delta: isize) {
+    if delta == 0 {
+        return;
+    }
+    for off in labels.values_mut() {
+        if *off >= cutoff {
+            *off = (*off as isize + delta) as usize;
+        }
     }
 }
 
@@ -397,5 +487,45 @@ mod tests {
             EditError::NoInstructionAt { offset } => assert_eq!(offset, 0x05),
             other => panic!("unexpected: {other:?}"),
         }
+    }
+
+    #[test]
+    fn editor_seeds_labels_from_cfg() {
+        // Source with branches creates a CFG; the labels map
+        // should be visible on the Editor.
+        // gpl if (0x3E) target=4, gpl endif (0x67), gpl endif,
+        // gpl endif. Bytes: 3E 00 04 67 67.
+        let result = synth_chunk(&[0x3E, 0x00, 0x04, 0x67, 0x67]);
+        let ed = Editor::from_result(result);
+        // chunk-start entry and the branch target should both
+        // appear as labels.
+        assert!(ed.label_offset("entry_0x0000").is_some());
+        assert_eq!(ed.label_offset("label_0x0004"), Some(0x04));
+    }
+
+    #[test]
+    fn insert_before_label_shifts_label_offsets() {
+        let result = synth_chunk(&[0x3E, 0x00, 0x04, 0x67, 0x67]);
+        let mut ed = Editor::from_result(result);
+        let endif = Editor::make_simple(0x67).unwrap();
+        ed.insert_before_label("label_0x0004", endif).unwrap();
+        // After insert, the label is bound to its NEW offset.
+        // The original 0x04 was a 1-byte endif; we inserted
+        // another 1-byte endif before it, so the original now
+        // lives at 0x05, and the label `label_0x0004` updated.
+        assert_eq!(ed.label_offset("label_0x0004"), Some(0x05));
+        let bytes = encode(&ed.into_result()).unwrap();
+        assert_eq!(bytes, vec![0x3E, 0x00, 0x05, 0x67, 0x67, 0x67]);
+    }
+
+    #[test]
+    fn user_chosen_label_resolves_via_add_label() {
+        let result = synth_chunk(&[0x3E, 0x00, 0x03, 0x67, 0x67]);
+        let mut ed = Editor::from_result(result);
+        ed.add_label("MY_TARGET".to_string(), 0x04).unwrap();
+        let endif = Editor::make_simple(0x67).unwrap();
+        ed.insert_before_label("MY_TARGET", endif).unwrap();
+        // MY_TARGET shifted forward by the insert.
+        assert_eq!(ed.label_offset("MY_TARGET"), Some(0x05));
     }
 }

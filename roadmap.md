@@ -318,10 +318,14 @@ just read it. Be able to discover unknown opcodes systematically.
       (gpl-asm v0.3.0; 6 new unit tests cover insert / delete /
       replace + branch retargeting.) Unblocks fixes that need
       to insert or delete bytes without no-op padding.
-- [ ] Label-relative editing API
-      (`insert_before_label("label_0x...", instr)`) +
-      high-level authoring DSL with named labels, comments,
-      macros, and forward references. v0.4.0.
+- [x] Label-relative editing API
+      (`Editor::insert_before_label("label_0x...", instr)`) +
+      parser support for arbitrary user-chosen label names so
+      modders can name their own branch targets. (gpl-asm
+      v0.4.0; 6 new unit tests cover both halves.)
+- [ ] Authoring conveniences (macros, forward-reference
+      syntax beyond `label:`, `gpl_search` raw_tail
+      composition). v0.5.0.
 - [x] Tagged: `gpl-asm-v0.1.0`. (this release)
 
 ### `tools/opcode-fuzz/` (Python; drives DOSBox debugger over IPC)

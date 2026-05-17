@@ -13,6 +13,68 @@ Depends on `gpl-disasm` for the [`DisasmResult`] type (and the
 `Deserialize` impls added there in v0.4.4 specifically so this
 crate can consume the same JSON the disassembler emits).
 
+## What `gpl-asm v0.4.0` ships
+
+Two pieces for the modder-authoring workflow:
+
+### Label-relative `Editor` API
+
+`Editor::from_result` now seeds a `name -> offset` label map
+from the source `DisasmResult.cfg.labels`. New methods:
+
+- `Editor::label_offset(name)` — current offset of a label.
+- `Editor::insert_before_label(name, instr)` — splice before
+  whatever instruction the label points at.
+- `Editor::delete_at_label(name)` — delete the instruction
+  labelled `name`.
+- `Editor::replace_at_label(name, with)` — swap the labelled
+  instruction.
+- `Editor::add_label(name, at_offset)` — pin a user-chosen
+  name to an existing instruction. Persists through edits.
+
+The label map shifts through every edit: a label that was at
+offset N before an insert at offset M (M <= N) ends up at
+offset `N + insert_length`. This lets a patch script reference
+the same label across multiple edits without manual tracking.
+
+### Parser accepts user-chosen label names
+
+`label_0xNNNN:` and `entry_0xNNNN:` declarations still work
+exactly as before. v0.4.0 additionally accepts any
+ASCII-identifier-shaped name (letter or underscore head, then
+alphanumerics or underscores), and resolves branch params that
+name those labels. The label's value is the byte offset of the
+next instruction line in the source.
+
+Names that collide with operator words (`and`, `or`),
+keyword tokens (`NAME`, `RETVAL`, `COMPLEX`,
+`INTRODUCE`, `UNCOMPRESSED`, `ACCM_ERROR`, `IMMED_WORD_UNIMPL`),
+or variable shorts (`GNUM`, `LSTR`, ...) are rejected at
+label-declaration time so they don't shadow real tokens during
+param parsing.
+
+### Patch-author workflow
+
+```text
+gpl-disasm GPLDATA.GFF --kind GPL --id 199 --no-syms -o chunk.asm
+# Edit chunk.asm: add a `bug_fix:` label, write `gpl if bug_fix`
+# wherever you want to skip a bad block.
+gpl-asm chunk.asm -o chunk.bin
+gff-cat replace GPLDATA.GFF GPL 199 chunk.bin -o GPLDATA.patched.GFF
+```
+
+The library `Editor` is the programmatic equivalent for
+scripted patches.
+
+### Out of scope (queued for v0.5.0)
+
+- Macros / forward-reference convenience syntax beyond `label:`.
+- Auto-resolution of `gpl_search` raw_tail in user-authored text
+  (current modder has to compose the hex by hand or paraphrase
+  via JSON).
+- Patch-manifest tooling (will live alongside the `ds1-patch/` /
+  `ds2-patch/` Phase 6+ work, not in `gpl-asm` itself).
+
 ## What `gpl-asm v0.3.0` ships
 
 **Structural edits.** The `Editor` API in
@@ -259,12 +321,13 @@ that the original chunks ship inside dialog strings.
   text-mode round-trip 456/456 non-Search.
 - **v0.2.1**: labelled form support + `raw_tail` trailers.
   600/600 byte-identical text round-trip.
-- **v0.3.0** (this release): structural edits. Insert / delete
-  / replace instructions with automatic branch-target
-  recompute.
-- **v0.4.0**: label-relative editing API (`insert_before_label`)
-  + high-level authoring DSL with named labels, comments,
-  macros, and forward references.
+- **v0.3.0**: structural edits. Insert / delete / replace
+  instructions with automatic branch-target recompute.
+- **v0.4.0** (this release): label-relative editing API
+  (`insert_before_label` etc.) and parser support for
+  user-chosen label names.
+- **v0.5.0**: authoring conveniences (macros, forward-ref
+  syntax, `gpl_search` raw_tail composition).
 - **v0.3.0**: structural edits. `insert_instruction(at, instr)`
   / `delete_instruction(at, length)` APIs that recompute branch
   targets and labels.

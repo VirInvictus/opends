@@ -1,6 +1,6 @@
 [package]
 name = "gpl-asm"
-version = "0.3.0"
+version = "0.4.0"
 description = "Reassembler for SSI's GPL (Game Programming Language) bytecode (Dark Sun)."
 readme = "README.md"
 edition.workspace = true
