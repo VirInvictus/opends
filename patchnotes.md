@@ -4,6 +4,35 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/image-extract/` v0.3.0** ships multi-frame sprite
+  export. v0.2.x decoded every frame of every multi-frame
+  chunk under `--all`, but the single-chunk path only emitted
+  `--frame N`. v0.3.0 closes that gap with two explicit
+  entry points plus a new library helper that
+  `region-render v0.6.0` (animated entities) will call.
+  - **Library**: `Bitmap::decode_all_frames(&self) ->
+    Vec<Result<Frame>>` returns one `Result` per frame index
+    so callers keep the good frames when one is malformed
+    (the DS1 `RESOURCE.GFF:ICON/0x7f9` frame-2 case).
+    `composite_horizontal_strip(frames) -> Option<Frame>`
+    lays frames out left-to-right, top-aligned, padded with
+    palette index 0; the composite is itself a `Frame` with
+    `frame_type = Unknown("STRP")` so callers can
+    distinguish a spritesheet from a game-encoded frame.
+  - **CLI**: `--frames-all` (single chunk; emits
+    `<KIND>-<ID>-frame-<N>.png` per frame to `-o <dir>`).
+    `--spritesheet` (single chunk; composites every frame
+    into one horizontal-strip PNG). Both flags are mutually
+    exclusive on a single chunk. With `--all`,
+    `--spritesheet` switches the bulk emitter from per-frame
+    PNGs to one spritesheet per multi-frame chunk.
+  - **Verified** on a known multi-frame chunk (DS1 ICON
+    2000, 4 frames of 59x18 → 236x18 strip).
+  - Corpus stats unchanged from v0.2.1: 1,975 / 1,976 frames
+    decode across the DS1 + DS2 corpus. The single
+    `EXPECTED_FAILURES` entry (ICON `0x7f9` frame 2) stays
+    pinned.
+
 - **`tools/gff-edit/` v0.5.0** adds construction-from-scratch
   via a new `GffBuilder` library type. Phase 1 was already
   the foundation library for read / write / extract / replace

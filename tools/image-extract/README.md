@@ -11,6 +11,55 @@ chunks without firing up the engine.
 
 Depends on `gff-edit` for GFF I/O and `png` for PNG encoding.
 
+## What `image-extract v0.3.0` ships
+
+Multi-frame export. v0.2.0 / v0.2.1 decoded every frame of every
+multi-frame chunk under the existing `--all` path, but the
+single-chunk path only emitted `--frame N`. v0.3.0 adds two
+explicit multi-frame entry points and a new library helper that
+downstream tools (region-render v0.6.0's animated entities) can
+call directly.
+
+### Library
+
+```rust
+let frames: Vec<Result<Frame>> = bmp.decode_all_frames();
+let strip: Option<Frame> = composite_horizontal_strip(&frames_ok);
+```
+
+`decode_all_frames` returns one `Result<Frame>` per frame index
+so callers can keep the good frames when one frame is malformed
+(the DS1 `RESOURCE.GFF:ICON/0x7f9` frame-2 case).
+
+`composite_horizontal_strip` lays frames out left-to-right, top-
+aligned, padded with palette index 0; the composite is itself a
+`Frame` with `frame_type = Unknown("STRP")` so a caller can
+tell a spritesheet apart from a real game-encoded frame.
+
+### CLI
+
+```sh
+# Single chunk, every frame as a separate PNG:
+image-extract <file> --kind ICON --id 2000 --frames-all -o out-dir/
+# wrote 4 frames into out-dir/ as ICON-2000-frame-{0..3}.png
+
+# Single chunk composited into a horizontal spritesheet:
+image-extract <file> --kind ICON --id 2000 --spritesheet \
+    -o icon-2000-sheet.png
+# wrote icon-2000-sheet.png (236x18, 4 frames)
+
+# Bulk: every chunk gets its own spritesheet:
+image-extract <file> --all --spritesheet -o sheets-dir/
+```
+
+`--frames-all` and `--spritesheet` are mutually exclusive on a
+single chunk. With `--all`, `--spritesheet` switches the bulk
+emitter from per-frame PNGs to one spritesheet per chunk.
+
+Corpus stats unchanged from v0.2.1: 1,975 / 1,976 frames decode
+across the DS1 + DS2 corpus (one expected failure pinned in
+`tests/corpus_smoke.rs`).
+
 ## What `image-extract v0.2.1` ships
 
 Diagnostic + regression test, no decoder change. The single

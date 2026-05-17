@@ -274,6 +274,67 @@ impl<'a> Bitmap<'a> {
             }),
         }
     }
+
+    /// Decode every frame in declared order. Each entry is the
+    /// `Result` from [`Bitmap::decode_frame`] for that frame
+    /// index, so callers see per-frame failures without losing
+    /// the rest of the strip (DS1 `RESOURCE.GFF:ICON/0x7f9`
+    /// frame 2 is the one known malformed frame in the corpus;
+    /// every other frame decodes cleanly).
+    pub fn decode_all_frames(&self) -> Vec<Result<Frame>> {
+        (0..self.frame_count as usize)
+            .map(|i| self.decode_frame(i))
+            .collect()
+    }
+}
+
+/// Composite a sequence of decoded frames into a single
+/// horizontal-strip [`Frame`] suitable for `write_png`. Frames
+/// are placed left-to-right in input order; the strip's height
+/// is the max of all frame heights. Shorter frames are top-
+/// aligned and padded with palette index 0 (the standard DS
+/// "background" index; in the BMP / ICON paths this is what
+/// libgff defaults uninitialised pixels to as well).
+///
+/// `frame_type` on the composite is set to
+/// `FrameType::Unknown(b"STRP")` so a caller can distinguish a
+/// spritesheet from a real game-encoded frame; downstream tools
+/// that branch on frame_type should treat it as "rendered" and
+/// not try to re-encode it.
+///
+/// Returns `None` if `frames` is empty or if the strip would
+/// exceed `u16::MAX` in either dimension.
+pub fn composite_horizontal_strip(frames: &[Frame]) -> Option<Frame> {
+    if frames.is_empty() {
+        return None;
+    }
+    let total_width: u32 = frames.iter().map(|f| f.width as u32).sum();
+    let max_height: u32 = frames.iter().map(|f| f.height as u32).max().unwrap_or(0);
+    if total_width == 0 || max_height == 0 {
+        return None;
+    }
+    let strip_w = u16::try_from(total_width).ok()?;
+    let strip_h = u16::try_from(max_height).ok()?;
+
+    let mut indices = vec![0u8; strip_w as usize * strip_h as usize];
+    let mut cursor_x = 0usize;
+    for f in frames {
+        let fw = f.width as usize;
+        let fh = f.height as usize;
+        for row in 0..fh {
+            let src_start = row * fw;
+            let dst_start = row * strip_w as usize + cursor_x;
+            indices[dst_start..dst_start + fw]
+                .copy_from_slice(&f.indices[src_start..src_start + fw]);
+        }
+        cursor_x += fw;
+    }
+    Some(Frame {
+        width: strip_w,
+        height: strip_h,
+        frame_type: FrameType::Unknown(*b"STRP"),
+        indices,
+    })
 }
 
 /// Decode a DS1-RLE-encoded frame body into palette indices.
