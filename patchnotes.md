@@ -4,6 +4,49 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/region-render/` v0.5.0** lands the DSUN.EXE RE pass
+  for DS1 per-region palette selection and adjusts the default
+  fallback to match what the engine actually does. The full
+  write-up lives in [`docs/dsun-exe-re.md`](docs/dsun-exe-re.md).
+  - **DSUN.EXE finding (DS1)**: located the per-region palette
+    routine at file offset `0x56ad3..0x56b00`. The engine calls
+    a single `load_resource(fourcc, id, far *buf)` helper twice
+    in sequence: `CMAT[id]` first (a colour remap delta), then
+    `CPAL[id]` as a fallback (a full 768-byte palette). The
+    same `si` register supplies the id to both calls; `si` is
+    a region-derived family id that resolves to 200 or 300 in
+    `RESOURCE.GFF`. `PAL :1000` (the v0.4.x default) is not in
+    the engine's region-render path; it's the menu / title
+    palette.
+  - **DSUN.EXE finding (DS2)**: zero CMAT or CPAL FOURCC
+    pushes anywhere in DS2's `DSUN.EXE`. DS2 reverted to plain
+    `PAL` lookups for region work; the engine uses a different
+    `load_resource` entry point (`0128:04ab` vs. DS1's
+    `0001:04a4`).
+  - **Default-fallback change**: when no palette flag is set
+    and the region GFF has no inline palette (i.e. the DS1
+    case), v0.4.x fell back to `RESOURCE.GFF:PAL :1000` (which
+    renders off-camera void as pink). v0.5.0 tries
+    `RESOURCE.GFF:CPAL:200` first, falling back to `PAL :1000`
+    only if `CPAL:200` isn't present. The CLI emits a one-line
+    stderr note explaining which fallback resolved and how to
+    override (`--palette-preset ds1-pink` brings back the
+    v0.4.x look). DS2 regions are unaffected; their inline
+    palette still wins before the fallback ladder runs.
+  - **What's still open**: tracing the caller of the CMAT/CPAL
+    load site back to where `si` is set would give us the
+    per-region (not per-family) palette map. Animated palette
+    colours (`VGAColorCycle` in the DSO symbol table) still
+    need a separate RE pass. Both queued for a future release;
+    docs/dsun-exe-re.md §4 lists the open items in priority
+    order.
+  - **New doc**: `docs/dsun-exe-re.md`, the maintainer's index
+    into the engine binary. Covers binary layout, the shared
+    `load_resource` calling convention, the CMAT/CPAL routine,
+    and a reproducible recipe for the byte-pattern search that
+    yielded the findings.
+  - **VERSION**: 0.4.0 -> 0.5.0.
+
 - **`tools/region-render/` v0.4.0** adds a `--palette-preset`
   flag for one-knob DS1 palette switching and documents the
   per-region-palette + animated-palette gaps honestly.

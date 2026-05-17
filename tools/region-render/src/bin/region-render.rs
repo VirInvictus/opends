@@ -172,7 +172,13 @@ fn main() -> Result<()> {
 /// 2. `--palette <gff>:<kind>:<id>` if set.
 /// 3. Inline `PAL ` / `CPAL` in the region GFF (DS2 case).
 /// 4. Default: `RESOURCE.GFF` in the same directory as the region
-///    GFF, chunk `PAL :1000` (the DS1 convention).
+///    GFF. Try `CPAL:200` first (matches what the engine does
+///    per the DSUN.EXE RE in `docs/dsun-exe-re.md`: the engine
+///    loads `CMAT[region_family_id]` with `CPAL[region_family_id]`
+///    as the fallback, and CPAL:200 is the more common of the
+///    two known family ids). If `CPAL:200` is missing, fall back
+///    to `PAL :1000` (the v0.4.x default; renders off-camera
+///    void as pink).
 /// 5. Error with a discoverability hint.
 fn resolve_palette(
     region_gff: &Gff,
@@ -238,22 +244,38 @@ fn resolve_palette(
         return Ok(p);
     }
 
-    // 4. Default fallback: sibling RESOURCE.GFF / PAL :1000.
+    // 4. Default fallback: sibling RESOURCE.GFF. v0.5.0 prefers
+    //    CPAL:200 (matches the engine's per-region behaviour per
+    //    docs/dsun-exe-re.md) and falls back to PAL :1000 if the
+    //    install doesn't carry CPAL:200.
     let mut sibling = region_path.to_path_buf();
     sibling.set_file_name("RESOURCE.GFF");
     if sibling.is_file() {
         let resource_gff = Gff::open(&sibling)
             .with_context(|| format!("opening fallback palette source {}", sibling.display()))?;
-        let kind = FourCC(*b"PAL ");
-        if let Some(bytes) = resource_gff.read(kind, 1000) {
+        if let Some(bytes) = resource_gff.read(FourCC(*b"CPAL"), 200) {
+            eprintln!(
+                "  palette: fallback to {}:CPAL:200 (engine-default; \
+                 override with --palette-preset ds1-pink for the v0.4.x look)",
+                sibling.display()
+            );
+            return Ok(Palette::from_bytes(bytes)?);
+        }
+        if let Some(bytes) = resource_gff.read(FourCC(*b"PAL "), 1000) {
+            eprintln!(
+                "  palette: fallback to {}:PAL :1000 (CPAL:200 not present \
+                 in this install)",
+                sibling.display()
+            );
             return Ok(Palette::from_bytes(bytes)?);
         }
     }
 
     Err(anyhow!(
         "no palette source: the region GFF has no inline PAL/CPAL chunk \
-         and a fallback RESOURCE.GFF:PAL:1000 was not found. Pass \
-         --palette <gff>:PAL:<id> or --palette-file <raw-768-byte-file>."
+         and neither RESOURCE.GFF:CPAL:200 nor RESOURCE.GFF:PAL:1000 was \
+         found. Pass --palette <gff>:PAL:<id> or --palette-file \
+         <raw-768-byte-file>."
     ))
 }
 

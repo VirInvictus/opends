@@ -299,14 +299,20 @@ the friction is felt.
       8,223 distinct sprites, 0 missing ids, 0 decode failures.)
 - [ ] Animated palette colours. Needs `DSUN.EXE` RE; the
       `dsun_music/region-tool` Java reference has a TODO at
-      line 180. Queued for v0.5.0.
-- [ ] Per-region palette discovery for DS1 (current default
-      may surface "off-camera void" colours; interior playable
-      area already renders correctly). Negative-result survey
-      in v0.4.0: `RESOURCE.GFF`'s `CMAT` chunks are
-      undocumented in libgff and need DSUN.EXE RE to crack.
-      `--palette-preset {ds1-pink, ds1-rust, ds1-deep-red}` is
-      the v0.4.0 workaround until then.
+      line 180. v0.5.0 RE pass located `VGAColorCycle` and
+      `gCycleColor` candidates in the DSO symbol table but
+      hasn't decoded the cycle-table layout yet; still queued.
+- [~] Per-region palette discovery for DS1. **Partial.** v0.5.0
+      RE pass located the engine routine: at DS1 `DSUN.EXE`
+      file offset `0x56ad3..0x56b00`, the engine calls
+      `load_resource('CMAT', si, &cmat_buf)` then (on failure)
+      `load_resource('CPAL', si, &cpal_buf)` with the same
+      region-derived family id `si`, which resolves to 200 or
+      300 in `RESOURCE.GFF`. Default fallback updated from
+      `PAL :1000` (menu palette, never used for regions) to
+      `CPAL:200` (engine-default). What's still open: tracing
+      the caller to find the region-number-to-family-id map.
+      Write-up at `docs/dsun-exe-re.md`.
 - [x] Tagged: `region-render-v0.1.0`. (this release)
 
 **Done when**: dialog-extract, save-inspect, image-extract, and

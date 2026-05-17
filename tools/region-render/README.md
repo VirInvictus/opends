@@ -12,6 +12,51 @@ without firing up the engine.
 Depends on `gff-edit` for GFF I/O and `image-extract` for the
 `Palette` + `Bitmap` decoders. PNG output uses the `png` crate.
 
+## What `region-render v0.5.0` ships
+
+**DSUN.EXE RE finding for DS1 per-region palette, and a new
+default fallback that matches what the engine actually does.**
+
+The full write-up is in
+[`docs/dsun-exe-re.md`](../../docs/dsun-exe-re.md). The short
+version: DS1's engine, when loading a region, calls a single
+`load_resource(fourcc, id, buf)` helper twice in sequence. It
+tries `CMAT[region_family_id]` (a colour remap delta) first, and
+falls through to `CPAL[region_family_id]` (a full custom 768-byte
+palette) only when CMAT is missing. The pattern lives at DS1
+`DSUN.EXE` offset `0x56ad3..0x56b00`, decoded by hex-search
+because radare2 can't auto-load the DOS/4GW DPMI overlay.
+
+`RESOURCE.GFF` ships two palette families (id 200 and 300), and
+`PAL :1000` (the v0.4.x default) is not in the engine's
+region-render path at all; it's the menu/title palette and was
+only ever a "renders most cells, off-camera void is pink"
+workaround. v0.5.0 changes the default fallback ordering:
+
+| Order | v0.4.x | v0.5.0 |
+|---|---|---|
+| 1 | `--palette-file` | `--palette-file` |
+| 2 | `--palette` | `--palette` |
+| 3 | `--palette-preset` | `--palette-preset` |
+| 4 | Inline `PAL ` / `CPAL` (DS2) | Inline `PAL ` / `CPAL` (DS2) |
+| 5 | `RESOURCE.GFF:PAL :1000` (pink) | `RESOURCE.GFF:CPAL:200` (engine-default) |
+| 6 | _(error)_ | `RESOURCE.GFF:PAL :1000` (legacy fallback) |
+
+Whenever step 5 or 6 fires, the CLI emits a one-line stderr note
+saying which fallback resolved and how to override. DS2 regions
+are unaffected (their inline palette wins at step 4).
+
+### What's still queued
+
+The DSUN.EXE pass located the *routine* but did not crack the
+*per-region id assignment*: which DS1 regions map to family
+200 vs. family 300 (vs. the unknown others). That requires
+tracing the caller of the CMAT/CPAL load site back to where
+`si` is set, which is the next RE pass. Animated palette
+colours (`VGAColorCycle` in the DSO symbol table) are still
+queued as well. Until those land, the new default is closer to
+the engine but still not pixel-faithful for every region.
+
 ## What `region-render v0.4.0` ships
 
 **`--palette-preset` flag** for one-knob DS1 palette
