@@ -105,19 +105,26 @@ for everything that follows.
 **Ships**: `tools/repro/` (Shell + Python) — DOSBox configs,
 save library, recording wrapper.
 
-- [ ] DOSBox-Staging configured to run DS1 and DS2 reliably on
-      Fedora.
-- [ ] Save-state library: per-bug, a save-game placed just
+- [x] DOSBox-Staging configured to run DS1 and DS2 reliably on
+      Fedora. (repro v0.1.0: `tools/repro/configs/ds[12].conf`,
+      overlay-mount discipline so writes never reach the install,
+      MEL audio detect gotcha documented and bypassed via a
+      sound_ds-derived `SOUND.CFG` staged from the fixture.)
+- [~] Save-state library: per-bug, a save-game placed just
       before the bug-triggering action. Indexed by bug ID.
+      (repro v0.1.0 ships the schema + one fixture, `ds1-smoke`,
+      that proves the harness pattern. Real bug-triggering save
+      curation rolls into v0.2.0 alongside input automation.)
 - [ ] Recording wrapper: one command, one bug ID → DOSBox
       launches at the right save, records video to
-      `scratch/<bug-id>/repro.mp4`.
+      `scratch/<bug-id>/repro.mp4`. (v0.2.0+.)
 - [ ] Differential capture: run-with-patch and run-without-patch
-      side-by-side helper.
+      side-by-side helper. (v0.2.0+.)
 
 **Done when**: every known bug we plan to fix has a saved game
 and a one-command repro. New bugs we discover get added to the
-library as we find them.
+library as we find them. v0.1.0 ships the harness pattern; bug
+curation continues in v0.2.0+ as fixtures get added.
 
 ## Phase 3 — `gpl-disasm` v0 (the keystone)
 

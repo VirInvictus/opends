@@ -1,0 +1,58 @@
+# OpenDS repro harness: bug fixture
+#
+# This is the v0.1.0 schema. Every bug directory has one
+# `bug.toml` plus optional asset files (saves, etc.) referenced
+# from `[setup].copy_files`. See `tools/repro/README.md` for
+# how to add a new bug.
+
+id          = "ds1-smoke"
+target_game = "ds1"
+description = """
+DS1 boots into the main menu and stays running for the full
+budget without DOSBox crashing or exiting on its own. Validates
+the harness end-to-end: config, mount, DSUN.EXE launches, no
+immediate crash. The harness SIGTERMs DOSBox at the timeout.
+"""
+
+# Files copied from this directory into DOS-visible locations
+# (= the C: overlay) before the run.
+[setup]
+# DSUN.EXE's audio init reads SOUND.CFG; the factory file from
+# `__support/save/SOUND.CFG` would land MEL on a MT-32 it can't
+# probe, and the game exits with "Mel Fatal Error". This is a
+# real sound_ds.exe-generated config that gets MEL through detect
+# (originally written from the Wine-side `~/.wine/drive_c/GOG
+# Games/Dark Sun/SOUND.CFG` after a real sound_ds run; checked
+# in as a fixture asset so the harness is reproducible).
+copy_files = [
+  { src = "SOUND.CFG", dst = "SOUND.CFG" },
+]
+
+# DOS commands the harness runs after the standard mounts. Each
+# entry becomes one `-c <cmd>` argument to dosbox-staging. The
+# harness always issues the mounts and `c:` before these; do not
+# duplicate them here.
+[trigger]
+# DS1's DARKSUN.BAT invokes the engine as bare `dsun`; the `-W0`
+# flag is a DS2 thing (in RAVAGER.BAT). Redirect DOS stdout to the
+# D: scratch so we can capture any error message DSUN.EXE prints
+# before switching to graphics mode.
+commands = [
+  "DSUN.EXE > d:\\dsun.log",
+]
+
+# Pass criteria. All non-null checks must hold.
+[expected]
+# Wall-clock budget; DOSBox is SIGTERM'd at this point.
+timeout_seconds     = 30
+
+# Game must keep DOSBox alive at least this long without
+# DOSBox exiting on its own (i.e., not crashing or falling
+# through to the DOS prompt). Set to null to disable.
+min_runtime_seconds = 25
+
+# Glob patterns under the scratch dir; presence required.
+require_files       = []
+
+# Glob patterns under the scratch dir; presence forbidden.
+forbid_files        = []

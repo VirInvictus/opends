@@ -4,6 +4,70 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/repro/` v0.1.0** ships the Phase 2 DOSBox-Staging
+  repro harness, the prerequisite for every darkfix patch
+  authoring + validation cycle from Phase 6 onward. The bar for
+  v0.1.0 is **the harness pattern, not coverage**: one fixture,
+  one game, plumbing other versions extend.
+  - **Schema**. `bugs/<id>/bug.toml` holds the per-bug
+    contract: `target_game`, optional `[setup].copy_files`,
+    `[trigger].commands` (DOSBox `-c` lines), and `[expected]`
+    pass criteria (`timeout_seconds`, `min_runtime_seconds`,
+    `require_files`, `forbid_files`). Stdlib `tomllib` parses
+    it; no third-party deps.
+  - **Overlay discipline**. The harness mounts the game install
+    as C: read-fall-through, then layers a per-run scratch
+    `c-overlay/` on top. Every engine write (DSUN.EXE truncates
+    `DARKRUN.GFF` on boot; the overlay catches it) lands in
+    `/tmp/repro-<id>-XXXX/c-overlay/` and the `.games/` tree
+    stays byte-identical. `verify-install` is the canary.
+  - **Factory saves staged automatically**. DSUN.EXE expects
+    `DARKSAVE.GFF` / `CHARSAVE.GFF` / `BACKSAVE.GFF` at C:\\;
+    GOG ships them under `__support/save/`. The driver copies
+    them into the overlay before launch so every fixture
+    inherits a clean baseline; per-fixture `copy_files`
+    overrides shadow factory copies on name collision.
+  - **DOSBox driver**. `repro.py` builds the dosbox-staging
+    command line (mounts, optional `imgmount` for DS2 CD audio,
+    one `-c` per trigger command, `--exit`), enforces the
+    wall-clock budget with `subprocess.wait(timeout=N)` and a
+    SIGTERM-then-SIGKILL fallback, and evaluates pass criteria
+    against globs under the D: scratch drive only.
+  - **MEL audio gotcha documented**. With the factory
+    `SOUND.CFG`, MEL aborts on `MIDI Detect Fail` / `DSP Detect
+    Fail` and DSUN.EXE exits in <1 s (the same error family as
+    `docs/known-bugs.md` §2.6). Running `sound_ds.exe` once
+    writes a `SOUND.CFG` that gets MEL through detect; the
+    `ds1-smoke` fixture ships that file as a 59-byte asset (no
+    game IP, just driver-id + integer settings) and stages it
+    via `[setup].copy_files`. The README has the recipe for
+    cribbing it into new fixtures.
+  - **Local-first**. DOSBox-Staging probes OpenGL at init, so
+    `SDL_VIDEODRIVER=dummy` is unsupported; the harness is a
+    real interactive tool that opens a window on the user's
+    Wayland / X session. No CI / headless mode; not in scope
+    for v0.1.0.
+  - **`ds1-smoke` fixture**. DS1 boots into the main menu and
+    survives 25+ s without DOSBox crashing on its own; the
+    harness SIGTERMs at the 30 s budget. **PASS** end-to-end
+    against a clean `.games/ds1/` GOG 1.10 install.
+  - **DS2 path wired but not yet validated**. `configs/ds2.conf`
+    issues `imgmount e <game-dir>/game.ins -t iso` for the CD
+    cue sheet. No `ds2-smoke` fixture in v0.1.0 (needs a
+    captured DS2 `SOUND.CFG`); queued for v0.2.0.
+  - **Out of scope (intentional)**. Input automation, video
+    capture (`scratch/<bug-id>/repro.mp4`), differential capture
+    (run-with-patch vs without), CI / headless mode, DOSBox-X
+    support, cross-platform. The roadmap's Phase 2 tickboxes
+    are updated to reflect this: harness done, bug-trigger
+    automation rolls into v0.2.0+.
+  - **`roadmap.md` Phase 2**: 1 box ticked (DOSBox configured),
+    1 partial (`save-state library` ships the schema +
+    `ds1-smoke`), 2 remaining (recording wrapper, differential
+    capture).
+  - **Unlocks**. With the harness in place, future darkfix
+    patch fixes get a one-command regression test from day one.
+
 - **`tools/region-render/` v0.5.0** lands the DSUN.EXE RE pass
   for DS1 per-region palette selection and adjusts the default
   fallback to match what the engine actually does. The full
