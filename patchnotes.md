@@ -4,6 +4,47 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/save-inspect/` v0.5.0** locks the DS2 character
+  sub-block schema (66 bytes). v0.4.0 fully decoded DS2 combat
+  but still emitted the character sub-block as opaque hex;
+  v0.5.0 closes that. Every CHAR record in DS2 GOG 1.10's
+  `CHARSAVE.GFF` (all 19) now decodes with full XP / HP / PSP
+  / id / alignment / stats / real_class / level / AC / move /
+  magic_resistance / num_blows / num_attacks / num_dice /
+  num_sides / num_bonuses / saving_throw / allegiance / size /
+  spell_group / high_level / sound_fx / attack_sound /
+  psi_group / palette fields.
+  - **Layout**. DS2 is DS1's 72-byte `ds_character_t` minus 6
+    bytes: drops `_data2` (4) and two of
+    `(race, gender, alignment)` (2). The single remaining
+    pre-stats byte at offset 20 pattern-matches DS1's
+    `alignment` (last pre-stats field; all observed values
+    inside the documented 0..8 alignment range and decode
+    through `ALIGNMENT_NAMES`). The trailing 17 bytes after
+    `num_bonuses` match DS1's layout one-for-one
+    (saving_throw[5], allegiance, size, spell_group,
+    high_level[3], sound_fx, attack_sound, psi_group,
+    palette).
+  - **Validation**. All 19 DS2 CHAR records decode with stats
+    in the 3..25 D&D 2e range, HP/PSP matching the combat
+    sub-block, XP non-negative, alignment enum-resolvable. The
+    existing DS1 path is untouched (the dispatch only triggers
+    for `len == 66`).
+  - **Output**. `_format` is `ds2_character`. Fields use the
+    same names as the DS1 decoder where the layout matches,
+    so consumers can program against both decoders with the
+    same shape (just check `_format` or feature-detect on the
+    missing `race` / `gender` / `_data2`).
+  - **Out of scope (queued for v0.6.0)**: DS2 **item**
+    sub-blocks. The DS1 schema in `_decode_item` is libgff's
+    `ds1_item_t`; DS2 item ships at 23 bytes (DS1 at 21) and
+    libgff's struct computes to 23, so DS2 items may already
+    be fully decoded by the existing path; needs corpus
+    validation.
+  - **`roadmap.md` Phase 4 §save-inspect**: DS2 character row
+    ticked; DS2 item row is the new tail.
+  - **VERSION**: 0.4.0 -> 0.5.0.
+
 - **`docs/dsun-exe-re.md` §4.4 / §4.5 correction**. The cycle-
   table identification in the prior §4 commit was wrong; the
   loop at `0x23067` is the region GMAP / entity-render walker,

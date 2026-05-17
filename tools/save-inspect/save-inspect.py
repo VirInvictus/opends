@@ -382,6 +382,101 @@ def _decode_combat(body: bytes) -> dict[str, Any]:
     return out
 
 
+def _decode_character_ds2(body: bytes) -> dict[str, Any]:
+    """Decode the DS2 66-byte character sub-block.
+
+    DS2 ships a stripped variant of DS1's `ds_character_t`. The
+    layout was recovered empirically by comparing every CHAR
+    record in DS1 and DS2 `CHARSAVE.GFF` side-by-side. DS2 saves
+    6 bytes vs DS1's 72-byte (with-palette) layout by dropping
+    `_data2` (4 bytes) and two of `(race, gender, alignment)`
+    (2 bytes), keeping a single pre-stats byte that pattern-
+    matches DS1's `alignment` field.
+
+    | Offset | Size | Field | Notes |
+    |--------|------|-------|-------|
+    | 0..3   | u32  | current_xp | Matches DS1. |
+    | 4..7   | u32  | high_xp | Matches DS1. |
+    | 8..9   | u16  | base_hp | Matches combat's `hp`. |
+    | 10..11 | u16  | high_hp | |
+    | 12..13 | u16  | base_psp | Matches combat's `psp`. |
+    | 14..15 | u16  | id | Matches combat's `id`. |
+    | 16..17 | 2 B  | _data1 | Opaque, matches DS1's `_data1`. |
+    | 18..19 | u16  | legal_class | |
+    | 20     | u8   | alignment | DS2-shape match against DS1[26]. |
+    | 21..26 | u8[6]| stats | str/dex/con/intel/wis/cha. |
+    | 27..29 | i8[3]| real_class | -1 = empty slot. |
+    | 30..32 | u8[3]| level | |
+    | 33     | i8   | base_ac | |
+    | 34     | u8   | base_move | |
+    | 35     | u8   | magic_resistance | |
+    | 36     | u8   | num_blows | |
+    | 37..39 | u8[3]| num_attacks | |
+    | 40..42 | u8[3]| num_dice | |
+    | 43..45 | u8[3]| num_sides | |
+    | 46..48 | u8[3]| num_bonuses | |
+    | 49..53 | u8[5]| saving_throw | paralysis/wand/petrify/breath/spell. |
+    | 54     | u8   | allegiance | |
+    | 55     | u8   | size | |
+    | 56     | u8   | spell_group | |
+    | 57..59 | u8[3]| high_level | |
+    | 60..61 | u16  | sound_fx | |
+    | 62..63 | u16  | attack_sound | |
+    | 64     | u8   | psi_group | |
+    | 65     | u8   | palette | Always present (DS1's optional 72nd byte). |
+    """
+    out: dict[str, Any] = {"_format": "ds2_character"}
+    (
+        out["current_xp"],
+        out["high_xp"],
+    ) = struct.unpack_from("<II", body, 0)
+    (
+        out["base_hp"],
+        out["high_hp"],
+        out["base_psp"],
+        out["id"],
+    ) = struct.unpack_from("<HHHH", body, 8)
+    out["_data1"] = body[16:18].hex()
+    out["legal_class"] = struct.unpack_from("<H", body, 18)[0]
+    out["alignment"] = _name_enum(body[20], ALIGNMENT_NAMES)
+    out["stats"] = {
+        "str": body[21],
+        "dex": body[22],
+        "con": body[23],
+        "intel": body[24],
+        "wis": body[25],
+        "cha": body[26],
+    }
+    out["real_class"] = [
+        struct.unpack_from("<b", body, 27 + i)[0] for i in range(3)
+    ]
+    out["level"] = list(body[30:33])
+    out["base_ac"] = struct.unpack_from("<b", body, 33)[0]
+    out["base_move"] = body[34]
+    out["magic_resistance"] = body[35]
+    out["num_blows"] = body[36]
+    out["num_attacks"] = list(body[37:40])
+    out["num_dice"] = list(body[40:43])
+    out["num_sides"] = list(body[43:46])
+    out["num_bonuses"] = list(body[46:49])
+    out["saving_throw"] = {
+        "paralysis": body[49],
+        "wand": body[50],
+        "petrify": body[51],
+        "breath": body[52],
+        "spell": body[53],
+    }
+    out["allegiance"] = body[54]
+    out["size"] = body[55]
+    out["spell_group"] = body[56]
+    out["high_level"] = list(body[57:60])
+    out["sound_fx"] = struct.unpack_from("<H", body, 60)[0]
+    out["attack_sound"] = struct.unpack_from("<H", body, 62)[0]
+    out["psi_group"] = body[64]
+    out["palette"] = body[65]
+    return out
+
+
 def _decode_character(body: bytes) -> dict[str, Any]:
     """Decode a character sub-block per `ds_character_t` (libgff
     `include/gff/object.h`, MIT). Best-effort.
@@ -389,17 +484,17 @@ def _decode_character(body: bytes) -> dict[str, Any]:
     DS1 character = 71 bytes; the libgff struct computes to 72,
     so the trailing `palette` byte may not be present and we mark
     it absent on truncation. DS2 character = 66 bytes (stripped
-    variant; field decoding may produce off-by-N values past the
-    early fields).
+    variant of DS1; see `_decode_character_ds2`).
     """
     out: dict[str, Any] = {}
     n = len(body)
+    if n == 66:
+        return _decode_character_ds2(body)
     if n < 70:
         out["_format"] = "ds2_or_unknown_character_layout"
         out["_note"] = (
-            "character sub-block is smaller than DS1's 71 bytes; "
-            "DS2 (66 bytes) and other variants haven't been fully "
-            "RE'd. See docs/file-formats.md §2."
+            f"character sub-block size {n} doesn't match DS1's 71 / 72 "
+            "or DS2's 66; emitting as opaque hex."
         )
         out["_raw_hex"] = body.hex()
         return out

@@ -262,10 +262,16 @@ look at the maps directly.
       first-class `stats` + `name` fields replacing v0.3.0's
       `_likely_*` heuristics. Three positions (24, 31, 32)
       still ship as opaque bytes pending DSUN.EXE RE.
-- [ ] DS2 **character** sub-block (66 bytes). Drops 5 bytes
-      vs DS1's 71 in some combination of `palette` /
-      `legal_class_ext` / shorter `real_class` arrays. Pending
-      DSUN.EXE RE; queued for v0.5.0+.
+- [x] DS2 **character** sub-block (66 bytes). save-inspect
+      v0.5.0 locks the layout: DS1's 72-byte structure minus
+      `_data2` (4 bytes) and two of `(race, gender, alignment)`
+      (2 bytes). All 19 DS2 CHAR records decode with stats in
+      the 3..25 D&D 2e range, alignments in the documented
+      0..8 set, HP / PSP matching the combat sub-block. Three
+      pre-stats positions (the single `alignment` byte at
+      offset 20) remain empirically identified rather than
+      pinned to DSUN.EXE source; DS2 **item** sub-block is the
+      next queued schema (v0.6.0+).
 - [x] Tagged: `save-inspect-v0.1.0`. (this release)
 
 ### `tools/image-extract/` (Rust)

@@ -19,6 +19,71 @@ python3 save-inspect.py /path/to/CHARSAVE.GFF -o save.json
 JSON is emitted to stdout by default; `-o <file>` writes to a
 file instead.
 
+## What v0.5.0 ships
+
+**DS2 character sub-block schema** (66 bytes). v0.4.0 fully
+decoded DS2 combat but still emitted the character sub-block
+as opaque hex. v0.5.0 closes that: every CHAR record in DS2
+GOG 1.10's `CHARSAVE.GFF` now decodes with full `current_xp`,
+`high_xp`, `base_hp`, `high_hp`, `base_psp`, `id`, `alignment`,
+`stats`, `real_class`, `level`, AC, movement, saving throws,
+and the trailing sound / palette fields.
+
+The DS2 layout is **DS1's 72-byte layout minus 6 bytes**:
+drops `_data2` (4 bytes) and two of `(race, gender, alignment)`
+(2 bytes), keeping a single pre-stats byte that pattern-matches
+DS1's `alignment` field. The remaining trailing 17 bytes
+(saving throws, allegiance / size / spell-group, high-level,
+sound-fx / attack-sound, psi-group, palette) match DS1's
+layout one-for-one. The empirical fit was confirmed across
+all 19 DS2 CHAR records: every stat in the 3..25 D&D 2e
+range, every alignment in the documented 0..8 set, HP / PSP
+matching the combat sub-block.
+
+```json
+"decoded": {
+  "_format": "ds2_character",
+  "current_xp": 122690,
+  "high_xp": 122690,
+  "base_hp": 81,
+  "high_hp": 127,
+  "base_psp": 144,
+  "id": -32766,
+  "_data1": "0007",
+  "legal_class": 519,
+  "alignment": {"value": 7, "name": "NEUTRAL_EVIL"},
+  "stats": {"str": 20, "dex": 21, "con": 19, "intel": 20, "wis": 20, "cha": 17},
+  "real_class": [12, 17, 16],
+  "level": [8, 9, 7],
+  "base_ac": 10,
+  "base_move": 12,
+  "magic_resistance": 0,
+  "num_blows": 4,
+  "num_attacks": [4, 0, 0],
+  "num_dice": [1, 0, 0],
+  "num_sides": [1, 0, 0],
+  "num_bonuses": [0, 0, 0],
+  "saving_throw": {"paralysis": 11, "wand": 10, "petrify": 10, "breath": 13, "spell": 11},
+  "allegiance": 0,
+  "size": 0,
+  "spell_group": 8,
+  "high_level": [9, 7, 67],
+  "sound_fx": 0,
+  "attack_sound": 0,
+  "psi_group": 0,
+  "palette": 0
+}
+```
+
+What's open: the `alignment`-at-offset-20 identification is
+empirical (it pattern-matches the byte position in DS1's
+layout where alignment lives, and all observed values are
+inside `ALIGNMENT_NAMES`). The byte could plausibly be a
+`class_or_alignment` aggregate. DSUN.EXE RE of the
+`SaveCharRec` analog would lock it down.
+
+DS2 **item** sub-blocks are next; queued for v0.6.0.
+
 ## What v0.4.0 ships
 
 **DS2 combat full structured decode.** v0.3.0 surfaced the
