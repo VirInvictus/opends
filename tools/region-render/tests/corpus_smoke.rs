@@ -60,6 +60,9 @@ fn every_region_renders_clean() {
     let mut regions_with_misses = 0usize;
     let mut regions_with_decode_fails = 0usize;
     let mut skipped_no_palette = 0usize;
+    let mut total_wall_sprites = 0usize;
+    let mut total_missing_walls = 0usize;
+    let mut total_wall_decode_failures = 0usize;
 
     for root in CORPUS_ROOTS {
         let root_path = Path::new(root);
@@ -82,9 +85,21 @@ fn every_region_renders_clean() {
                 Err(e) => panic!("scanning palette in {}: {e}", region_path.display()),
             };
 
-            let region = RegionMap::from_gff(&gff, palette).unwrap_or_else(|e| {
+            let mut region = RegionMap::from_gff(&gff, palette).unwrap_or_else(|e| {
                 panic!("RegionMap::from_gff({}): {e}", region_path.display())
             });
+            // Walls: load from sibling GPLDATA.GFF when present
+            // (DS1 convention; DS2 has no WALL chunks anywhere
+            // in the corpus, so the call is a no-op there).
+            let mut walls_path = region_path.clone();
+            walls_path.set_file_name("GPLDATA.GFF");
+            if walls_path.is_file() {
+                if let Ok(walls_gff) = Gff::open(&walls_path) {
+                    region.with_walls_from(&walls_gff).unwrap_or_else(|e| {
+                        panic!("with_walls_from({}): {e}", walls_path.display())
+                    });
+                }
+            }
             let pixels = region.render_indexed();
             assert_eq!(
                 pixels.len(),
@@ -96,6 +111,9 @@ fn every_region_renders_clean() {
             total_regions += 1;
             total_missing_bytes += region.missing_tile_byte_count as u64;
             total_decode_failures += region.tile_decode_failures.len();
+            total_wall_sprites += region.wall_sprite_count();
+            total_missing_walls += region.missing_wall_ids.len();
+            total_wall_decode_failures += region.wall_decode_failures.len();
             if region.missing_tile_byte_count > 0 {
                 regions_with_misses += 1;
             }
@@ -111,7 +129,10 @@ fn every_region_renders_clean() {
          ({regions_with_misses} regions affected), \
          {total_decode_failures} TILE decode failures \
          ({regions_with_decode_fails} regions affected), \
-         {skipped_no_palette} regions skipped (no palette source)"
+         {skipped_no_palette} regions skipped (no palette source); \
+         walls: {total_wall_sprites} sprites loaded, \
+         {total_missing_walls} missing-wall ids, \
+         {total_wall_decode_failures} WALL decode failures"
     );
     // We expect the in-tree corpus to give us non-zero rendered
     // regions when .games/ exists. CI without .games/ skips here.

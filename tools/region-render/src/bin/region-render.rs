@@ -29,6 +29,17 @@ struct Cli {
     /// over `--palette` if both are set.
     #[arg(long = "palette-file")]
     palette_file: Option<PathBuf>,
+    /// GFF to read `WALL` chunks from for the wall layer. DS1
+    /// stores walls in `GPLDATA.GFF` (664 chunks). DS2 has no
+    /// known WALL chunks in the GOG 1.10 corpus. Default:
+    /// auto-detect sibling `GPLDATA.GFF` next to the region GFF.
+    /// Pass `--no-walls` to disable the wall pass entirely.
+    #[arg(long = "walls-from")]
+    walls_from: Option<PathBuf>,
+    /// Skip the wall layer. Useful for diffing against v0.1.0
+    /// output or for regions where walls aren't desired.
+    #[arg(long = "no-walls", conflicts_with = "walls_from")]
+    no_walls: bool,
 }
 
 fn main() -> Result<()> {
@@ -42,8 +53,17 @@ fn main() -> Result<()> {
         cli.palette_file.as_deref(),
     )?;
 
-    let region = RegionMap::from_gff(&gff, palette)
+    let mut region = RegionMap::from_gff(&gff, palette)
         .with_context(|| format!("building RegionMap from {}", cli.file.display()))?;
+    if !cli.no_walls {
+        if let Some(walls_path) = resolve_walls_gff_path(cli.walls_from.as_deref(), cli.file.as_path()) {
+            let walls_gff = Gff::open(&walls_path)
+                .with_context(|| format!("opening walls source {}", walls_path.display()))?;
+            region
+                .with_walls_from(&walls_gff)
+                .with_context(|| format!("indexing WALL chunks from {}", walls_path.display()))?;
+        }
+    }
     region
         .write_png(&cli.output)
         .with_context(|| format!("writing PNG to {}", cli.output.display()))?;
@@ -60,6 +80,32 @@ fn main() -> Result<()> {
         region.missing_tile_byte_count,
         region.missing_tile_ids.len()
     );
+    if !cli.no_walls {
+        let walls_present = region.gmap.is_some();
+        let wall_count: usize = region
+            .gmap
+            .as_ref()
+            .map(|g| {
+                g.iter()
+                    .filter(|&&b| (b & region_render::GMAP_WALL_INDEX_MASK) != 0)
+                    .count()
+            })
+            .unwrap_or(0);
+        eprintln!(
+            "  walls: {} sprite ids loaded; {} GMAP cells reference a wall; \
+             {} missing-wall ids; gmap present: {}",
+            region.wall_sprite_count(),
+            wall_count,
+            region.missing_wall_ids.len(),
+            walls_present,
+        );
+        if !region.wall_decode_failures.is_empty() {
+            eprintln!(
+                "  WALL chunks that failed to decode: {}",
+                region.wall_decode_failures.len()
+            );
+        }
+    }
     if !region.tile_decode_failures.is_empty() {
         eprintln!(
             "  TILE chunks that failed to decode: {}",
@@ -159,6 +205,23 @@ fn spec_error(spec: &str) -> anyhow::Error {
     anyhow!(
         "--palette must be '<gff>:<kind>:<id>' (e.g. RESOURCE.GFF:PAL:1000); got {spec:?}"
     )
+}
+
+/// Resolve where to read WALL chunks from. Precedence:
+/// 1. Explicit `--walls-from <path>`.
+/// 2. Sibling `GPLDATA.GFF` next to the region GFF (DS1
+///    convention; 664 WALL chunks live there on GOG 1.10).
+/// 3. None (no walls drawn).
+fn resolve_walls_gff_path(explicit: Option<&Path>, region_path: &Path) -> Option<PathBuf> {
+    if let Some(p) = explicit {
+        return Some(p.to_path_buf());
+    }
+    let mut sibling = region_path.to_path_buf();
+    sibling.set_file_name("GPLDATA.GFF");
+    if sibling.is_file() {
+        return Some(sibling);
+    }
+    None
 }
 
 fn parse_kind_padded(s: &str) -> Result<FourCC> {

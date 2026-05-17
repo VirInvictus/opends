@@ -19,7 +19,7 @@ implementation-language split.
 | [`save-inspect`](save-inspect/)          | Python | 0.2.0   | Dump a CHARSAVE.GFF as JSON. v0.2 walks the CHAR record body into combat / character / item sub-blocks (DS1 full schema; DS2 surfaces names + raw hex). PSIN/PSST/TEXT decoded too.|
 | [`dialog-extract`](dialog-extract/)      | Python | 0.4.0   | Pull GPL strings (NPC dialog, prompts, NPC names) from GPL/MAS chunks. Consumes `gpl-disasm --json` instruction-aware. `--text-source RESOURCE.GFF` resolves GSTRING refs (v0.2); CFG-aware `dialog_tree` per chunk (v0.3); path-aware LSTR-slot tracking + inter-chunk `gpl global sub` expansion (v0.4). 96.4% of corpus LSTRING refs resolve.|
 | [`image-extract`](image-extract/)        | Rust   | 0.2.0   | Extract Dark Sun bitmap chunks (`BMP `, `PORT`, `ICON`, `BMAP`, `OMAP`, `TILE`) as palette-indexed PNG. Decodes DS1 RLE, PLNR, and PLAN frame formats; pulls palettes from `PAL ` / `CPAL` chunks in the same GFF. 99.95% of corpus frames decode (v0.2.0 adds PLAN + fixes PLNR's cross-byte chomp).|
-| [`region-render`](region-render/)        | Rust   | 0.1.0   | Render a region GFF's background-tile layer (`RMAP` DS1 / `MAP ` DS2 + `TILE`) to a 2048x1568 palette-indexed PNG. Static; walls and entities are v0.2+. Closes Phase 4.|
+| [`region-render`](region-render/)        | Rust   | 0.2.0   | Render a region GFF's background-tile layer (`RMAP`/`MAP ` + `TILE`) + the wall layer (`GMAP` + `WALL`) into a 2048x1568 palette-indexed PNG. v0.2.0 adds walls (DS1: 664 sprites across `GPLDATA.GFF`; DS2 wall storage TBD). Entities + animated colours are v0.3+.|
 
 ## Planned
 

@@ -282,8 +282,10 @@ the friction is felt.
 - [x] Palette fallback for DS1 (sibling
       `RESOURCE.GFF:PAL :1000`) plus `--palette <gff>:<kind>:<id>`
       and `--palette-file <raw>` override flags.
-- [ ] Walls (`GMAP` lower 5 bits + per-region `WALL` chunks).
-      v0.2.0.
+- [x] Walls (`GMAP` lower 5 bits + per-region `WALL` chunks).
+      (region-render v0.2.0: DS1 walls load from sibling
+      `GPLDATA.GFF`; corpus has 350 sprites across 35 regions
+      with 0 decode failures. DS2 storage TBD.)
 - [ ] Entity sprites (`ETAB` + `OJFF` + `BMP `). v0.3.0.
 - [ ] Animated palette colours. v0.4.0.
 - [ ] Per-region palette discovery for DS1 (current default may

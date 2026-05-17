@@ -12,6 +12,73 @@ without firing up the engine.
 Depends on `gff-edit` for GFF I/O and `image-extract` for the
 `Palette` + `Bitmap` decoders. PNG output uses the `png` crate.
 
+## What `region-render v0.2.0` ships
+
+**Wall layer.** The `GMAP` chunk's low 5 bits per tile-byte are
+a wall-sprite index. Each non-zero index resolves to a `WALL`
+chunk at id `region_number * 100 + wall_index - 1` (per
+`RegionTool.java:274`). Walls composite on top of the
+background tile layer, bottom-aligned and horizontally centered
+inside their containing tile. Wall pixels at palette index 0
+are treated as transparent so the tile underneath shows
+through.
+
+For DS1, WALL chunks live in `GPLDATA.GFF` (664 chunks at ids
+100..4509). The CLI default looks there automatically. DS2's
+WALL story is currently TBD — the GOG 1.10 corpus has no
+`WALL` chunks in any DS2 GFF, so the wall pass is a no-op on
+DS2 regions until we figure out where DS2 stores them.
+
+CLI flags:
+
+- `--walls-from <gff>` — explicit walls source (overrides the
+  sibling `GPLDATA.GFF` auto-detect).
+- `--no-walls` — skip the wall pass entirely. Useful for
+  diffing against v0.1.0 output.
+
+The eprintln summary now reports the wall stats:
+
+```text
+walls: 12 sprite ids loaded; 645 GMAP cells reference a wall;
+       0 missing-wall ids; gmap present: true
+```
+
+### New library API
+
+- `RegionMap::with_walls_from(&mut self, walls_gff: &Gff)`:
+  index `WALL` chunks for the wall indices referenced by this
+  region's `GMAP`. Idempotent across calls; subsequent calls
+  add to the cached `walls` map.
+- `RegionMap::wall_sprite_count(&self) -> usize`: number of
+  decoded wall sprites currently available for rendering.
+- `RegionMap::gmap: Option<Vec<u8>>` (public field): the raw
+  GMAP byte grid, if the region GFF had one.
+- `RegionMap::region_number: i32` (public field): the
+  `(R)MAP`/`GMAP`/`ETAB` shared resource id.
+- `RegionMap::missing_wall_ids: Vec<i32>` (public field).
+- `RegionMap::wall_decode_failures: Vec<TileDecodeFailure>`.
+- New const `GMAP_WALL_INDEX_MASK = 0x1F`.
+
+### Corpus result (GOG 1.10)
+
+- 53 regions render cleanly (35 DS1 + 18 DS2).
+- 350 distinct wall sprites loaded across DS1 regions.
+- 3 missing-wall ids total (edge cases; harmless).
+- 0 WALL decode failures.
+
+### Still out of scope
+
+- `ETAB` + `OJFF` + `BMP ` entity sprites. v0.3.0.
+- Animated palette colours. v0.4.0.
+- Per-region DS1 palette discovery. The current default
+  (`PAL :1000`) renders the playable area with plausible
+  colours but uses pink for "off-camera void" tiles. Curators
+  can pick `CPAL:200` or `CPAL:300` for a more uniformly
+  Athasian look via `--palette`. Real per-region palette
+  selection needs DSUN.EXE RE.
+- DS2 wall discovery: no `WALL` chunks have been found in any
+  DS2 GFF. The decoder is ready when the source is found.
+
 ## What `region-render v0.1.0` ships
 
 The **background-tile pass**. Composites the per-region `RMAP`

@@ -4,6 +4,36 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/region-render/` v0.2.0** ships the **wall layer**.
+  `GMAP`'s low 5 bits per tile-byte are a wall-sprite index;
+  each non-zero index looks up a `WALL` chunk at id
+  `region_number * 100 + wall_index - 1` (per
+  `RegionTool.java:274`). Walls composite on top of the
+  background tile layer, bottom-aligned and horizontally
+  centered, with palette-index-0 treated as transparent.
+  - **WALL chunks live in `GPLDATA.GFF` on DS1** (664 chunks
+    at ids 100..4509; corpus confirmed). The CLI default
+    auto-detects the sibling `GPLDATA.GFF` next to the input
+    region GFF and reads walls from there. `--walls-from
+    <path>` overrides; `--no-walls` skips the layer entirely.
+  - **DS2 wall story is TBD**: no `WALL` chunks observed in
+    any DS2 GFF as of the GOG 1.10 corpus. The decoder runs as
+    a no-op there; v0.2.x will revisit when the storage
+    location surfaces.
+  - **New API**: `RegionMap::with_walls_from(&mut self, &Gff)`
+    indexes the WALL chunks referenced by this region's GMAP.
+    `RegionMap::wall_sprite_count()` reports the count. New
+    public fields: `gmap`, `region_number`, `missing_wall_ids`,
+    `wall_decode_failures`. New const `GMAP_WALL_INDEX_MASK =
+    0x1F`.
+  - **Corpus**: 53 regions render with walls (35 DS1 + 18 DS2);
+    350 distinct DS1 wall sprites loaded; 3 missing-wall ids
+    (edge cases, harmless); 0 WALL decode failures.
+  - **Out of scope for v0.2.0**: `ETAB` entity sprites,
+    animated palette colours, per-region DS1 palette
+    discovery, DS2 wall discovery.
+  - **VERSION**: 0.1.0 -> 0.2.0.
+
 - **`tools/image-extract/` v0.2.0** adds PLAN frame support and
   fixes PLNR's cross-byte bit-chomp. Corpus coverage jumps from
   67% (1,328 / 1,976 frames) to **99.95% (1,975 / 1,976)** —
