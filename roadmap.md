@@ -109,17 +109,21 @@ save library, recording wrapper.
       Fedora. (repro v0.1.0: `tools/repro/configs/ds[12].conf`,
       overlay-mount discipline so writes never reach the install,
       MEL audio detect gotcha documented and bypassed via a
-      sound_ds-derived `SOUND.CFG` staged from the fixture.)
+      sound_ds-derived `SOUND.CFG` staged from the fixture.
+      repro v0.2.0 adds the DS2 path via the `ds2-smoke` fixture
+      with `imgmount` of `game.ins` for CD audio.)
 - [~] Save-state library: per-bug, a save-game placed just
-      before the bug-triggering action. Indexed by bug ID.
-      (repro v0.1.0 ships the schema + one fixture, `ds1-smoke`,
-      that proves the harness pattern. Real bug-triggering save
-      curation rolls into v0.2.0 alongside input automation.)
+      before the bug-triggering action. Indexed by bug ID. (Two
+      smoke fixtures shipped (`ds1-smoke`, `ds2-smoke`) plus a
+      `bugs/README.md` catalogue. Real bug-triggering save
+      curation rolls into v0.3.0 alongside input automation.)
 - [ ] Recording wrapper: one command, one bug ID → DOSBox
       launches at the right save, records video to
-      `scratch/<bug-id>/repro.mp4`. (v0.2.0+.)
+      `scratch/<bug-id>/repro.mp4`. Queued for v0.3.0
+      (paired with input automation; both touch the same
+      "non-interactive bug repros" problem).
 - [ ] Differential capture: run-with-patch and run-without-patch
-      side-by-side helper. (v0.2.0+.)
+      side-by-side helper. (v0.4.0+.)
 
 **Done when**: every known bug we plan to fix has a saved game
 and a one-command repro. New bugs we discover get added to the

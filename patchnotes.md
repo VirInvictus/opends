@@ -4,6 +4,42 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/repro/` v0.2.0** adds the DS2 path and quality-of-life
+  on top of the v0.1.0 harness pattern. No new shape (input
+  automation, video, differential capture all still v0.3.0+);
+  v0.2.0 is the breadth-and-polish release.
+  - **`ds2-smoke` fixture** mirroring `ds1-smoke`: factory
+    saves auto-staged into the C: overlay, a `sound_ds`-
+    generated `SOUND.CFG` (DS2 ships MEL 2.2.7 with the same
+    DSP Detect Fail story as DS1's MEL 2.0.9b; the captured
+    file gets the engine through detect), `DSUN -W0 -L`
+    trigger per RAVAGER.BAT. PASS end-to-end against a clean
+    `.games/ds2/` GOG 1.10 install.
+  - **DOSBox stderr captured to `<scratch>/dosbox.log`**. Every
+    run now has a DOSBox-side log artifact (CONFIG / SDL /
+    MOUNT / MAPPER / RENDER / CAPTURE lines etc.); first
+    place to look when a fixture fails for non-MEL reasons.
+  - **`repro.py --list`** enumerates fixtures with target
+    game + one-line description.
+  - **DSUN.LOG preview on early-exit FAIL**. When DOSBox quits
+    on its own before the budget, the harness prints the first
+    three lines of `<scratch>/d/DSUN.LOG`. MEL Fatal Errors
+    land in your face instead of behind a `--keep-scratch`.
+  - **`tools/repro/bugs/README.md`** catalogue indexing
+    fixtures (cross-links to `docs/known-bugs.md` open until
+    real-bug fixtures ship).
+  - **Clearer FAIL line**: "DOSBox quit on its own (game
+    exited or never launched)" vs "SIGTERM after timeout
+    (game was still running)" instead of the old neutral
+    "exit on its own" / "SIGTERM after timeout".
+  - **`roadmap.md` Phase 2**: DOSBox-configured row already
+    ticked; save-state library row remains partial (smoke
+    fixtures only; real-bug fixtures need input automation in
+    v0.3.0). Recording-wrapper row stays unticked; queued for
+    v0.3.0 alongside input automation, since both solve the
+    same "non-interactive bug repros" problem.
+  - **VERSION**: 0.1.0 -> 0.2.0.
+
 - **`tools/save-inspect/` v0.4.0** locks the full DS2 combat
   sub-block layout. v0.3.0 had a `_likely_stats` /
   `_likely_name` heuristic that worked but advertised

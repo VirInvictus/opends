@@ -1,6 +1,6 @@
 # repro
 
-DOSBox-Staging repro harness for OpenDS. v0.1.0.
+DOSBox-Staging repro harness for OpenDS. v0.2.0.
 
 Drives a per-bug fixture under `bugs/<id>/` against a working
 DOS install, validates pass/fail by elapsed time and scratch-dir
@@ -8,7 +8,38 @@ artifacts, and never writes to the game install. The "any bug
 reproducible in five minutes" plumbing from
 [`roadmap.md`](../../roadmap.md) Phase 2.
 
-## What it ships in v0.1.0
+## What v0.2.0 adds
+
+Quality-of-life on top of the v0.1.0 harness pattern. No new
+"shape" features (input automation, video, differential capture
+all still v0.3.0+); v0.2.0 is the breadth-and-polish release.
+
+- **`ds2-smoke` fixture**. Mirror of `ds1-smoke` for DS2. Same
+  shape: factory saves staged into the C: overlay, a
+  `sound_ds`-generated `SOUND.CFG` (newer MEL 2.2.7, same DSP
+  Detect Fail story), `DSUN -W0 -L` per RAVAGER.BAT. Boots into
+  the WotR main menu, survives 25+ seconds.
+- **DOSBox stderr captured to `<scratch>/dosbox.log`**. The
+  DOSBox-side log (CONFIG / SDL / MOUNT / MAPPER / RENDER /
+  CAPTURE lines) is now an artifact of every run instead of
+  inheriting the harness terminal. First place to look when a
+  fixture fails for non-MEL reasons.
+- **`python3 repro.py --list`**. Enumerates available fixtures
+  with target game and one-line description; great for tab-
+  completing the next argument.
+- **DSUN.LOG preview on early-exit FAIL**. When DOSBox quits on
+  its own before the budget, the harness prints the first
+  three lines of `<scratch>/d/DSUN.LOG`. MEL Fatal Errors land
+  in your face instead of behind a `--keep-scratch` flag.
+- **`bugs/README.md` catalogue**. One row per fixture mapping
+  to `docs/known-bugs.md` once real-bug fixtures land. The v1
+  rows are smokes; future real-bug fixtures join the index as
+  they ship.
+- **Clearer FAIL line**. "DOSBox quit on its own (game exited
+  or never launched)" vs "SIGTERM after timeout (game was
+  still running)".
+
+## What v0.1.0 ships
 
 - A bash entry-point (`repro.sh`) and a Python driver
   (`repro.py`, stdlib-only).

@@ -201,26 +201,33 @@ def stage_setup_files(fixture: BugFixture, overlay_dir: Path) -> None:
         shutil.copy2(src, dst)
 
 
-def run_dosbox(cmd: list[str], timeout_seconds: float) -> tuple[int, float, bool]:
+def run_dosbox(
+    cmd: list[str],
+    timeout_seconds: float,
+    log_path: Path,
+) -> tuple[int, float, bool]:
     """Launch DOSBox and enforce the wall-clock budget.
 
-    Returns (exit_code, elapsed_seconds, timed_out).
-    On timeout, sends SIGTERM, gives DOSBox 3 seconds to clean up,
-    then SIGKILLs.
+    Returns (exit_code, elapsed_seconds, timed_out). On timeout,
+    sends SIGTERM, gives DOSBox 3 seconds to clean up, then
+    SIGKILLs. DOSBox's own stderr (CONFIG / SDL / MOUNT / MAPPER
+    / RENDER / CAPTURE log lines) is captured to `log_path`; on
+    failure that file is the first thing to look at for diagnosis.
     """
     start = time.monotonic()
-    proc = subprocess.Popen(cmd)
-    timed_out = False
-    try:
-        proc.wait(timeout=timeout_seconds)
-    except subprocess.TimeoutExpired:
-        timed_out = True
-        proc.send_signal(signal.SIGTERM)
+    with log_path.open("wb") as log_file:
+        proc = subprocess.Popen(cmd, stdout=log_file, stderr=subprocess.STDOUT)
+        timed_out = False
         try:
-            proc.wait(timeout=3.0)
+            proc.wait(timeout=timeout_seconds)
         except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait()
+            timed_out = True
+            proc.send_signal(signal.SIGTERM)
+            try:
+                proc.wait(timeout=3.0)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
     elapsed = time.monotonic() - start
     return proc.returncode, elapsed, timed_out
 
@@ -281,11 +288,52 @@ def evaluate(
     return ok, reasons
 
 
+def list_bugs(bugs_dir: Path) -> int:
+    """Enumerate fixtures + their one-line description.
+
+    Used by `--list`; sorted alphabetically by id so the output
+    is reproducible. Each line: `<id>  <target_game>  <first
+    description line>`.
+    """
+    if not bugs_dir.is_dir():
+        print(f"harness error: bugs dir {bugs_dir} not found", file=sys.stderr)
+        return EXIT_HARNESS_ERROR
+    entries = []
+    for child in sorted(bugs_dir.iterdir()):
+        if not child.is_dir():
+            continue
+        if not (child / "bug.toml").exists():
+            continue
+        try:
+            fixture = BugFixture.load(child)
+        except SystemExit:
+            entries.append((child.name, "?", "(invalid bug.toml)"))
+            continue
+        first_line = (fixture.description.splitlines() or [""])[0].strip()
+        entries.append((fixture.id, fixture.target_game, first_line))
+    if not entries:
+        print("(no fixtures)")
+        return EXIT_PASS
+    id_w = max(len(e[0]) for e in entries)
+    for bug_id, game, desc in entries:
+        print(f"{bug_id:<{id_w}}  {game}  {desc}")
+    return EXIT_PASS
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         description="Run an OpenDS repro fixture under DOSBox-Staging.",
     )
-    ap.add_argument("bug_id", help="bug fixture id (directory under bugs/)")
+    ap.add_argument(
+        "bug_id",
+        nargs="?",
+        help="bug fixture id (directory under bugs/); omit with --list",
+    )
+    ap.add_argument(
+        "--list",
+        action="store_true",
+        help="enumerate available bug fixtures and exit",
+    )
     ap.add_argument(
         "--bugs-dir",
         type=Path,
@@ -310,6 +358,12 @@ def main(argv: list[str] | None = None) -> int:
         help="leave the scratch directory in place after the run",
     )
     args = ap.parse_args(argv)
+
+    if args.list:
+        return list_bugs(args.bugs_dir)
+
+    if not args.bug_id:
+        ap.error("bug_id is required (or pass --list)")
 
     bug_dir = args.bugs_dir / args.bug_id
     if not bug_dir.is_dir():
@@ -362,18 +416,37 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  factory     : staged {', '.join(staged)} into C:\\")
         stage_setup_files(fixture, overlay_dir)
         cmdline = build_cmdline(fixture, config_path, game_dir, scratch_dir)
+        dosbox_log = scratch_dir / "dosbox.log"
         print(f"  dosbox      : {' '.join(cmdline)}")
+        print(f"  dosbox.log  : {dosbox_log}")
         print(f"  budget      : {fixture.timeout_seconds:.0f}s")
         print()
         print(f"running {fixture.id}...")
         exit_code, elapsed, timed_out = run_dosbox(
-            cmdline, fixture.timeout_seconds
+            cmdline, fixture.timeout_seconds, dosbox_log
         )
-        end_marker = "SIGTERM after timeout" if timed_out else "exit on its own"
+        if timed_out:
+            end_marker = "SIGTERM after timeout (game was still running)"
+        elif exit_code == 0:
+            end_marker = "DOSBox quit on its own (game exited or never launched)"
+        else:
+            end_marker = f"DOSBox quit on its own with non-zero rc"
         print(
             f"DOSBox finished after {elapsed:.2f}s "
             f"(rc={exit_code}, {end_marker})"
         )
+        if not timed_out and exit_code == 0:
+            # The most common gotcha: game exited fast because of
+            # MEL Fatal Error or similar. Point at the log.
+            dsun_log = scratch_dir / "d" / "DSUN.LOG"
+            if dsun_log.exists() and dsun_log.stat().st_size > 0:
+                preview = dsun_log.read_text(errors="replace").strip().splitlines()[:3]
+                if preview:
+                    print(
+                        "  (DSUN.LOG has content, first 3 lines):"
+                    )
+                    for line in preview:
+                        print(f"    {line}")
         print()
         result = RunResult(
             elapsed_seconds=elapsed,
