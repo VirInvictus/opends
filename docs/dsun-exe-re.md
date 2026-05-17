@@ -360,25 +360,94 @@ routine**: the low-level palette helpers (`set_color`,
 `write_palette_range`, `load_full_palette` from §4.2 / §4.3)
 are shared by every code path that touches the DAC.
 
-What we'd need to find the cycle routine:
+This section catalogues what's been ruled out, what's left to
+try, and the findings that bound the remaining surface.
 
-1. A **caller search** against `write_palette_range`
-   (`0x288a4`). The cycle update almost certainly delegates
-   to this helper (writes a contiguous range of indices
-   every tick from a rotated buffer). Find its callers via
-   the segment-selector trick from §3.3 (locate the segment
-   selector for the segment containing `0x288a4`, then
-   pattern-search for far-call instructions targeting that
-   selector + the routine's segment-local offset).
-2. A **tick-handler / timer-ISR trace**. The cycle routine
-   runs every N ticks; identifying the timer hook chain
-   (the engine's main loop calling each registered
-   per-tick handler) gives us the cycle entry point.
-3. The **DSO function-table dump**, if we ever recover one
-   from a debug build. The names in §4.6 are the cleanest
-   anchor; matching them to DS2 DSUN.EXE by call-graph
-   shape rather than offset is the proven path (§3 used the
-   same shape).
+#### 4.5.1 Segment-selector hunt against `write_palette_range`
+
+`0x288a4` sits in a code segment whose base is plausibly file
+offset `0x28700` (the first 16-byte-aligned boundary after a
+~900-byte zero-run that ends at `0x28706`). At that base,
+`0x288a4` is at segment-local offset `0x01a4` (= `a4 01`
+little-endian). The §3.3 trick (search the data segment for a
+4-byte block matching `<offset> <selector>` paired with the
+routine's segment-local offset) gives **17 total hits** on
+`a4 01` across the binary, distributed across at least 14
+distinct candidate selectors. No selector dominates the
+distribution in the way `0x3a98` did for the §3 dispatcher,
+so the trick doesn't disambiguate here. Either the routine's
+segment is selected via a different mechanism (e.g. a
+function-pointer table indexed at runtime, not a literal far
+call) or the segment base is wrong (the routine actually lives
+in a segment whose base is somewhere later in the zero-run,
+making the offset different). The 17-hit set is in the doc as
+a future-pass anchor, not a result.
+
+#### 4.5.2 DPMI / timer-ISR hunt
+
+Bytes `b8 05 02` (`mov ax, 0x205`, the DPMI Set-Protected-Mode-
+Vector function code) **does not occur in DSUN.EXE**. Bytes
+`b8 04 02` (`mov ax, 0x204`, Get-Protected-Mode-Vector) also
+don't occur. The two `cd 31` (`int 31h`) hits at `0x88f12` and
+`0x88fde` are **false positives**: the bytes appear inside
+`mov ax, 0x31cd` immediates, not actual interrupts.
+
+Implication: **the engine does not install timer ISRs via
+DPMI calls in its own code**. The DOS/4GW extender's runtime
+must be doing it on the engine's behalf, with the engine
+itself just registering a callback via DOS/4GW's interface.
+Following the tick-handler chain therefore requires
+understanding the DOS/4GW runtime, not just byte-pattern
+searches in DSUN.EXE. That's a separate RE thread; queued.
+
+#### 4.5.3 No additional palette-I/O sites
+
+The complete inventory of `mov dx, 0x3c8` (`ba c8 03`),
+`mov dx, 0x3c9` (`ba c9 03`), and `mov dx, 0x3c7` (`ba c7 03`)
+in DS1 DSUN.EXE is **the six sites already catalogued in §4.2
+and §4.3**. There is no eighth palette routine hiding
+elsewhere. If the cycle routine exists, it MUST call one of
+the six (most likely `write_palette_range` at `0x288a4` or
+`load_full_palette` at `0x144dc`); it doesn't write to the
+DAC directly.
+
+#### 4.5.4 What's left to try
+
+1. **Better segment-base candidate for `0x288a4`'s segment**.
+   The zero-run guess (`0x28700`) is one possibility; the
+   segment might actually start earlier (inside the
+   zero-padding) or later (after a non-zero prologue that's
+   common to the segment). DPMI / LX-overlay parsing of the
+   binary would give the actual segment table.
+2. **DOS/4GW runtime cross-reference**. The extender's
+   public ABI documents its callback-registration entry
+   points; once the engine's calls into the extender are
+   identified, the tick chain becomes traceable.
+3. **Locate cycle table via data-segment patterns**. If the
+   cycle table is `count × N-byte record`, scanning the data
+   segment for a uniform N-byte stride with plausible
+   `(start, end, period, ...)` fields might surface it
+   independently of finding the code that walks it. The
+   `MAXLSTRINGS`-sized arrays in libgff's GPL VM state are
+   the existing model for this kind of search.
+4. **Dynamic analysis under DOSBox**. `opcode-fuzz v0.2.0`
+   ships the chunk-swap + observe pipeline; if the engine
+   writes the cycle table to a memory location that's
+   reachable via the GPL global-arrays path, we could read
+   the table at runtime instead of locating it statically.
+   That'd require knowing the table's address in memory
+   anyway, so it's not a shortcut.
+5. **DS2 shape-match**. If we ever get a function-table dump
+   from the DSO debug build, names like `VGAColorCycle` /
+   `VGASetCycle` map to DS2 DSUN.EXE byte signatures by
+   call-graph shape (the proven path in §3). Without the
+   table, we're back to the same byte-pattern search that
+   stalls on DS1.
+
+`region-render v0.6.0` was a time-boxed third attempt at
+this surface; the attempt produced the findings in this
+subsection but not a working `--animate` flag, so
+`region-render` stays at v0.5.0.
 
 ### 4.6 DSO symbol cross-reference
 

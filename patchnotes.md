@@ -4,6 +4,41 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`docs/dsun-exe-re.md` §4.5** deepening: a third time-boxed
+  pass at the palette-cycle routine produced bounded findings
+  but not a feature. Same pre-committed shape as the prior
+  two passes; `region-render` stays at v0.5.0.
+  - **§4.5.1 segment-selector hunt** against `0x288a4`. The
+    zero-run boundary places the segment base near
+    `0x28700`, making `0x288a4`'s segment-local offset
+    `0x01a4` (`a4 01`). Pattern-search of the binary for
+    `a4 01 <sel-lo> <sel-hi>` returns 17 total hits across
+    at least 14 distinct candidate selectors; no selector
+    dominates the distribution the way `0x3a98` did for the
+    §3 dispatcher, so the trick doesn't disambiguate here.
+  - **§4.5.2 DPMI / timer-ISR hunt**. Bytes `b8 05 02`
+    (`mov ax, 0x205`, Set-Protected-Mode-Vector) **don't
+    occur in DSUN.EXE**. The two `cd 31` (`int 31h`) hits
+    are false positives (the bytes appear inside
+    `mov ax, 0x31cd` immediates). Implication: the engine
+    does not install timer ISRs via DPMI; the DOS/4GW
+    extender's runtime must be doing it on the engine's
+    behalf. Following the tick-handler chain requires
+    understanding the DOS/4GW ABI; queued as a separate RE
+    thread.
+  - **§4.5.3 no additional palette-I/O sites**. The six
+    sites catalogued in §4.2 / §4.3 are the complete
+    inventory. The cycle routine MUST call one of them;
+    it doesn't write to the DAC directly.
+  - **§4.5.4 what's left to try**. Five concrete directions
+    documented (better segment-base candidate, DOS/4GW
+    runtime cross-reference, data-segment patterns to find
+    the cycle table itself, dynamic analysis via
+    opcode-fuzz, DS2 shape-match if a DSO function-table
+    dump ever surfaces).
+  - `region-render` stays at v0.5.0 per the pre-committed
+    docs-only fallback.
+
 - **`tools/opcode-fuzz/` v0.2.0** adds the `run` subcommand:
   the **run + observe** half of the Phase 5 discovery loop.
   v0.1.0 shipped the chunk-patchwork pipeline (extract / pack
