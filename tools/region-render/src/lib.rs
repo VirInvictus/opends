@@ -55,6 +55,9 @@ const MAP_KIND: FourCC = FourCC(*b"MAP ");
 const TILE_KIND: FourCC = FourCC(*b"TILE");
 const GMAP_KIND: FourCC = FourCC(*b"GMAP");
 const WALL_KIND: FourCC = FourCC(*b"WALL");
+const ETAB_KIND: FourCC = FourCC(*b"ETAB");
+const OJFF_KIND: FourCC = FourCC(*b"OJFF");
+const BMP_KIND: FourCC = FourCC(*b"BMP ");
 const PAL_KIND: FourCC = FourCC(*b"PAL ");
 const CPAL_KIND: FourCC = FourCC(*b"CPAL");
 
@@ -133,17 +136,47 @@ pub struct RegionMap {
     /// Per-WALL decode failures, same idea as
     /// `tile_decode_failures`.
     pub wall_decode_failures: Vec<TileDecodeFailure>,
+    /// Parsed ETAB records (8 bytes each). Each places a
+    /// sprite at `(x, y)` resolved through the `OJFF` table.
+    /// Populated when the region GFF has an `ETAB` chunk.
+    pub entities: Vec<EntityRecord>,
+    /// Decoded entity sprites keyed by OJFF id. Populated by
+    /// `with_entities_from(...)`. Sprites use whatever palette
+    /// the region's tile layer is using; palette-index-0
+    /// pixels render as transparent.
+    entity_sprites: BTreeMap<i32, WallSprite>,
+    /// OJFF ids referenced by ETAB but not found in the
+    /// entities-source GFF.
+    pub missing_entity_ids: Vec<i32>,
+    /// Per-OJFF / per-BMP decode failures.
+    pub entity_decode_failures: Vec<TileDecodeFailure>,
 }
 
-/// One decoded wall sprite. Walls have variable dimensions
-/// (not 16x16 like tiles), and palette-index-0 pixels are
-/// treated as transparent during compositing so the tile
-/// underneath shows through.
+/// One entry from a region's `ETAB` chunk (8 bytes). Resolved
+/// through OJFF to a sprite placed at `(x - ojff.x_offset,
+/// y - ojff.y_offset - y_offset)`.
+#[derive(Debug, Clone)]
+pub struct EntityRecord {
+    pub x: i16,
+    pub y: i16,
+    pub y_offset: i8,
+    pub mirrored: bool,
+    pub ojff_number: i16,
+}
+
+/// One decoded sprite, used for both walls and entities.
+/// Variable dimensions, palette-index-0 pixels are
+/// transparent. For entity sprites `x_offset` / `y_offset`
+/// come from the OJFF chunk's anchor metadata (subtracted from
+/// the ETAB record's position to find the top-left of the
+/// sprite); walls leave both at 0.
 #[derive(Debug, Clone)]
 struct WallSprite {
     width: u16,
     height: u16,
     pixels: Vec<u8>,
+    x_offset: i16,
+    y_offset: i16,
 }
 
 /// Reason a `TILE` chunk couldn't be turned into a 16x16 tile.
@@ -177,6 +210,9 @@ impl RegionMap {
             });
         }
         let gmap = read_first(gff, GMAP_KIND).map(|b| b.to_vec());
+        let entities: Vec<EntityRecord> = read_first(gff, ETAB_KIND)
+            .map(parse_etab)
+            .unwrap_or_default();
 
         // Index every TILE chunk in the GFF. Decode frame 0 once
         // per id (tiles in the corpus only have one frame anyway).
@@ -225,12 +261,93 @@ impl RegionMap {
             walls: BTreeMap::new(),
             missing_wall_ids: Vec::new(),
             wall_decode_failures: Vec::new(),
+            entities,
+            entity_sprites: BTreeMap::new(),
+            missing_entity_ids: Vec::new(),
+            entity_decode_failures: Vec::new(),
         })
     }
 
     /// Count of decoded wall sprites available for rendering.
     pub fn wall_sprite_count(&self) -> usize {
         self.walls.len()
+    }
+
+    /// Count of decoded entity sprites available for rendering.
+    pub fn entity_sprite_count(&self) -> usize {
+        self.entity_sprites.len()
+    }
+
+    /// Index `OJFF` + `BMP ` chunks from `entities_gff` for the
+    /// OJFF ids referenced by this region's `ETAB`. Each
+    /// `EntityRecord.ojff_number` resolves through `OJFF` to a
+    /// `bmp_number` + sprite x/y offsets; the matching `BMP `
+    /// chunk supplies the bitmap. `render_indexed` then
+    /// composites those sprites on top of the wall layer.
+    ///
+    /// DS1 entity art lives in `SEGOBJEX.GFF` (2,775 OJFF +
+    /// 2,419 BMP). DS2 entity art lives in `OBJEX.GFF` (4,479
+    /// OJFF + 3,727 BMP).
+    pub fn with_entities_from(&mut self, entities_gff: &Gff) -> Result<()> {
+        if self.entities.is_empty() {
+            return Ok(());
+        }
+        let mut needed: std::collections::BTreeSet<i32> = std::collections::BTreeSet::new();
+        for ent in &self.entities {
+            // The Java tool uses `ojffNumber < 0 ? -ojffNumber :
+            // ojffNumber`; mirror that.
+            let id = if ent.ojff_number < 0 {
+                -(ent.ojff_number as i32)
+            } else {
+                ent.ojff_number as i32
+            };
+            needed.insert(id);
+        }
+        let mut missing: std::collections::BTreeSet<i32> =
+            std::collections::BTreeSet::new();
+        for ojff_id in needed {
+            let Some(ojff_chunk) = entities_gff.find(OJFF_KIND, ojff_id) else {
+                missing.insert(ojff_id);
+                continue;
+            };
+            let ojff_bytes = entities_gff.read_chunk(ojff_chunk);
+            let Some((bmp_number, x_off, y_off)) = parse_ojff(ojff_bytes) else {
+                self.entity_decode_failures.push(TileDecodeFailure {
+                    tile_id: ojff_id,
+                    reason: format!("OJFF too short ({} bytes)", ojff_bytes.len()),
+                });
+                missing.insert(ojff_id);
+                continue;
+            };
+            let Some(bmp_chunk) = entities_gff.find(BMP_KIND, bmp_number as i32)
+            else {
+                self.entity_decode_failures.push(TileDecodeFailure {
+                    tile_id: ojff_id,
+                    reason: format!("BMP id {bmp_number} not in entities GFF"),
+                });
+                missing.insert(ojff_id);
+                continue;
+            };
+            let bmp_bytes = entities_gff.read_chunk(bmp_chunk);
+            match decode_wall(ojff_id, bmp_bytes) {
+                Ok(mut sprite) => {
+                    // Reuse WallSprite shape, but stash the
+                    // x/y offsets in two unused bits by
+                    // smuggling through a side table. Simpler:
+                    // expand WallSprite to carry offsets too.
+                    sprite.x_offset = x_off;
+                    sprite.y_offset = y_off;
+                    self.entity_sprites.insert(ojff_id, sprite);
+                }
+                Err(mut failure) => {
+                    failure.reason = format!("BMP id {bmp_number}: {}", failure.reason);
+                    self.entity_decode_failures.push(failure);
+                    missing.insert(ojff_id);
+                }
+            }
+        }
+        self.missing_entity_ids = missing.into_iter().collect();
+        Ok(())
     }
 
     /// Index `WALL` chunks from `walls_gff` for the wall sprite
@@ -328,6 +445,27 @@ impl RegionMap {
                 }
             }
         }
+        // 3. Entity sprites (top of stack; ETAB-defined NPCs,
+        // props, trees, etc.). Position per RegionTool.java:264-267:
+        //   x = etab.x - ojff.x_offset
+        //   y = etab.y - ojff.y_offset - etab.y_offset
+        for ent in &self.entities {
+            let id = if ent.ojff_number < 0 {
+                -(ent.ojff_number as i32)
+            } else {
+                ent.ojff_number as i32
+            };
+            let Some(sprite) = self.entity_sprites.get(&id) else {
+                continue;
+            };
+            let dst_x = ent.x as i32 - sprite.x_offset as i32;
+            let dst_y = ent.y as i32 - sprite.y_offset as i32 - ent.y_offset as i32;
+            if ent.mirrored {
+                overlay_sprite_mirrored(&mut out, sprite, dst_x, dst_y);
+            } else {
+                overlay_sprite(&mut out, sprite, dst_x, dst_y);
+            }
+        }
         out
     }
 
@@ -404,10 +542,60 @@ fn decode_wall(wall_id: i32, bytes: &[u8]) -> std::result::Result<WallSprite, Ti
         width: frame.width,
         height: frame.height,
         pixels: frame.indices,
+        x_offset: 0,
+        y_offset: 0,
     })
 }
 
-/// Composite a wall sprite onto the rendered buffer at
+/// Parse one region's `ETAB` chunk into a list of records. Each
+/// record is 8 bytes (`RegionTool.java:300`-`317`):
+///
+/// | offset | type | field           |
+/// |--------|------|-----------------|
+/// | 0      | s16  | x               |
+/// | 2      | s16  | y               |
+/// | 4      | s8   | y_offset        |
+/// | 5      | u8   | byte5 (bit 7 = mirrored) |
+/// | 6      | s16  | ojff_number     |
+fn parse_etab(bytes: &[u8]) -> Vec<EntityRecord> {
+    let mut out = Vec::with_capacity(bytes.len() / 8);
+    for chunk in bytes.chunks_exact(8) {
+        let x = i16::from_le_bytes([chunk[0], chunk[1]]);
+        let y = i16::from_le_bytes([chunk[2], chunk[3]]);
+        let y_offset = chunk[4] as i8;
+        let mirrored = (chunk[5] & 0x80) != 0;
+        let ojff_number = i16::from_le_bytes([chunk[6], chunk[7]]);
+        out.push(EntityRecord {
+            x,
+            y,
+            y_offset,
+            mirrored,
+            ojff_number,
+        });
+    }
+    out
+}
+
+/// Parse an `OJFF` chunk's anchor metadata.
+/// Returns `(bmp_number, x_offset, y_offset)` per
+/// `RegionTool.java:319`-`331`:
+///
+/// | offset | type | field    |
+/// |--------|------|----------|
+/// | 0x02   | s16  | x_offset |
+/// | 0x04   | s16  | y_offset |
+/// | 0x0C   | u16  | bmp_number |
+fn parse_ojff(bytes: &[u8]) -> Option<(u16, i16, i16)> {
+    if bytes.len() < 0x0E {
+        return None;
+    }
+    let x_off = i16::from_le_bytes([bytes[0x02], bytes[0x03]]);
+    let y_off = i16::from_le_bytes([bytes[0x04], bytes[0x05]]);
+    let bmp_number = u16::from_le_bytes([bytes[0x0C], bytes[0x0D]]);
+    Some((bmp_number, x_off, y_off))
+}
+
+/// Composite a sprite onto the rendered buffer at
 /// `(dst_x, dst_y)`. Palette-index-0 pixels are skipped
 /// (transparent). Coordinates can be negative or extend past the
 /// image; out-of-bounds pixels are clipped.
@@ -427,6 +615,31 @@ fn overlay_sprite(buf: &mut [u8], sprite: &WallSprite, dst_x: i32, dst_y: i32) {
             let value = sprite.pixels[(sy * w + sx) as usize];
             if value == 0 {
                 continue; // transparent
+            }
+            buf[dy as usize * REGION_PIXEL_WIDTH + dx as usize] = value;
+        }
+    }
+}
+
+/// Like [`overlay_sprite`] but flips the sprite horizontally
+/// during compositing. Per `RegionTool.java:346`: when
+/// `etab.byte5 & 0x80` is set, the sprite is drawn mirrored.
+fn overlay_sprite_mirrored(buf: &mut [u8], sprite: &WallSprite, dst_x: i32, dst_y: i32) {
+    let w = sprite.width as i32;
+    let h = sprite.height as i32;
+    for sy in 0..h {
+        let dy = dst_y + sy;
+        if dy < 0 || dy >= REGION_PIXEL_HEIGHT as i32 {
+            continue;
+        }
+        for sx in 0..w {
+            let dx = dst_x + (w - 1 - sx);
+            if dx < 0 || dx >= REGION_PIXEL_WIDTH as i32 {
+                continue;
+            }
+            let value = sprite.pixels[(sy * w + sx) as usize];
+            if value == 0 {
+                continue;
             }
             buf[dy as usize * REGION_PIXEL_WIDTH + dx as usize] = value;
         }
@@ -497,6 +710,10 @@ mod tests {
             walls: BTreeMap::new(),
             missing_wall_ids: vec![],
             wall_decode_failures: vec![],
+            entities: vec![],
+            entity_sprites: BTreeMap::new(),
+            missing_entity_ids: vec![],
+            entity_decode_failures: vec![],
         }
     }
 

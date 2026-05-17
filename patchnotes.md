@@ -4,6 +4,45 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/region-render/` v0.3.0** adds the **entity sprite
+  layer**. ETAB records (8 bytes each) place sprites at
+  `(x - ojff.x_offset, y - ojff.y_offset - y_offset)` with
+  optional horizontal mirroring; each record's `ojff_number`
+  resolves through `OJFF` to a `BMP ` chunk. Entities
+  composite on top of walls + tiles; palette-index-0 pixels
+  stay transparent.
+  - **Per-game source files**: DS1 entity art lives in
+    `SEGOBJEX.GFF` (2,775 OJFF + 2,419 BMP). DS2 entity art
+    lives in `OBJEX.GFF` (4,479 OJFF + 3,727 BMP). CLI auto-
+    detects the sibling file by name.
+  - **New CLI flags**: `--entities-from <path>` (explicit
+    source), `--no-entities` (skip the entity pass).
+  - **New API**: `RegionMap::with_entities_from(&mut self,
+    &Gff)`, `RegionMap::entity_sprite_count()`. New public
+    fields: `entities: Vec<EntityRecord>`, `missing_entity_ids`,
+    `entity_decode_failures`. New struct `EntityRecord { x, y,
+    y_offset, mirrored, ojff_number }`.
+  - **WallSprite gains `x_offset` / `y_offset` fields** to
+    carry OJFF anchor metadata (walls leave both at 0; entity
+    sprites use them to position correctly).
+  - **`overlay_sprite_mirrored`** helper: flips the sprite
+    horizontally during compositing for `byte5 & 0x80` records,
+    per `RegionTool.java:346`.
+  - **Corpus result** (GOG 1.10): 53 regions render with the
+    full entity layer; **26,587 ETAB records, 8,223 distinct
+    entity sprites loaded, 0 missing-entity ids, 0 OJFF/BMP
+    decode failures**. With image-extract v0.2.0 at 99.95%
+    bitmap coverage, region screenshots now match what a
+    player sees in-game.
+  - **Visual spot-check**: DS2 RGN001 renders the starting
+    village with trees, mushrooms, stone arches, ruined
+    castle, vegetable garden, hut interiors, all in correct
+    position. DS1 RGN02 renders a desert biome with cacti,
+    plants, NPC silhouettes, and a campfire structure.
+  - **Out of scope**: animated palette colours (v0.4.0);
+    per-region DS1 palette discovery (needs DSUN.EXE RE).
+  - **VERSION**: 0.2.0 -> 0.3.0.
+
 - **`tools/save-inspect/` v0.3.0** ships DS2 combat partial-
   decode upgrades and a new `diff` subcommand for comparing two
   CHARSAVE.GFFs. Full DS2 schema RE rolls to v0.4.0.

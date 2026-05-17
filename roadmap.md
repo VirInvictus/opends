@@ -293,7 +293,10 @@ the friction is felt.
       (region-render v0.2.0: DS1 walls load from sibling
       `GPLDATA.GFF`; corpus has 350 sprites across 35 regions
       with 0 decode failures. DS2 storage TBD.)
-- [ ] Entity sprites (`ETAB` + `OJFF` + `BMP `). v0.3.0.
+- [x] Entity sprites (`ETAB` + `OJFF` + `BMP `). (region-render
+      v0.3.0: DS1 entities load from sibling `SEGOBJEX.GFF`,
+      DS2 from `OBJEX.GFF`. Corpus: 26,587 ETAB records,
+      8,223 distinct sprites, 0 missing ids, 0 decode failures.)
 - [ ] Animated palette colours. v0.4.0.
 - [ ] Per-region palette discovery for DS1 (current default may
       surface "off-camera void" colours; interior playable area

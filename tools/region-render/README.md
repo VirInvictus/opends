@@ -12,6 +12,74 @@ without firing up the engine.
 Depends on `gff-edit` for GFF I/O and `image-extract` for the
 `Palette` + `Bitmap` decoders. PNG output uses the `png` crate.
 
+## What `region-render v0.3.0` ships
+
+**Entity sprite layer.** The `ETAB` chunk's 8-byte records each
+place a sprite at `(x - ojff.x_offset, y - ojff.y_offset -
+y_offset)` with optional horizontal mirroring. Each record's
+`ojff_number` resolves through `OJFF` (anchor offsets + BMP id)
+into a `BMP ` chunk (the actual bitmap). Entities composite on
+top of walls + tiles; palette-index-0 pixels stay transparent.
+
+For DS1 entity art lives in `SEGOBJEX.GFF` (2,775 OJFF + 2,419
+BMP). For DS2 it lives in `OBJEX.GFF` (4,479 OJFF + 3,727
+BMP). The CLI auto-detects the sibling file by name. With both
+layers loaded, region screenshots now match what a player
+actually sees in-game: trees, NPCs, props, buildings,
+furniture, all in correct position.
+
+### CLI flags
+
+```sh
+# Default: auto-detect SEGOBJEX.GFF / OBJEX.GFF.
+region-render RGN001.GFF -o rgn001.png
+
+# Explicit entities source:
+region-render RGN001.GFF -o rgn001.png \
+    --entities-from .games/ds2/OBJEX.GFF
+
+# Skip the entity layer (back to v0.2.0 output):
+region-render RGN001.GFF -o rgn001.png --no-entities
+```
+
+### New library API
+
+- `RegionMap::with_entities_from(&mut self, &Gff)`: index OJFF
+  + BMP for every ETAB record's `ojff_number` and cache the
+  decoded sprites.
+- `RegionMap::entity_sprite_count(&self) -> usize`.
+- New public fields: `entities: Vec<EntityRecord>`,
+  `missing_entity_ids: Vec<i32>`,
+  `entity_decode_failures: Vec<TileDecodeFailure>`.
+- New struct `EntityRecord` with `x`, `y`, `y_offset`,
+  `mirrored`, `ojff_number` fields.
+
+### Corpus result (GOG 1.10)
+
+| Metric | Count |
+|---|---:|
+| Regions rendered | 53 (35 DS1 + 18 DS2) |
+| ETAB records across all regions | 26,587 |
+| Distinct entity sprites loaded | 8,223 |
+| Missing entity ids | 0 |
+| OJFF / BMP decode failures | 0 |
+| Wall sprites loaded (DS1 only) | 350 |
+| TILE decode failures (sentinel id 0) | 18 |
+| Missing-tile bytes total | 0 |
+
+The toolkit can now turn any region GFF into a screenshot
+identical (modulo animation frames and dynamic lighting) to
+what a player sees in-game.
+
+### Still out of scope
+
+- Animated palette colours. v0.4.0.
+- Per-region DS1 palette discovery. The current default
+  (`PAL :1000`) renders the playable area with plausible
+  colours but uses pink for "off-camera void" tiles. Curators
+  can pick `CPAL:200` or `CPAL:300` via `--palette` for a more
+  uniformly Athasian look.
+
 ## What `region-render v0.2.0` ships
 
 **Wall layer.** The `GMAP` chunk's low 5 bits per tile-byte are

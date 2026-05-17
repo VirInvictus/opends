@@ -40,6 +40,17 @@ struct Cli {
     /// output or for regions where walls aren't desired.
     #[arg(long = "no-walls", conflicts_with = "walls_from")]
     no_walls: bool,
+    /// GFF to read `OJFF` + `BMP ` chunks from for the entity
+    /// layer. DS1 stores entities in `SEGOBJEX.GFF` (2,775 OJFF
+    /// + 2,419 BMP). DS2 stores them in `OBJEX.GFF` (4,479
+    /// OJFF + 3,727 BMP). Default: auto-detect sibling
+    /// `SEGOBJEX.GFF` or `OBJEX.GFF` next to the region GFF.
+    /// Pass `--no-entities` to disable the entity pass.
+    #[arg(long = "entities-from")]
+    entities_from: Option<PathBuf>,
+    /// Skip the entity layer.
+    #[arg(long = "no-entities", conflicts_with = "entities_from")]
+    no_entities: bool,
 }
 
 fn main() -> Result<()> {
@@ -62,6 +73,18 @@ fn main() -> Result<()> {
             region
                 .with_walls_from(&walls_gff)
                 .with_context(|| format!("indexing WALL chunks from {}", walls_path.display()))?;
+        }
+    }
+    if !cli.no_entities {
+        if let Some(entities_path) = resolve_entities_gff_path(
+            cli.entities_from.as_deref(),
+            cli.file.as_path(),
+        ) {
+            let entities_gff = Gff::open(&entities_path)
+                .with_context(|| format!("opening entities source {}", entities_path.display()))?;
+            region
+                .with_entities_from(&entities_gff)
+                .with_context(|| format!("indexing OJFF/BMP from {}", entities_path.display()))?;
         }
     }
     region
@@ -105,6 +128,16 @@ fn main() -> Result<()> {
                 region.wall_decode_failures.len()
             );
         }
+    }
+    if !cli.no_entities {
+        eprintln!(
+            "  entities: {} ETAB records; {} sprite ids loaded; \
+             {} missing-entity ids; {} entity decode failures",
+            region.entities.len(),
+            region.entity_sprite_count(),
+            region.missing_entity_ids.len(),
+            region.entity_decode_failures.len(),
+        );
     }
     if !region.tile_decode_failures.is_empty() {
         eprintln!(
@@ -220,6 +253,25 @@ fn resolve_walls_gff_path(explicit: Option<&Path>, region_path: &Path) -> Option
     sibling.set_file_name("GPLDATA.GFF");
     if sibling.is_file() {
         return Some(sibling);
+    }
+    None
+}
+
+/// Resolve where to read OJFF + BMP chunks from. Precedence:
+/// 1. Explicit `--entities-from <path>`.
+/// 2. Sibling `SEGOBJEX.GFF` (DS1; 2,775 OJFF + 2,419 BMP).
+/// 3. Sibling `OBJEX.GFF` (DS2; 4,479 OJFF + 3,727 BMP).
+/// 4. None (no entities drawn).
+fn resolve_entities_gff_path(explicit: Option<&Path>, region_path: &Path) -> Option<PathBuf> {
+    if let Some(p) = explicit {
+        return Some(p.to_path_buf());
+    }
+    for name in ["SEGOBJEX.GFF", "OBJEX.GFF"] {
+        let mut sibling = region_path.to_path_buf();
+        sibling.set_file_name(name);
+        if sibling.is_file() {
+            return Some(sibling);
+        }
     }
     None
 }
