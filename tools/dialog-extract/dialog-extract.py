@@ -1026,6 +1026,186 @@ def _chunk_lstr_state_linear(disasm: dict) -> dict[int, dict]:
     return state
 
 
+def _writer_record_from_instr(
+    chunk_kind: str, chunk_id: int, instr: dict
+) -> tuple[int, dict] | None:
+    """Inspect a gpl_string_copy (0x0A) instruction and, when it
+    writes to an LSTR slot, return (slot, writer_record). Returns
+    None for non-LSTR-writes."""
+    if instr.get("opcode") != LSTR_WRITER_OPCODE:
+        return None
+    params = instr.get("params") or []
+    if len(params) < 2:
+        return None
+    dst = params[0]
+    if len(dst) != 1:
+        return None
+    dst_tok = dst[0]
+    if dst_tok.get("kind") != "variable" or dst_tok.get("var_kind") != "lstring":
+        return None
+    slot = dst_tok.get("id")
+    if slot is None:
+        return None
+    src = params[1]
+    record: dict = {
+        "chunk": f"{chunk_kind.strip()}-{chunk_id}",
+        "kind": chunk_kind,
+        "id": chunk_id,
+        "offset": instr.get("offset"),
+        "source": "computed",
+    }
+    if len(src) == 1:
+        s0 = src[0]
+        s_kind = s0.get("kind")
+        if s_kind == "immediate_string":
+            record["source"] = "inline"
+            record["value"] = s0.get("value", "")
+            if s0.get("sub_type") is not None:
+                record["sub_type"] = s0.get("sub_type")
+        elif s_kind == "variable" and s0.get("var_kind") == "gstring":
+            record["source"] = "gstring"
+            record["text_id"] = s0.get("id")
+        elif s_kind == "variable" and s0.get("var_kind") == "lstring":
+            record["source"] = "lstring"
+            record["source_slot"] = s0.get("id")
+    return slot, record
+
+
+def build_lstr_writer_index(
+    disasm_results: list[dict],
+) -> dict[int, list[dict]]:
+    """Pre-scan every chunk for gpl_string_copy writes to LSTR
+    slots; index them by destination slot. Caller-populated
+    LSTR slots (the v0.4 unresolved tail) can be resolved by
+    looking up the slot in this index and presenting every
+    statically-reachable writer as a `possible_writer`. The
+    index is keyed by slot id; the value is a deduplicated
+    list of writer records (one per chunk + offset).
+    """
+    index: dict[int, list[dict]] = {}
+    seen: set[tuple[int, str, int, int]] = set()
+    for entry in disasm_results:
+        kind = entry["chunk_kind"]
+        cid = int(entry["chunk_id"])
+        disasm = entry["disasm"]
+        for instr in disasm.get("instructions", []):
+            result = _writer_record_from_instr(kind, cid, instr)
+            if result is None:
+                continue
+            slot, record = result
+            key = (slot, kind, cid, instr.get("offset", -1))
+            if key in seen:
+                continue
+            seen.add(key)
+            index.setdefault(slot, []).append(record)
+    return index
+
+
+def build_reachable_callers(
+    disasm_results: list[dict],
+) -> dict[tuple[str, int], set[tuple[str, int]]]:
+    """For each chunk (kind, id), compute the transitive closure
+    of callers that can reach it via `gpl global sub` edges.
+    Used by `attach_possible_writers` to narrow the global
+    writer set for an unresolved LSTR read to writers in chunks
+    that can actually reach the read site via the static
+    callgraph.
+
+    The forward edge `caller -> callee` comes from each chunk's
+    `cross_chunk_calls` (gpl-disasm v0.4.1+). The reverse closure
+    is `chunk -> {ancestors that can reach chunk}`.
+    """
+    # Forward graph: caller -> set of callees.
+    forward: dict[tuple[str, int], set[tuple[str, int]]] = {}
+    all_nodes: set[tuple[str, int]] = set()
+    for entry in disasm_results:
+        kind = entry["chunk_kind"]
+        cid = int(entry["chunk_id"])
+        node = (kind, cid)
+        all_nodes.add(node)
+        callees: set[tuple[str, int]] = set()
+        for call in entry["disasm"].get("cross_chunk_calls", []) or []:
+            target_id = call.get("target_file_id")
+            if target_id is None:
+                continue
+            # gpl-disasm doesn't tag the target's kind; gpl global
+            # sub crosses chunks of the same kind (GPL -> GPL, MAS
+            # -> MAS) per the engine's chunk-resolver semantics.
+            callees.add((kind, int(target_id)))
+        forward[node] = callees
+
+    # Build reverse map by inverting edges.
+    reverse: dict[tuple[str, int], set[tuple[str, int]]] = {
+        n: set() for n in all_nodes
+    }
+    for caller, callees in forward.items():
+        for callee in callees:
+            reverse.setdefault(callee, set()).add(caller)
+
+    # Transitive closure on the reverse graph (BFS per node).
+    reachable: dict[tuple[str, int], set[tuple[str, int]]] = {}
+    for node in all_nodes:
+        seen: set[tuple[str, int]] = set()
+        frontier = list(reverse.get(node, set()))
+        while frontier:
+            n = frontier.pop()
+            if n in seen:
+                continue
+            seen.add(n)
+            for parent in reverse.get(n, set()):
+                if parent not in seen:
+                    frontier.append(parent)
+        reachable[node] = seen
+    return reachable
+
+
+def attach_possible_writers(
+    strings: list[dict],
+    writer_index: dict[int, list[dict]],
+    reachable_callers: dict[tuple[str, int], set[tuple[str, int]]] | None,
+    chunk_kind: str,
+    chunk_id: int,
+) -> None:
+    """Mutate `strings` in place: for every unresolved
+    `text:lstring` record, attach a `possible_writers` array
+    drawn from the global writer index, narrowed (when a
+    callgraph is available) to writers in chunks that
+    statically reach the read site. Same-chunk writers are
+    always included (the linear flat-scan tracker may have
+    missed them via a CFG quirk).
+    """
+    self_node = (chunk_kind, chunk_id)
+    reachable: set[tuple[str, int]] | None = None
+    if reachable_callers is not None:
+        reachable = set(reachable_callers.get(self_node, set()))
+        reachable.add(self_node)
+    for s in strings:
+        if not s.get("unresolved"):
+            continue
+        if s.get("source") != "text:lstring":
+            continue
+        slot = s.get("text_id")
+        if slot is None:
+            continue
+        all_writers = writer_index.get(slot, [])
+        if reachable is None:
+            filtered = all_writers
+            filter_label = "global"
+        else:
+            filtered = [
+                w for w in all_writers
+                if (w.get("kind"), int(w.get("id"))) in reachable
+            ]
+            filter_label = "callgraph-reachable"
+            # Fall back to unfiltered when the reachable set
+            # leaves zero matches (better than nothing).
+            if not filtered and all_writers:
+                filtered = all_writers
+                filter_label = "global-fallback"
+        s["possible_writers"] = filtered
+        s["possible_writers_filter"] = filter_label
+
+
 def build_summary(
     source: Path,
     disasm_results: list[dict],
@@ -1036,6 +1216,10 @@ def build_summary(
     chunks_out: list[dict] = []
     total_strings = 0
     total_unresolved = 0
+    total_lstr_reads = 0
+    total_lstr_exact_resolved = 0
+    total_lstr_possible_resolved = 0
+    total_lstr_no_writers = 0
 
     # Index every chunk's disasm by (kind, id) so the inter-chunk
     # walker can resolve `gpl global sub` targets.
@@ -1043,6 +1227,13 @@ def build_summary(
         (e["chunk_kind"], int(e["chunk_id"])): e["disasm"]
         for e in disasm_results
     }
+    # v0.5.0: global LSTR-writer index + reverse callgraph.
+    # Unresolved text:lstring reads in the flat-list path
+    # surface a `possible_writers` array narrowed (when the
+    # callgraph is available) to writers in chunks that
+    # statically reach the read site.
+    lstr_writer_index = build_lstr_writer_index(disasm_results)
+    reachable_callers = build_reachable_callers(disasm_results)
 
     for entry in disasm_results:
         disasm = entry["disasm"]
@@ -1063,9 +1254,30 @@ def build_summary(
             s.get("value") is not None and grep.search(s["value"]) for s in strings
         ):
             continue
+        # v0.5.0: enrich unresolved LSTR reads with the global
+        # writer index (callgraph-narrowed when possible) before
+        # counting.
+        attach_possible_writers(
+            strings,
+            lstr_writer_index,
+            reachable_callers,
+            entry["chunk_kind"],
+            int(entry["chunk_id"]),
+        )
         for s in strings:
+            is_lstring = s.get("source") == "text:lstring"
+            if is_lstring:
+                total_lstr_reads += 1
             if s.get("unresolved"):
                 total_unresolved += 1
+                if is_lstring:
+                    writers = s.get("possible_writers") or []
+                    if writers:
+                        total_lstr_possible_resolved += 1
+                    else:
+                        total_lstr_no_writers += 1
+            elif is_lstring:
+                total_lstr_exact_resolved += 1
         total_strings += len(strings)
         dialog_tree = build_dialog_tree(
             disasm,
@@ -1096,6 +1308,19 @@ def build_summary(
         "chunk_count": len(chunks_out),
         "string_count": total_strings,
         "unresolved_count": total_unresolved,
+        # v0.5.0 LSTR resolution stats. `exact` = the path-aware
+        # / flat-scan tracker pinned a single value; `possible`
+        # = the slot was unresolved at the read site but the
+        # global writer index found at least one statically
+        # reachable writer (surfaced as `possible_writers`);
+        # `no_writers` = no chunk in the corpus writes to that
+        # slot statically (runtime-only resolution).
+        "lstr_stats": {
+            "total_reads": total_lstr_reads,
+            "exact_resolved": total_lstr_exact_resolved,
+            "possible_resolved": total_lstr_possible_resolved,
+            "no_writers": total_lstr_no_writers,
+        },
         "chunks": chunks_out,
     }
 
@@ -1201,6 +1426,22 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.write(text + "\n")
     else:
         args.output.write_text(text + "\n", encoding="utf-8")
+    # v0.5.0: print LSTR-resolution stats to stderr so a corpus
+    # run shows the v0.4 -> v0.5 improvement at a glance.
+    stats = summary.get("lstr_stats") or {}
+    total = stats.get("total_reads", 0)
+    if total > 0:
+        exact = stats.get("exact_resolved", 0)
+        possible = stats.get("possible_resolved", 0)
+        no_writers = stats.get("no_writers", 0)
+        pct = 100.0 * exact / total
+        print(
+            f"dialog-extract: {total} LSTR reads, "
+            f"{exact} exact ({pct:.1f}%), "
+            f"{possible} via possible_writers, "
+            f"{no_writers} with no writers",
+            file=sys.stderr,
+        )
     return 0
 
 

@@ -4,6 +4,48 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/dialog-extract/` v0.5.0** closes the LSTR tail. The
+  32 LSTR reads v0.4 couldn't pin to a single writer
+  (caller-populated slots: the engine writes to LSTR slot N
+  in one chunk, then reads it back in a different chunk
+  reached via `gpl global sub`) now each carry a callgraph-
+  narrowed `possible_writers` array. Zero reads in the corpus
+  lack a statically-reachable writer.
+  - **Global LSTR-writer index**. Pre-scan every chunk for
+    `gpl_string_copy` (0x0A) writes into LSTR slots; index
+    by destination slot. Each writer record captures
+    `(chunk, kind, id, offset, source)` plus the value /
+    `text_id` / `source_slot` per the original instruction's
+    payload kind (`inline` / `gstring` / `lstring` /
+    `computed`).
+  - **Callgraph-narrowed filtering**. The reverse closure of
+    each chunk's `cross_chunk_calls` (gpl-disasm v0.4.1+
+    inter-chunk graph) gives the set of chunks that can
+    statically reach a given read site. Writers in unreachable
+    chunks are filtered out. Same-chunk writers always stay.
+    When the callgraph leaves zero matches, fall back to the
+    global writer set so the user always sees at least one
+    candidate.
+  - **Output shape**: every unresolved `text:lstring` record
+    gains `possible_writers: [...]` and a
+    `possible_writers_filter` label
+    (`callgraph-reachable` / `global-fallback` / `global`).
+  - **Corpus numbers**: DS1 = 255 LSTR reads, 230 exact-
+    resolved (90.2%), 25 via possible_writers (avg 4.0
+    candidates each, max 34). DS2 = 99 reads, 92 exact
+    (92.9%), 7 via possible_writers (avg 6.7, max 21). Zero
+    reads in either game lack a writer.
+  - **New top-level field** `lstr_stats` and a stderr stats
+    line at end of run so a corpus run shows the resolution
+    breakdown at a glance.
+  - **Out of scope (v0.6.0+)**: CFG-distance-ordered
+    `possible_writers` lists, proper symbolic call-path
+    tracing, resolution through `gpl_search` raw_tail
+    rewrites.
+  - **`roadmap.md` Phase 4 §dialog-extract**: LSTR tail row
+    ticked.
+  - **VERSION**: 0.4.0 -> 0.5.0.
+
 - **`tools/gpl-asm/` v0.6.0** adds the preprocessor: two
   directives that make hand-authored GPL listings more
   ergonomic without changing the bytecode the encoder

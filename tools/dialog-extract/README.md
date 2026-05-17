@@ -12,6 +12,108 @@ that appear in `GPL ` and `MAS ` bytecode chunks.
 - **Version**: see [`VERSION`](VERSION).
 - **License**: MIT.
 
+## What v0.5.0 ships
+
+The **LSTR tail closer**. v0.4.0 left 32 LSTR reads
+unresolved (~9% of LSTR refs, ~0.07% of all strings) because
+the slots were populated by upstream callers in different
+chunks. v0.5.0 surfaces every statically-reachable writer for
+those reads, narrowed by the inter-chunk callgraph.
+
+### `possible_writers` array
+
+Every unresolved `text:lstring` record now carries:
+
+```json
+{
+  "source": "text:lstring",
+  "text_id": 0,
+  "value": null,
+  "unresolved": true,
+  "possible_writers": [
+    {"chunk": "GPL-116", "kind": "GPL ", "id": 116,
+     "offset": 155, "source": "inline",
+     "value": "  Where would I find this Mikquetzl?",
+     "sub_type": "compressed"},
+    {"chunk": "GPL-118", "kind": "GPL ", "id": 118,
+     "offset": 859, "source": "inline",
+     "value": "  Okay, I'm leaving.",
+     "sub_type": "compressed"}
+  ],
+  "possible_writers_filter": "callgraph-reachable"
+}
+```
+
+The `source` field on each writer mirrors the original
+`gpl_string_copy` payload kind: `inline` (the literal value
+is carried verbatim), `gstring` (a `text_id` against the
+sibling resource GFF), `lstring` (another LSTR slot to walk
+back through), or `computed` (anything else; accumulator
+math, complex-record access, etc.; opaque).
+
+### Callgraph-narrowed by default
+
+The writer set is filtered through the `gpl global sub`
+callgraph (gpl-disasm's `cross_chunk_calls`): only writers
+in chunks that statically reach the read site are emitted.
+The same-chunk case is always included (the linear flat-scan
+tracker may miss a writer via a CFG quirk). When the
+callgraph leaves zero matches, v0.5.0 falls back to the
+global writer set so the user always sees *something*.
+
+`possible_writers_filter` reports which path applied:
+`callgraph-reachable` (the narrow set), `global-fallback`
+(callgraph empty, returning all writers), or `global` (no
+callgraph available; shouldn't happen with the standard
+flow).
+
+### Corpus numbers
+
+| Game | LSTR reads | Exact resolved | possible_writers | No writers |
+|------|------------|----------------|------------------|------------|
+| DS1  | 255        | 230 (90.2%)    | 25               | 0          |
+| DS2  | 99         | 92 (92.9%)     | 7                | 0          |
+| **Total** | **354** | **322 (91.0%)** | **32**       | **0**      |
+
+The `no writers` column is the one that mattered: **zero
+LSTR reads across the corpus lack at least one
+statically-reachable writer**. Every previously-unresolved
+read in v0.4 now surfaces a candidate set. Average set size:
+4.0 writers per unresolved read in DS1, 6.7 in DS2 (after
+callgraph filtering). Before filtering, the average was ~95
+writers per read; the callgraph narrowing is what makes the
+output usable.
+
+### New JSON top-level field
+
+`lstr_stats` summary at the top of the output:
+
+```json
+"lstr_stats": {
+  "total_reads": 255,
+  "exact_resolved": 230,
+  "possible_resolved": 25,
+  "no_writers": 0
+}
+```
+
+Plus a stderr stats line at end of run:
+
+```text
+dialog-extract: 255 LSTR reads, 230 exact (90.2%), 25 via
+possible_writers, 0 with no writers
+```
+
+### Out of scope (queued for v0.6.0+)
+
+- **Path-aware caller picking**. Today every reachable
+  writer goes into `possible_writers`; the user has to pick
+  which one fires for a given dynamic call path. A
+  CFG-distance-ordered list is the cheap improvement;
+  proper symbolic call-path tracing is the deep one.
+- **Resolution through `gpl_search` raw_tail rewrites**.
+  The 0x33 opcode can mutate LSTR slots indirectly.
+
 ## What v0.4.0 ships
 
 Two structural upgrades. The combined effect across the GOG 1.10

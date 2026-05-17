@@ -235,6 +235,16 @@ look at the maps directly.
       v0.4.0: 889 DS1 + 1,014 DS2 expansions; 666 + 806 fully
       resolved; cycles, mid-function calls, and cross-GFF calls
       surface as explicit unresolved markers with reasons.)
+- [x] LSTR tail closer (dialog-extract v0.5.0): the 32
+      previously-unresolved LSTR reads each now carry a
+      `possible_writers` array drawn from the global LSTR-write
+      index and narrowed by the inter-chunk callgraph
+      (`gpl global sub`). DS1 + DS2 average 4.0 / 6.7 writers
+      per unresolved read after narrowing; **zero** corpus LSTR
+      reads lack a statically-reachable writer. New `lstr_stats`
+      top-level field + stderr stats line. Path-aware caller
+      picking (CFG-distance ordering or symbolic trace) is
+      queued for v0.6.0+.
 - [x] Tagged: `dialog-extract-v0.1.0`. (this release)
 
 ### `tools/save-inspect/` (Python)
