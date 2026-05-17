@@ -4,6 +4,53 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/opcode-fuzz/` v0.2.0** adds the `run` subcommand:
+  the **run + observe** half of the Phase 5 discovery loop.
+  v0.1.0 shipped the chunk-patchwork pipeline (extract / pack
+  / roundtrip); v0.2.0 wires it into `repro v0.3.0`'s
+  resumable `--play --session` mode so a patched chunk can be
+  loaded into DOSBox and the resulting state diff captured.
+  - **`opcode-fuzz run <work-dir>`**. Encodes `chunk.json`
+    via `gpl-asm` (validator runs), replaces the chunk in
+    the source GFF, synthesises a temporary repro fixture
+    under `<tmpdir>/bugs/opcode-fuzz/` whose
+    `[setup].copy_files` stages the patched `GPLDATA.GFF`
+    plus the matching `ds[12]-smoke` `SOUND.CFG` into the
+    C: overlay. Then invokes `repro.py opcode-fuzz --play
+    --session opcode-fuzz-<work-dir-name> --bugs-dir <tmp>`.
+  - **State diff**. Snapshots the session's
+    `c-overlay/DARKRUN.GFF` before launch (factory if the
+    session was fresh; the prior end-state if resumed) and
+    after launch. Emits a JSON byte-level diff
+    (`{status, pre_bytes, post_bytes, bytes_same,
+    bytes_different, first_diff_offsets, session_dir,
+    target_game, chunk, repro_rc}`) on the run's tail.
+    For structural diff, the post snapshot persists in the
+    session dir; users can shell to `save-inspect diff
+    pre.gff post.gff` for SAVE-chunk granularity.
+  - **Session continuity inherited from repro v0.3.0**. The
+    same session dir is reused across `opcode-fuzz run`
+    invocations, so iterative fuzzing on the same chunk
+    accumulates state. `repro --list-sessions` finds these
+    sessions alongside regular play sessions.
+  - **Honest scope statement** in the README. The full
+    discovery loop (write single-opcode test chunk, observe
+    its side effect, iterate to fill `docs/gpl-opcodes.md`)
+    needs two things v0.2.0 doesn't yet have: input
+    automation to drive the engine to the state where the
+    chunk fires without manual keystroke wrangling (`repro
+    v0.3.x` ydotool integration, dep-approval pending), and
+    identification of which chunks the engine invokes on
+    boot (`DSUN.EXE` RE). v0.2.0 ships the run + observe
+    scaffolding the discovery loop sits on; the smoke test
+    is "swap a chunk with itself, run, observe minimal
+    diff."
+  - **Roadmap Phase 5 §opcode-fuzz**: harness-and-state-
+    delta rows transition from `[ ]` to `[~]` (partial); the
+    "discover one previously-unknown opcode" `[ ]` is the
+    Phase 5 "done when" bar, still ahead of us.
+  - **VERSION**: 0.1.0 -> 0.2.0.
+
 - **`tools/repro/` v0.3.0** makes `--play` resumable. v0.2.1
   invented the play mode but every invocation created a fresh
   `/tmp/repro-XXXX/` scratch dir, so in-game saves vanished

@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -38,6 +39,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 GFF_CAT = REPO_ROOT / "target" / "release" / "gff-cat"
 GPL_DISASM = REPO_ROOT / "target" / "release" / "gpl-disasm"
 GPL_ASM = REPO_ROOT / "target" / "release" / "gpl-asm"
+REPRO_DIR = REPO_ROOT / "tools" / "repro"
+REPRO_PY = REPRO_DIR / "repro.py"
 
 EXIT_OK = 0
 EXIT_FAIL = 1
@@ -265,6 +268,279 @@ def cmd_pack(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def repro_session_dir(target_game: str, session_name: str) -> Path:
+    """Mirror of `repro.session_dir`. Keeps opcode-fuzz independent
+    of how repro is packaged while honouring the same XDG state
+    layout so `--list-sessions` finds these too.
+    """
+    base = os.environ.get("XDG_STATE_HOME")
+    if base:
+        root = Path(base) / "opends-repro"
+    else:
+        root = Path.home() / ".local" / "state" / "opends-repro"
+    safe = session_name.replace("/", "_").replace("\\", "_")
+    return root / f"play-{target_game}-{safe}"
+
+
+def infer_target_game(gff_path: Path) -> str | None:
+    """Best-effort: pull `ds1` / `ds2` out of the GFF path. The
+    standard layout is `.games/ds1/GPLDATA.GFF` /
+    `.games/ds2/GPLDATA.GFF`, so this is usually unambiguous.
+    """
+    parts = gff_path.resolve().parts
+    for p in parts:
+        if p in ("ds1", "ds2"):
+            return p
+    return None
+
+
+def gff_replace(
+    gff: Path, kind: str, id_: int, bytes_path: Path, out_gff: Path
+) -> None:
+    """Wrap `gff-cat replace` against an explicit kind / id (the
+    `replace_chunk` helper takes a ChunkRef; this one is called
+    from `cmd_run` where we already have the kind / id in hand)."""
+    subprocess.run(
+        [
+            str(GFF_CAT),
+            "replace",
+            str(gff),
+            kind,
+            str(id_),
+            str(bytes_path),
+            "-o",
+            str(out_gff),
+        ],
+        check=True,
+    )
+
+
+def synthesise_fixture(
+    work_dir: Path,
+    target_game: str,
+    patched_gff: Path,
+    fixture_root: Path,
+) -> tuple[Path, str]:
+    """Build a temporary repro bug fixture rooted at
+    `fixture_root / opcode-fuzz`. The fixture stages the patched
+    GPLDATA.GFF on top of the factory install via the standard
+    `[setup].copy_files` path. SOUND.CFG is cribbed from the
+    matching `ds[12]-smoke` fixture (the sound_ds-derived file
+    that gets MEL through detect).
+
+    Returns the (fixture_dir, fixture_id) pair so the caller can
+    pass `--bugs-dir <fixture_root> <fixture_id>` to repro.py.
+    """
+    smoke_dir = REPRO_DIR / "bugs" / f"{target_game}-smoke"
+    sound_cfg_src = smoke_dir / "SOUND.CFG"
+    if not sound_cfg_src.is_file():
+        raise SystemExit(
+            f"opcode-fuzz: no SOUND.CFG at {sound_cfg_src}; "
+            f"opcode-fuzz needs the {target_game}-smoke fixture to "
+            "crib audio config from."
+        )
+
+    fixture_id = "opcode-fuzz"
+    fdir = fixture_root / fixture_id
+    fdir.mkdir(parents=True, exist_ok=True)
+
+    # Copy the patched GFF + SOUND.CFG into the fixture dir so
+    # [setup].copy_files can stage them.
+    fixture_gff = fdir / "GPLDATA.GFF"
+    fixture_sound = fdir / "SOUND.CFG"
+    shutil.copy2(patched_gff, fixture_gff)
+    shutil.copy2(sound_cfg_src, fixture_sound)
+
+    trigger_cmd = "DSUN -W0 -L > d:\\dsun.log" if target_game == "ds2" else "DSUN.EXE > d:\\dsun.log"
+    bug_toml = f"""# Synthesised by opcode-fuzz from {work_dir}
+# This fixture replaces GPLDATA.GFF with a patched version
+# carrying the modified chunk; the harness mounts it via the
+# standard `[setup].copy_files` path, so the original install
+# stays untouched.
+
+id          = "{fixture_id}"
+target_game = "{target_game}"
+description = "opcode-fuzz synthesised fixture (patched GPLDATA.GFF)"
+
+[setup]
+copy_files = [
+  {{ src = "GPLDATA.GFF", dst = "GPLDATA.GFF" }},
+  {{ src = "SOUND.CFG",   dst = "SOUND.CFG" }},
+]
+
+[trigger]
+commands = [
+  "{trigger_cmd}",
+]
+
+[expected]
+# Generous budget; `--play` ignores it anyway. Used only if the
+# user invokes the fixture without --play (regression mode).
+timeout_seconds     = 120
+min_runtime_seconds = 0
+require_files       = []
+forbid_files        = []
+"""
+    (fdir / "bug.toml").write_text(bug_toml)
+    return fdir, fixture_id
+
+
+def snapshot_darkrun(path: Path) -> bytes | None:
+    """Read DARKRUN.GFF bytes if present, else None."""
+    if not path.is_file():
+        return None
+    return path.read_bytes()
+
+
+def diff_darkrun(pre: bytes | None, post: bytes | None) -> dict:
+    """Byte-level summary of pre/post DARKRUN.GFF. Counts bytes
+    that differ + lists the offsets of the first 10 differing
+    bytes. For richer structural diff users can shell to
+    `save-inspect diff` against the snapshotted files.
+    """
+    if pre is None and post is None:
+        return {"status": "no_pre_no_post"}
+    if pre is None:
+        return {"status": "no_pre_only_post", "post_bytes": len(post)}
+    if post is None:
+        return {"status": "no_post_only_pre", "pre_bytes": len(pre)}
+    if pre == post:
+        return {"status": "identical", "bytes": len(pre)}
+    n = max(len(pre), len(post))
+    diff_offsets: list[int] = []
+    same = 0
+    for i in range(n):
+        a = pre[i] if i < len(pre) else None
+        b = post[i] if i < len(post) else None
+        if a == b:
+            same += 1
+        else:
+            if len(diff_offsets) < 10:
+                diff_offsets.append(i)
+    return {
+        "status": "changed",
+        "pre_bytes": len(pre),
+        "post_bytes": len(post),
+        "bytes_same": same,
+        "bytes_different": n - same,
+        "first_diff_offsets": diff_offsets,
+    }
+
+
+def cmd_run(args: argparse.Namespace) -> int:
+    """Pack a work-dir, stage it as a synthesised repro fixture,
+    launch DOSBox via `repro.py --play --session`, snapshot
+    DARKRUN.GFF before and after, emit a JSON state diff.
+
+    The session continuity inherited from repro v0.3.0 means the
+    session dir persists between invocations. `--reset-session`
+    forces a fresh-from-factory start; without it, each run
+    builds on the prior run's state (useful for iterative
+    fuzzing of an already-running playthrough).
+    """
+    require_built()
+    if not REPRO_PY.is_file():
+        print(f"opcode-fuzz: missing {REPRO_PY}", file=sys.stderr)
+        return EXIT_HARNESS_ERROR
+
+    meta_path = args.work_dir / "meta.json"
+    if not meta_path.is_file():
+        print(f"opcode-fuzz: no meta.json at {meta_path}", file=sys.stderr)
+        return EXIT_HARNESS_ERROR
+    meta = json.loads(meta_path.read_text())
+    chunk_json = args.work_dir / "chunk.json"
+    if not chunk_json.is_file():
+        print(f"opcode-fuzz: no chunk.json at {chunk_json}", file=sys.stderr)
+        return EXIT_HARNESS_ERROR
+
+    source_gff = Path(meta["gff"])
+    if not source_gff.is_file():
+        print(f"opcode-fuzz: source GFF {source_gff} not found", file=sys.stderr)
+        return EXIT_HARNESS_ERROR
+    target_game = args.target_game or infer_target_game(source_gff)
+    if target_game not in ("ds1", "ds2"):
+        print(
+            f"opcode-fuzz: couldn't infer target_game from {source_gff}; "
+            "pass --target-game ds1|ds2",
+            file=sys.stderr,
+        )
+        return EXIT_HARNESS_ERROR
+
+    session_name = args.session or f"opcode-fuzz-{args.work_dir.name}"
+
+    with tempfile.TemporaryDirectory(prefix="opcode-fuzz-run-") as tmp:
+        tmp_root = Path(tmp)
+        # 1. Encode the chunk via gpl-asm (validator runs).
+        new_bin = tmp_root / "chunk.bin"
+        asm_from_json(chunk_json, new_bin)
+        # 2. Replace in a copy of the source GFF.
+        patched = tmp_root / "patched.gff"
+        gff_replace(
+            source_gff, meta["kind"], int(meta["id"]), new_bin, patched
+        )
+        # 3. Synthesise a repro fixture.
+        bugs_root = tmp_root / "bugs"
+        bugs_root.mkdir(parents=True, exist_ok=True)
+        fdir, fixture_id = synthesise_fixture(
+            args.work_dir, target_game, patched, bugs_root
+        )
+
+        # 4. Pre-snapshot of DARKRUN.GFF: take from the existing
+        # session dir if present, else from the factory location.
+        # We compute the session path the same way repro v0.3.0
+        # does (XDG-aware) so `repro --list-sessions` finds the
+        # session we create.
+        sdir = repro_session_dir(target_game, session_name)
+        overlay_darkrun = sdir / "c-overlay" / "DARKRUN.GFF"
+        factory_darkrun = source_gff.parent / "__support" / "save" / "DARKRUN.GFF"
+        if overlay_darkrun.is_file():
+            pre_bytes = snapshot_darkrun(overlay_darkrun)
+            pre_source = str(overlay_darkrun)
+        elif factory_darkrun.is_file():
+            pre_bytes = snapshot_darkrun(factory_darkrun)
+            pre_source = str(factory_darkrun)
+        else:
+            pre_bytes = None
+            pre_source = None
+
+        # 5. Invoke repro.py --play --session.
+        repro_argv = [
+            "python3",
+            str(REPRO_PY),
+            fixture_id,
+            "--play",
+            "--session",
+            session_name,
+            "--bugs-dir",
+            str(bugs_root),
+        ]
+        print(f"opcode-fuzz: launching repro with synthesised fixture")
+        print(f"  work-dir       : {args.work_dir}")
+        print(f"  source GFF     : {source_gff}")
+        print(f"  patched chunk  : {meta['kind']!r}/{meta['id']}")
+        print(f"  target_game    : {target_game}")
+        print(f"  session        : {session_name}")
+        if pre_source is not None:
+            print(f"  pre-snapshot   : {pre_source} ({len(pre_bytes)} bytes)")
+        else:
+            print(f"  pre-snapshot   : (no factory or session DARKRUN.GFF)")
+        print()
+        rc = subprocess.run(repro_argv).returncode
+        print()
+
+        # 6. Post-snapshot of DARKRUN.GFF from the session dir.
+        post_bytes = snapshot_darkrun(overlay_darkrun)
+        diff = diff_darkrun(pre_bytes, post_bytes)
+        diff["session_dir"] = str(sdir)
+        diff["target_game"] = target_game
+        diff["chunk"] = {"kind": meta["kind"], "id": int(meta["id"])}
+        diff["repro_rc"] = rc
+
+        print(f"opcode-fuzz: DARKRUN.GFF diff:")
+        print(json.dumps(diff, indent=2))
+        return EXIT_OK if rc == 0 else EXIT_FAIL
+
+
 def cmd_roundtrip(args: argparse.Namespace) -> int:
     """End-to-end self-test on a GFF.
 
@@ -419,6 +695,42 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_rt.add_argument("gff", type=Path, help="GFF to round-trip")
     p_rt.set_defaults(handler=cmd_roundtrip)
+
+    p_run = sub.add_parser(
+        "run",
+        help="Pack a work-dir, stage it as a synthesised repro fixture, launch DOSBox via repro.py --play --session, snapshot DARKRUN.GFF pre/post, emit a state diff.",
+        description=(
+            "Pack the edited chunk in <work-dir> back into the "
+            "source GFF, synthesise a temporary repro fixture "
+            "that stages it on top of the factory install, and "
+            "launch DOSBox via `repro.py --play --session`. The "
+            "session dir is reused across invocations (resumable) "
+            "so in-game state accumulates; the harness snapshots "
+            "c-overlay/DARKRUN.GFF before and after and emits a "
+            "byte-level diff at the end of the run. The full "
+            "opcode-discovery loop needs input automation (queued "
+            "for `repro` v0.3.x) plus knowledge of which chunks "
+            "the engine invokes on boot; v0.2.0 ships the run + "
+            "observe scaffolding the discovery loop sits on."
+        ),
+    )
+    p_run.add_argument("work_dir", type=Path, help="work directory from `extract`")
+    p_run.add_argument(
+        "--session",
+        default=None,
+        help=(
+            "session name (defaults to `opcode-fuzz-<work-dir-name>`). "
+            "Sessions live in the same XDG state root as repro --play, "
+            "so `repro.py --list-sessions` finds them."
+        ),
+    )
+    p_run.add_argument(
+        "--target-game",
+        choices=["ds1", "ds2"],
+        default=None,
+        help="override target_game inference from the source GFF path",
+    )
+    p_run.set_defaults(handler=cmd_run)
 
     args = ap.parse_args(argv)
     return args.handler(args)

@@ -433,13 +433,22 @@ just read it. Be able to discover unknown opcodes systematically.
       chunk in DS1 (250 / 250) and DS2 (350 / 350) survives
       `extract -> disasm -> reasm -> replace` byte-identical.
       The foundation v0.2.0+ builds on.
-- [ ] Harness that runs the original game in DOSBox with a
-      single GPL chunk swapped to a one-opcode test. (v0.2.0+;
-      depends on a deterministic-launch path through repro
-      that doesn't currently exist, and on the GPL VM state
-      addresses inside DSUN.EXE that are still un-RE'd.)
-- [ ] Records the engine state delta (memory regions, register
-      state via DOSBox debugger). (v0.2.0+; the cheap path is
+- [~] Harness that runs the original game in DOSBox with a
+      single GPL chunk swapped to a one-opcode test.
+      (opcode-fuzz v0.2.0: `run` subcommand packs a work-dir,
+      synthesises a repro fixture that stages the patched
+      GPLDATA.GFF, launches DOSBox via `repro.py --play
+      --session`, snapshots c-overlay/DARKRUN.GFF before and
+      after, emits a JSON byte-level diff. Sessions live in
+      the same XDG state path as `repro --play`; resumable.
+      What's still required for the full discovery loop:
+      input automation (`repro v0.3.x` ydotool integration)
+      to drive the engine to the state where the chunk fires,
+      plus identification of which chunks the engine invokes
+      on boot via `DSUN.EXE` RE.)
+- [~] Records the engine state delta (memory regions, register
+      state via DOSBox debugger). (opcode-fuzz v0.2.0: byte-
+      level diff against `DARKRUN.GFF` pre/post; the cheap path
       observing `DARKRUN.GFF` / `SAVE0N.SAV` diffs rather than
       live debugger inspection, leveraging save-inspect v0.6.0.)
 - [ ] The fastest path to filling in unknown opcodes; turns
