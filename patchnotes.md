@@ -4,6 +4,35 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/verify-install/` v0.2.0** turns the verifier into a
+  fix-it-yourself tool and gives downstream tooling (the repro
+  harness, CI, the planned opcode-fuzz pre-run check) a stable
+  machine-readable surface.
+  - **`--json`** emits the full verify report on stdout as
+    `{tool, version, install, manifest, meta, summary,
+    mismatched, missing, extras, skipped, ok}`. Lists are
+    sorted for stable diffs across runs. The human-text path
+    is unchanged.
+  - **`--repair <installer.exe>`** restores the canonical bytes
+    of every mismatched / missing file from the GOG installer.
+    Shells to `innoextract -e -d <tmp> <installer>` to stage
+    the pristine tree, then copies each requested file into
+    place over a same-path backup at
+    `<install>/__verify-install-backup/<path>` (always created
+    before overwriting). The backup directory is automatically
+    skipped by the runtime_state patterns in both manifests,
+    so a repaired install still verifies clean.
+  - **`--dry-run`** with `--repair` reports the plan (what
+    would be restored) without writing anything; useful before
+    pointing repair at a real install.
+  - **Sandbox-tested**: corrupted DS1 `MIDITSR.EXE` in a copy
+    of `.games/ds1`, ran `--repair`, got matched 56 -> 57,
+    backup file present, ok=True on re-verify.
+  - Requires `innoextract` on PATH (Fedora:
+    `dnf install innoextract`). The verifier remains
+    stdlib-only; the dependency is on the user's system, not
+    Python.
+
 - **`docs/dsun-exe-re.md` §4.5** deepening: a third time-boxed
   pass at the palette-cycle routine produced bounded findings
   but not a feature. Same pre-committed shape as the prior

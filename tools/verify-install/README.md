@@ -25,7 +25,32 @@ python3 verify-install.py --game ds2 --path /some/install
 
 # List the extras and the runtime_state files that were skipped.
 python3 verify-install.py --game ds1 --show-extras --show-skipped
+
+# Emit the report as JSON on stdout (CI checks, repro harness,
+# downstream tooling). Lists are sorted for stable diffs.
+python3 verify-install.py --game ds1 --json
 ```
+
+### Repair (restore canonical bytes from the GOG installer)
+
+```sh
+# Dry-run: list files that would be restored without writing.
+python3 verify-install.py --game ds1 \
+    --repair ~/Downloads/setup_dark_sun_shattered_lands_1.1_cs_28043.exe \
+    --dry-run
+
+# Live: restore every mismatched / missing file from the
+# installer. The pre-repair contents are backed up to
+# <install>/__verify-install-backup/<path> so the change is
+# reversible.
+python3 verify-install.py --game ds1 \
+    --repair ~/Downloads/setup_dark_sun_shattered_lands_1.1_cs_28043.exe
+```
+
+Repair shells to `innoextract -e -d <tmp> <installer>` to stage
+the canonical bytes in a temp dir, then copies each requested
+file into place over a same-path backup. Requires `innoextract`
+on `PATH` (Fedora: `dnf install innoextract`).
 
 ### Capture (regenerate the canonical manifest)
 

@@ -31,7 +31,13 @@ are extractable on Fedora.
 - [x] **Tool**: `tools/verify-install/` (Python, stdlib-only) —
       hashes a player's install, identifies GOG 1.10 / original
       CD / unknown, supports a capture mode for regenerating the
-      manifest. Tagged: `verify-install-v0.1.0`.
+      manifest. Tagged: `verify-install-v0.1.0`. **v0.2.0** adds
+      `--json` (stable machine-readable report for CI / the repro
+      harness) and `--repair <installer.exe>` (shells to
+      `innoextract` to restore canonical bytes; backs up the
+      pre-repair files to `__verify-install-backup/<path>`;
+      `--dry-run` previews the plan). Tagged:
+      `verify-install-v0.2.0`.
 - [x] Source-hash manifests at
       `docs/source-hashes/ds1-gog-1.10.toml` and
       `ds2-gog-1.10.toml` — SHA256 of every shipped file per

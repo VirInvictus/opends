@@ -8,7 +8,11 @@ from __future__ import annotations
 import argparse
 import fnmatch
 import hashlib
+import json
+import shutil
+import subprocess
 import sys
+import tempfile
 import tomllib
 from pathlib import Path
 from typing import Iterable
@@ -93,6 +97,213 @@ def cmd_capture(args: argparse.Namespace) -> int:
     return 0
 
 
+def _verify_install(
+    install: Path,
+    manifest_path: Path,
+) -> tuple[dict, dict]:
+    """Verify `install` against `manifest_path`.
+
+    Returns `(manifest_meta, report)` where `report` is the
+    machine-readable summary used by both the human-print path
+    and the `--json` output.
+    """
+    with manifest_path.open("rb") as f:
+        manifest = tomllib.load(f)
+
+    expected: dict[str, str] = manifest.get("files", {})
+    runtime_patterns: list[str] = manifest.get("runtime_state", {}).get(
+        "patterns", []
+    )
+
+    matched: list[str] = []
+    mismatched: list[dict] = []
+    missing: list[str] = []
+    extras: list[str] = []
+    skipped: list[str] = []
+
+    seen: set[str] = set()
+    for rel, want_hash in expected.items():
+        target = install / rel
+        seen.add(rel)
+        # runtime_state patterns override [files] entries: an
+        # entry that appears in both is treated as runtime_state
+        # (not verified). Lets us record pristine-install hashes
+        # in [files] for completeness while still skipping files
+        # the game or installer rewrites at runtime.
+        if matches_any(rel, runtime_patterns):
+            skipped.append(rel)
+            continue
+        if not target.is_file():
+            missing.append(rel)
+            continue
+        got = sha256_file(target)
+        if got == want_hash:
+            matched.append(rel)
+        else:
+            mismatched.append(
+                {"path": rel, "expected": want_hash, "actual": got}
+            )
+
+    for p in walk_files(install):
+        rel = relpath(p, install)
+        if rel in seen:
+            continue
+        if matches_any(rel, runtime_patterns):
+            skipped.append(rel)
+        else:
+            extras.append(rel)
+
+    report = {
+        "install": str(install),
+        "manifest": str(manifest_path),
+        "matched": matched,
+        "mismatched": mismatched,
+        "missing": missing,
+        "extras": extras,
+        "skipped": skipped,
+        "ok": not mismatched and not missing,
+    }
+    return manifest.get("meta", {}), report
+
+
+def _print_report(meta: dict, report: dict, args: argparse.Namespace) -> None:
+    """Human-text rendering of the verify report (the v0.1 path)."""
+    print(f"install:  {report['install']}")
+    print(f"manifest: {report['manifest']}")
+    print(
+        f"  game: {meta.get('game', '?')}  "
+        f"source: {meta.get('source', '?')}  "
+        f"engine: {meta.get('engine_version', '?')}"
+    )
+    print(
+        f"matched: {len(report['matched'])}  "
+        f"mismatched: {len(report['mismatched'])}  "
+        f"missing: {len(report['missing'])}  "
+        f"extras: {len(report['extras'])}  "
+        f"skipped: {len(report['skipped'])}"
+    )
+
+    if report["mismatched"]:
+        print("\nMISMATCHED (file present but hash differs):")
+        for m in report["mismatched"]:
+            print(f"  {m['path']}")
+            print(f"    expected: {m['expected']}")
+            print(f"    actual:   {m['actual']}")
+    if report["missing"]:
+        print("\nMISSING (manifested file not found):")
+        for rel in report["missing"]:
+            print(f"  {rel}")
+    if report["extras"]:
+        if args.show_extras:
+            print("\nEXTRAS (present but not in manifest or runtime_state):")
+            for rel in report["extras"]:
+                print(f"  {rel}")
+        else:
+            print(
+                f"\n({len(report['extras'])} extras; pass --show-extras to list)"
+            )
+    if report["skipped"] and args.show_skipped:
+        print("\nSKIPPED (matched runtime_state pattern):")
+        for rel in report["skipped"]:
+            print(f"  {rel}")
+
+    print("\nOK" if report["ok"] else "\nFAIL")
+
+
+def _extract_from_installer(installer: Path) -> Path:
+    """Run innoextract on the GOG installer; return the
+    extracted-files root inside a temp dir. Caller owns the
+    cleanup (returned path lives under a TemporaryDirectory).
+    """
+    if shutil.which("innoextract") is None:
+        raise SystemExit(
+            "verify-install: --repair needs `innoextract` on PATH; "
+            "install it via `dnf install innoextract`."
+        )
+    tmp = Path(tempfile.mkdtemp(prefix="verify-install-repair-"))
+    # `innoextract -e <installer> -d <dir>` extracts the app/
+    # tree under <dir>/app. Quiet output unless something fails.
+    result = subprocess.run(
+        ["innoextract", "-e", "-d", str(tmp), str(installer)],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        shutil.rmtree(tmp, ignore_errors=True)
+        raise SystemExit(
+            f"verify-install: innoextract failed (rc={result.returncode}):\n"
+            f"{result.stderr}"
+        )
+    # GOG Inno installers extract the install tree directly at the
+    # output root (DSUN.EXE, MIDITSR.EXE, *.GFF, etc.). The `app/`
+    # subdir present in the extract holds GOG launcher artifacts
+    # (goggame-*.ico, webcache.zip) and is itself part of the
+    # install, not a wrapper around it. Do not drill into it.
+    return tmp
+
+
+def cmd_repair(
+    args: argparse.Namespace, install: Path, report: dict
+) -> int:
+    """Restore mismatched / missing files from the GOG installer.
+
+    Stages a backup of any overwritten file at
+    `<install>/__verify-install-backup/<path>` so the change is
+    reversible. `--dry-run` reports what would be repaired
+    without writing.
+    """
+    installer = args.repair
+    if not installer.is_file():
+        print(
+            f"verify-install: --repair installer {installer} not found",
+            file=sys.stderr,
+        )
+        return 2
+    targets = [m["path"] for m in report["mismatched"]] + list(report["missing"])
+    if not targets:
+        print("repair: nothing to do (no mismatched or missing files)")
+        return 0
+
+    if args.dry_run:
+        print(f"repair --dry-run: would restore {len(targets)} file(s):")
+        for t in targets:
+            print(f"  {t}")
+        return 0
+
+    backup_root = install / "__verify-install-backup"
+    extracted_root = _extract_from_installer(installer)
+    try:
+        restored = 0
+        skipped = []
+        for rel in targets:
+            src = extracted_root / rel
+            if not src.is_file():
+                skipped.append(rel)
+                continue
+            dst = install / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            if dst.exists():
+                backup_dst = backup_root / rel
+                backup_dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(dst, backup_dst)
+            shutil.copy2(src, dst)
+            restored += 1
+            print(f"  restored {rel}")
+        print(
+            f"repair: restored {restored}/{len(targets)} file(s); "
+            f"{len(skipped)} not found in installer"
+        )
+        if skipped:
+            print("  not in installer:")
+            for s in skipped:
+                print(f"    {s}")
+        if restored > 0:
+            print(f"  backups in {backup_root}")
+        return 0 if not skipped else 1
+    finally:
+        shutil.rmtree(extracted_root, ignore_errors=True)
+
+
 def cmd_verify(args: argparse.Namespace) -> int:
     install = args.path.resolve()
     if not install.is_dir():
@@ -108,89 +319,43 @@ def cmd_verify(args: argparse.Namespace) -> int:
         print(f"error: manifest not found: {manifest_path}", file=sys.stderr)
         return 2
 
-    with manifest_path.open("rb") as f:
-        manifest = tomllib.load(f)
+    meta, report = _verify_install(install, manifest_path)
+    report["meta"] = meta
 
-    expected: dict[str, str] = manifest.get("files", {})
-    runtime_patterns: list[str] = manifest.get("runtime_state", {}).get("patterns", [])
+    if args.json:
+        # Sort lists so identical inputs produce identical JSON
+        # (useful in CI diff comparisons).
+        report_json = {
+            "tool": "verify-install",
+            "version": VERSION,
+            "install": report["install"],
+            "manifest": report["manifest"],
+            "meta": meta,
+            "summary": {
+                "matched": len(report["matched"]),
+                "mismatched": len(report["mismatched"]),
+                "missing": len(report["missing"]),
+                "extras": len(report["extras"]),
+                "skipped": len(report["skipped"]),
+            },
+            "mismatched": report["mismatched"],
+            "missing": sorted(report["missing"]),
+            "extras": sorted(report["extras"]),
+            "skipped": sorted(report["skipped"]),
+            "ok": report["ok"],
+        }
+        print(json.dumps(report_json, indent=2))
+    else:
+        _print_report(meta, report, args)
 
-    matched: list[str] = []
-    mismatched: list[tuple[str, str, str]] = []
-    missing: list[str] = []
-    extras: list[str] = []
-    skipped: list[str] = []
+    if args.repair is not None:
+        # Run repair after the verify; the repair flow uses
+        # mismatched + missing from the report we just built.
+        rc = cmd_repair(args, install, report)
+        if rc != 0:
+            return rc
 
-    seen: set[str] = set()
-    for rel, want_hash in expected.items():
-        target = install / rel
-        seen.add(rel)
-        # runtime_state patterns override [files] entries: an entry that
-        # appears in both is treated as runtime_state (not verified). Lets
-        # us record pristine-install hashes in [files] for completeness
-        # while still skipping files the game or installer rewrites at
-        # runtime (saves, SOUND.CFG, etc.).
-        if matches_any(rel, runtime_patterns):
-            skipped.append(rel)
-            continue
-        if not target.is_file():
-            missing.append(rel)
-            continue
-        got = sha256_file(target)
-        if got == want_hash:
-            matched.append(rel)
-        else:
-            mismatched.append((rel, want_hash, got))
-
-    for p in walk_files(install):
-        rel = relpath(p, install)
-        if rel in seen:
-            continue
-        if matches_any(rel, runtime_patterns):
-            skipped.append(rel)
-        else:
-            extras.append(rel)
-
-    meta = manifest.get("meta", {})
-    print(f"install:  {install}")
-    print(f"manifest: {manifest_path}")
-    print(
-        f"  game: {meta.get('game', '?')}  "
-        f"source: {meta.get('source', '?')}  "
-        f"engine: {meta.get('engine_version', '?')}"
-    )
-    print(
-        f"matched: {len(matched)}  "
-        f"mismatched: {len(mismatched)}  "
-        f"missing: {len(missing)}  "
-        f"extras: {len(extras)}  "
-        f"skipped: {len(skipped)}"
-    )
-
-    if mismatched:
-        print("\nMISMATCHED (file present but hash differs):")
-        for rel, want, got in mismatched:
-            print(f"  {rel}")
-            print(f"    expected: {want}")
-            print(f"    actual:   {got}")
-    if missing:
-        print("\nMISSING (manifested file not found):")
-        for rel in missing:
-            print(f"  {rel}")
-    if extras:
-        if args.show_extras:
-            print("\nEXTRAS (present but not in manifest or runtime_state):")
-            for rel in extras:
-                print(f"  {rel}")
-        else:
-            print(f"\n({len(extras)} extras; pass --show-extras to list)")
-    if skipped and args.show_skipped:
-        print("\nSKIPPED (matched runtime_state pattern):")
-        for rel in skipped:
-            print(f"  {rel}")
-
-    ok = not mismatched and not missing
-    print("\nOK" if ok else "\nFAIL")
-    return 0 if ok else 1
+    return 0 if report["ok"] else 1
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -261,6 +426,37 @@ def build_parser() -> argparse.ArgumentParser:
         "--show-skipped",
         action="store_true",
         help="verify-mode: list each skipped (runtime_state) file",
+    )
+    p.add_argument(
+        "--json",
+        action="store_true",
+        help=(
+            "verify-mode: emit the report as JSON on stdout instead of "
+            "the human-readable summary. Useful for CI checks, the "
+            "repro harness's pre-run sanity check, or downstream "
+            "tooling. Lists are sorted for stable output."
+        ),
+    )
+    p.add_argument(
+        "--repair",
+        type=Path,
+        default=None,
+        metavar="INSTALLER.EXE",
+        help=(
+            "verify-mode: for every mismatched / missing file, "
+            "re-extract the canonical bytes from the GOG installer "
+            "via `innoextract` and write them back. Stages a backup "
+            "at <install>/__verify-install-backup/<path> so the "
+            "change is reversible. Requires `innoextract` on PATH."
+        ),
+    )
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help=(
+            "with --repair: report what would be restored without "
+            "writing anything."
+        ),
     )
     return p
 

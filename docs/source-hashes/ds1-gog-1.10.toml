@@ -104,4 +104,6 @@ patterns = [
   "unins000.*",
   # GOG cloud sync (created on first GOG-client run).
   "cloud_saves/*",
+  # verify-install --repair backups (created on first repair run).
+  "__verify-install-backup/*",
 ]
