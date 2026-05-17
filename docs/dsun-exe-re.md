@@ -127,15 +127,40 @@ region-number-to-family-id mapping (per region in DS1) is the
 remaining gap.
 
 Pattern-search for callers of the dispatcher at `0x568be`
-turned up zero hits: no `9a 2e 04 <seg> <seg>` (16-bit far
-call), no `9a 2e 04 00 00 <seg> <seg>` (32-bit far call),
-no `e8` near call landing on `0x568be`, no occurrence of
-`0x568be` or `0x042e` as a stored 32-bit / 16-bit constant.
-The dispatcher is reachable via some indirect mechanism that
-byte-pattern search doesn't surface. Candidates worth trying
-next: vtable / function-pointer table walk-back from
-`0x568be`, or Watcom-style runtime dispatch through a register
-loaded from a table elsewhere in the data segment.
+turned up zero hits across the obvious channels: no
+`9a 2e 04 <seg> <seg>` (16-bit far call), no `9a 2e 04 00 00
+<seg> <seg>` (32-bit far call), no `e8` near call landing on
+`0x568be`, and no other `9a` site with a target offset of
+`0x042e`. The dispatcher is reachable via some indirect
+mechanism that byte-pattern search doesn't surface.
+
+**One real signal did fall out of the caller-trace pass: the
+segment selector for the dispatcher's code segment is
+`0x3a98`.** It's the only `2e 04` (offset `0x042e`) value at a
+2-byte-aligned position outside the segment itself; the
+adjacent bytes resolve to a far pointer `0x3a98:0x042e`. So
+the code segment that starts at file offset `0x56490`
+corresponds to DOS/4GW selector `0x3a98`. That maps cleanly
+onto the dispatcher entry: `0x3a98:0x042e` is file
+`0x56490 + 0x042e = 0x568be`. Useful for naming the segment
+in any future RE pass.
+
+The reference itself, however, sits inside a long array of
+uniform 6-byte records of the form `(0x0500, offset, 0x3a98)`
+at file `0x40670..` onward, with `offset` ascending by `0x0c`
+per entry (`0x031a, 0x0326, 0x0332, ..., 0x042e, 0x043a, ...`).
+The targets at every twelfth byte in segment `0x3a98` mostly
+fall mid-instruction, not on function prologues, so the array
+isn't a function-pointer table. It looks more like a Watcom
+or DOS/4GW emitted bookkeeping table (relocations, line-number
+records, or similar). Worth verifying once we have an LE / LX
+parser, but it's not the caller channel.
+
+What's worth trying next: walk the data segment forward from
+the bookkeeping table looking for a *different* table with
+4-byte entries that holds real callable far pointers, and
+search for code that loads from `ds:<that table>` to find the
+indirect-call site.
 
 ### 3.4 Original finding: the CMAT-first / CPAL-fallback pattern
 
