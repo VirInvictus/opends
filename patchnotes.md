@@ -4,6 +4,40 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/save-inspect/` v0.6.0** validates the DS2 item
+  sub-block schema and finishes the DS2 save-state decode arc.
+  Plus a bonus structural discovery: `SAVE0N.SAV` files are
+  byte-identical snapshots of `DARKRUN.GFF`.
+  - **DS2 item validation**. libgff's `ds1_item_t` (23 bytes
+    on the wire, "Not confirmed at all" per the upstream
+    comment) **is** the DS2 wire format byte-for-byte. v0.6.0
+    confirms against 151 items across two CHARSAVE corpora
+    (played: a `ds2-smoke --play` capture; factory: the
+    pristine GOG 1.10 ship). Zero truncations on DS2; every
+    item reads through the trailing `priority` + `data0` pair.
+  - **`_format` tags**. `_decode_item` now emits
+    `_format: ds1_item` for 21-byte records and
+    `_format: ds2_item` for 23-byte records. Consistent with
+    how v0.4 (combat) and v0.5 (character) surface the
+    per-game shape; downstream tooling can feature-detect on
+    the tag.
+  - **`SAVE0N.SAV` == `DARKRUN.GFF` discovery**. While
+    capturing the played-save fixtures, the save-slot
+    mechanism became visible: the engine writes a `SAVE0N.SAV`
+    file that is byte-for-byte the current `DARKRUN.GFF`
+    (sha256 match confirmed on both games). Both are standard
+    GFF containers; save-inspect reads `SAVE0N.SAV` directly
+    with no changes. Inside is ~60 `SAVE` chunks (per-region
+    world state), an `STXT` save-name chunk, an `ETME`
+    event-table-metadata chunk, plus DS1's `ETAB` entity
+    table. The `SAVE` chunk decode is the next un-cracked
+    surface; queued without a version target.
+  - **`roadmap.md` Phase 4 §save-inspect**: DS2 item row
+    ticked; `SAVE` chunk decode is the new tail.
+  - **Memory** `dsun_install_paths` updated with the
+    save-slot semantics.
+  - **VERSION**: 0.5.0 -> 0.6.0.
+
 - **`tools/repro/` v0.2.1** adds `--play` mode: the same setup
   recipe the regression test uses (overlay-mounted C:, factory
   saves staged at C:\\ root, sound_ds-generated `SOUND.CFG`,

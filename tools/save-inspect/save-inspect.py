@@ -660,15 +660,24 @@ ITEM_SLOT_NAMES = {
 
 def _decode_item(body: bytes) -> dict[str, Any]:
     """Decode an item sub-block per `ds1_item_t` (libgff
-    `include/gff/item.h`, MIT; "Not confirmed at all" per the
-    upstream comment). Best-effort with libgff annotations.
+    `include/gff/item.h`, MIT).
 
     DS1 item sub-blocks are 21 bytes; DS2 item sub-blocks are 23.
-    The libgff struct computes to 23 (DS2 fit). For DS1, the
-    trailing 2 bytes (`priority` + `data0`) will be `_truncated_at`.
+    libgff's struct computes to 23 and the field layout matches
+    DS2's wire format byte-for-byte (confirmed v0.6.0 against
+    every item in a played `CHARSAVE.GFF` from the `ds2-smoke`
+    `--play` session: 27 items on the heaviest-inventory NPC,
+    all 23-byte aligned, every field through `data0` reads
+    cleanly). DS1 truncates at the trailing `priority` +
+    `data0` pair (which the upstream comment flags as "Not
+    confirmed at all"; for DS1 they aren't there).
     """
     out: dict[str, Any] = {}
     n = len(body)
+    if n == 23:
+        out["_format"] = "ds2_item"
+    elif n == 21:
+        out["_format"] = "ds1_item"
     pos = 0
 
     def take(t: str, size: int, key: str) -> bool:

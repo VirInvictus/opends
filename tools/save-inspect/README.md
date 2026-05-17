@@ -19,6 +19,81 @@ python3 save-inspect.py /path/to/CHARSAVE.GFF -o save.json
 JSON is emitted to stdout by default; `-o <file>` writes to a
 file instead.
 
+## What v0.6.0 ships
+
+**DS2 item sub-block validation, plus per-item `_format` tag.**
+v0.5.0 closed the DS2 character schema; v0.6.0 closes the
+last remaining DS2 sub-block. The good news: libgff's
+`ds1_item_t` schema (which the existing `_decode_item` already
+implements) is byte-for-byte the DS2 layout. v0.6.0 is the
+validation pass and the `_format` plumbing that makes the
+match explicit, not a decoder rewrite.
+
+### Validation corpus
+
+Three independent corpora, all clean:
+
+| Corpus | Items | Size | `_format` | Truncations |
+|---|---|---|---|---|
+| DS1 played save (3-PC party, mid character creation) | 34 | 21 bytes | `ds1_item` | `priority` (expected; DS1 doesn't ship those bytes) |
+| DS2 played save (`ds2-smoke --play` capture) | 151 | 23 bytes | `ds2_item` | **none** |
+| DS2 factory `__support/save/CHARSAVE.GFF` | 151 | 23 bytes | `ds2_item` | **none** |
+
+DS2 items hit every field through the trailing `priority` +
+`data0` pair without a single short read. The "Not confirmed
+at all" comment libgff carries on those two fields no longer
+applies on the DS2 side (we now have 151 example points and
+zero anomalies).
+
+### Schema (DS2 23-byte item)
+
+Same field layout as DS1; the extra 2 bytes at the tail are
+the `priority` u16 + `data0` i8 that DS1 omits.
+
+```json
+"decoded": {
+  "_format": "ds2_item",
+  "id": -746,
+  "quantity": 20,
+  "next": 33,
+  "value": 650,
+  "pack_index": 9999,
+  "item_index": 6,
+  "icon": 0,
+  "charges": 0,
+  "special": 0,
+  "slot": {"value": 0, "name": "ARM"},
+  "name_idx": 6,
+  "bonus": 1,
+  "priority": 30,
+  "data0": 2
+}
+```
+
+DS1 records emit `"_format": "ds1_item"` and continue to read
+through `bonus`, after which `_truncated_at: "priority"`
+surfaces (this is the correct DS1 behaviour, not a decoder
+gap).
+
+### Bonus discovery: `DARKRUN.GFF` == `SAVE0N.SAV`
+
+While the v0.6.0 fixtures landed, the save-slot system also
+came into focus. When the user saves to a named slot, the
+engine snapshots `DARKRUN.GFF` to `SAVE0N.SAV` byte-for-byte
+(confirmed by SHA-256 match on both games' Wine installs after
+a real save). Both files are standard GFF containers; the
+existing save-inspect decoder reads `SAVE0N.SAV` directly with
+no changes. Contents (~60 `SAVE` chunks, an `STXT` save-name
+chunk, an `ETME` event-table-metadata chunk, plus DS1's
+`ETAB` entity table) are now visible end-to-end.
+
+### Out of scope (queued)
+
+- A `SAVE` chunk decoder. Each region the player has visited
+  emits a `SAVE` chunk inside `DARKRUN.GFF` / `SAVE0N.SAV`,
+  and the format isn't decoded yet. That's a different
+  schema RE thread; queued without a version target.
+
 ## What v0.5.0 ships
 
 **DS2 character sub-block schema** (66 bytes). v0.4.0 fully

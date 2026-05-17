@@ -267,11 +267,19 @@ look at the maps directly.
       `_data2` (4 bytes) and two of `(race, gender, alignment)`
       (2 bytes). All 19 DS2 CHAR records decode with stats in
       the 3..25 D&D 2e range, alignments in the documented
-      0..8 set, HP / PSP matching the combat sub-block. Three
-      pre-stats positions (the single `alignment` byte at
-      offset 20) remain empirically identified rather than
-      pinned to DSUN.EXE source; DS2 **item** sub-block is the
-      next queued schema (v0.6.0+).
+      0..8 set, HP / PSP matching the combat sub-block.
+- [x] DS2 **item** sub-block (23 bytes). save-inspect v0.6.0
+      validates that libgff's `ds1_item_t` schema is exactly
+      DS2's wire format: 151 items across played + factory
+      DS2 CHARSAVEs decode with zero truncations, including
+      the trailing `priority` + `data0` pair that DS1 omits.
+      Per-item `_format` tag (`ds1_item` / `ds2_item`) added.
+      Save-slot files (`SAVE0N.SAV`) discovered to be
+      byte-identical snapshots of `DARKRUN.GFF`; save-inspect
+      reads them natively. The `SAVE` chunk inside
+      `DARKRUN.GFF` (per-region world state, ~60 per save)
+      is the next un-decoded surface; queued without a
+      version target.
 - [x] Tagged: `save-inspect-v0.1.0`. (this release)
 
 ### `tools/image-extract/` (Rust)
