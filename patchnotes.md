@@ -4,6 +4,37 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`docs/dsun-exe-re.md` §4.4 / §4.5 correction**. The cycle-
+  table identification in the prior §4 commit was wrong; the
+  loop at `0x23067` is the region GMAP / entity-render walker,
+  not the palette cycle routine. The byte signature that drove
+  the misidentification (`66 ee` interpreted as a 32-bit
+  `out dx, eax`) parses as `f7 66 ee` = `mul word ptr
+  [bp-0x12]` in 16-bit mode, which is what the surrounding
+  segment actually is.
+  - **§4.4 retracted**. The loop walks a far-pointer table at
+    `[0x6690]` with 8-byte records, counted by `[0x57c8]`,
+    filtered against `[0x5746]` / `[0x574a]`. The work block
+    at `0x23095` reads a 128-wide tile grid, masks 5 bits per
+    cell as an entity-index, looks up a 4-byte
+    `(x_offset, y_offset, sprite_id)` record at
+    `[0x574c + 4 * (idx-1)]`, and far-calls a draw routine.
+    That's the region entity-render path, not palette cycling.
+  - **§4.5 (new)**. Lists the three productive next directions
+    for finding the actual cycle routine: caller search
+    against `write_palette_range` (`0x288a4`), tick-handler
+    trace through the engine main loop, or shape-matching DS2
+    against DSO's `VGAColorCycle` if a function-table dump
+    surfaces.
+  - **§4.6**: DSO symbol table preserved (the names remain
+    valid anchors); the wrong "this maps to `0x23067`" claim
+    is removed.
+  - **§5 (open items)**: row 3 (animated palette colours)
+    revised to point at §4.5's next-step list instead of the
+    retracted decode path.
+  - **`region-render` stays at v0.5.0**. No `--animate` flag
+    in v0.6.0; would need the actual cycle routine.
+
 - **`tools/image-extract/` v0.2.1** root-causes the single
   remaining `FrameOutOfBounds` failure from v0.2.0's 99.95%
   decode rate and pins it in the corpus regression test. The
