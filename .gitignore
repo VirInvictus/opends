@@ -29,3 +29,8 @@
 # Python bytecode caches
 __pycache__/
 *.pyc
+
+# Played-save fixtures for save-inspect / repro work. Each
+# session's saves live under a per-save directory; the contents
+# are user-specific game state, not part of the repo.
+/tools/save-inspect/test-saves/
