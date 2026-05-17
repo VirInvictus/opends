@@ -37,6 +37,9 @@ use thiserror::Error;
 pub mod parse;
 pub use parse::{ParseError, parse};
 
+pub mod edit;
+pub use edit::{EditError, Editor, can_edit_opcode, retarget_branches};
+
 #[derive(Debug, Error)]
 pub enum EncodeError {
     #[error("instruction at offset {offset} (opcode 0x{opcode:02x}) is best-effort; encoder cannot reproduce its bytes faithfully")]

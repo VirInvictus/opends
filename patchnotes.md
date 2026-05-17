@@ -4,6 +4,45 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gpl-asm/` v0.3.0** ships **structural edits**. New
+  `Editor` API wraps a `DisasmResult` and exposes
+  `insert_instruction(before_offset, instr)`,
+  `delete_instruction(at_offset)`, and
+  `replace_instruction(at_offset, with)`. Branch targets and
+  subsequent instruction offsets shift automatically.
+  - **Module**: `tools/gpl-asm/src/edit.rs`. Exported as
+    `gpl_asm::edit::{Editor, EditError, retarget_branches,
+    can_edit_opcode}`.
+  - **Branch retargeting**: works on the seven branch opcodes
+    (`gpl jump` 0x12, `gpl local sub` 0x13, `gpl ifcompare`
+    0x27 — param[1] only, `gpl if` 0x3E, `gpl else` 0x3F,
+    `gpl while` 0x63, `gpl wend` 0x64). Targets `>=
+    cutoff_offset` shift by `delta`; targets below are left
+    alone. `gpl global sub` (0x14) intentionally not retargeted
+    (its target offset is in a different chunk).
+  - **Length recompute via the encoder**: `Editor` calls
+    `encode_instruction` on the newly-built instruction to count
+    its bytes, so the user doesn't manually compute lengths.
+  - **`Editor::make_instruction(opcode, params, raw_tail)`**
+    and **`make_simple(opcode)`** are convenience builders that
+    set `mnemonic` / `offset` / `length` correctly.
+  - **Order-of-operations**: replace swaps the new instruction
+    in BEFORE retargeting, so the new instruction's own branch
+    params participate in the shift (matters when a patch
+    inserts a forward-jump whose target shifts with the insert).
+  - **Tests**: 6 new unit tests
+    (`insert_endif_at_start_shifts_following`,
+    `insert_shifts_branch_target_after_insertion_point`,
+    `delete_shifts_branch_target_down`,
+    `replace_with_same_length_keeps_offsets`,
+    `replace_with_longer_shifts_following_and_branches`,
+    `missing_offset_errors`). gpl-asm tests: 17 unit (was 11)
+    + 2 corpus integration. Workspace total: 91 -> 97.
+  - **Out of scope**: label-relative inserts; constructing
+    Search-shaped instructions with raw_tail bytes. Both queued
+    for v0.4.0.
+  - **VERSION**: 0.2.1 -> 0.3.0.
+
 - **`tools/gpl-asm/` v0.2.1 + `tools/gpl-disasm/` v0.4.6** close
   the labelled-text round-trip to **600 / 600 byte-identical**.
   v0.2.0 hit 456/456 of the `--no-labels` form; v0.2.1 handles

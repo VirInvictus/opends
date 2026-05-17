@@ -13,6 +13,57 @@ Depends on `gpl-disasm` for the [`DisasmResult`] type (and the
 `Deserialize` impls added there in v0.4.4 specifically so this
 crate can consume the same JSON the disassembler emits).
 
+## What `gpl-asm v0.3.0` ships
+
+**Structural edits.** The `Editor` API in
+[`gpl_asm::edit`](src/edit.rs) wraps a `DisasmResult` and exposes:
+
+- `insert_instruction(before_offset, instr)` — splice an
+  instruction in. Subsequent offsets shift by the new
+  instruction's encoded length. **Branch targets `>=
+  before_offset` shift by the same amount.**
+- `delete_instruction(at_offset)` — remove an instruction.
+  Subsequent offsets and branch targets `> at_offset` shift
+  down.
+- `replace_instruction(at_offset, with)` — swap one instruction
+  for another. `delta = new.length - old.length`; subsequent
+  offsets and branch targets shift by `delta`.
+- `Editor::make_instruction(opcode, params, raw_tail)` and
+  `make_simple(opcode)` — build new instructions with their
+  length computed via the encoder.
+
+Branch instructions handled for retargeting: `gpl jump`
+(0x12), `gpl local sub` (0x13), `gpl ifcompare` (0x27), `gpl
+if` (0x3E), `gpl else` (0x3F), `gpl while` (0x63), `gpl wend`
+(0x64). `gpl global sub` (0x14) targets a chunk in another
+GPL file, so its parameters aren't shifted.
+
+**Workflow** (patch authoring):
+
+```rust
+use gpl_asm::{Editor, encode};
+use gpl_disasm::disassemble;
+
+let result = disassemble(&chunk_bytes);
+let mut ed = Editor::from_result(result);
+let endif = Editor::make_simple(0x67)?;
+ed.insert_instruction(0x0011, endif)?;
+let new_bytes = encode(&ed.into_result())?;
+```
+
+After edit, the encoded bytes can be written back via
+`gff-edit`'s replace-chunk pipeline (`gff-cat replace`) — same
+shape as the v1 darkfix patch authoring story in `spec.md` §3.1.
+
+Out of scope for v0.3.0:
+- Label-relative inserts (modder says "insert before
+  label_0x0011"): for now, look up the label's offset manually
+  and call `insert_instruction(offset, ...)`. v0.4.0 will add a
+  label-relative API.
+- Inserting Search-shaped instructions with raw_tail: the
+  encoder accepts them, but constructing valid raw_tail bytes
+  is the modder's responsibility (no DSL for it yet).
+
 ## What `gpl-asm v0.2.1` ships
 
 **Full labelled-text round-trip.** Closes the v0.2.0 gaps:
@@ -206,15 +257,14 @@ that the original chunks ship inside dialog strings.
   JSON-mode corpus round-trip 600/600.
 - **v0.2.0**: text-listing parser for the `--no-labels` form;
   text-mode round-trip 456/456 non-Search.
-- **v0.2.1** (this release): labelled form support
-  (`label_0x...:` / `entry_0x...:` declarations + label-form
-  branch params) and `raw_tail` trailer parsing. Full corpus
-  round-trip 600/600.
-- **v0.3.0**: structural edits. `insert_instruction(at, instr)`
-  / `delete_instruction(at, length)` API that recomputes branch
-  targets and labels.
-- **v0.4.0**: high-level authoring DSL with named labels,
-  comments, macros, and forward references.
+- **v0.2.1**: labelled form support + `raw_tail` trailers.
+  600/600 byte-identical text round-trip.
+- **v0.3.0** (this release): structural edits. Insert / delete
+  / replace instructions with automatic branch-target
+  recompute.
+- **v0.4.0**: label-relative editing API (`insert_before_label`)
+  + high-level authoring DSL with named labels, comments,
+  macros, and forward references.
 - **v0.3.0**: structural edits. `insert_instruction(at, instr)`
   / `delete_instruction(at, length)` APIs that recompute branch
   targets and labels.

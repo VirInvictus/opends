@@ -312,12 +312,15 @@ just read it. Be able to discover unknown opcodes systematically.
       trailers, **600 / 600** chunks round-trip byte-identical
       through `bytes -> disasm -> labelled text -> parse ->
       encode`. CLI auto-detects JSON vs text from extension.)
-- [ ] Structural edits: `insert_instruction(at, instr)` /
-      `delete_instruction(at, length)` API that recomputes
-      branch targets and labels. Unblocks fixes that need to
-      insert or delete bytes (currently the disasm-edit-asm
-      cycle requires no-op padding). v0.3.0.
-- [ ] High-level authoring DSL with named labels, comments,
+- [x] Structural edits: `Editor::insert_instruction(at, instr)`
+      / `delete_instruction(at)` / `replace_instruction(at,
+      with)` API that recomputes branch targets and offsets.
+      (gpl-asm v0.3.0; 6 new unit tests cover insert / delete /
+      replace + branch retargeting.) Unblocks fixes that need
+      to insert or delete bytes without no-op padding.
+- [ ] Label-relative editing API
+      (`insert_before_label("label_0x...", instr)`) +
+      high-level authoring DSL with named labels, comments,
       macros, and forward references. v0.4.0.
 - [x] Tagged: `gpl-asm-v0.1.0`. (this release)
 
