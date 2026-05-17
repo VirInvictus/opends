@@ -145,6 +145,14 @@ pub struct RegionMap {
     /// the region's tile layer is using; palette-index-0
     /// pixels render as transparent.
     entity_sprites: BTreeMap<i32, WallSprite>,
+    /// All entity-sprite frames keyed by OJFF id. Populated by
+    /// `with_animated_entities_from(...)` (v0.6.0+). The
+    /// non-animated `entity_sprites` map stays alongside this
+    /// one so `render_indexed()` (frame-0-only) is unchanged
+    /// against v0.5.0; `render_indexed_frame(N)` checks
+    /// `entity_sprite_frames` first and falls back to the
+    /// single-frame map.
+    entity_sprite_frames: BTreeMap<i32, Vec<WallSprite>>,
     /// OJFF ids referenced by ETAB but not found in the
     /// entities-source GFF.
     pub missing_entity_ids: Vec<i32>,
@@ -263,6 +271,7 @@ impl RegionMap {
             wall_decode_failures: Vec::new(),
             entities,
             entity_sprites: BTreeMap::new(),
+            entity_sprite_frames: BTreeMap::new(),
             missing_entity_ids: Vec::new(),
             entity_decode_failures: Vec::new(),
         })
@@ -276,6 +285,14 @@ impl RegionMap {
     /// Count of decoded entity sprites available for rendering.
     pub fn entity_sprite_count(&self) -> usize {
         self.entity_sprites.len()
+    }
+
+    /// Count of distinct OJFF ids with multi-frame sprites
+    /// loaded via [`with_animated_entities_from`].
+    ///
+    /// [`with_animated_entities_from`]: RegionMap::with_animated_entities_from
+    pub fn entity_sprite_frames_count(&self) -> usize {
+        self.entity_sprite_frames.len()
     }
 
     /// Index `OJFF` + `BMP ` chunks from `entities_gff` for the
@@ -350,6 +367,107 @@ impl RegionMap {
         Ok(())
     }
 
+    /// Like [`with_entities_from`] but decodes *every* frame of
+    /// each referenced BMP, not just frame 0. v0.6.0+ entry
+    /// point: `render_indexed_frame(N)` then composites frame
+    /// `N % entity.frames.len()` for each entity, producing
+    /// the animated NPC walk-cycle / object-flicker frames.
+    ///
+    /// Populates [`entity_sprite_frames`]; leaves
+    /// [`entity_sprites`] (the single-frame v0.5.0 map) empty.
+    /// `render_indexed()` therefore behaves as if no entity art
+    /// were loaded; call [`render_indexed_frame`] or use
+    /// [`with_entities_from`] for a frame-0 render.
+    ///
+    /// Sprites that fail to decode are recorded in
+    /// `entity_decode_failures`; their OJFF ids land in
+    /// `missing_entity_ids`. A partial-decode (frame 0 OK,
+    /// frame 5 fails) keeps the frames it did get; the
+    /// `render_indexed_frame` cycle wraps at `frames.len()`.
+    ///
+    /// [`with_entities_from`]: RegionMap::with_entities_from
+    /// [`entity_sprite_frames`]: RegionMap::entity_sprite_frames
+    /// [`entity_sprites`]: RegionMap::entity_sprites
+    /// [`render_indexed_frame`]: RegionMap::render_indexed_frame
+    pub fn with_animated_entities_from(&mut self, entities_gff: &Gff) -> Result<()> {
+        if self.entities.is_empty() {
+            return Ok(());
+        }
+        let mut needed: std::collections::BTreeSet<i32> = std::collections::BTreeSet::new();
+        for ent in &self.entities {
+            let id = if ent.ojff_number < 0 {
+                -(ent.ojff_number as i32)
+            } else {
+                ent.ojff_number as i32
+            };
+            needed.insert(id);
+        }
+        let mut missing: std::collections::BTreeSet<i32> = std::collections::BTreeSet::new();
+        for ojff_id in needed {
+            let Some(ojff_chunk) = entities_gff.find(OJFF_KIND, ojff_id) else {
+                missing.insert(ojff_id);
+                continue;
+            };
+            let ojff_bytes = entities_gff.read_chunk(ojff_chunk);
+            let Some((bmp_number, x_off, y_off)) = parse_ojff(ojff_bytes) else {
+                self.entity_decode_failures.push(TileDecodeFailure {
+                    tile_id: ojff_id,
+                    reason: format!("OJFF too short ({} bytes)", ojff_bytes.len()),
+                });
+                missing.insert(ojff_id);
+                continue;
+            };
+            let Some(bmp_chunk) = entities_gff.find(BMP_KIND, bmp_number as i32) else {
+                self.entity_decode_failures.push(TileDecodeFailure {
+                    tile_id: ojff_id,
+                    reason: format!("BMP id {bmp_number} not in entities GFF"),
+                });
+                missing.insert(ojff_id);
+                continue;
+            };
+            let bmp_bytes = entities_gff.read_chunk(bmp_chunk);
+            match decode_all_wall_frames(ojff_id, bmp_bytes, x_off, y_off) {
+                Ok(frames) if !frames.is_empty() => {
+                    self.entity_sprite_frames.insert(ojff_id, frames);
+                }
+                Ok(_) => {
+                    self.entity_decode_failures.push(TileDecodeFailure {
+                        tile_id: ojff_id,
+                        reason: format!("BMP id {bmp_number} has zero usable frames"),
+                    });
+                    missing.insert(ojff_id);
+                }
+                Err(mut failure) => {
+                    failure.reason = format!("BMP id {bmp_number}: {}", failure.reason);
+                    self.entity_decode_failures.push(failure);
+                    missing.insert(ojff_id);
+                }
+            }
+        }
+        self.missing_entity_ids = missing.into_iter().collect();
+        Ok(())
+    }
+
+    /// Maximum frame count across every entity sprite loaded by
+    /// [`with_animated_entities_from`]. The natural choice for
+    /// `--frame-count` when the caller doesn't override it:
+    /// renders enough frames to show every entity through at
+    /// least one full cycle (entities with shorter cycles
+    /// loop within the span).
+    ///
+    /// Returns 1 when no animated entities are loaded (the
+    /// degenerate "still" case).
+    ///
+    /// [`with_animated_entities_from`]: RegionMap::with_animated_entities_from
+    pub fn max_entity_frame_count(&self) -> usize {
+        self.entity_sprite_frames
+            .values()
+            .map(|v| v.len())
+            .max()
+            .unwrap_or(1)
+            .max(1)
+    }
+
     /// Index `WALL` chunks from `walls_gff` for the wall sprite
     /// ids referenced by this region's `GMAP`. Each non-zero
     /// wall_index `w` in `gmap` resolves to
@@ -400,7 +518,41 @@ impl RegionMap {
     /// exist in the GFF are drawn as palette index 0; walls are
     /// composited on top, with palette-index-0 wall pixels
     /// treated as transparent.
+    ///
+    /// Entities use the single-frame `entity_sprites` map
+    /// populated by `with_entities_from`; the multi-frame map
+    /// populated by `with_animated_entities_from` is ignored
+    /// here so v0.5.0's frame-0 output remains byte-identical.
+    /// Use [`render_indexed_frame`] to render an animated
+    /// frame from the multi-frame map.
+    ///
+    /// [`render_indexed_frame`]: RegionMap::render_indexed_frame
     pub fn render_indexed(&self) -> Vec<u8> {
+        self.render_layered(/* animated_frame */ None)
+    }
+
+    /// Render frame `frame_idx` of an animated region. Per-entity
+    /// frame selected as `frame_idx %
+    /// entity.frames.len()`; entities with only one frame are
+    /// "still" at every frame.
+    ///
+    /// Requires [`with_animated_entities_from`] to have been
+    /// called; an entity for which no frames were loaded is
+    /// silently skipped (matches `render_indexed` behaviour
+    /// when an OJFF didn't resolve).
+    ///
+    /// [`with_animated_entities_from`]: RegionMap::with_animated_entities_from
+    pub fn render_indexed_frame(&self, frame_idx: usize) -> Vec<u8> {
+        self.render_layered(Some(frame_idx))
+    }
+
+    /// Shared body for the single-frame and animated render
+    /// paths. `animated_frame = None` matches v0.5.0 byte-for-
+    /// byte; `animated_frame = Some(N)` picks per-entity frame
+    /// `N % frames.len()` from `entity_sprite_frames` and
+    /// falls back to `entity_sprites` for entities not present
+    /// in the multi-frame map.
+    fn render_layered(&self, animated_frame: Option<usize>) -> Vec<u8> {
         let mut out = vec![0u8; REGION_PIXEL_WIDTH * REGION_PIXEL_HEIGHT];
         // 1. Background tiles.
         for map_y in 0..REGION_TILE_HEIGHT {
@@ -455,7 +607,16 @@ impl RegionMap {
             } else {
                 ent.ojff_number as i32
             };
-            let Some(sprite) = self.entity_sprites.get(&id) else {
+            let sprite = match animated_frame {
+                Some(f) => self
+                    .entity_sprite_frames
+                    .get(&id)
+                    .filter(|v| !v.is_empty())
+                    .map(|frames| &frames[f % frames.len()])
+                    .or_else(|| self.entity_sprites.get(&id)),
+                None => self.entity_sprites.get(&id),
+            };
+            let Some(sprite) = sprite else {
                 continue;
             };
             let dst_x = ent.x as i32 - sprite.x_offset as i32;
@@ -467,6 +628,23 @@ impl RegionMap {
             }
         }
         out
+    }
+
+    /// Write the rendered animation frame `frame_idx` to `path`,
+    /// same encoder as `write_png` but using
+    /// `render_indexed_frame(frame_idx)`.
+    pub fn write_png_frame(&self, path: &Path, frame_idx: usize) -> Result<()> {
+        let pixels = self.render_indexed_frame(frame_idx);
+        let file = std::fs::File::create(path)?;
+        let w = std::io::BufWriter::new(file);
+        let mut encoder =
+            png::Encoder::new(w, REGION_PIXEL_WIDTH as u32, REGION_PIXEL_HEIGHT as u32);
+        encoder.set_color(png::ColorType::Indexed);
+        encoder.set_depth(png::BitDepth::Eight);
+        encoder.set_palette(self.palette.as_rgb_bytes().to_vec());
+        let mut writer = encoder.write_header()?;
+        writer.write_image_data(&pixels)?;
+        Ok(())
     }
 
     /// Write the rendered tile layer to a PNG file at `path`. Output
@@ -545,6 +723,44 @@ fn decode_wall(wall_id: i32, bytes: &[u8]) -> std::result::Result<WallSprite, Ti
         x_offset: 0,
         y_offset: 0,
     })
+}
+
+/// Decode every frame of a BMP / WALL bitmap chunk into the
+/// `WallSprite` shape, threading the OJFF anchor offsets onto
+/// each frame. Per-frame decode failures are silently dropped:
+/// returned vector contains only the successfully-decoded
+/// frames. Returns the same hard error as `decode_wall` if the
+/// header itself fails (no bitmap at all).
+fn decode_all_wall_frames(
+    wall_id: i32,
+    bytes: &[u8],
+    x_offset: i16,
+    y_offset: i16,
+) -> std::result::Result<Vec<WallSprite>, TileDecodeFailure> {
+    let fail = |reason: String| TileDecodeFailure {
+        tile_id: wall_id,
+        reason,
+    };
+    let bmp = Bitmap::from_bytes(bytes).map_err(|e| fail(format!("header: {e}")))?;
+    if bmp.frame_count == 0 {
+        return Err(fail("frame_count = 0".to_string()));
+    }
+    let mut frames = Vec::with_capacity(bmp.frame_count as usize);
+    for frame_idx in 0..bmp.frame_count as usize {
+        match bmp.decode_frame(frame_idx) {
+            Ok(frame) => frames.push(WallSprite {
+                width: frame.width,
+                height: frame.height,
+                pixels: frame.indices,
+                x_offset,
+                y_offset,
+            }),
+            Err(_) => {
+                // Skip the bad frame; the cycle wraps without it.
+            }
+        }
+    }
+    Ok(frames)
 }
 
 /// Parse one region's `ETAB` chunk into a list of records. Each
@@ -712,6 +928,7 @@ mod tests {
             wall_decode_failures: vec![],
             entities: vec![],
             entity_sprites: BTreeMap::new(),
+            entity_sprite_frames: BTreeMap::new(),
             missing_entity_ids: vec![],
             entity_decode_failures: vec![],
         }

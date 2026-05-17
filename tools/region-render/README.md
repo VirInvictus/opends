@@ -12,6 +12,60 @@ without firing up the engine.
 Depends on `gff-edit` for GFF I/O and `image-extract` for the
 `Palette` + `Bitmap` decoders. PNG output uses the `png` crate.
 
+## What `region-render v0.6.0` ships
+
+**Animated entity sprites.** Pivots past the palette-cycle
+wall documented in `docs/dsun-exe-re.md` §4.5 (the DOS/4GW
+runtime ABI dive needed to crack the cycle table is queued
+separately). v0.6.0 instead uses `image-extract v0.3.0`'s
+multi-frame decoder to walk every ETAB-referenced BMP's full
+`frame_count` and renders the region with each entity
+stepping through its animation cycle.
+
+```sh
+# Single still (default; same as v0.5.0):
+region-render RGN02.GFF -o region.png
+
+# Animated entity layer, four frames:
+region-render RGN02.GFF --animate-entities --frame-count 4 \
+    -o anim-dir/
+# wrote anim-dir/RGN02-frame-{0..3}.png
+
+# Animated entity layer, auto-picks max frame_count among
+# the region's entities so every cycle resolves at least once:
+region-render RGN02.GFF --animate-entities -o anim-dir/
+```
+
+`--animate-entities`:
+- Loads every frame of each ETAB-referenced BMP via the new
+  library helper `with_animated_entities_from(...)`.
+- Emits a numbered PNG sequence `<output>/<stem>-frame-<N>.png`.
+- Defaults to `max(frame_count)` across all loaded sprites
+  (DS1 RGN02 max is 15 frames); `--frame-count N` overrides.
+- Each entity loops independently within the span:
+  `selected_frame = global_frame % entity.frame_count`.
+
+**No regression**: frame 0 of an `--animate-entities` render
+is byte-identical to a single-frame v0.5.0 render (verified
+on DS1 RGN02). The frame-0-only path keeps the v0.5.0
+`with_entities_from` API; the new path uses a separate
+multi-frame map.
+
+### What's still queued
+
+- **Palette animation** (`VGAColorCycle`) stays parked.
+  Cracking the cycle table needs either a DOS/4GW runtime
+  ABI dive or a DSO function-table dump; see
+  `docs/dsun-exe-re.md` §4.5.
+- **Per-entity timing.** v0.6.0 advances every entity one
+  frame per emitted region-frame. Real per-entity frame
+  delays (the engine's animation timer is per-sprite) is a
+  v0.7.0+ feature.
+- **GIF / single-file output.** Same dependency reason as
+  `image-extract`; the numbered PNG sequence is the
+  authoritative output, and `ffmpeg` can roll it into a GIF
+  one step downstream.
+
 ## What `region-render v0.5.0` ships
 
 **DSUN.EXE RE finding for DS1 per-region palette, and a new

@@ -60,6 +60,21 @@ struct Cli {
     /// Skip the entity layer.
     #[arg(long = "no-entities", conflicts_with = "entities_from")]
     no_entities: bool,
+    /// Animate the entity layer: decode every frame of each
+    /// ETAB-referenced BMP and emit a numbered PNG sequence
+    /// stepping through the cycles. `-o` becomes a directory;
+    /// each frame writes as `<output>/<output_stem>-frame-
+    /// <N>.png`. Single-frame rendering (the default) is
+    /// unchanged.
+    #[arg(long = "animate-entities", conflicts_with = "no_entities")]
+    animate_entities: bool,
+    /// Number of frames to render in `--animate-entities`
+    /// mode. Default: the max frame_count across all entity
+    /// sprites loaded for this region (every entity cycles
+    /// through at least once). Pass an explicit value to
+    /// cap or extend the sequence.
+    #[arg(long = "frame-count", requires = "animate_entities")]
+    frame_count: Option<usize>,
 }
 
 fn main() -> Result<()> {
@@ -92,11 +107,55 @@ fn main() -> Result<()> {
         ) {
             let entities_gff = Gff::open(&entities_path)
                 .with_context(|| format!("opening entities source {}", entities_path.display()))?;
-            region
-                .with_entities_from(&entities_gff)
-                .with_context(|| format!("indexing OJFF/BMP from {}", entities_path.display()))?;
+            if cli.animate_entities {
+                region
+                    .with_animated_entities_from(&entities_gff)
+                    .with_context(|| format!("indexing OJFF/BMP (animated) from {}", entities_path.display()))?;
+            } else {
+                region
+                    .with_entities_from(&entities_gff)
+                    .with_context(|| format!("indexing OJFF/BMP from {}", entities_path.display()))?;
+            }
         }
     }
+
+    if cli.animate_entities {
+        let n_frames = cli.frame_count.unwrap_or_else(|| region.max_entity_frame_count());
+        if n_frames == 0 {
+            return Err(anyhow!("--frame-count must be at least 1"));
+        }
+        std::fs::create_dir_all(&cli.output)
+            .with_context(|| format!("creating output dir {}", cli.output.display()))?;
+        let stem = cli
+            .file
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("region");
+        for frame_idx in 0..n_frames {
+            let frame_path = cli.output.join(format!("{stem}-frame-{frame_idx}.png"));
+            region
+                .write_png_frame(&frame_path, frame_idx)
+                .with_context(|| format!("writing frame {} to {}", frame_idx, frame_path.display()))?;
+        }
+        eprintln!(
+            "wrote {n_frames} frame(s) ({}x{}, source map: {}) into {}",
+            region_render::REGION_PIXEL_WIDTH,
+            region_render::REGION_PIXEL_HEIGHT,
+            if region.used_map_kind { "MAP " } else { "RMAP" },
+            cli.output.display(),
+        );
+        eprintln!(
+            "  entities: {} ETAB records; {} animated sprite ids loaded; \
+             max entity frame_count {}; {} missing-entity ids; {} entity decode failures",
+            region.entities.len(),
+            region.entity_sprite_frames_count(),
+            region.max_entity_frame_count(),
+            region.missing_entity_ids.len(),
+            region.entity_decode_failures.len(),
+        );
+        return Ok(());
+    }
+
     region
         .write_png(&cli.output)
         .with_context(|| format!("writing PNG to {}", cli.output.display()))?;

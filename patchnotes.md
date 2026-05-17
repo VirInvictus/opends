@@ -4,6 +4,42 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/region-render/` v0.6.0** pivots past the
+  palette-cycle wall (`docs/dsun-exe-re.md` §4.5 documents
+  why the DSUN.EXE byte-pattern search has run its course on
+  that surface) and animates the **entity layer** instead.
+  Uses `image-extract v0.3.0`'s multi-frame decoder to walk
+  every ETAB-referenced BMP's full `frame_count` and emit a
+  numbered PNG sequence with each entity stepping through
+  its cycle.
+  - **`--animate-entities`** flag. Loads every frame of each
+    referenced BMP via the new library helper
+    `with_animated_entities_from`. Emits
+    `<output>/<stem>-frame-<N>.png` per frame.
+  - **`--frame-count N`** override. Default: the max
+    `frame_count` across all loaded sprites (DS1 RGN02 max
+    is 15 frames; every entity cycles through at least
+    once); `--frame-count` can cap or extend the sequence.
+    Each entity loops independently within the span via
+    `entity.frames[global_frame % entity.frames.len()]`.
+  - **No regression**. Frame 0 of an `--animate-entities`
+    render is byte-identical to v0.5.0's single-frame
+    output (verified on DS1 RGN02: same SHA-256). The
+    frame-0-only path keeps the v0.5.0 `with_entities_from`
+    API; the new path populates a separate multi-frame map
+    (`entity_sprite_frames`).
+  - **Library**: `with_animated_entities_from`,
+    `render_indexed_frame(N)`, `write_png_frame(path, N)`,
+    `max_entity_frame_count()`,
+    `entity_sprite_frames_count()`. Frame decode failures
+    are silently dropped at the per-frame level (the cycle
+    wraps without that frame); whole-BMP failures land in
+    `entity_decode_failures` as before.
+  - Palette animation stays parked behind the cycle-table
+    wall; per-entity timing (each sprite has its own
+    animation rate in the engine) and GIF / single-file
+    output remain v0.7.0+ work.
+
 - **`tools/image-extract/` v0.3.0** ships multi-frame sprite
   export. v0.2.x decoded every frame of every multi-frame
   chunk under `--all`, but the single-chunk path only emitted
