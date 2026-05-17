@@ -39,6 +39,9 @@ use std::path::Path;
 use serde::{Serialize, Serializer};
 use thiserror::Error;
 
+mod builder;
+pub use builder::{builder_from_gff, GffBuilder};
+
 /// Bit mask for the segmented-list flag stored in the high bit of
 /// a TOC type entry's `chunk_count` field.
 pub const SEGMENTED_FLAG: u32 = 0x8000_0000;

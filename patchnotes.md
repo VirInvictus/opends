@@ -4,6 +4,47 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gff-edit/` v0.5.0** adds construction-from-scratch
+  via a new `GffBuilder` library type. Phase 1 was already
+  the foundation library for read / write / extract / replace
+  / bulk-dump / text-codec / JSON / catalogue; v0.5.0 closes
+  the last common gap by letting downstream tools synthesise
+  a new GFF without having to start from an existing one.
+  - **`GffBuilder` API**. `new()` starts empty; `add_chunk
+    (kind, id, payload)` appends; `with_data0(v)` and
+    `with_file_flags(v)` override the header sentinels;
+    `build()` returns `Vec<u8>` ready for `Gff::from_bytes`.
+    Types appear in first-seen-kind order; chunks within a
+    type stay in insertion order. Free list emits a single
+    zero-count entry (matches the dominant corpus shape).
+  - **`builder_from_gff(&Gff) -> Option<GffBuilder>`** for
+    round-tripping a parsed GFF back through the builder.
+    Returns `None` if the input has any segmented types.
+  - **Indexed-only**. Segmented build (the `0x80000000` flag
+    plus the secondary-table + `GFFI` cross-reference dance)
+    is deferred to v0.6.0. The builder rejects segmented
+    inputs via `builder_from_gff` returning `None`; the
+    standalone `add_chunk` path can only express indexed
+    chunks.
+  - **Corpus round-trip test**
+    (`tests/builder_corpus.rs`): parse → builder → rebuild →
+    re-parse on every GFF under `.games/` and the Wine
+    install. **50 indexed-only GFFs** verified structurally
+    equivalent (same chunks: kind, id, payload bytes). **78
+    segmented-type GFFs skipped** awaiting v0.6.0.
+    Byte-identical rebuild is *not* the property tested:
+    existing GFFs are not in a single canonical layout
+    (types-list ordering, dead space from prior edits, and
+    free-list shape all vary), so the test asserts chunk-
+    level equivalence instead.
+  - **No CLI surface**. v0.5.0 is library-only; `gff-cat`
+    subcommands don't gain a builder entry point in this
+    release. The first CLI consumer of the builder will be
+    `opcode-fuzz v0.3.0` (recipe synthesis).
+  - Unit tests: minimal two-chunk GFF, first-seen kind
+    ordering, `data0` / `file_flags` round-trip, empty
+    builder, and `builder_from_gff` re-parse equivalence.
+
 - **`tools/verify-install/` v0.2.0** turns the verifier into a
   fix-it-yourself tool and gives downstream tooling (the repro
   harness, CI, the planned opcode-fuzz pre-run check) a stable

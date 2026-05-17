@@ -97,6 +97,14 @@ library plus `gff-cat` binary. Tagged release:
 - [x] Tested against every shipped GFF in both DS1 and DS2 with
       no parse errors. (gff-edit v0.1.0: 61/61 pristine,
       67/67 deployed.)
+- [x] Construction from scratch: `GffBuilder` library type with
+      `add_chunk(kind, id, payload)` and `build()`. Indexed-only
+      for v0.5.0; corpus round-trip verified structural
+      equivalence on 50 indexed-only GFFs (78 segmented skipped
+      pending v0.6.0). Tagged: `gff-edit-v0.5.0`.
+- [ ] Segmented-type build (the secondary-table + `GFFI`
+      cross-reference dance) so the builder covers the full GFF
+      feature set. Targeted for `gff-edit-v0.6.0`.
 
 **Done when**: every GFF under `.games/ds1/` and `.games/ds2/`
 opens, lists, and round-trips cleanly through the Rust crate

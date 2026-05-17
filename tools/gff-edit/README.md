@@ -39,6 +39,18 @@ for chunk in gff.chunks() {
 let bytes = gff.read(b"GPL ", 7)?;  // get the bytes of GPL chunk id 7
 ```
 
+To build a GFF from scratch (v0.5.0+, indexed-only):
+
+```rust
+use gff_edit::{FourCC, GffBuilder};
+
+let mut b = GffBuilder::new().with_data0(1);
+b.add_chunk(FourCC::from_str("GPL ").unwrap(), 0, gpl_bytes);
+b.add_chunk(FourCC::from_str("MAS ").unwrap(), 0, mas_bytes);
+let gff_bytes: Vec<u8> = b.build()?;
+std::fs::write("synth.gff", gff_bytes)?;
+```
+
 API surface lands incrementally; see
 [`../../roadmap.md`](../../roadmap.md) Phase 1.
 
@@ -77,7 +89,7 @@ cargo build -p gff-edit --release
   replace`. In-place if the new bytes fit, append at
   end-of-file otherwise. Round-trip verified byte-identical
   across all 128 corpus GFFs.
-- **v0.4.0 (current)** — modder readability layer.
+- **v0.4.0** — modder readability layer.
   `gff-cat extract --all` (bulk chunk dump).
   `gff-cat info --json` / `list --json` (machine-readable).
   `gff-cat dump-text` / `pack-text` for TEXT/ETME/MERR/NAME/
@@ -85,4 +97,15 @@ cargo build -p gff-edit --release
   `.txt` files → repack). `gff-cat kind <FOURCC>` for
   catalogue lookups. 17/17 text-bearing GFFs round-trip
   byte-identical.
+- **v0.5.0 (current)** — construction from scratch via
+  `GffBuilder` (library-only; no CLI surface). Indexed types
+  only: `GffBuilder::new()`, `add_chunk(kind, id, payload)`,
+  `with_data0`, `with_file_flags`, `build()`. Corpus
+  round-trip verified structural equivalence on 50
+  indexed-only GFFs across DS1 + DS2; 78 segmented-type GFFs
+  skipped pending v0.6.0. Powers opcode-fuzz recipe
+  synthesis (single-chunk synthetic GFFs).
+- v0.6.0 — segmented-type build (secondary table + GFFI
+  cross-reference dance) so the builder covers the full GFF
+  feature set.
 - v1.0.0 — API frozen; full DS1 and DS2 corpus covered.
