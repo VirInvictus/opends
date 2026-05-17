@@ -234,7 +234,142 @@ engine reverted to plain `PAL` lookups for palette work. Whether
 that means "every DS2 region uses the menu palette" or "DS2
 palettes come from a different chunk type entirely" is open.
 
-## 4. What we still don't know
+## 4. Palette I/O catalogue and animation routine
+
+The CMAT/CPAL routine in §3 picks *which* palette to load. The
+runtime engine that actually pushes the bytes to the VGA DAC is
+a separate cluster of small helpers, all reachable via byte-
+pattern search for VGA port-0x3c8 / port-0x3c9 / port-0x3c7
+writes (`ba c8 03` / `ba c9 03` / `ba c7 03` followed by `ee`).
+This section is the catalogue and the partial decode of the
+animated-palette path.
+
+### 4.1 Per-binary byte-pattern hit counts
+
+```
+DS1 DSUN.EXE                      DS2 DSUN.EXE
+  ba c8 03  (mov dx,0x3c8): 4       ba c8 03: 5
+  ba c9 03  (mov dx,0x3c9): 2       ba c9 03: 2
+  ba c7 03  (mov dx,0x3c7): 2       ba c7 03: 2  (in 0x11693 cluster)
+  66 ee     (out dx,eax)  : 1       66 ee   : 1  (the lone 32-bit
+                                                  palette I/O site)
+```
+
+The lone 32-bit `out dx, eax` instance in each binary is the
+loadbearing one; the inner loops of the animation routine sit
+in a 32-bit code segment.
+
+### 4.2 The DS1 palette-helper cluster at `0x1168c..0x116f3`
+
+Four adjacent 16-bit far-call routines back-to-back. Per-entry
+prologue is the standard Watcom shape (`55 8b ec ... cb`). These
+are the lowest-level VGA primitives:
+
+| File offset | Signature | What it does |
+|---|---|---|
+| `0x1168c` | `set_color(idx, r, g, b)` | `mov dx,0x3c8; out dx,al`; `inc dx; out three RGB bytes`. Writes one palette entry. Args from `[bp+6..0xc]`. |
+| `0x116a7` | `read_color_far(idx, *r, *g, *b)` | `mov dx,0x3c7; out`; `mov dx,0x3c9; in al,dx` three times; result stored via far ptrs (`les bx, ptr`). |
+| `0x116cf` | `read_color_near(idx, *r, *g, *b)` | Same shape with near pointers (`mov bx, word ptr`). |
+| `0x116f4` | `lookup_remap_row(idx)` | Indexes a multi-row table at `cs:0x4` with rows at `+0x000`, `+0x200`, `+0x400`, `+0x600`, `+0x800`, ... and copies row entries into globals `[0xe04..]`. **Not a palette write directly; this looks like a brightness / fade / remap row reader.** Eight rows of 256 words = 4 KB total. |
+
+The two `0x3c9` hits inside this cluster (file `0x116b4` and
+`0x116dc`) are the DAC read-data ports for the read-color
+helpers. Earlier counts that looked like "two distinct
+palette routines" are actually one read function in two
+near/far variants.
+
+### 4.3 The DS1 bulk-palette routines at `0x144dc` and `0x288a4`
+
+| File offset | Signature | What it does |
+|---|---|---|
+| `0x144dc` | `load_full_palette(buf)` | Sets all 256 entries from a 768-byte RGB buffer. Each lobed byte is right-shifted by 2 (`shr al, 1; shr al, 1`) to convert 8-bit values to the 6-bit DAC range; the same `intensity_multiplier` divergence libgff documents in the opposite direction for CPAL parsing. |
+| `0x288a4` | `write_palette_range(start, count, *buf)` | Writes `count` entries starting at index `start`, reading RGB triples from `ds:si`. **No `>> 2` shift here**, so the buffer is already in 6-bit DAC form. Tight `lodsb / out` loop. |
+| `0x288c4` | `read_palette_range(start, count, *buf)` | Inverse of `0x288a4`: reads `count` entries into `es:di`. No shift either way. |
+
+These three handle full-palette loads and arbitrary range writes
+and are the obvious candidates for the consumer side of the
+CMAT/CPAL fallback (§3) and the per-tick cycle update (§4.4).
+
+### 4.4 The cycle-table walker at `0x23075` (partial)
+
+The lone 32-bit `out dx, eax` (`66 ee`) site in DS1 sits inside
+a small loop that reads from an **8-byte-record table** indexed
+by a counter. Decoded in 16-bit mode (the surrounding context
+is 16-bit; `f7 66 ee` is `mul word ptr [bp-0x12]`, not three
+separate opcodes; Capstone in 32-bit mode mis-splits these
+bytes):
+
+```
+0x023067: a1 ca 57         mov  ax, [0x57ca]            ; load count? threshold?
+0x02306a: 89 46 ee         mov  [bp-0x12], ax           ; save as counter
+0x02306d: c4 3e 90 66      les  di, [0x6690]            ; cycle-table base
+0x023071: b8 08 00         mov  ax, 0x0008              ; record stride = 8
+0x023074: f7 66 ee         mul  word ptr [bp-0x12]      ; ax = 8 * counter
+0x023077: 03 f8            add  di, ax                  ; di -> record[counter]
+0x023079: 26 8b 05         mov  ax, es:[di]             ; read first 2-byte field
+0x02307c: 3b 06 4a 57      cmp  ax, [0x574a]
+0x023080: 7c 06            jl   0x23088                 ; below low bound -> skip
+0x023082: 3b 06 46 57      cmp  ax, [0x5746]
+0x023086: 7c 0d            jl   0x23095                 ; in range -> do work
+0x023088: ff 46 ee         inc  word ptr [bp-0x12]      ; counter++
+0x02308b: a1 c8 57         mov  ax, [0x57c8]
+0x02308e: 3b 46 ee         cmp  ax, [bp-0x12]
+0x023091: 77 da            ja   0x2306d                 ; loop while counter < limit
+```
+
+What we have from this window:
+
+- **Record size**: 8 bytes (the literal `mov ax, 8; mul counter`).
+  Fits a `(start_index, end_index, period, current_phase)` layout
+  at 2 bytes each, or `(start, end, period_ticks, accumulator)`.
+- **Table base**: `es:[0x6690]` is a far pointer to the table in
+  whatever segment the cycle data sits in.
+- **Table size**: word at `[0x57c8]` (data segment) is the entry
+  count.
+- **Range bounds in globals**: `[0x5746]` and `[0x574a]` are
+  4 bytes apart and look like `(low, high)` filter window the
+  walker compares the first record field against. Whether this
+  is "current palette index being redrawn" or "tick value range"
+  is open.
+- **The work block** at `0x23095` (the `jl in-range` target) is
+  where the actual cycle update happens. Likely a call into
+  `set_color` (`0x1168c`) or `write_palette_range` (`0x288a4`)
+  with rotated buffer contents.
+
+This is enough to know the cycle table is `count × 8 bytes` of
+some `(low, high, ...)` structure. Recovering the field-level
+semantics (what the remaining 4 bytes per record do, and where
+the runtime tick is fed in) is the next pass.
+
+### 4.5 Cross-game parallels
+
+DS2's mirror routines sit at the same offsets relative to its
+segment (`0x13bc3` etc. for the palette-write cluster, with
+`0x3c7` reads at `0x13be4` / `0x13c0c`). The 32-bit `out
+dx,eax` site is at file `0x26e51` in DS2; cycle-table walker
+shape is expected to match. Confirming this is a small followup
+pass once the DS1 record layout is fully decoded.
+
+### 4.6 DSO symbol cross-reference
+
+The DSO v1.0 client (`.dso-online/tools/symbols.txt`) names
+the cycle path in three pieces:
+
+| DSO offset | Symbol | Likely DSUN.EXE counterpart |
+|---|---|---|
+| `0x0009E98A` | `VGASetCycle` | Cycle-table install (writes `[0x6690]` / `[0x57c8]` etc.) |
+| `0x0009E9C9` | `VGAResetCycle` | Cycle teardown |
+| `0x0009EAA3` | `VGAColorCycle` | Per-tick walker; the function containing `0x23075`. |
+| `0x000BE8ED` | `cycleshow` | Higher-level "render with cycling enabled" wrapper |
+| `0x00167C6D` | `gCycleColor` | The cycle-state global. The `[0x6690]` / `[0x57c8]` / `[0x5746]` / `[0x574a]` cluster in DS1 is the data-side embodiment of this symbol on the engine binary. |
+
+These names are anchors; the offsets are DSO-relative and don't
+map directly to DSUN.EXE. But the call-graph shape (4-byte
+record walker reading from a far pointer at fixed offset) is
+distinctive enough to confirm `0x23075`'s function is the
+`VGAColorCycle` counterpart once we have a caller-trace.
+
+## 5. What we still don't know
 
 These are the next pieces an RE pass should crack, in rough
 order of value to the toolkit:
@@ -252,12 +387,20 @@ order of value to the toolkit:
    how the engine consumes the buffer. The success path after
    `or ax, ax; jne` (at `0x56ae5 + 0x7b = 0x56b60`) is the
    consumer's code window.
-3. **Animated palette colours**. `VGAColorCycle` at DSO offset
-   `0x0009eaa3` and `gCycleColor` at `0x00167c6d` are the
-   candidates from the DSO symbol table. The cycle table layout
-   (which palette indices rotate, with what period) is what
-   region-render needs to faithfully render moving colours like
-   torch flame or water shimmer.
+3. **Animated palette cycle-table field semantics**. §4.4
+   narrowed this from "open question" to "decode the 6 unknown
+   bytes per record". The walker at file `0x23075` confirmed:
+   record size = 8 bytes, table base = `es:[0x6690]`, count =
+   word at `[0x57c8]`, filter window = `[0x5746]`/`[0x574a]`.
+   The first 2 bytes of each record are what the walker
+   compares against the filter; the remaining 6 bytes per
+   record carry start/end/period/phase. Next step: trace the
+   in-range path at `0x23095` to see which palette write
+   routine (`0x1168c` single-color or `0x288a4` range) it
+   delegates to, and read off the field positions from the
+   stack offsets it uses. The `VGASetCycle` / `VGAResetCycle`
+   DSO symbols (§4.6) name the install/teardown sites; finding
+   them gives us the writer's view of the same fields.
 4. **DS2's palette source**. With CMAT/CPAL gone, DS2 must select
    a region palette some other way. Cross-check the four DS2
    `'PAL '` push sites (`0x2b770`, `0x68ab5`, `0x71f94`,

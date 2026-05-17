@@ -4,6 +4,50 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`docs/dsun-exe-re.md`** gains a new §4 catalogueing the DS1
+  palette I/O surface and partially decoding the animated-
+  palette cycle routine. Pre-committed scope correction: with
+  the cycle table's field-level semantics still open, this
+  ships as docs-only; `region-render --animate` is not in this
+  pass.
+  - **Palette helper cluster at `0x1168c..0x116f3`**: four
+    adjacent 16-bit far-call routines (`set_color`,
+    `read_color_far`, `read_color_near`, plus a brightness /
+    fade lookup at `0x116f4`). The lookup at `0x116f4` reads
+    an 8-row × 256-word table in `cs:0x4..0xfff`; not a
+    palette write directly but tied to colour state.
+  - **Bulk routines**: `0x144dc` is `load_full_palette(buf)`
+    with the canonical `>> 2` shift converting 8-bit to 6-bit
+    DAC values. `0x288a4` is `write_palette_range(start,
+    count, *buf)`, no shift, tight `lodsb / out` loop. `0x288c4`
+    is the inverse `read_palette_range`. These are the obvious
+    consumers of CMAT/CPAL (§3) and of the per-tick cycle
+    update (§4.4).
+  - **Cycle-table walker at `0x23075`** (partial decode).
+    Identified the lone 32-bit `out dx, eax` site as part of a
+    walker over an 8-byte-record table. Table base lives at
+    `es:[0x6690]`, count at `[0x57c8]`, filter window
+    `[0x5746]` / `[0x574a]`. The walker's match-handler at
+    `0x23095` is the next pass: it's where palette rotation
+    actually happens. Six of the eight bytes per record are
+    still unidentified.
+  - **DSO symbol cross-reference**: the cycle path maps onto
+    five DSO symbols (`VGASetCycle`, `VGAResetCycle`,
+    `VGAColorCycle`, `cycleshow`, `gCycleColor`). Table 4.6
+    aligns them with the DSUN.EXE counterparts the §4.4
+    findings expose.
+  - **Why docs-only**. §4.4 surfaces the table shape but stops
+    short of the record-field layout. Shipping a
+    `region-render --animate` that guesses at the record
+    fields would render plausibly wrong animations (correct
+    palette indices, wrong period); shipping the doc with the
+    honest "next step" pointer is the more useful artifact
+    for now. `region-render v0.6.0` is reserved for when the
+    record layout is fully decoded.
+  - **`roadmap.md` Phase 4 §region-render animated colours**:
+    still unchecked. The doc now points at the concrete next
+    step rather than the open-ended "needs DSUN.EXE RE".
+
 - **`tools/gpl-asm/` v0.5.0** ships the **author safety net**:
   better diagnostics when an authored listing is wrong, plus a
   static validator that catches whole classes of mistakes
