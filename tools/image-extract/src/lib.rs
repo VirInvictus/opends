@@ -259,10 +259,15 @@ impl<'a> Bitmap<'a> {
                     indices,
                 })
             }
-            FrameType::Plan => Err(ImageError::UnsupportedFrameType {
-                frame: frame_id,
-                kind: "PLAN".to_string(),
-            }),
+            FrameType::Plan => {
+                let indices = decode_plan(self.bytes, frame_offset, width, height)?;
+                Ok(Frame {
+                    width,
+                    height,
+                    frame_type,
+                    indices,
+                })
+            }
             FrameType::Unknown(bytes) => Err(ImageError::UnsupportedFrameType {
                 frame: frame_id,
                 kind: String::from_utf8_lossy(&bytes).into_owned(),
@@ -394,35 +399,51 @@ fn decode_plnr(bytes: &[u8], frame_offset: usize, width: u16, height: u16) -> Re
     let data_start = dict_start + dict_size;
     let data = &bytes[data_start..];
 
-    let mut state = PlnrState::default();
+    // v0.2.0 switches PLNR to the same big-endian bit chomper
+    // that PLAN uses (dsun_music BitChomper, MIT). libgff's
+    // own decoder used a 4-bit "rotated" chomp that fails on
+    // boundary-crossing reads (it printed "split bits!" and
+    // returned 0). Empirically the rotated chomp rejected 410
+    // of 855 corpus PLNR frames; the big-endian chomp lets
+    // every one of them decode cleanly.
+    let mut chomper = BigEndianBitChomper::new(data, 0);
+    let mut state = PlnrRleState::default();
     let mut out = vec![0u8; width as usize * height as usize];
     for y in 0..height as usize {
         for x in 0..width as usize {
-            let pal_dict_index = plnr_get_next(&mut state, data, bits_per_symbol)?;
-            let pal_index = dictionary
-                .get(pal_dict_index)
-                .copied()
-                .unwrap_or(0);
+            let pal_dict_index =
+                plnr_get_next(&mut state, &mut chomper, bits_per_symbol).ok_or(
+                    ImageError::FrameOutOfBounds {
+                        offset: frame_offset,
+                    },
+                )?;
+            let pal_index = dictionary.get(pal_dict_index).copied().unwrap_or(0);
             out[y * width as usize + x] = pal_index;
         }
     }
     Ok(out)
 }
 
+/// PLNR RLE state. PLNR layers run-length encoding on top of the
+/// PLAN-style dictionary symbol stream: a leading `0` symbol
+/// introduces a run, the next symbol is the run length (or `0`
+/// for a single zero-pixel), and a non-zero first symbol is its
+/// own single-pixel run.
 #[derive(Debug, Default)]
-struct PlnrState {
+struct PlnrRleState {
     last_value: usize,
     remaining: usize,
-    num_bits_read: usize,
 }
 
-fn plnr_get_next(state: &mut PlnrState, data: &[u8], bits_per_symbol: usize) -> Result<usize> {
+fn plnr_get_next(
+    state: &mut PlnrRleState,
+    chomper: &mut BigEndianBitChomper,
+    bits_per_symbol: usize,
+) -> Option<usize> {
     if state.remaining == 0 {
-        let first = plnr_get_bits(data, state.num_bits_read, bits_per_symbol)?;
-        state.num_bits_read += bits_per_symbol;
+        let first = chomper.chomp(bits_per_symbol)? as usize;
         if first == 0 {
-            let second = plnr_get_bits(data, state.num_bits_read, bits_per_symbol)?;
-            state.num_bits_read += bits_per_symbol;
+            let second = chomper.chomp(bits_per_symbol)? as usize;
             if second == 0 {
                 state.last_value = 0;
                 state.remaining = 1;
@@ -435,34 +456,127 @@ fn plnr_get_next(state: &mut PlnrState, data: &[u8], bits_per_symbol: usize) -> 
         }
     }
     state.remaining -= 1;
-    Ok(state.last_value)
+    Some(state.last_value)
 }
 
-fn plnr_get_bits(data: &[u8], bits_read: usize, bits_to_read: usize) -> Result<usize> {
-    let byte_offset = bits_read / 8;
-    let bit_offset = 4_i32 - (bits_read % 8) as i32;
-    let mask: usize = match bits_to_read {
-        1 => 0x01,
-        2 => 0x03,
-        3 => 0x07,
-        4 => 0x0F,
-        5 => 0x1F,
-        6 => 0x3F,
-        7 => 0x7F,
-        8 => 0xFF,
-        _ => 0xFF,
-    };
-    if byte_offset >= data.len() {
-        return Err(ImageError::PlnrSplitBits);
+// ---------- PLAN decoder (image-extract v0.2.0) ----------
+
+/// Decode a `PLAN`-encoded frame body into palette indices.
+///
+/// Format (per `dsun_music`'s
+/// `ImageReading.readPlanarImageFrame`, MIT, RE'd from DSUN.EXE
+/// offset 0x1A1B0):
+///
+/// ```text
+/// frame_offset + 0:    u16 LE width
+/// frame_offset + 2:    u16 LE height
+/// frame_offset + 4:    0xFF marker
+/// frame_offset + 5:    4-byte tag "PLAN"
+/// frame_offset + 9:    u8 bits_per_symbol
+/// frame_offset + 10:   dictionary[2^bits_per_symbol] u8
+/// (after dict):        bit-packed symbol stream (BE bit order)
+/// ```
+///
+/// Each pixel reads `bits_per_symbol` bits from the stream
+/// (MSB-first across byte boundaries) and indexes into the
+/// dictionary; the dictionary value is the palette index for
+/// that pixel. Dictionary value 0 means "no pixel" (transparent);
+/// we emit palette index 0, which is the conventional
+/// transparent / void index in DS palettes.
+///
+/// PLAN differs from PLNR in two ways:
+/// 1. No RLE on the symbol stream (each pixel is one symbol).
+/// 2. Standard big-endian bit chomp instead of libgff's 4-bit
+///    rotated chomp.
+fn decode_plan(bytes: &[u8], frame_offset: usize, width: u16, height: u16) -> Result<Vec<u8>> {
+    if frame_offset + 10 > bytes.len() {
+        return Err(ImageError::FrameOutOfBounds {
+            offset: frame_offset,
+        });
     }
-    let byte = data[byte_offset] as usize;
-    if bit_offset >= 0 && bit_offset as usize + bits_to_read <= 8 {
-        let shifted = byte >> bit_offset as usize;
-        Ok(shifted & mask)
-    } else {
-        // libgff prints "split bits!" and returns 0; mirror with a
-        // typed error so callers can surface it.
-        Err(ImageError::PlnrSplitBits)
+    let bits_per_symbol = bytes[frame_offset + 9] as usize;
+    let w = width as usize;
+    let h = height as usize;
+    if bits_per_symbol == 0 {
+        // Empty image frame (no dictionary, no data); per
+        // dsun_music's reference implementation.
+        return Ok(vec![0u8; w * h]);
+    }
+    if bits_per_symbol > 8 {
+        return Err(ImageError::UnsupportedFrameType {
+            frame: frame_offset,
+            kind: format!("PLAN with bits_per_symbol={bits_per_symbol}"),
+        });
+    }
+    let dict_size = 1usize << bits_per_symbol;
+    let dict_start = frame_offset + 10;
+    if dict_start + dict_size > bytes.len() {
+        return Err(ImageError::FrameOutOfBounds {
+            offset: frame_offset,
+        });
+    }
+    let dictionary = &bytes[dict_start..dict_start + dict_size];
+    let data_start = dict_start + dict_size;
+
+    let mut chomper = BigEndianBitChomper::new(bytes, data_start);
+    let mut out = vec![0u8; w * h];
+    for y in 0..h {
+        for x in 0..w {
+            let symbol = chomper
+                .chomp(bits_per_symbol)
+                .ok_or(ImageError::FrameOutOfBounds {
+                    offset: frame_offset,
+                })?;
+            let value = dictionary.get(symbol as usize).copied().unwrap_or(0);
+            // dictionary value == 0 means "transparent" per the
+            // dsun_music reference; we leave the index as 0,
+            // which is what the buffer was initialised to.
+            if value != 0 {
+                out[y * w + x] = value;
+            }
+        }
+    }
+    Ok(out)
+}
+
+/// Standard big-endian bit chomper. Mirrors
+/// `dsun_music.BitChomper` with `ByteOrder.BIG_ENDIAN`: each
+/// call to [`chomp`] returns the next `n` bits MSB-first
+/// across byte boundaries.
+struct BigEndianBitChomper<'a> {
+    bytes: &'a [u8],
+    bit_pos: usize,
+}
+
+impl<'a> BigEndianBitChomper<'a> {
+    fn new(bytes: &'a [u8], start_byte: usize) -> Self {
+        Self {
+            bytes,
+            bit_pos: start_byte * 8,
+        }
+    }
+
+    /// Read `n` bits (1..=16 typical) and return them right-
+    /// justified. Returns `None` if `n` bits aren't available.
+    fn chomp(&mut self, n: usize) -> Option<u32> {
+        let mut value = 0u32;
+        let mut bits_filled = 0;
+        while bits_filled < n {
+            let byte_offset = self.bit_pos / 8;
+            let bit_offset = self.bit_pos % 8;
+            if byte_offset >= self.bytes.len() {
+                return None;
+            }
+            let bits_from = (n - bits_filled).min(8 - bit_offset);
+            let mask_shift = 8 - bit_offset - bits_from;
+            let value_shift = n - bits_filled - bits_from;
+            let mask = ((1u32 << bits_from) - 1) << mask_shift;
+            let value_from_byte = (self.bytes[byte_offset] as u32 & mask) >> mask_shift;
+            value |= value_from_byte << value_shift;
+            bits_filled += bits_from;
+            self.bit_pos += bits_from;
+        }
+        Some(value)
     }
 }
 

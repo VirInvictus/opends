@@ -11,6 +11,51 @@ chunks without firing up the engine.
 
 Depends on `gff-edit` for GFF I/O and `png` for PNG encoding.
 
+## What `image-extract v0.2.0` ships
+
+**PLAN frame format**, plus a fix to PLNR's bit-chomp that
+unblocks the cross-byte cases libgff's "split bits!" check
+rejected. Corpus coverage jumps from 67% (1,328 / 1,976 frames)
+to **99.95% (1,975 / 1,976)**.
+
+PLAN format (RE'd by `dsun_music`, MIT, from DSUN.EXE offset
+0x1A1B0):
+
+```text
+frame_offset + 0:    u16 LE width
+frame_offset + 2:    u16 LE height
+frame_offset + 4:    0xFF marker
+frame_offset + 5:    4-byte tag "PLAN"
+frame_offset + 9:    u8 bits_per_symbol
+frame_offset + 10:   dictionary[1 << bits_per_symbol] u8
+(after dict):        bit-packed symbol stream, big-endian
+```
+
+Each pixel reads `bits_per_symbol` bits from the stream as a
+dictionary index; the dictionary value is the palette index.
+Dictionary value 0 means "transparent" — the output buffer
+keeps palette index 0 there (the conventional void index in DS
+palettes). PLAN has no RLE on the symbol stream (each pixel is
+one symbol), unlike PLNR.
+
+PLNR fix: v0.1.0 used libgff's 4-bit "rotated" chomp which
+fails (returns 0 + a "split bits!" error) when a symbol read
+crosses a byte boundary. v0.2.0 routes PLNR through the same
+standard big-endian bit chomper PLAN uses — the chomper happily
+crosses byte boundaries, and 410 previously-skipped PLNR frames
+now decode cleanly.
+
+| frame type | v0.1.0 decoded | v0.2.0 decoded |
+|------------|---------------:|---------------:|
+| DS1_RLE    | 883            | 883            |
+| PLNR       | 445            | 855            |
+| PLAN       | 0              | 237            |
+| **total**  | **1,328**      | **1,975**      |
+
+The single remaining frame is a malformed chunk that fails
+header parsing (`FrameOutOfBounds`). The decoder reports it
+cleanly rather than panicking.
+
 ## What `image-extract v0.1.0` ships
 
 Ports libgff's bitmap and palette code to Rust:

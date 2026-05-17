@@ -250,11 +250,18 @@ look at the maps directly.
       for `PAL ` / `CPAL` chunks with libgff's 6-bit → 8-bit
       `intensity_multiplier`. (image-extract v0.1.0; 1,328 of
       1,976 frames across DS1+DS2 decode cleanly; the
-      remaining ~648 are PLAN and other variants not yet RE'd.)
-- [ ] PLAN frame format support.
+      remaining ~648 were PLAN frames + 410 PLNR frames that
+      hit libgff's lossy "split bits!" chomp.)
+- [x] PLAN frame format support. (image-extract v0.2.0: PLAN
+      decoder ported from `dsun_music`'s `ImageReading`;
+      simultaneously fixed PLNR's chomp by switching to the
+      same big-endian chomper. Corpus now decodes 1,975 / 1,976
+      frames = **99.95%**; the lone non-decoded frame is a
+      malformed chunk that fails header parsing.)
 - [ ] Sprite-frame animation export (multi-frame BMPs as GIF /
       animated PNG / spritesheet).
-- [x] Tagged: `image-extract-v0.1.0`. (this release)
+- [x] Tagged: `image-extract-v0.1.0` (initial); `image-extract-v0.2.0`
+      (PLAN + PLNR fix).
 
 ### `tools/region-render/` (Rust)
 

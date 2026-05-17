@@ -1,6 +1,6 @@
 [package]
 name = "image-extract"
-version = "0.1.0"
+version = "0.2.0"
 description = "Extract Dark Sun bitmap chunks (BMP / PORT / ICON) as PNG."
 readme = "README.md"
 edition.workspace = true

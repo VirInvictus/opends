@@ -52,11 +52,12 @@ fn every_bitmap_chunk_decodes_or_reports_cleanly() {
                 Err(_) => continue,
             };
             total_chunks += 1;
+            let mut err_kinds: std::collections::BTreeMap<String, usize> =
+                std::collections::BTreeMap::new();
             for frame_id in 0..bmp.frame_count as usize {
                 total_frames += 1;
                 match bmp.decode_frame(frame_id) {
                     Ok(frame) => {
-                        // Pixel count sanity.
                         assert_eq!(
                             frame.indices.len(),
                             frame.width as usize * frame.height as usize,
@@ -70,10 +71,29 @@ fn every_bitmap_chunk_decodes_or_reports_cleanly() {
                         entry.0 += 1;
                         entry.1 += 1;
                     }
-                    Err(_) => {
-                        // Frame type might be PLAN or unsupported; that's
-                        // OK for v0.1.0, we just count and continue.
+                    Err(e) => {
+                        let kind = match &e {
+                            image_extract::ImageError::UnsupportedFrameType { kind, .. } => {
+                                format!("UnsupportedFrameType:{kind}")
+                            }
+                            image_extract::ImageError::PlnrSplitBits => "PlnrSplitBits".to_string(),
+                            image_extract::ImageError::FrameOutOfBounds { .. } => {
+                                "FrameOutOfBounds".to_string()
+                            }
+                            image_extract::ImageError::Ds1RleError { .. } => "Ds1RleError".to_string(),
+                            other => format!("other:{other}"),
+                        };
+                        *err_kinds.entry(kind).or_insert(0) += 1;
                     }
+                }
+            }
+            if !err_kinds.is_empty() {
+                for (k, n) in &err_kinds {
+                    // Aggregate into the global by_type stats for
+                    // reporting; not asserted on.
+                    let entry = by_type.entry(format!("ERR:{k}")).or_insert((0, 0));
+                    entry.0 += n;
+                    entry.1 += n;
                 }
             }
         }

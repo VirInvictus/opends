@@ -4,6 +4,42 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/image-extract/` v0.2.0** adds PLAN frame support and
+  fixes PLNR's cross-byte bit-chomp. Corpus coverage jumps from
+  67% (1,328 / 1,976 frames) to **99.95% (1,975 / 1,976)** —
+  the lone non-decoded frame is a malformed chunk that fails
+  header parsing.
+  - **PLAN decoder**: bit-packed dictionary, no RLE.
+    `bits_per_symbol`-bit symbols read big-endian from the
+    post-dictionary stream; each symbol indexes the dictionary;
+    dictionary value 0 means "transparent" (palette index 0
+    in the output buffer). Format spec ported from
+    `dsun_music`'s `ImageReading.readPlanarImageFrame`
+    (MIT, attributed in code), originally RE'd from DSUN.EXE
+    file offset 0x1A1B0.
+  - **PLNR fix**: v0.1.0 used libgff's 4-bit-rotated chomp
+    (`bit_offset = 4 - (bits_read % 8)`) which silently rejects
+    boundary-crossing reads. 410 of 855 corpus PLNR frames hit
+    this case; v0.1.0 reported them as `PlnrSplitBits` errors.
+    v0.2.0 routes PLNR through the same standard big-endian
+    bit chomper PLAN uses; every previously-skipped frame
+    decodes cleanly. The RLE-state machine on top of the
+    chomper is unchanged.
+  - **New private helper**: `BigEndianBitChomper` reads `n`
+    bits MSB-first across byte boundaries. Mirrors
+    `dsun_music.BitChomper` with `ByteOrder.BIG_ENDIAN`.
+    Reusable for any future bit-stream decode (e.g. when a
+    different frame format shows up that doesn't bake in the
+    libgff rotation).
+  - **No CLI changes**. Existing `image-extract --kind ... --id
+    ... -o frame.png` and `--all --output dir` invocations
+    behave identically; they just decode more frames.
+  - **Tests**: 5 unit + 1 corpus smoke (unchanged in shape);
+    the corpus smoke's stat-printing now breaks down errors
+    by kind so future regressions are visible. Decoded-frame
+    count asserted in the new headline: 1,975 / 1,976.
+  - **VERSION**: 0.1.0 -> 0.2.0.
+
 - **`tools/gpl-asm/` v0.4.0** ships the label-relative `Editor`
   API and arbitrary user-chosen label names in the text parser.
   Together they make `gpl-asm` author-friendly: modders can
