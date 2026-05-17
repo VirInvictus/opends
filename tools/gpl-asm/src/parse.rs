@@ -62,6 +62,16 @@ pub enum ParseError {
         mnemonic: String,
         reason: &'static str,
     },
+    #[error("line {line}: %define directive needs `<name> <replacement>`")]
+    BadDefineSyntax { line: usize },
+    #[error("line {line}: %define name {name:?} is invalid or reserved")]
+    BadDefineName { line: usize, name: String },
+    #[error("line {line}: %define {name:?} already defined")]
+    DuplicateDefine { line: usize, name: String },
+    #[error("line {line}: %search-tail needs whitespace-separated hex bytes")]
+    BadSearchTailSyntax { line: usize },
+    #[error("line {line}: %search-tail conflicts with a `; raw_tail=...` trailer on the same instruction")]
+    DuplicateSearchTail { line: usize },
 }
 
 pub type Result<T> = std::result::Result<T, ParseError>;
@@ -76,7 +86,12 @@ pub fn error_line(err: &ParseError) -> usize {
         | ParseError::MissingMnemonic { line }
         | ParseError::ParamCount { line, .. }
         | ParseError::BadExpression { line, .. }
-        | ParseError::UnsupportedOpcode { line, .. } => *line,
+        | ParseError::UnsupportedOpcode { line, .. }
+        | ParseError::BadDefineSyntax { line }
+        | ParseError::BadDefineName { line, .. }
+        | ParseError::DuplicateDefine { line, .. }
+        | ParseError::BadSearchTailSyntax { line }
+        | ParseError::DuplicateSearchTail { line } => *line,
     }
 }
 
@@ -117,6 +132,13 @@ pub fn error_span(err: &ParseError, source: &str) -> (usize, usize) {
                 (col, line_text.len().saturating_sub(col).max(1))
             }
         }
+        // v0.6.0 directive errors. The whole directive line is
+        // the offending token; underline it end-to-end.
+        ParseError::BadDefineSyntax { .. }
+        | ParseError::BadDefineName { .. }
+        | ParseError::DuplicateDefine { .. }
+        | ParseError::BadSearchTailSyntax { .. }
+        | ParseError::DuplicateSearchTail { .. } => (0, line_text.len().max(1)),
     }
 }
 
@@ -153,23 +175,251 @@ pub fn format_with_caret(err: &ParseError, source: &str) -> String {
     )
 }
 
+/// Result of the preprocessor pass (v0.6.0). The `text` field
+/// is the input with all directives blank-replaced (preserves
+/// line numbers so caret-style errors still point at the
+/// user's source line) and with every `%define` identifier
+/// substituted in place. `search_tail_attachments` records
+/// `%search-tail` directive bodies keyed by the line number of
+/// the instruction the directive attaches to (the next
+/// non-directive, non-comment, non-label instruction line).
+#[derive(Debug, Default)]
+struct Preprocessed {
+    text: String,
+    search_tail_attachments: HashMap<usize, Vec<u8>>,
+}
+
+/// Reserved identifiers that cannot be `%define`d (would
+/// shadow real parser tokens).
+fn is_reserved_define_name(name: &str) -> bool {
+    matches!(
+        name,
+        // Operator words
+        "and" | "or"
+        // Variable shorts
+        | "GBYTE" | "LBYTE" | "GNAME" | "LNAME" | "GSTR" | "LSTR"
+        | "GNUM" | "LNUM" | "GBN" | "LBN" | "GF" | "LF"
+        // Keyword tokens that the expression parser recognises
+        | "INTRODUCE" | "UNCOMPRESSED" | "ACCM_ERROR"
+        | "IMMED_WORD_UNIMPL" | "NAME" | "RETVAL" | "COMPLEX"
+        | "ACCUM"
+        // Mnemonic words that appear in the fixed mnemonic
+        // field; if a user `%define gpl 99`'d these, the
+        // mnemonic parser would misread.
+        | "gpl" | "if" | "endif" | "else" | "while" | "wend"
+        | "jump" | "local" | "global" | "sub" | "ret" | "exit"
+        | "zero" | "cmpend"
+    )
+}
+
+fn is_valid_define_name(name: &str) -> bool {
+    if name.is_empty() || is_reserved_define_name(name) {
+        return false;
+    }
+    let bytes = name.as_bytes();
+    if !(bytes[0].is_ascii_alphabetic() || bytes[0] == b'_') {
+        return false;
+    }
+    name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
+}
+
+/// Apply `%define` substitutions to a line, replacing every
+/// identifier-shaped token that matches a defined name.
+/// Skips quoted regions (`"..."`) and the per-line trailer
+/// after the first `  ; ` outside of quotes.
+fn apply_defines(line: &str, defines: &HashMap<String, String>) -> String {
+    if defines.is_empty() {
+        return line.to_string();
+    }
+    let bytes = line.as_bytes();
+    let mut out = String::with_capacity(line.len());
+    let mut i = 0usize;
+    let mut in_string = false;
+    let mut in_trailer = false;
+    while i < bytes.len() {
+        let b = bytes[i];
+        if in_trailer {
+            out.push(b as char);
+            i += 1;
+            continue;
+        }
+        if in_string {
+            out.push(b as char);
+            if b == b'\\' && i + 1 < bytes.len() {
+                out.push(bytes[i + 1] as char);
+                i += 2;
+                continue;
+            }
+            if b == b'"' {
+                in_string = false;
+            }
+            i += 1;
+            continue;
+        }
+        if b == b'"' {
+            in_string = true;
+            out.push('"');
+            i += 1;
+            continue;
+        }
+        // Detect a trailer start: `  ; `.
+        if b == b' '
+            && i + 3 < bytes.len()
+            && bytes[i + 1] == b' '
+            && bytes[i + 2] == b';'
+            && bytes[i + 3] == b' '
+        {
+            in_trailer = true;
+            out.push_str("  ; ");
+            i += 4;
+            continue;
+        }
+        // Identifier start?
+        if b.is_ascii_alphabetic() || b == b'_' {
+            let start = i;
+            while i < bytes.len()
+                && (bytes[i].is_ascii_alphanumeric() || bytes[i] == b'_')
+            {
+                i += 1;
+            }
+            let token = &line[start..i];
+            if let Some(replacement) = defines.get(token) {
+                out.push_str(replacement);
+            } else {
+                out.push_str(token);
+            }
+            continue;
+        }
+        out.push(b as char);
+        i += 1;
+    }
+    out
+}
+
+fn parse_hex_byte(s: &str) -> Option<u8> {
+    if s.len() != 2 {
+        return None;
+    }
+    u8::from_str_radix(s, 16).ok()
+}
+
+/// First pass over the source. Recognises three directive
+/// shapes:
+///
+/// - `%define <name> <replacement>`: register a token
+///   substitution applied to all subsequent non-directive
+///   lines.
+/// - `%search-tail <hex-bytes>`: queue raw_tail bytes that
+///   will attach to the *next* instruction line (the same
+///   role the `; raw_tail=HEX` trailer comment plays for the
+///   disassembler-emitted form).
+/// - Lines that aren't directives pass through with
+///   `apply_defines` token substitution.
+///
+/// Lines are blank-replaced (not removed) so line numbers in
+/// caret errors continue to match the source the user wrote.
+fn preprocess(input: &str) -> Result<Preprocessed> {
+    let mut defines: HashMap<String, String> = HashMap::new();
+    let mut search_tail_attachments: HashMap<usize, Vec<u8>> = HashMap::new();
+    let mut pending_tail: Option<Vec<u8>> = None;
+    let mut out_lines: Vec<String> = Vec::new();
+
+    for (i, raw_line) in input.lines().enumerate() {
+        let line_no = i + 1;
+        let trimmed = raw_line.trim_start();
+        if let Some(rest) = trimmed.strip_prefix("%define") {
+            let body = rest.trim_start();
+            // Split into (name, replacement) on first whitespace.
+            let (name, replacement) = match body.find(char::is_whitespace) {
+                Some(idx) => (&body[..idx], body[idx..].trim()),
+                None => return Err(ParseError::BadDefineSyntax { line: line_no }),
+            };
+            if name.is_empty() || replacement.is_empty() {
+                return Err(ParseError::BadDefineSyntax { line: line_no });
+            }
+            if !is_valid_define_name(name) {
+                return Err(ParseError::BadDefineName {
+                    line: line_no,
+                    name: name.to_string(),
+                });
+            }
+            if defines.contains_key(name) {
+                return Err(ParseError::DuplicateDefine {
+                    line: line_no,
+                    name: name.to_string(),
+                });
+            }
+            defines.insert(name.to_string(), replacement.to_string());
+            out_lines.push(String::new());
+            continue;
+        }
+        if let Some(rest) = trimmed.strip_prefix("%search-tail") {
+            let mut bytes = Vec::new();
+            for tok in rest.split_whitespace() {
+                match parse_hex_byte(tok) {
+                    Some(b) => bytes.push(b),
+                    None => {
+                        return Err(ParseError::BadSearchTailSyntax {
+                            line: line_no,
+                        });
+                    }
+                }
+            }
+            if bytes.is_empty() {
+                return Err(ParseError::BadSearchTailSyntax { line: line_no });
+            }
+            pending_tail = Some(bytes);
+            out_lines.push(String::new());
+            continue;
+        }
+
+        // Non-directive line. Apply `%define` substitution and
+        // see whether this is the instruction line that the
+        // pending `%search-tail` attaches to.
+        let substituted = apply_defines(raw_line, &defines);
+        let stripped = substituted.trim();
+        let is_instruction = !stripped.is_empty()
+            && !stripped.starts_with(';')
+            && !stripped.ends_with(':')
+            && stripped.len() >= 4
+            && usize::from_str_radix(&stripped[0..4.min(stripped.len())], 16).is_ok();
+        if is_instruction {
+            if let Some(bytes) = pending_tail.take() {
+                search_tail_attachments.insert(line_no, bytes);
+            }
+        }
+        out_lines.push(substituted);
+    }
+
+    Ok(Preprocessed {
+        text: out_lines.join("\n"),
+        search_tail_attachments,
+    })
+}
+
 /// Parse a text-format disassembly listing into a
 /// [`DisasmResult`]. The result has `cfg = None` and
-/// `cross_chunk_calls = []` — the parser builds an instruction
+/// `cross_chunk_calls = []`; the parser builds an instruction
 /// list, not a CFG.
 ///
-/// Two passes:
-/// 1. Pre-scan for `label_0xNNNN:` / `entry_0xNNNN[ (...)]:`
+/// Three passes:
+/// 1. Preprocess: expand `%define` substitutions and capture
+///    `%search-tail` directives. Directive lines are blank-
+///    replaced (not removed) so line numbers in caret errors
+///    still match the user's source.
+/// 2. Pre-scan for `label_0xNNNN:` / `entry_0xNNNN[ (...)]:`
 ///    declarations; build a `name -> offset` map.
-/// 2. Parse each instruction line. Branch-param tokens that
+/// 3. Parse each instruction line. Branch-param tokens that
 ///    name a label resolve to `Immediate14 { value: offset }`.
-///    Lines with a `; raw_tail=HEX` trailer set the parsed
-///    Instruction's `raw_tail` field.
+///    Lines with a `; raw_tail=HEX` trailer or a preceding
+///    `%search-tail` directive set the parsed Instruction's
+///    `raw_tail` field.
 pub fn parse(input: &str) -> Result<DisasmResult> {
-    let labels = collect_labels(input);
+    let processed = preprocess(input)?;
+    let labels = collect_labels(&processed.text);
     let mut instructions: Vec<Instruction> = Vec::new();
     let mut total_bytes = 0usize;
-    for (i, raw_line) in input.lines().enumerate() {
+    for (i, raw_line) in processed.text.lines().enumerate() {
         let line_no = i + 1;
         let line = raw_line.trim_end();
         if line.is_empty() {
@@ -182,11 +432,23 @@ pub fn parse(input: &str) -> Result<DisasmResult> {
             continue;
         }
         if line.ends_with(':') {
-            // Label declaration line — collected by the pre-scan,
+            // Label declaration line; collected by the pre-scan,
             // no semantic effect on the instruction stream.
             continue;
         }
-        let instr = parse_instruction_line(line, line_no, &labels)?;
+        let mut instr = parse_instruction_line(line, line_no, &labels)?;
+        if let Some(tail) = processed.search_tail_attachments.get(&line_no) {
+            if instr.raw_tail.is_some() {
+                return Err(ParseError::DuplicateSearchTail { line: line_no });
+            }
+            instr.raw_tail = Some(tail.clone());
+            // Recompute length now that the tail is attached.
+            instr.length = instruction_length(
+                instr.opcode,
+                &instr.params,
+                instr.raw_tail.as_deref(),
+            );
+        }
         total_bytes += instr.length;
         instructions.push(instr);
     }
@@ -1448,5 +1710,120 @@ mod tests {
         let rendered = format_with_caret(&err, src);
         assert!(rendered.contains("GNUM"));
         assert!(rendered.contains("^^^^"));
+    }
+
+    // v0.6.0 preprocessor tests ------------------------------------
+
+    #[test]
+    fn define_substitutes_in_params() {
+        // A %define replaces the named token in a param position.
+        // Use opcode 0x12 (gpl jump) which takes a single
+        // branch-target param; this is the most direct test of
+        // identifier substitution in the params area.
+        let with_define = "\
+            %define EXIT_POINT 0042\n\
+            0000  12  gpl jump              EXIT_POINT\n\
+            EXIT_POINT:\n\
+            0042  00  gpl zero\n";
+        let without = "\
+            0000  12  gpl jump              0042\n\
+            label_0x0042:\n\
+            0042  00  gpl zero\n";
+        let a = parse(with_define).expect("define version parses");
+        let b = parse(without).expect("plain version parses");
+        // The branch-target encoding is the same in both: an
+        // Immediate14 pointing at the same offset.
+        assert_eq!(
+            a.instructions[0].params, b.instructions[0].params,
+            "branch target after %define should match plain form"
+        );
+    }
+
+    #[test]
+    fn define_rejects_duplicate() {
+        let src = "\
+            %define X 1\n\
+            %define X 2\n";
+        let err = parse(src).unwrap_err();
+        assert!(matches!(err, ParseError::DuplicateDefine { line: 2, .. }));
+    }
+
+    #[test]
+    fn define_rejects_reserved_name() {
+        // `gpl` is a mnemonic word; defining over it would break
+        // the mnemonic parser.
+        let src = "%define gpl 99\n";
+        let err = parse(src).unwrap_err();
+        assert!(matches!(err, ParseError::BadDefineName { line: 1, .. }));
+    }
+
+    #[test]
+    fn define_skips_quoted_regions() {
+        // A %define name appearing inside a string literal is
+        // not substituted.
+        let mut defines = HashMap::new();
+        defines.insert("FOO".to_string(), "BAR".to_string());
+        let out = apply_defines("0000  92  gpl_str               \"FOO BAR\"", &defines);
+        assert!(out.contains("\"FOO BAR\""), "{}", out);
+    }
+
+    #[test]
+    fn search_tail_attaches_to_next_instruction() {
+        // The %search-tail directive provides raw_tail bytes for
+        // the following gpl_search instruction. The output should
+        // round-trip identical to the same chunk authored with a
+        // `; raw_tail=HEX` trailer comment.
+        let with_directive = "\
+            %search-tail 01 00 02 ff\n\
+            0000  33  gpl_search            GBYTE[0]\n";
+        let with_comment = "\
+            0000  33  gpl_search            GBYTE[0]  ; raw_tail=010002ff\n";
+        let a = parse(with_directive).expect("directive form parses");
+        let b = parse(with_comment).expect("comment form parses");
+        assert_eq!(a.instructions[0].raw_tail, b.instructions[0].raw_tail);
+        assert_eq!(
+            a.instructions[0].raw_tail.as_deref(),
+            Some(&[0x01u8, 0x00, 0x02, 0xff][..])
+        );
+    }
+
+    #[test]
+    fn search_tail_conflicts_with_trailer_comment() {
+        // If both the directive AND a `; raw_tail=...` trailer
+        // appear on the same instruction, the parser must surface
+        // DuplicateSearchTail rather than silently picking one.
+        let src = "\
+            %search-tail 01 02\n\
+            0000  33  gpl_search            GBYTE[0]  ; raw_tail=03 04\n";
+        let err = parse(src).unwrap_err();
+        assert!(matches!(err, ParseError::DuplicateSearchTail { line: 2 }));
+    }
+
+    #[test]
+    fn directive_lines_blank_replace_preserves_line_numbers() {
+        // A %define on line 1 should NOT shift the offset of the
+        // line-2 instruction in error messages; caret errors
+        // continue to point at the user's source line.
+        let src = "\
+            %define VALID 42\n\
+            ZZZZ  3a  gpl_immed\n";
+        let err = parse(src).unwrap_err();
+        // BadOffset on line 2 (where ZZZZ lives), not line 1.
+        assert!(matches!(err, ParseError::BadOffset { line: 2, .. }));
+    }
+
+    #[test]
+    fn define_bad_syntax_is_flagged() {
+        // No replacement supplied.
+        let src = "%define LONELY\n";
+        let err = parse(src).unwrap_err();
+        assert!(matches!(err, ParseError::BadDefineSyntax { line: 1 }));
+    }
+
+    #[test]
+    fn search_tail_bad_hex_is_flagged() {
+        let src = "%search-tail 01 zz\n";
+        let err = parse(src).unwrap_err();
+        assert!(matches!(err, ParseError::BadSearchTailSyntax { line: 1 }));
     }
 }

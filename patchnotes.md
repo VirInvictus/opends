@@ -4,6 +4,45 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gpl-asm/` v0.6.0** adds the preprocessor: two
+  directives that make hand-authored GPL listings more
+  ergonomic without changing the bytecode the encoder
+  produces. The v0.5.0 validator pass + caret-style errors
+  remain in place.
+  - **`%define <name> <replacement>`**: token substitution
+    applied to every subsequent non-directive line. Names
+    are identifier-shaped only (letters / digits / underscore,
+    leading letter or `_`) and cannot shadow reserved tokens:
+    operator words (`and`, `or`), variable shorts (`GNUM`,
+    `GBYTE`, `LSTR`, ...), keyword tokens (`RETVAL`,
+    `INTRODUCE`, `ACCUM`, ...), or mnemonic words (`gpl`,
+    `jump`, `endif`, `else`, `while`, ...). Substitution
+    skips quoted string regions and the per-line
+    `  ; trailer` comment portion.
+  - **`%search-tail <hex-bytes>`**: ergonomic alternative to
+    the `; raw_tail=HEX` trailer comment, with space-separated
+    hex bytes. Attaches to the next instruction line; errors
+    if a trailer comment is also present.
+  - **Directive lines blank-replace**, not remove, so caret
+    error line numbers still match the user's source. A
+    `%define` on line 7 of an authored listing still surfaces
+    a parse error on line 9 as `line 9`.
+  - **New `ParseError` variants**: `BadDefineSyntax`,
+    `BadDefineName`, `DuplicateDefine`, `BadSearchTailSyntax`,
+    `DuplicateSearchTail`. All flow through
+    `format_with_caret` and underline the offending
+    directive line end-to-end.
+  - **Corpus stays at 600 / 600 byte-identical**. The
+    disassembler doesn't emit directives, so the round-trip
+    path is unchanged.
+  - **Out of scope (v0.7.0+)**: parameterised macros
+    (`%define foo(arg1, arg2)`), `@include` directives, a
+    separate `.const` keyword distinct from `%define`.
+  - **`roadmap.md` Phase 5 §gpl-asm**: authoring-conveniences
+    row ticked; v0.7.0 carries the parameterised-macro
+    follow-on.
+  - **VERSION**: 0.5.0 -> 0.6.0.
+
 - **`tools/opcode-fuzz/` v0.1.0** lands the Phase 5 second
   tool's scaffold and chunk-patchwork pipeline. Same shape as
   `repro` v0.1.0: ship the foundation, defer the discovery

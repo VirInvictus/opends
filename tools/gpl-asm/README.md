@@ -13,6 +13,97 @@ Depends on `gpl-disasm` for the [`DisasmResult`] type (and the
 `Deserialize` impls added there in v0.4.4 specifically so this
 crate can consume the same JSON the disassembler emits).
 
+## What `gpl-asm v0.6.0` ships
+
+Authoring conveniences for hand-written GPL listings. The
+text-listing parser now understands two preprocessor
+directives that make authoring less tedious without changing
+the bytecode the encoder produces. v0.5.0's validator pass
++ caret-style errors remain in place; v0.6.0 adds plumbing
+on top.
+
+### `%define <name> <replacement>`
+
+Token substitution applied to every subsequent non-directive
+line:
+
+```text
+%define ROOM_FLAG 47
+%define WORLD_GREETING 0x4200
+
+0000  3a  gpl_immed             ROOM_FLAG
+0003  12  gpl jump              WORLD_GREETING
+```
+
+is equivalent to writing `47` and `0x4200` directly in the
+param slots. `%define` is identifier-shaped only (letters /
+digits / underscore, leading letter or `_`) and **cannot
+shadow** reserved tokens: operator words (`and`, `or`),
+variable shorts (`GNUM`, `GBYTE`, `LSTR`, ...), keyword
+tokens (`RETVAL`, `INTRODUCE`, `ACCUM`, ...), or mnemonic
+words (`gpl`, `jump`, `endif`, `else`, `while`, ...).
+Substitution skips quoted regions (`"..."`) and the
+per-line `  ; trailer` comment portion, so a `%define` name
+appearing inside a string literal stays literal.
+
+Duplicate `%define` is an error
+(`ParseError::DuplicateDefine`); collision with a reserved
+name is an error (`ParseError::BadDefineName`); missing
+replacement is an error (`ParseError::BadDefineSyntax`).
+
+### `%search-tail <hex-bytes>`
+
+Attaches `raw_tail` bytes to the next `gpl_search` (`0x33`)
+instruction line:
+
+```text
+%search-tail 01 00 02 ff
+0000  33  gpl_search            GBYTE[0]
+```
+
+is equivalent to writing the disassembler-emitted form:
+
+```text
+0000  33  gpl_search            GBYTE[0]  ; raw_tail=010002ff
+```
+
+Both produce the same `Instruction.raw_tail = [0x01, 0x00,
+0x02, 0xff]`. The directive form is easier to author by
+hand because the bytes are space-separated instead of
+needing to be packed in a single hex run.
+
+If both forms appear on the same instruction, the parser
+errors with `ParseError::DuplicateSearchTail` rather than
+silently picking one.
+
+### Source-line preservation
+
+Directive lines are **blank-replaced** during preprocessing
+(not removed) so line numbers in caret-style error messages
+continue to match the user's source. A `%define` on line 7
+of an authored listing still surfaces a parse error on line
+9 as `line 9`, not `line 8`.
+
+### What's the same
+
+- The `gpl-disasm`-emitted text listing path is unchanged;
+  the disassembler doesn't emit `%define` or
+  `%search-tail`, so the corpus 600 / 600 round-trip stays
+  byte-identical.
+- `--validate-only` and `--no-validate` still work the
+  same way.
+- All v0.5.0 error variants still exist and still produce
+  caret output via `format_with_caret`.
+
+### Out of scope (queued for v0.7.0+)
+
+- **Parameterised macros** (`%define foo(arg1, arg2) ...`).
+  v0.6.0 is name -> text substitution only.
+- **`@include` directives** (multi-file authoring).
+- **A `.const` keyword** distinct from `%define`. They'd be
+  aliases under the hood; `%define` covers both use cases
+  for now.
+
 ## What `gpl-asm v0.5.0` ships
 
 The **author safety net**. Two pieces that improve the

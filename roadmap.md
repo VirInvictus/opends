@@ -399,9 +399,15 @@ just read it. Be able to discover unknown opcodes systematically.
       `Immediate14` 15-bit overflow, RetVal depth) wired as the
       default pre-encode check (`--validate-only`,
       `--no-validate`). Corpus validates 600 / 600 clean.
-- [ ] Authoring conveniences (macros, forward-reference
-      syntax beyond `label:`, `gpl_search` raw_tail
-      composition). v0.6.0+.
+- [x] Authoring conveniences (gpl-asm v0.6.0): `%define
+      <name> <replacement>` for token substitution and
+      `%search-tail <hex-bytes>` for ergonomic raw-tail
+      composition on `gpl_search`. Reject lists on `%define`
+      names cover operator words, variable shorts, keyword
+      tokens, and mnemonic words. Directive lines blank-
+      replace so caret error line numbers still match the
+      user's source. Corpus stays at 600 / 600. Parameterised
+      macros and `@include` directives are queued for v0.7.0+.
 - [x] Tagged: `gpl-asm-v0.1.0`. (this release)
 
 ### `tools/opcode-fuzz/` (Python; drives DOSBox debugger over IPC)
