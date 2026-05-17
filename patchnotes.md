@@ -4,6 +4,43 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/repro/` v0.3.0** makes `--play` resumable. v0.2.1
+  invented the play mode but every invocation created a fresh
+  `/tmp/repro-XXXX/` scratch dir, so in-game saves vanished
+  between runs. v0.3.0 adds session continuity via a stable
+  scratch path under `$XDG_STATE_HOME`. Input automation +
+  video capture remain v0.3.x / v0.4.0+ (need dep approvals).
+  - **`--session <name>` + persistent overlays**. Each
+    `--play --session foo` uses `$XDG_STATE_HOME/opends-repro/
+    play-<game>-<session>/` (defaults to
+    `~/.local/state/opends-repro/`). The `c-overlay/` inside
+    that path holds the C: drive state from every previous
+    run; factory-save staging skips when the overlay already
+    has the file, so player saves are never overwritten.
+    Default session name on `--play` is the bug id itself, so
+    `repro.py ds1-smoke --play` keeps its own saves
+    automatically.
+  - **`--list-sessions`** enumerates every session under the
+    state root with the last-played mtime of `c-overlay/
+    DARKRUN.GFF` (tracks actual in-game activity rather than
+    dir-creation time).
+  - **`--reset-session <name>`** prompts for explicit `yes`
+    then deletes the named session dir. Requires a `bug_id`
+    positional so the target game is known.
+  - **Resume / fresh marker** in the run header: the scratch
+    line says `(fresh)` or `(resumed)` depending on whether
+    the session dir was just created.
+  - **Regression mode unchanged**. Test runs (`--play`
+    omitted) still use `tempfile.mkdtemp` so they don't
+    accumulate stale state.
+  - **Out of scope (v0.3.x / v0.4.0+)**: input automation
+    (ydotool); video capture (GNOME-Wayland-compatible
+    recorder); differential capture.
+  - **`roadmap.md` Phase 2 §save-state library**: session-
+    continuity note added; row stays partial pending real
+    bug-triggering save curation.
+  - **VERSION**: 0.2.1 -> 0.3.0.
+
 - **`tools/dialog-extract/` v0.5.0** closes the LSTR tail. The
   32 LSTR reads v0.4 couldn't pin to a single writer
   (caller-populated slots: the engine writes to LSTR slot N

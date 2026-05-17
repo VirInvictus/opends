@@ -1,12 +1,71 @@
 # repro
 
-DOSBox-Staging repro harness for OpenDS. v0.2.1.
+DOSBox-Staging repro harness for OpenDS. v0.3.0.
 
 Drives a per-bug fixture under `bugs/<id>/` against a working
 DOS install, validates pass/fail by elapsed time and scratch-dir
 artifacts, and never writes to the game install. The "any bug
 reproducible in five minutes" plumbing from
 [`roadmap.md`](../../roadmap.md) Phase 2.
+
+## What v0.3.0 adds
+
+`--play` becomes a real, resumable thing. v0.2.1 invented the
+mode but every invocation created a fresh `/tmp/repro-XXXX/`
+scratch dir; in-game saves vanished between runs. v0.3.0 adds
+session continuity via a stable scratch path under
+`$XDG_STATE_HOME` (or `~/.local/state/opends-repro/`).
+
+### `--session <name>` + persistent overlays
+
+`python3 repro.py ds1-smoke --play --session main` always uses
+`~/.local/state/opends-repro/play-ds1-main/`. The `c-overlay/`
+inside that path holds the C: drive state from every previous
+run; in-game saves persist automatically. Default session name
+when `--session` is omitted on `--play` is the bug id itself,
+so the simplest invocation (`repro.py ds1-smoke --play`) keeps
+its own saves.
+
+The harness reports whether the session is `fresh` (just
+created) or `resumed` (existing dir reused). Factory-save
+staging only fires when the overlay is empty; existing saves
+are never overwritten.
+
+### `--list-sessions`
+
+Enumerate every session dir under the state root with its
+last-played mtime (the timestamp of the overlay's
+`DARKRUN.GFF`, so it tracks the most recent in-game activity
+rather than just dir-creation):
+
+```
+sessions in /home/.../.local/state/opends-repro:
+  play-ds1-main      2026-05-17 16:45
+  play-ds2-mines     2026-05-17 15:13
+```
+
+### `--reset-session <name>`
+
+Force a fresh start for a session id. Needs a `bug_id`
+positional so it can resolve the target game; prompts for
+explicit `yes` before deleting.
+
+### Regression mode unchanged
+
+Without `--play`, the harness still uses `tempfile.mkdtemp` so
+test runs don't accumulate stale state. Sessions only apply
+to `--play`.
+
+### Out of scope (queued for v0.3.x / v0.4.0+)
+
+- **Input automation** (ydotool integration). Requires
+  approval to add `ydotool` as a system dep. When added,
+  per-fixture `[trigger].keystrokes` lets the harness feed
+  in-game keystrokes at scheduled times.
+- **Video capture**. Requires a GNOME-Wayland-compatible
+  recorder (no wf-recorder on Mutter). Output to
+  `<session>/repro.webm`.
+- **Differential capture** (run-with-patch vs without).
 
 ## What v0.2.1 adds
 

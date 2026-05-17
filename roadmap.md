@@ -115,8 +115,12 @@ save library, recording wrapper.
 - [~] Save-state library: per-bug, a save-game placed just
       before the bug-triggering action. Indexed by bug ID. (Two
       smoke fixtures shipped (`ds1-smoke`, `ds2-smoke`) plus a
-      `bugs/README.md` catalogue. Real bug-triggering save
-      curation rolls into v0.3.0 alongside input automation.)
+      `bugs/README.md` catalogue. repro v0.3.0 adds `--play
+      --session <name>` so in-game saves persist across runs
+      under `$XDG_STATE_HOME/opends-repro/play-<game>-<session>/`
+      plus `--list-sessions` and `--reset-session`. Real
+      bug-triggering save curation continues alongside input
+      automation in v0.3.x / v0.4.0+.)
 - [ ] Recording wrapper: one command, one bug ID → DOSBox
       launches at the right save, records video to
       `scratch/<bug-id>/repro.mp4`. Queued for v0.3.0

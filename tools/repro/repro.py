@@ -30,6 +30,29 @@ DEFAULT_BUGS_DIR = REPRO_DIR / "bugs"
 DEFAULT_CONFIGS_DIR = REPRO_DIR / "configs"
 DEFAULT_GAMES_DIR = REPO_ROOT / ".games"
 
+
+def state_root() -> Path:
+    """Per-user state directory for `--play --session` data.
+
+    Honours `XDG_STATE_HOME` per the freedesktop base-directory
+    spec; falls back to `~/.local/state/opends-repro/` (the
+    Linux default state path). All `--play` sessions live in
+    subdirectories `play-<game>-<session>/`.
+    """
+    base = os.environ.get("XDG_STATE_HOME")
+    if base:
+        return Path(base) / "opends-repro"
+    return Path.home() / ".local" / "state" / "opends-repro"
+
+
+def session_dir(target_game: str, session_name: str) -> Path:
+    """Resolve a `--play --session` scratch path. The path is
+    stable across invocations so in-game saves persist between
+    play sessions.
+    """
+    safe_session = session_name.replace("/", "_").replace("\\", "_")
+    return state_root() / f"play-{target_game}-{safe_session}"
+
 # Exit codes
 EXIT_PASS = 0
 EXIT_FAIL = 1
@@ -295,6 +318,59 @@ def evaluate(
     return ok, reasons
 
 
+def list_sessions() -> int:
+    """Enumerate active `--play --session` directories under the
+    XDG state root with their last-played mtime (the timestamp
+    of the overlay's `DARKRUN.GFF` so the user can tell which
+    session was most recently active).
+    """
+    root = state_root()
+    if not root.is_dir():
+        print(f"(no sessions; state root {root} doesn't exist)")
+        return EXIT_PASS
+    entries: list[tuple[str, str]] = []
+    for child in sorted(root.iterdir()):
+        if not child.is_dir():
+            continue
+        if not child.name.startswith("play-"):
+            continue
+        darkrun = child / "c-overlay" / "DARKRUN.GFF"
+        if darkrun.exists():
+            mtime = time.strftime(
+                "%Y-%m-%d %H:%M", time.localtime(darkrun.stat().st_mtime)
+            )
+        else:
+            mtime = "(no DARKRUN.GFF yet)"
+        entries.append((child.name, mtime))
+    if not entries:
+        print(f"(no play sessions in {root})")
+        return EXIT_PASS
+    name_w = max(len(e[0]) for e in entries)
+    print(f"sessions in {root}:")
+    for name, mtime in entries:
+        print(f"  {name:<{name_w}}  {mtime}")
+    return EXIT_PASS
+
+
+def reset_session(target_game: str, session_name: str) -> int:
+    """Delete an existing `--play --session` directory after a
+    y/n prompt. Used to force a fresh start the next time the
+    session id is launched.
+    """
+    sdir = session_dir(target_game, session_name)
+    if not sdir.is_dir():
+        print(f"no session at {sdir}; nothing to reset", file=sys.stderr)
+        return EXIT_HARNESS_ERROR
+    print(f"about to delete: {sdir}")
+    answer = input("type 'yes' to confirm: ").strip()
+    if answer != "yes":
+        print("aborted")
+        return EXIT_HARNESS_ERROR
+    shutil.rmtree(sdir)
+    print(f"removed {sdir}")
+    return EXIT_PASS
+
+
 def list_bugs(bugs_dir: Path) -> int:
     """Enumerate fixtures + their one-line description.
 
@@ -374,13 +450,39 @@ def main(argv: list[str] | None = None) -> int:
             "the harness uses) and launches DOSBox with NO "
             "wall-clock budget; the user quits the game in-engine "
             "and DOSBox closes itself. Skips pass/fail evaluation. "
-            "Always keeps the scratch dir so in-game saves persist "
-            "after exit (the path is printed at the end of the run). "
-            "Useful when you want to actually play the game with "
-            "the harness's setup rather than running the regression "
-            "test; the harness recipe sidesteps the DARKSAVE-not- "
-            "at-C:\\ and MEL-DSP-detect-fail gotchas that bite a "
-            "bare `dosbox DSUN.EXE` invocation."
+            "Saves persist across invocations via session "
+            "directories (see --session). Useful when you want to "
+            "actually play the game with the harness's setup "
+            "rather than running the regression test; the harness "
+            "recipe sidesteps the DARKSAVE-not-at-C:\\ and MEL-DSP-"
+            "detect-fail gotchas that bite a bare `dosbox DSUN.EXE` "
+            "invocation."
+        ),
+    )
+    ap.add_argument(
+        "--session",
+        default=None,
+        help=(
+            "Session name for --play. Picks a stable scratch path "
+            "at ${XDG_STATE_HOME:-~/.local/state}/opends-repro/"
+            "play-<game>-<session>/ so in-game saves persist "
+            "across invocations. Defaults to the bug id when "
+            "--play is set; ignored otherwise."
+        ),
+    )
+    ap.add_argument(
+        "--list-sessions",
+        action="store_true",
+        help="enumerate `--play --session` directories and exit",
+    )
+    ap.add_argument(
+        "--reset-session",
+        metavar="SESSION_NAME",
+        default=None,
+        help=(
+            "delete an existing --play session directory after a "
+            "y/n prompt; requires a bug_id positional so the "
+            "target_game is known"
         ),
     )
     args = ap.parse_args(argv)
@@ -388,8 +490,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.list:
         return list_bugs(args.bugs_dir)
 
+    if args.list_sessions:
+        return list_sessions()
+
     if not args.bug_id:
-        ap.error("bug_id is required (or pass --list)")
+        ap.error("bug_id is required (or pass --list / --list-sessions)")
 
     bug_dir = args.bugs_dir / args.bug_id
     if not bug_dir.is_dir():
@@ -421,9 +526,31 @@ def main(argv: list[str] | None = None) -> int:
         )
         return EXIT_HARNESS_ERROR
 
-    scratch_dir = Path(
-        tempfile.mkdtemp(prefix=f"repro-{fixture.id}-", dir="/tmp")
-    )
+    if args.reset_session is not None:
+        # --reset-session needs the target_game (resolved from
+        # the bug fixture). Run the prompt and exit.
+        return reset_session(fixture.target_game, args.reset_session)
+
+    # Session continuity: `--play --session foo` lives at the
+    # stable XDG state path so saves persist between runs.
+    # Default the session name to the bug id so the simplest
+    # invocation (`repro.py ds1-smoke --play`) keeps its own
+    # saves automatically. Test runs (no --play) keep using a
+    # per-run tempfile path so they don't accumulate stale
+    # state.
+    session_name: str | None = None
+    if args.play:
+        session_name = args.session or fixture.id
+
+    scratch_was_new = True
+    if session_name is not None:
+        scratch_dir = session_dir(fixture.target_game, session_name)
+        scratch_was_new = not scratch_dir.exists()
+        scratch_dir.mkdir(parents=True, exist_ok=True)
+    else:
+        scratch_dir = Path(
+            tempfile.mkdtemp(prefix=f"repro-{fixture.id}-", dir="/tmp")
+        )
 
     print(f"=== {fixture.id} ===")
     if fixture.description:
@@ -432,7 +559,12 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  target_game : {fixture.target_game}")
     print(f"  config      : {config_path}")
     print(f"  game-dir    : {game_dir}")
-    print(f"  scratch     : {scratch_dir}")
+    if session_name is not None:
+        print(f"  session     : {session_name}")
+        marker = "fresh" if scratch_was_new else "resumed"
+        print(f"  scratch     : {scratch_dir}  ({marker})")
+    else:
+        print(f"  scratch     : {scratch_dir}")
 
     if args.play:
         # Force the scratch retention path: in-game saves land in
@@ -466,10 +598,14 @@ def main(argv: list[str] | None = None) -> int:
                 f"(rc={exit_code})"
             )
             print()
-            print(f"Scratch dir kept: {scratch_dir}")
-            print(f"In-game saves are at {overlay_dir}/ ; copy any of")
-            print(f"  CHARSAVE.GFF / DARKSAVE.GFF / BACKSAVE.GFF / DARKRUN.GFF")
-            print(f"out to a stable location before next run.")
+            print(f"Session retained at: {scratch_dir}")
+            print(f"In-game saves are at {overlay_dir}/")
+            if session_name is not None:
+                print(
+                    f"Next `repro.py {fixture.id} --play "
+                    f"--session {session_name}` resumes this state. "
+                    f"`repro.py --list-sessions` lists all sessions."
+                )
             return EXIT_PASS
         print(f"running {fixture.id}...")
         exit_code, elapsed, timed_out = run_dosbox(
