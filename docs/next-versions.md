@@ -1,814 +1,754 @@
-# Next-versions planning
+% next-versions: sprint plan
 
-Sprint plan for the five "next mature version" ships across
-the toolkit. The bar is per-Brandon: every tool fully shelled
-out before any darkfix patch work. See [memory
-`feedback-tools-before-patches`](../.. ) for the durable rule.
+The 10-tool upgrade sprint. Refreshed after the
+gpl-asm v0.6.0 / dialog-extract v0.5.0 / repro v0.3.0 /
+opcode-fuzz v0.2.0 / docs §4.5 sprint (commits e4e5f58 ..
+6b6c464). The prior sprint's plan is preserved in git
+history at commit `a782b4b` for archival comparison.
 
-The five plans below are sequenced in roughly increasing
-risk / cost order:
+Same per-tool layout as before: scope (in / out),
+implementation steps, test plan, risks, effort estimate.
+Background research at the bottom; dependency graph
+documents which ships unblock which.
 
-1. `gpl-asm v0.6.0` (authoring conveniences; self-contained)
-2. `dialog-extract v0.5.0` (LSTR tail; inter-chunk flow)
-3. `repro v0.3.0` (`--play` session continuity + input + video)
-4. `opcode-fuzz v0.2.0` (run-and-observe; depends on repro
-   v0.3.0)
-5. `region-render v0.6.0` (`--animate`; third try, time-boxed)
+## Current state (start-of-sprint)
 
-Each plan section includes scope, the implementation steps,
-the test plan, and the open risks. Background research from
-the public Dark Sun reverse-engineering corpus (libgff,
-soloscuro-archive, dsun_music, dso-online) anchors the
-findings.
+| Tool             | Version | Last shipped what |
+|------------------|---------|-------------------|
+| `verify-install` | 0.1.0   | hash-check against canonical manifest |
+| `gff-edit`       | 0.4.0   | read / write / extract / bulk / text-codec / JSON / catalogue |
+| `gpl-disasm`     | 0.4.6   | 100% corpus alignment, CFG, symbols, raw_tail |
+| `gpl-asm`        | 0.6.0   | encoder + validator + caret + preprocessor (`%define`, `%search-tail`) |
+| `dialog-extract` | 0.5.0   | 91% exact LSTR + callgraph-narrowed `possible_writers` |
+| `save-inspect`   | 0.6.0   | DS1+DS2 schemas + `SAVE0N.SAV == DARKRUN.GFF` discovery |
+| `image-extract`  | 0.2.1   | 99.95% corpus, 1 malformed chunk pinned |
+| `region-render`  | 0.5.0   | tiles + walls + entity sprites; cycle table un-RE'd |
+| `repro`          | 0.3.0   | harness + ds1/ds2-smoke + `--play --session` continuity |
+| `opcode-fuzz`    | 0.2.0   | chunk-patchwork + `run` (DARKRUN diff) |
 
-## Background research
+## Sprint order
 
-### `.dsoageofheroes/` subrepos
+Sequenced by ROI / dependency:
 
-Seven checkouts, ordered roughly by impl maturity:
+1. **`verify-install v0.2.0`**: repair mode + JSON output. No
+   deps; quick safety-net upgrade.
+2. **`gff-edit v0.5.0`**: GFF builder API. Unblocks
+   opcode-fuzz recipe synthesis (single-chunk synthetic GFFs).
+3. **`image-extract v0.3.0`**: multi-frame sprite export.
+   Self-contained; deferred from v0.2.0.
+4. **`region-render v0.6.0`**: animated entity sprites.
+   Depends on (3). Pivots away from the cycle-table wall;
+   uses ETAB `frame_count > 1` for visible animation
+   instead.
+5. **`dialog-extract v0.6.0`**: CFG-distance-ordered
+   `possible_writers`. Self-contained.
+6. **`gpl-disasm v0.5.0`**: variable naming from a curated
+   `gbyte.toml` / `gnum.toml` / etc. Self-contained; benefits
+   every consumer (gpl-asm, dialog-extract, opcode-fuzz).
+7. **`gpl-asm v0.7.0`**: parameterised macros + `@include`.
+   Self-contained; benefits opcode-fuzz recipes.
+8. **`save-inspect v0.7.0`**: `SAVE` chunk decode.
+   Self-contained RE thread.
+9. **`repro v0.4.0`**: ydotool input automation + video
+   capture. Gated on dep approvals (ydotool +
+   gnome-screen-recorder or equivalent).
+10. **`opcode-fuzz v0.3.0`**: recipe library + structured
+    diff (via save-inspect v0.7.0) + boot-chunk
+    identification. Depends on (8), benefits from (2) (7) (9).
 
-- `libgff`: the public reference for the GFF container, the
-  RDFF sub-block schemas, and the GPL bytecode interpreter
-  surface. `include/gff/var.h` declares the GPL VM's data
-  vocabulary (operator opcodes `0xD0..0xDF`, type tags
-  `0x00..0x12`, complex-access dispatch bytes); `include/gff/gfftypes.h`
-  catalogues every FOURCC; `src/gpl/state.c` declares the
-  static VM-state arrays we'll need to observe in
-  `opcode-fuzz v0.2.0`. The implementation is **partial**;
-  many opcode handlers in `src/gpl/parse.c` are
-  `printf`-only stubs (see `GPL_LSTRING` at parse.c:217-226).
-- `libsoloscuro`: newer C library factored out of
-  soloscuro-archive. Reorganised; smaller. Same
-  vocabulary but most of the engine-side logic is still in
-  soloscuro-archive.
-- `soloscuro-archive`: the ~567-commit engine reimpl attempt
-  that stalled in 2023. Custom Lua-based save format
-  (`src/save-load.c`); not GFF, so not directly applicable
-  to `save-inspect` / `opcode-fuzz`. The GPL VM impl lives
-  here but borrows libgff's parser. Region rendering exists
-  but has **no palette-cycle handling** (verified by grep
-  on `cycle`, `animat`, `palette`).
-- `soloscuro`: Zig rewrite skeleton; minimal code.
-- `soloscuro-oldgo` / `soloscuro-orx`: older Go / Orx
-  experiments; not load-bearing.
-- `the-dark-lens`: DSO protocol notes only; one Markdown file
-  + an `xmi-tracks.txt`. Useful as background for DSO
-  symbols but no code.
-
-**Headline findings**:
-
-1. **GPL VM variable layout** (libgff `include/gff/var.h` +
-   `src/gpl/state.c`):
-   - `gpl_global_flags[MAXGFLAGS = 800]` (1 bit each, packed
-     to 101 bytes).
-   - `gpl_global_nums[MAXGNUMS = 400]` (`int16_t`, 800 bytes).
-   - `gpl_global_bnums[MAXGBIGNUMS = 40]` (`int32_t`, 160
-     bytes).
-   - `gpl_global_strs[MAXGSTRS = 32][1024]` (32 × 1024 = 32 KB).
-   - `gpl_gnames[MAXGNAMES = 13]` (`int16_t`, 26 bytes).
-   - Locals: `MAXLFLAGS = 64`, `MAXLNUMS = 32`,
-     `MAXLBIGNUMS = 40`. Locals are per-chunk and don't
-     persist.
-   - Search stack: `MAX_SEARCH_STACK = 32`.
-
-   These are the arrays a single-opcode test must read from /
-   write to for `opcode-fuzz` to observe behaviour.
-
-2. **SAVE-chunk family in GFFs** (libgff `include/gff/gfftypes.h`
-   lines 93-106):
-   - `CHAR` (`'CHAR'`) = saved character slot.
-   - `SAVE` (`'SAVE'`) = save entries (the per-region world-
-     state chunks save-inspect saw in DARKRUN.GFF).
-   - `STXT` (`'STXT'`) = save-file display name.
-   - libgff also defines `POS `, `ROBJ`, `TRIG`, `GDAT`,
-     `PLAY`, `RENT` but flags them "(not part of original
-     engine.)"; those are soloscuro-archive's additions.
-     The original engine ships `SAVE` / `STXT` / `ETME` /
-     `ETAB` / `CHAR` only, matching what `save-inspect` reads.
-
-3. **LSTRING (local string slot) semantics** are documented
-   but **not implemented** in libgff (parse.c:217-226 is a
-   `printf` stub with commented-out array access). That
-   makes libgff a non-source for the LSTR caller-population
-   problem; our own `dialog-extract` already exceeds the
-   public state of the art.
-
-4. **Palette cycling is publicly un-RE'd**. Both libgff and
-   soloscuro-archive have zero code for cycle / animated
-   palettes. `dsun_music`'s region-tool carries the canonical
-   `TODO: properly render animated colors` at line 180 of
-   `RegionTool.java`. Our DSUN.EXE work in
-   `docs/dsun-exe-re.md` §4 is the public state.
-
-### `.dsun_music/` subrepo (JohnGlassmyer)
-
-Four tools: `gff-tool`, `image-tool`, `region-tool`,
-`xmi-tool`, plus a `common` library. The `common/GffFile.java`
-is the canonical public GFF writer (the policy `gff-edit` and
-the OpenDS toolkit follow: in-place if it fits, append
-otherwise; segmented-chunk secondary-table format).
-`region-tool` is the public closest-prior-art region renderer
-that we informed `region-render` from; the only cycle-related
-content is the line-180 TODO.
-
-### `.dso-online/` subrepo (greg-kennedy)
-
-Symbol catalogue (`tools/symbols.txt`) is the highest-value
-reference: 3,530 names from the DSO v1.0 client, sharing the
-WotR codebase. Headline cohorts for the upcoming versions:
-
-**GPL VM state pointers** (likely `int32_t*` each, allocated
-elsewhere):
-
-| DSO offset | Symbol           | Role                                 |
-|------------|------------------|--------------------------------------|
-| `0x00108210` | `gplData`        | bytecode pointer for current chunk |
-| `0x00108218` | `gGnumvar`       | pointer to GNUMs array             |
-| `0x00108220` | `gGbignumvar`    | pointer to GBIGNUMs array          |
-| `0x00108224` | `gLbignumvar`    | pointer to LBIGNUMs array          |
-| `0x00108228` | `gGflagvar`      | pointer to GFLAGs array            |
-| `0x00108234` | `gBignumptr`     | scratch big-num pointer            |
-| `0x0010823C` | `gGstringvar`    | pointer to GSTRINGs array          |
-| `0x001BFD94` | `gNameBuffer`    | GNAMEs buffer                      |
-| `0x001D0648` | `gplIp`          | GPL instruction pointer            |
-
-DSO offsets are not DSUN.EXE offsets; the call-graph-shape
-matching pattern from `dsun-exe-re.md` §3 / §4 is the way to
-find DS2 counterparts. The 8-byte stride between successive
-pointer symbols (`gGnumvar` at `+0x00`, `gGbignumvar` at
-`+0x08`, `gLbignumvar` at `+0x0c`) is the distinguishing
-shape: a contiguous run of `int32_t*` slots in the data
-segment.
-
-**Save / load**:
-
-- `OpenCharsave 0x0002E791 f`, `CloseCharsave 0x0002E7CF f`.
-- `SaveCharRec 0x0002C45F f` (the per-character writer; the
-  function whose disassembly would pin down DS2 character
-  schema's byte semantics).
-- `GameModeSave 0x0001E640 f`, `SaveGameToDisk 0x0002F1C5 f`.
-- `GameLoadRegion 0x00024131 f` (region loader; touches the
-  SAVE-chunk read path).
-- `dosave 0x0011075A l`, `dothesave 0x000C0A64 f`,
-  `usuallysave 0x000C0A7E f` (state guards around save).
-
-**Input / timer** (relevant for `repro v0.3.0` + `opcode-fuzz`):
-
-- `messageTimer 0x001BBA1C`, `gTheDJTimer 0x001BE450`,
-  `hFrameTimer 0x0010B3E4`: timer handles; the engine's tick
-  cadence.
-- `keytranslate 0x00041061 f`: keyboard input translator.
-  Hooked into the BIOS keyboard interrupt; if we can find its
-  input buffer, that's where ydotool-driven keystrokes land
-  in DOSBox.
-- `Inputi16 0x000336BC f`, `InputBignum`, `InputString`: GPL-
-  side input request functions.
-
-**MEL audio** (already known; included for completeness):
-
-- `melReset`, `_melDisplayFliFrames` etc. confirm the engine
-  binds against Miles Audio Library; the v0.1.0 `repro` work
-  that captured the `sound_ds`-generated `SOUND.CFG` is the
-  workaround.
+The cycle-table thread (region-render `--animate`) stays
+parked. The third pass (§4.5 deepening commit `6b6c464`)
+documented the DOS/4GW runtime ABI wall; cracking it requires
+either a DOS/4GW ABI doc dive or a DSO function-table dump
+from the community, neither of which we control. Document
+the wall and move on. The `--animate` work, if it ever ships,
+sits behind opcode-fuzz's dynamic analysis path.
 
 ---
 
-## `gpl-asm` v0.6.0: authoring conveniences
+## `verify-install v0.2.0`: repair mode + JSON output
 
-The remaining out-of-scope items from v0.5.0:
-
-1. **Macros** for parameterised expressions / blocks.
-2. **Forward references** beyond `label:` (named symbolic
-   constants for the `name_idx` / item id / flag id token
-   slots the parser currently demands as numeric literals).
-3. **`gpl_search` raw_tail composition**: today the modder
-   has to compose the hex by hand or paraphrase via JSON.
+The Phase 0 tool. v0.1.0 hash-checks and reports
+`matched / mismatched / missing / extras / skipped`; v0.2.0
+adds *repair* and *machine-readable output*.
 
 ### Scope (in)
 
-- **`%define <name> <expression>`** preprocessor directive.
-  Single-line, no parameters; substitutes the named token
-  with the expression body in subsequent lines. Lives in the
-  parser's first pass alongside label collection.
-- **Constant `.const <name> = <value>` declarations** that
-  bind to integer literals; usable wherever the existing
-  parser accepts an integer (param slots, immediate values,
-  label-relative offsets). Goes in the same pass.
-- **`gpl_search` raw_tail helper macro**: `%search-tail
-  <byte> ...` directive emits `; raw_tail=HEX` trailer for
-  the following `gpl_search` instruction. So:
-
-  ```
-  %search-tail 01 00 02 ff
-  0040  33  gpl_search       NAME, ACTIVE
-  ```
-
-  becomes the same chunk the JSON path produces, no manual
-  hex composition.
+- **`--json`** output mode. Emits the report shape the
+  v0.1.0 CLI already prints, as a top-level JSON object.
+  Useful for tooling (CI checks, dashboards, the repro
+  harness's pre-run sanity check).
+- **`--repair <gog-installer.exe>`** mode. For every
+  `mismatched` or `missing` file in the manifest, re-extract
+  the canonical bytes from the GOG installer via
+  `innoextract` and write them back into the install
+  directory. Stages a backup of any overwritten file to
+  `<install>/__verify-install-backup/` so the change is
+  reversible.
+- **`--dry-run`** flag pairs with `--repair`: report what
+  WOULD be repaired without writing anything.
 
 ### Scope (out)
 
-- **Parameterised macros** (`%define name(arg1, arg2) ...`).
-  Adds tokenisation complexity for marginal v0.6.0 value;
-  queued for v0.7.0+ if anyone actually wants it.
-- **Macro precedence over labels**. Definitions live in their
-  own namespace; if a `%define foo 42` collides with a
-  `foo:` label, the parser errors at definition time. No
-  shadowing.
-- **`@include` directives** (multi-file authoring). Single-
-  file source files only.
+- **Repair from any source other than the GOG installer**.
+  CD-ROM / non-GOG installs aren't supported in v0.2.0.
+- **Multi-game-at-once**. Always one game per invocation.
+- **Re-hash on the fly**. The manifest stays canonical;
+  v0.2.0 doesn't add `--capture-fresh` rebuilds (already in
+  v0.1.0's `--capture` mode).
 
 ### Implementation steps
 
-1. Extend `tools/gpl-asm/src/parse.rs` with a pre-scan pass
-   that consumes `%define` / `.const` / `%search-tail` lines.
-   These look unlike instruction lines (no leading 4-hex
-   offset), so they're already in the "skip" branch of the
-   main loop; just need to recognise them.
-2. Build a `HashMap<String, String>` of name -> replacement
-   text. The replacement is integer-typed at use time.
-3. Add a token-substitution pass before `parse_param_tokens`:
-   any identifier whose first character is alphanumeric and
-   whose name matches a defined constant gets replaced by
-   the literal text. Operator words (`and`, `or`) and
-   variable shorts (`GNUM`, `LSTR`, ...) keep their existing
-   precedence.
-4. The `%search-tail` directive sets a one-shot trailer state
-   that the next instruction-line parser consumes as if it
-   came in via the `; raw_tail=HEX` trailer path. Implemented
-   in the same pass that handles the trailer reading today.
-5. Add `gpl_asm::parse::PreprocessedSource` (or similar) that
-   captures the post-preprocessor text with line-number
-   mappings so caret error messages still point at the
-   original line.
-6. Tests:
-   - `parser_handles_define`: a chunk that uses a `%define`
-     expands to the same bytes as the literal version.
-   - `parser_rejects_duplicate_define`: shadowing is an
-     error.
-   - `parser_rejects_define_colliding_with_label`: both
-     define-first-then-label and label-first-then-define
-     emit `ParseError::DuplicateName`.
-   - `search_tail_directive_round_trips`: a chunk with the
-     directive round-trips byte-identical against a chunk
-     authored via the JSON path.
+1. Add `--json` argparse; refactor the existing print path
+   to build a dict and either `json.dumps` or pretty-print.
+2. Add `--repair <installer.exe>` + `--dry-run` flags.
+3. Shell to `innoextract -e --output-dir <tmp> <installer>`
+   to stage the canonical tree; copy the needed files into
+   the install dir on top of backups.
+4. Stretch: detect when the `__verify-install-backup/` dir
+   exists and offer `--rollback`.
 
 ### Test plan
 
-- Unit tests in `tools/gpl-asm/src/parse.rs`'s existing
-  `#[cfg(test)] mod tests` block.
-- Corpus round-trip stays at 600/600 (the preprocessor is
-  no-op on `gpl-disasm`-produced output).
-- Add at least one *new* fixture under
-  `tools/gpl-asm/tests/` that exercises macros + search-tail
-  directives end-to-end (parse text -> encode -> assert
-  byte-equal against the JSON-encoded version of the same
-  semantic chunk).
+- Manual: corrupt a file in `.games/ds1/`, run
+  `--json`, confirm structured `mismatched` entry. Then run
+  `--repair --dry-run`, confirm it lists the file. Then
+  `--repair`, confirm install matches manifest again.
+- The `__verify-install-backup/` dir contains the corrupted
+  original after repair (rollback-safe).
 
-### Risks
+### Why this exists (the DARKRUN.GFF lesson)
 
-- Caret-style error messages need source-line awareness post-
-  preprocessing. Solution: keep an explicit
-  `OriginalLineNum -> ProcessedLineNum` map; route errors
-  back through it. Existing `format_with_caret` infrastructure
-  needs minor extension.
-- `%search-tail` and the existing trailer-comment path must
-  not double-fire on the same instruction. Document the
-  precedence (directive wins; trailer-comment is the JSON
-  fallback) and add a test.
+The v0.1.0 repro work zeroed `DARKRUN.GFF` in `.games/ds1/`
+the first time we ran a DOSBox session without the overlay-
+mount discipline. We recovered manually via `innoextract` and
+a one-off `cp` from `DARKSAVE.GFF`. `--repair` makes that
+recovery a one-command operation, not a five-minute
+session-derailing detour.
 
 ### Effort estimate
 
-One focused session. ~200 lines of parser changes + 50 lines
-of tests. No game files needed.
+One session.
 
 ---
 
-## `dialog-extract` v0.5.0: LSTR tail
+## `gff-edit v0.5.0`: GFF builder API
 
-v0.4.0 resolves 96.4% of LSTR refs. The 3.6% tail (DS1 + DS2
-combined ~32 unresolved reads) is **caller-populated slots**:
-LSTR slot N is read in some chunk X, but X was reached via a
-caller path where X's direct caller didn't set N; N was set
-further up the call chain.
+The Phase 1 foundation. v0.1..0.4 ships read / write /
+extract / replace / bulk / text-codec / JSON. v0.5.0 adds
+**construction from scratch**: a builder API that synthesises
+a new GFF from a sequence of `(kind, id, bytes)` records.
+Library-only; no new CLI surface in v0.5.0 (the existing
+`gff-cat` subcommands don't need a builder yet).
 
 ### Scope (in)
 
-- **Multi-hop caller-LSTR propagation**. Today
-  `_expand_cross_chunk_call` walks one level: caller's
-  current LSTR state is passed to callee. v0.5.0 walks the
-  full caller chain (depth-limited; same `MAX_DEPTH` as the
-  existing CFG walker) and propagates the LSTR state along
-  every prefix of the entry path.
-- **`possible_writers` set** as a fallback resolution. When
-  exact path-aware propagation doesn't pin a single value,
-  emit the set of all chunks + offsets that could
-  legitimately write to that slot, ordered by static-CFG
-  proximity. The reader sees "LSTR[3] = one of A:0x42,
-  B:0x88" instead of "LSTR[3] = ???".
-- **Stats line in stderr**: print "v0.4 baseline: X
-  unresolved / v0.5: Y unresolved (Z resolved exactly, W
-  resolved via possible_writers)" so improvement is visible
-  from corpus runs.
+- **`GffBuilder` type** with methods:
+  - `new()` returns a builder with an empty TOC.
+  - `with_data0(v: u32)` sets the per-file sentinel.
+  - `add_chunk(kind: FourCC, id: i32, bytes: &[u8])` appends
+    an indexed chunk.
+  - `build()` returns `Vec<u8>` (the GFF bytes).
+- **Round-trip property test**: every GFF in the corpus that
+  consists only of indexed chunks can be deconstructed
+  (`Gff::from_bytes` → `(kind, id, bytes)` records) and
+  rebuilt (`GffBuilder::add_chunk` → `build`) to a
+  byte-identical (or at worst structurally-equivalent) GFF.
+- **Documentation** of the v0.1.0 GFF on-disk layout from
+  `docs/file-formats.md` §1 mirrored in module-level
+  rustdoc.
 
 ### Scope (out)
 
-- **Dynamic LSTR resolution** (LSTR slot written from another
-  LSTR slot whose value isn't statically determinable).
-  These should be the residual cases after the multi-hop +
-  possible_writers improvements. Queued for v0.6.0+ with no
-  obvious path.
-- **Inter-chunk slot expansion through `gpl_search`** (the
-  search opcode can write to LSTR slots indirectly).
-  Marginal; queued.
+- **Segmented chunks** (the `0x80000000` flag path).
+  Building a segmented chunk list requires the secondary-
+  table dance (`GFFI` chunk + cross-reference). Defer to
+  v0.6.0; v0.5.0 supports indexed-only.
+- **Free-list management**. v0.5.0 emits a zero-length free
+  list (matches what most GFFs ship with). Free-list aware
+  building is a v0.6.0+ feature.
+- **CLI `gff-cat build`**. The builder is a library API for
+  opcode-fuzz and future tools; no CLI in v0.5.0.
 
 ### Implementation steps
 
-1. Build a global **LSTR-writer index** at startup:
-   `Dict[LSTRSlot, List[(chunk_kind, chunk_id, offset)]]`.
-   Scan every chunk's instructions for opcode `0x0A`
-   (`gpl_string_copy`) with `param[0]` = LSTR variable.
-2. Build a global **LSTR-reader index**: for every unresolved
-   LSTR read currently surfaced by v0.4, record the chunk +
-   the slot.
-3. For each unresolved read in a chunk X:
-   - Find all chunks that call X (via the global CFG).
-   - For each caller, walk back from the call site looking
-     for LSTR writes to the target slot.
-   - If found: emit as `possible_writer` reference; mark
-     resolution path as "via caller chain".
-   - If multiple chunks could feed the slot: emit the set,
-     ordered by caller-graph distance.
-4. Update the `dialog_tree` JSON schema: unresolved LSTR
-   refs gain a `possible_writers` array (empty when truly
-   unresolvable).
-5. Update README + version bump.
+1. Add `tools/gff-edit/src/builder.rs` with `GffBuilder`.
+2. Re-export from `lib.rs`.
+3. Property test: `tests/builder_corpus.rs` round-trips every
+   GFF that has zero segmented chunks (most of them, per
+   v0.2.0's segmented stats).
+4. Add a tiny unit test that builds a hand-crafted 2-chunk
+   GFF and `Gff::from_bytes` reads it correctly.
 
 ### Test plan
 
-- Corpus delta: re-run the v0.4 unresolved-count check;
-  assert the count drops. Target: <1% unresolved after
-  exact resolution (i.e. >99% of reads pin to a single
-  writer); residual <1% surfaces as `possible_writers`.
-- Add an integration test that constructs a known
-  caller -> callee -> reader chain with a unique LSTR
-  writer in the caller; v0.5 should resolve exactly.
-- Add a test that constructs an ambiguous resolution (two
-  callers, different writers); v0.5 should emit both via
-  `possible_writers`.
+- New property test in `tests/builder_corpus.rs`. Skip
+  silently when `.games/` is absent.
+- Unit tests in `builder.rs`.
 
 ### Risks
 
-- **CFG depth blow-up**. Walking back through every caller
-  for every unresolved read is potentially `O(callers ^
-  depth)`. The existing `cross_chunk_visited` cycle-guard
-  applies; same `MAX_DEPTH` cap. Measure on the corpus
-  before shipping.
-- **False positives in possible_writers**. The static CFG
-  doesn't know which callers *actually* run in any given
-  game state. We may emit writer candidates that never
-  fire. Document as expected; the set is "all
-  statically-reachable writers", not "the writer that fires
-  at runtime."
+- **TOC byte layout drift**. The v0.1.0 reader is permissive
+  about types-list ordering / free-list shape; the builder
+  must pick a *canonical* shape that round-trips through
+  the reader. The corpus test will surface any divergence.
 
 ### Effort estimate
 
-One to two sessions. The CFG already exists (gpl-disasm
-v0.4.1 `--global-cfg`), so the work is mostly Python over
-existing data structures. ~150-200 lines.
+Two sessions: one for the builder, one for the property
+test against the corpus.
 
 ---
 
-## `repro` v0.3.0: `--play` session continuity + input + video
+## `image-extract v0.3.0`: multi-frame sprite export
 
-Brandon's explicit `--play` requirement: **the game should
-actually play across sessions**, with save files findable
-between invocations. v0.2.1's `--play` creates a fresh
-tempfile dir each invocation; in-game saves don't carry over.
-
-Plus the v0.2.0 deferred items: input automation, video
-capture.
+Deferred from v0.2.0. BMP chunks with `frame_count > 1` are
+animations (NPC walk cycles, water tile shimmer, fire
+flicker); v0.2.1 still decoded only frame 0. v0.3.0 ships the
+multi-frame export.
 
 ### Scope (in)
 
-#### 1. `--play` session continuity (priority 1)
+- **`image-extract --frames all`** flag. For multi-frame
+  chunks, emits `<name>-frame-<N>.png` per frame instead of
+  the single `<name>.png` v0.2.0 produces.
+- **`image-extract --spritesheet`** flag. Composite every
+  frame into a horizontal strip and emit a single
+  `<name>-spritesheet.png`. Preserves palette indexing.
+- **Animated-PNG output** via the `png` crate's APNG support
+  if the existing dependency offers it; otherwise emit a
+  numbered PNG sequence and document GIF conversion via
+  `ffmpeg`.
+- **CLI default** stays "frame 0 only" for backwards
+  compatibility; `--frames all` is opt-in.
 
-- **`--session <name>` flag** on `--play`. Replaces the
-  default `tempfile.mkdtemp(dir="/tmp")` with a stable path
-  at `${XDG_STATE_HOME:-~/.local/state}/opends-repro/play-<game>-<session>/`.
-  Persistent across invocations.
-- **Default session naming**: if `--session` is omitted on
-  `--play`, default to `<bug_id>` (so
-  `repro.py ds1-smoke --play` always uses
-  `play-ds1-ds1-smoke/`).
-- **Save resumption flow**: each `--play --session foo` run
-  starts by inheriting the previous session's overlay (the
-  `c-overlay/` from the same path is reused, not recreated).
-  In-game saves automatically persist for the next
-  invocation.
-- **`--list-sessions`** to enumerate active sessions per
-  game and show last-modified time + scratch path.
-- **`--reset-session <name>`** to nuke a session's scratch
-  before next launch.
+### Scope (out)
 
-#### 2. Input automation (priority 2)
+- **GIF output**. GIF requires either a new dep (`gif`
+  crate) or hand-rolling the LZW encoder; defer.
+- **Sprite-animation metadata** (per-frame delay, loop
+  count). The DS engines hold animation timing elsewhere
+  (probably in the ETAB or OJFF chunk metadata); decoding
+  that's a separate RE thread.
+- **The one malformed chunk** (DS1 `RESOURCE.GFF:ICON/0x7f9`
+  frame 2). Pinned in `EXPECTED_FAILURES`; stays pinned.
 
-- **`ydotool` integration**. Requires `dnf install ydotool`
-  (Brandon to approve; ydotool is in Fedora's repos). The
-  daemon (`ydotoold`) needs uinput access; one-time setup
-  documented in repro README.
-- **Per-fixture `[trigger].keystrokes`**: a list of
-  timed keystroke records the harness feeds ydotool after
-  the game has booted.
+### Implementation steps
+
+1. Add `Bitmap::decode_all_frames(&self) -> Vec<Result<Frame>>`
+   to the library.
+2. Wire `--frames all` / `--spritesheet` argparse to the
+   binary; the existing per-frame emitter handles each
+   frame in isolation.
+3. Spritesheet: compute max width × N * max height (or sum
+   widths × max height for horizontal strip); composite via
+   the existing palette-indexed PNG path.
+4. Update `tests/corpus_smoke.rs` to assert multi-frame
+   decoding works across the corpus (every frame in every
+   chunk decodes; counts logged).
+
+### Test plan
+
+- Corpus stats: total frames decoded across all multi-frame
+  chunks. Should be >= the v0.2.0 count of 1,975 (one
+  multi-frame chunk's first frame counts once in v0.2.0,
+  all N frames count under v0.3.0).
+- Visual smoke: pick a known walk-cycle sprite (NPCs in
+  DS1 RGN02 villages), emit spritesheet, eyeball.
+
+### Effort estimate
+
+One session.
+
+---
+
+## `region-render v0.6.0`: animated entity sprites
+
+Pivots away from the cycle-table wall (`docs/dsun-exe-re.md`
+§4.5 catalogues why DSUN.EXE byte-pattern search has run its
+course on that surface). v0.6.0 uses `image-extract v0.3.0`'s
+multi-frame sprite work to animate the **entity layer**
+(NPCs, props, environmental objects) instead of the palette.
+
+### Scope (in)
+
+- **`region-render --animate-entities`** flag. For each ETAB
+  record whose OJFF references a `frame_count > 1` BMP,
+  emit N frames of the region with that entity stepping
+  through its animation. Output: numbered PNG sequence
+  `region-<id>-frame-<N>.png`.
+- **Default behaviour unchanged**. No flag = single-frame
+  v0.5.0 output.
+- **`--frame-count N`** override. Default: render the
+  *maximum* frame count among the region's entities. Some
+  entities loop at 4 frames, others at 8; rendering at the
+  LCM (or just the max) keeps things in sync.
+
+### Scope (out)
+
+- **Palette animation**. Still blocked on the cycle-table
+  RE. `--animate` (without `-entities`) stays unimplemented.
+- **Per-entity timing**. v0.6.0 advances every entity one
+  frame per emitted region-frame; real timing per entity
+  is a v0.7.0+ feature.
+- **GIF / single-file output**. Same reason as
+  image-extract.
+
+### Implementation steps
+
+1. In `region-render/src/lib.rs`, walk ETAB records and
+   query each OJFF's BMP `frame_count` via the existing
+   image-extract integration.
+2. Compute `max_frames = max(frame_count for each entity)`.
+3. Render frames 0..max_frames-1, picking the right per-
+   entity frame each pass (`frame_idx % entity.frame_count`).
+4. Add CLI flags. Output: numbered PNG sequence in the
+   `-o` directory (require `-o <dir>` when `--animate-entities`
+   is set).
+
+### Test plan
+
+- Visual: render DS1 RGN02 with `--animate-entities --frame-
+  count 8`; eyeball the NPC walk cycles.
+- Corpus: every region renders at frame 0 byte-identically to
+  v0.5.0 output (no regression).
+
+### Effort estimate
+
+Two sessions. The entity layer is already in v0.3.0;
+v0.6.0 walks it across frames.
+
+---
+
+## `dialog-extract v0.6.0`: CFG-distance-ordered possible_writers
+
+v0.5.0's `possible_writers` array is unordered. v0.6.0 orders
+it by graph distance so the closest writers come first,
+making the human-or-tool reader's first guess the most
+likely one.
+
+### Scope (in)
+
+- **Per-writer `distance` field**. Distance from the read
+  site's chunk to the writer's chunk, measured in
+  `gpl global sub` hops on the reverse CFG.
+- **`possible_writers` sorted ascending by `distance`**.
+  Same-chunk writers (distance = 0) come first; direct
+  callers (distance = 1) next; etc.
+- **Distance-1 filter on the `--quick-resolve` flag** (new).
+  Emits only same-chunk + direct-caller writers; useful for
+  the common case where the LSTR is set by the immediate
+  caller.
+
+### Scope (out)
+
+- **Symbolic call-path tracing**. The "which caller actually
+  fires" question. Static analysis can't answer it without
+  a dynamic trace; queued for v0.7.0+ with opcode-fuzz
+  integration.
+- **`gpl_search` raw_tail-mediated writes**. The search
+  opcode can mutate LSTR slots indirectly via the raw_tail
+  preserved bytes. Marginal corpus impact; queued.
+
+### Implementation steps
+
+1. In `build_reachable_callers`, extend the BFS to record
+   distance per visited node (not just visited-set
+   membership).
+2. In `attach_possible_writers`, look up each writer's chunk
+   distance and store on the writer record.
+3. Sort `possible_writers` by distance ascending; break ties
+   by chunk id ascending (deterministic).
+4. Add `--quick-resolve` flag that filters to distance <= 1.
+
+### Test plan
+
+- A unit test with a hand-crafted call chain: ensure the
+  closer writer surfaces first.
+- Corpus stats: distribution of distances in the
+  unresolved-LSTR set. Probably most are distance 1
+  (immediate caller); the tail at distance 2+ is the
+  interesting subset.
+
+### Effort estimate
+
+Half a session.
+
+---
+
+## `gpl-disasm v0.5.0`: variable naming
+
+Currently the disasm emits `GBYTE[42]`, `GNUM[3]`, etc., as
+raw indices. v0.5.0 lets a curated `syms/gbyte.toml`
+attach names to specific slots, decorating output across
+the toolkit (every consumer: gpl-asm, dialog-extract,
+opcode-fuzz; all see the names automatically because the
+disasm output is the universal input format).
+
+### Scope (in)
+
+- **`syms/variables.toml`** schema:
 
   ```toml
-  [trigger]
-  commands = ["DSUN.EXE > d:\\dsun.log"]
+  [[gbyte]]
+  id = 42
+  name = "POV_FLAGS"
+  doc = "Bit flags for the active character."
 
+  [[gnum]]
+  id = 3
+  name = "PARTY_GOLD"
+  doc = "Party-wide gold count."
+  ```
+
+  Independent tables per variable kind (`gbyte`, `gnum`,
+  `gbignum`, `gflag`, `gname`, `gstring`; locals omitted
+  since they're per-chunk).
+- **Loaded by default** from `tools/gpl-disasm/syms/`
+  alongside the existing `opcodes.toml` / `functions.toml`.
+- **Render decoration**: `GBYTE[42]` becomes
+  `GBYTE[42 (POV_FLAGS)]` in text output; JSON output
+  gains an optional `name` field on each `Expression::Variable`.
+- **Backwards compatible**: when `syms/variables.toml` is
+  absent or empty, output is byte-identical to v0.4.6.
+
+### Scope (out)
+
+- **Local-variable naming**. Locals are chunk-scoped; per-
+  chunk symbol overrides are a v0.6.0 feature.
+- **Type-decorated names**. The variable's role (HP / XP /
+  flag bitfield / etc.) is documentation, not syntax.
+- **Bulk catalog**. The v0.5.0 ship has zero curated
+  entries; the catalogue grows organically as the toolkit
+  surfaces meaningful slots.
+
+### Implementation steps
+
+1. Extend the `Symbols` loader in `gpl-disasm/src/lib.rs`
+   to parse `[[gbyte]]` / `[[gnum]]` / etc. tables.
+2. Add an optional `name: Option<Cow<'static, str>>` field
+   on `Expression::Variable` (skipped in JSON when None).
+3. Wire `Display` for `Expression::Variable` to emit the
+   decorated form when name is set.
+4. Update `tests/` to assert decorated round-trip.
+
+### Test plan
+
+- Corpus round-trip stays at 600 / 600 (the decoration
+  doesn't affect bytecode; only display).
+- Unit test: with a single `[[gbyte]] id = 0 name = "FOO"`,
+  every `GBYTE[0]` in the corpus output gets `(FOO)`.
+
+### Risks
+
+- **gpl-asm parser** must accept the decorated form when
+  consuming text input. Either strip the parenthesised
+  name during the parser's pre-scan, or treat it as a
+  trailer comment.
+
+### Effort estimate
+
+One session for gpl-disasm + a follow-up half-session for
+gpl-asm's text parser to round-trip the decorated form.
+
+---
+
+## `gpl-asm v0.7.0`: parameterised macros + @include
+
+Deferred from v0.6.0. Two real authoring features for the
+hand-edit workflow.
+
+### Scope (in)
+
+- **Parameterised macros**: `%define foo(arg1, arg2) <body>`.
+  Substitution captures arg-name → substitution-text inside
+  the body. Args are simple textual replacement (no type
+  checking; same shape as v0.6.0's plain `%define`).
+- **`@include "path/file.asm"`**: textual include relative
+  to the current file. Circular-include guard.
+- **`.const NAME = VALUE`**: integer-only alias of
+  `%define`; might be a single-line ergonomic.
+
+### Scope (out)
+
+- **Macro hygiene / scoped names**. Parameter names can
+  shadow the global `%define` namespace inside the macro
+  body; not a feature, just a side effect of text
+  substitution.
+- **Conditional `@if` / `@ifdef`** preprocessor blocks.
+- **Variadic macros**.
+
+### Implementation steps
+
+1. Extend `preprocess` in `parse.rs` to recognise
+   parameterised `%define name(args...)`. Store as
+   `Dict[name, ParameterisedMacro]` separately from the
+   plain define table.
+2. At expansion time, match `name(actual1, actual2)` at
+   identifier positions; substitute args into the body
+   then run the body through the rest of the preprocessor.
+3. `@include`: scan input, recursively preprocess included
+   files with a depth limit / circular guard.
+4. Tests covering both features + interaction (a macro
+   that references a constant; an `@include`d file that
+   defines a macro).
+
+### Effort estimate
+
+One to two sessions.
+
+---
+
+## `save-inspect v0.7.0`: SAVE chunk decode
+
+The big un-decoded surface left in save-inspect. Each `SAVE`
+chunk in `DARKRUN.GFF` (~60 per save) holds per-region
+world state: entity positions, NPC activity, trigger flags,
+quest progression. Decoding them gives modders end-to-end
+visibility into a playthrough.
+
+### Scope (in)
+
+- **`SaveChunk` decoder** in `save-inspect.py`. Identifies
+  the chunk's region (probably from the chunk's id), then
+  walks the body via the schema we recover.
+- **Field-by-field empirical decode** of the SAVE chunk's
+  shape, anchored to:
+  - libgff's `gfftypes.h` notes (`SAVE` = "save entries",
+    nothing more documented).
+  - soloscuro-archive's `save-load.c` (a Lua dump format,
+    not the original; useful as a reference for *what* the
+    engine persists but not *how*).
+  - Cross-comparison of `SAVE` chunks across DS1's pristine
+    `DARKRUN.GFF` (factory) and the played `ds1-fuck`
+    fixture (one walk through character creation + the
+    starting region).
+- **Per-game schemas**: DS1 and DS2 may differ; ship per-
+  game decoders if they diverge.
+- **`save-inspect` schema output gains a `save_chunks` array**
+  with structured per-region records.
+
+### Scope (out)
+
+- **Full RE of every world-state field**. Anchor what we
+  can (entity positions, flag bytes); surface unknowns as
+  opaque hex with placeholder names (same hygiene as the
+  combat / character `_slot_N` work).
+- **DS1 `ETAB` chunk decode**. DS1's entity table inside
+  `DARKRUN.GFF` (we have one per save); deferred to a
+  future thread.
+
+### Implementation steps
+
+1. Pull DS1 `DARKRUN.GFF` factory vs `ds1-fuck` played save.
+2. Diff SAVE chunks per region id. Same regions: byte-by-
+   byte diff to identify which fields change with play.
+3. Categorise the changing fields (XP values, party
+   position, flag bits, ...).
+4. Build the decoder in `save-inspect.py` with a per-game
+   format tag (`_format: ds1_save_chunk` /
+   `ds2_save_chunk`).
+5. Validate across both played saves (ds1-fuck and ds2's
+   `--play` capture, with the new continuous saves from
+   `repro --play --session`).
+
+### Test plan
+
+- Self-consistency: decode + re-encode (or just compare
+  with a no-op) every SAVE chunk; field counts stable.
+- Cross-save diff: `save-inspect diff factory.gff
+  played.gff` highlights only meaningful fields, not
+  every byte.
+
+### Effort estimate
+
+Multi-session. RE work; could stall on field semantics.
+Treat like the DS2 character schema work: ship what's
+locked, mark the rest as opaque placeholders.
+
+---
+
+## `repro v0.4.0`: ydotool input automation + video capture
+
+Deferred from v0.3.0 (priority 2 + 3). Both need dep
+approvals first.
+
+### Scope (in, contingent on dep approval)
+
+- **`ydotool` integration** for keystroke automation on
+  Wayland. Daemon (`ydotoold`) setup documented in README;
+  the harness detects ydotool availability and silently
+  no-ops keystrokes when absent.
+- **`[trigger.keystrokes]` schema** in `bug.toml`:
+
+  ```toml
   [[trigger.keystrokes]]
   at_seconds = 8
   send = "Return"
-
-  [[trigger.keystrokes]]
-  at_seconds = 12
-  send = "ctrl+s"
   ```
 
-- **Graceful degradation**: when ydotool isn't installed,
-  the harness emits a warning and skips keystrokes (rather
-  than failing). Fixtures that *require* keystrokes are
-  marked `[trigger].requires_input = true`; running them
-  without ydotool aborts with a clear error.
-
-#### 3. Video capture (priority 3)
-
-- **GNOME Wayland-compatible recorder selection**. Three
-  candidates; pick the one Brandon already has or is willing
-  to install:
-  - `gnome-screen-recorder` (D-Bus interface to gnome-shell):
-    no extra dep, GNOME-only.
-  - `ffmpeg -f pipewire` via xdg-desktop-portal: cross-DE.
-  - `obs-cli` via OBS Studio's WebSocket interface: heavier.
-- **`[expected].record_video = true|false`** in bug.toml.
-  When true: the harness spawns the selected recorder
-  against the DOSBox window region for the budget duration;
-  output lands at `<session>/repro.webm`.
-- **Auto-window detection** via Wayland's `wmctrl` analogue
-  or DOSBox's WM_CLASS.
+  The harness spawns a Python thread that fires keystrokes
+  on schedule after DOSBox starts.
+- **Video capture** via the chosen GNOME-Wayland recorder
+  (Brandon to pick between `gnome-screen-recorder` D-Bus,
+  pipewire + ffmpeg portal, or OBS WebSocket). Output:
+  `<session>/repro.webm`.
+- **`[expected].record_video`** flag in `bug.toml`.
 
 ### Scope (out)
 
-- **Differential capture** (run-with-patch vs without). Still
-  v0.4.0+.
-- **Per-fixture `[trigger].mouse_actions`**. Just keystrokes
-  for v0.3.0; mouse input automation is fiddlier on
-  Wayland and we'll get further by sticking to keyboard.
-
-### Implementation steps (priority 1: session continuity)
-
-1. Add `--session <name>` argparse to repro.py; default to
-   `bug_id` when `--play` is set.
-2. Compute `session_root = Path(os.environ.get("XDG_STATE_HOME",
-   Path.home() / ".local/state")) / "opends-repro" / f"play-{game}-{session}"`.
-3. When `--play`:
-   - If `session_root` exists, reuse it as the scratch dir.
-   - If not, create it (`mkdir -p`).
-   - Stage factory saves *only if* `session_root / c-overlay`
-     is empty (first run); otherwise honour the persisted
-     state.
-4. Print session path at start of run AND at end ("session
-   retained at ...").
-5. `--list-sessions`: walk the per-game session dirs, show
-   last-modified time of `c-overlay/DARKRUN.GFF`.
-6. `--reset-session <name>`: `shutil.rmtree(session_root)`
-   after a y/n prompt.
-
-### Implementation steps (priority 2: input)
-
-1. Add ydotool detection at startup (`shutil.which("ydotool")`).
-2. Add `[trigger.keystrokes]` parsing to `BugFixture.load`.
-3. After spawning DOSBox, spawn a Python thread that sleeps
-   to each `at_seconds` and calls `ydotool key <send>`.
-4. The DOSBox window needs focus for keystrokes to land;
-   document this constraint in README.
-5. `--no-input` flag to disable keystroke automation for one
-   run.
-
-### Implementation steps (priority 3: video)
-
-1. Detect available recorder via `shutil.which` calls.
-2. Add `[expected].record_video` to schema.
-3. On record_video=true: spawn recorder process before
-   DOSBox launch; signal it to start after a short delay
-   (so DOSBox window exists); kill on DOSBox exit.
-4. Output path is `<session>/repro.webm`. Emitted in run
-   header.
-
-### Test plan
-
-- `--play` smoke: run `ds1-smoke --play`, save in-game, exit;
-  re-run `ds1-smoke --play`, confirm last save is loadable.
-- `--list-sessions` after two sessions: lists both,
-  correct mtimes.
-- `--reset-session` deletes the named session, doesn't
-  touch others.
-- Input automation: a smoke fixture that types "ESC" 5 s
-  after boot to exit the SSI intro screen; the harness
-  exits with the expected behaviour.
-- Video: same smoke fixture, assert `repro.webm` exists and
-  is non-empty after the run.
-
-### Risks
-
-- **Wayland window focus** for ydotool. The DOSBox window
-  must be focused when keystrokes are sent. If the user
-  alt-tabs away mid-run, input lands on the wrong window.
-  Document; consider a future "lock-focus" mode.
-- **ydotool daemon setup**. Requires uinput access (root or
-  group `input`). One-time setup. README covers it.
-- **Video file size**. A 30-second `webm` is small (~5 MB);
-  a 5-minute play session is larger. Document; don't
-  default-enable.
-
-### Effort estimate
-
-Priority 1 (session continuity): one session. Priority 2
-(input): one to two sessions, contingent on ydotool approval.
-Priority 3 (video): one session, contingent on recorder dep
-approval. Ship priority 1 alone if (2) and (3) get gated;
-that's still meaningful improvement.
-
----
-
-## `opcode-fuzz` v0.2.0: the run-and-observe loop
-
-v0.1.0 shipped the chunk-patchwork pipeline; v0.2.0 adds the
-"run a patched chunk under DOSBox and observe the effect" half.
-The Phase 5 "done when": discover at least one previously-
-unknown opcode and add it to `docs/gpl-opcodes.md`.
-
-### Dependencies
-
-- `repro v0.3.0` (input automation; the test chunk needs to
-  *run* to completion before we observe state, which means
-  triggering whatever the chunk's caller expects).
-- **GPL VM global-array addresses in DSUN.EXE**. The DSO
-  symbols (`gGflagvar 0x00108228` etc.) give us the shape;
-  the DS2 counterparts need pattern-search work.
-
-### Scope (in)
-
-- **`opcode-fuzz run <work-dir>` subcommand**. Takes a
-  staged work-dir (from `extract`), packs the modified
-  chunk into a patched GFF, stages it via a synthetic
-  `repro` fixture, launches DOSBox via `repro.py` (with
-  scripted keystrokes to navigate past the boot screen if
-  needed), and captures the post-run `DARKRUN.GFF` /
-  `c-overlay`.
-- **Pre/post state diff**. Use `save-inspect` to dump
-  CHARSAVE.GFF + DARKRUN.GFF before and after the run; emit
-  a structured diff of every changed field. SAVE chunks in
-  DARKRUN are the primary observable surface (per the v0.6
-  save-inspect discovery that `DARKRUN.GFF = SAVE0N.SAV`).
-- **Test-chunk recipe library** at `tools/opcode-fuzz/recipes/`.
-  Each recipe is a GPL listing template:
-  - **Prologue**: load known sentinel values into a known
-    set of GFLAGs / GNUMs / GBIGNUMs. (`gpl_set_var` etc.)
-  - **Test opcode**: the opcode under investigation, with
-    parameters drawn from the recipe.
-  - **Epilogue**: write the resulting accumulator / VM
-    state to a sentinel GFLAG, GNUM, or GSTRING. The
-    sentinel write opcode is known-good (e.g. `gpl_set_var`).
-  - **Optional**: `gpl_save_game` to force a save if the
-    auto-flush to DARKRUN.GFF doesn't happen within the
-    test budget.
-- **Boot-chunk identification**. Use `gpl-disasm
-  --global-cfg` to identify chunks that are referenced by
-  the engine's main-loop scripts (the "always runs on
-  start" chunks). Empirically: scan known-runs-on-boot
-  chunks like `GPL /1` (the global-functions chunk) for
-  hookable extension points where a test chunk can be
-  spliced.
-
-### Scope (out)
-
-- **DOSBox debugger IPC**. Out for v0.2.0; the cheap path
-  (observe via save-state diff) gets us most of the value.
-- **Automated bisection** of opcode parameters (binary
-  search to determine which byte controls which behaviour).
-  Queued for v0.3.0+; v0.2.0 ships the single-shot observe.
+- **Mouse input**. Keyboard only in v0.4.0.
+- **Differential capture** (run-with-patch vs without).
+  v0.5.0.
 
 ### Implementation steps
 
-1. **Identify a boot-time chunk** that runs early. Candidates:
-   - `MAS /0` is often the master script entry point.
-   - `GPL /1..N` global functions chunks; trace
-     `gpl-disasm`'s global CFG for chunks with no incoming
-     callers (engine-invoked).
-   - The simplest: replace the entire `GPL /1` body with a
-     test recipe; if the engine boots far enough to run it,
-     we'll see the effect.
-2. **Add `gpl-asm` recipe templating helper** (depends on
-   v0.6.0's macros). A recipe is a `.asm` file with `%define`
-   placeholders the harness substitutes.
-3. **Pattern-search for the GPL global arrays in DS2
-   DSUN.EXE**:
-   - The arrays are referenced by every `gpl_set_var` /
-     `gpl_get_var` opcode handler in the VM.
-   - The pattern: 32-bit (or 16-bit, in real-mode segments)
-     base address loads followed by `var_id`-indexed array
-     access. Look for `ba <addr_lo> <addr_hi>` or
-     `bf <addr> <addr>` instructions paired with array-
-     access patterns.
-   - Cross-reference against the DSO `gGflagvar`,
-     `gGnumvar`, `gGbignumvar` symbols (the 8-byte stride
-     between adjacent pointer slots is distinctive).
-4. **Add `run` subcommand**:
-   - Argparse for `--keep-session`, `--repro-bug-id`
-     (default: `ds1-fuzz-tmp`), `--budget-seconds`
-     (default 60).
-   - Synthesise a `repro` fixture: a temporary
-     `bugs/opcode-fuzz-tmp/` with the patched GPLDATA.GFF
-     in `[setup].copy_files`.
-   - Capture pre-state: read source `.games/ds1/__support/save/CHARSAVE.GFF`
-     + `DARKRUN.GFF` (or the session's persisted state).
-   - Spawn `repro.py opcode-fuzz-tmp --play --session
-     opcode-fuzz-tmp` (with scripted keystrokes to navigate
-     past the boot screen).
-   - Capture post-state: same paths after the run.
-   - Diff via save-inspect, emit JSON.
-5. **First test**: a "null recipe" that writes sentinel to a
-   known GFLAG. If post-state shows the GFLAG set, the
-   pipeline works.
-6. **Second test**: pick a known opcode (e.g.
-   `gpl_immed 0x42`) and confirm the accumulator value
-   ends up where the epilogue writes it.
-
-### Test plan
-
-- Pipeline smoke: null recipe writes sentinel; observe.
-- Known-opcode confirmation: `gpl_immed` + sentinel-write
-  pattern produces the expected value in the post-state
-  diff.
-- (Stretch) Unknown-opcode discovery: pick one of the
-  high-number opcodes we have weakest semantics for, run
-  the recipe, document the observed effect in
-  `docs/gpl-opcodes.md`.
+(All gated on dep decisions; see "What still needs deciding"
+below.)
 
 ### Risks
 
-- **Boot-chunk identification might fail**. The engine
-  might not actually execute any GPL chunk before the user
-  interacts with the main menu, in which case input
-  automation is required to step past the menu before any
-  fuzz observation happens. This is why `repro v0.3.0` is
-  a prerequisite.
-- **DARKRUN.GFF flush timing**. Globals might not persist
-  to DARKRUN.GFF until the engine explicitly saves. If so,
-  the test chunk needs an in-script `gpl_save_game` (or
-  the harness needs to trigger an in-game save via input
-  automation).
-- **DOSBox crashes on the synthesised chunk**. The
-  validator pass in `gpl-asm` v0.5.0 catches structural
-  issues; harder failures (the engine state machine
-  doesn't expect the chunk to fire from this caller, etc.)
-  can crash mid-run. Treat as a "PASS-ish" signal: at
-  least the engine *got to* the chunk before crashing.
+- **Wayland window focus** for keystrokes. If the user
+  alt-tabs away mid-run, input lands on the wrong window.
+  Document; consider a "focus-lock" mode.
+- **Daemon setup** for ydotool (uinput access). One-time;
+  README covers it.
 
 ### Effort estimate
 
-Multi-session. v0.2.0 is "pipeline works + null recipe
-proves observability"; full opcode-discovery loop is v0.3.0+.
+One to two sessions per feature; gated on dep approvals.
 
 ---
 
-## `region-render` v0.6.0: third try at `--animate`
+## `opcode-fuzz v0.3.0`: recipe library + structured diff
 
-Two prior attempts produced documentation but no feature.
-The current state: `docs/dsun-exe-re.md` §4.5 lists three
-attack surfaces. v0.6.0 is one more time-boxed pass; pre-
-committed fallback is docs-only.
-
-### Findings from this research pass
-
-- **Public state of the art**: no public Dark Sun engine
-  has decoded the cycle table. libgff doesn't have it;
-  soloscuro-archive doesn't have it; `dsun_music`'s
-  region-tool has the TODO. The DSUN.EXE work in
-  `docs/dsun-exe-re.md` §4 is where the public record
-  ends.
-- **Our prior findings** (which §4 covers): the four
-  palette-write primitives at DS1 `0x1168c..0x288c4` are
-  catalogued. The DS2 mirrors are at `0x13bc3..0x...`.
-  Neither the cycle table nor the routine that walks it
-  has been located.
-
-### Three attack surfaces (carried over from §4.5)
-
-1. **Caller-search against `write_palette_range`
-   (`0x288a4`)**. The cycle update almost certainly
-   delegates to this helper; find the callers.
-   - Blocker: we don't know the segment selector for
-     `0x288a4`'s segment. Same problem as §3.3 (the
-     dispatcher caller hunt). The technique that found
-     `0x3a98` for the dispatcher segment can be applied
-     here.
-2. **Tick-handler / timer-ISR trace**. The cycle runs
-   every N ticks. DSO has `gTheDJTimer 0x001BE450` +
-   `hFrameTimer 0x0010B3E4` (DSO offsets). Find the DS2
-   counterparts; the cycle handler will be near them in the
-   main loop's tick dispatch.
-3. **DS2 shape-match against DSO's `VGAColorCycle`
-   `0x0009EAA3 f`**. Look for the byte signature of the
-   DSO function in DS2 DSUN.EXE: a small loop reading from
-   a state global, iterating a table, writing to VGA ports.
-   The shape is distinctive.
+Builds on `repro v0.4.0`'s input automation (for
+deterministic execution) and `save-inspect v0.7.0`'s SAVE
+chunk decode (for structured state diff). v0.3.0 ships the
+first **real fuzz capabilities**.
 
 ### Scope (in)
 
-- One more focused attempt at locating the cycle routine
-  using surface (1): the segment-selector trick from §3.3,
-  applied to `write_palette_range`'s segment.
-- If located: implement cycle-table parser + `--animate
-  PNG-sequence` output. Document fully in `dsun-exe-re.md`.
-- If NOT located in ~3 passes: ship a docs-only `§4` update
-  that documents what we tried, what we ruled out, and the
-  current next-step direction. `region-render` stays at
-  v0.5.0.
+- **`tools/opcode-fuzz/recipes/`** directory. Each recipe is
+  a `.asm` template (uses `gpl-asm v0.7.0` parameterised
+  macros) representing prologue + test-opcode + epilogue.
+- **`opcode-fuzz fuzz <opcode>`** subcommand: instantiate
+  the recipe with the target opcode, swap into a known
+  boot-time chunk, run via `repro --play --session`, capture
+  pre/post state.
+- **Structured diff** via save-inspect v0.7.0: report
+  which globals changed (by name from gpl-disasm v0.5.0's
+  variable catalogue), not just byte offsets.
+- **Boot-chunk identification helper**: `opcode-fuzz
+  boot-chunks <game>` lists chunks the engine invokes
+  before user input is required, based on
+  `gpl-disasm --global-cfg` analysis + per-chunk shape
+  heuristics.
 
-### Implementation steps (if found)
+### Scope (out)
 
-1. Add cycle-table reader to `region-render/src/lib.rs`.
-   Given the table bytes (from DSUN.EXE's static data
-   segment): parse `count × CycleRecord`.
-2. Add `--animate --frames N -o region-NNN.png` CLI flag.
-   For each frame `0..N-1`: advance the cycle phase by 1
-   tick, apply the rotated palette to the base CPAL/PAL
-   load, render. Emit numbered PNG sequence.
-3. No GIF / WebP output in v0.6.0; would need a new dep.
-4. Update README + version bump.
+- **Automated bisection** of opcode parameters.
+  v0.4.0.
+- **Bulk fuzz across all unknown opcodes**. v0.4.0 with
+  result database.
 
-### Test plan
+### Dependencies
 
-- Visual: pick a DS1 region known to have animated water /
-  torches; render with `--animate --frames 30`; eyeball the
-  sequence shows expected cycling.
-- Corpus: every region renders with `--animate --frames 1`
-  matching the v0.5.0 single-frame output (no regression).
-
-### Risks
-
-- **Third attempt also misses**. Pre-committed: ship as
-  docs-only update if so. Don't fight harder.
+- `repro v0.4.0` (input automation for deterministic
+  execution).
+- `save-inspect v0.7.0` (SAVE chunk decode for structured
+  diff).
+- `gpl-asm v0.7.0` (parameterised macros for recipe
+  templating).
+- `gff-edit v0.5.0` (builder API for synthesised test
+  chunks).
 
 ### Effort estimate
 
-If cycle table cracks: one to two sessions. If not: one
-session for the docs-only ship.
+Multi-session; gated on the four dependencies above.
 
 ---
 
-## Order of operations
+## Dependency graph
 
-1. **`gpl-asm v0.6.0`** first. Lowest risk, no game files,
-   cleanest session win. Unblocks `opcode-fuzz v0.2.0`'s
-   recipe-templating macros.
-2. **`dialog-extract v0.5.0`** second. Self-contained on
-   existing CFG data. Useful improvement; doesn't unblock
-   anything else but ships cleanly.
-3. **`repro v0.3.0` priority 1 (session continuity)** third.
-   Brandon's specific ask. Doesn't need dep approvals.
-4. **`repro v0.3.0` priority 2 + 3** as a follow-on, once
-   ydotool / recorder deps are approved.
-5. **`opcode-fuzz v0.2.0`** after `repro v0.3.0` ships the
-   input automation. Possibly in parallel with `region-
-   render v0.6.0` since they don't touch the same files.
-6. **`region-render v0.6.0`** last. Highest risk; the
-   docs-only fallback is the realistic outcome.
+```
+verify-install v0.2.0 ───────────────────────────────────┐
+                                                         │
+gff-edit v0.5.0 ──── unblocks ──┐                       │
+                                ▼                        │
+image-extract v0.3.0 ─── unblocks ──┐                   │
+                                    ▼                    │
+                  region-render v0.6.0                   │
+                                                         │
+dialog-extract v0.6.0 ──────────────────────────────────┤
+                                                         │
+gpl-disasm v0.5.0 ─── benefits ──┐                      │
+                                  ▼                      │
+                  gpl-asm v0.7.0 ─── benefits ──┐       │
+                                                ▼        │
+save-inspect v0.7.0 ─── benefits ──┐ opcode-fuzz v0.3.0 ◄
+                                    ▼
+                  opcode-fuzz v0.3.0
 
-This order respects [memory `feedback-tools-before-patches`]:
-finish every tool's next mature version before considering
-any darkfix patch work.
+repro v0.4.0 ─── unblocks ── opcode-fuzz v0.3.0
+```
 
----
+The convergence point is `opcode-fuzz v0.3.0`, which depends
+on four of the other ships (gff-edit, gpl-asm, save-inspect,
+repro v0.4.0). The other six tools can ship in any order
+without external dependencies.
 
-## Cross-cutting notes
+## What still needs deciding
 
-- **No new third-party deps without approval**. v0.3.0's
-  input automation and video capture each carry one
-  potential dep (ydotool, GNOME recorder). Both require
-  Brandon's sign-off before staged into the harness.
-- **MEL audio gotcha** continues to apply to anything that
-  runs DSUN.EXE under DOSBox. The `sound_ds`-generated
-  `SOUND.CFG` files in `tools/repro/bugs/ds[12]-smoke/`
-  remain the workaround; new fixtures should crib the same
-  pattern.
-- **Overlay-mount discipline** ([memory
-  `feedback-never-break-install`]) continues to apply. Any
-  GFF / save / config write happens in the C: overlay, not
-  the install.
-- **No em-dashes in prose**. The
-  `grep -n "—"` check before every commit is the discipline.
-- **Always update on a ship**: tool README, VERSION,
-  Cargo.toml (Rust), patchnotes.md (newest at top),
-  roadmap.md (tickboxes), tools/README.md (index row).
+Two dep-approval questions for `repro v0.4.0`:
+
+1. **`ydotool`** as a Fedora package dep (`dnf install
+   ydotool`). It runs as a user-mode daemon with uinput
+   access; one-time setup. Approval needed before staging
+   in the harness.
+2. **Video recorder choice**. Options:
+   - `gnome-screen-recorder` (D-Bus into gnome-shell):
+     zero new package deps, GNOME-only, smallest blast
+     radius.
+   - `ffmpeg -f pipewire` via xdg-desktop-portal:
+     cross-DE, no new deps (`ffmpeg` already installed),
+     fiddly portal setup the first time.
+   - OBS Studio + `obs-cli` (WebSocket): heaviest, most
+     features.
+
+Until both deps are settled, `repro v0.4.0` is parked and
+`opcode-fuzz v0.3.0` waits on it for the input-automation
+half.
+
+## Background research
+
+The current sprint's research notes from
+`docs/next-versions.md` (preserved at git history commit
+`a782b4b`) remain valid. Updates from this planning pass:
+
+- **DSO Emulator scope** (memory [[dso-emulator-scope]]):
+  the "DSO Emulator" Brandon's seen mention of is the
+  multiplayer Crimson Sands project, **not** the
+  singleplayer DS1 / DS2 engines OpenDS targets. Engine-
+  level findings from DSO RE might transfer to DS2
+  specifically; the protocol / client RE doesn't apply to
+  OpenDS at all. Worth watching their *public* drops for
+  engine-side findings (DSUN.EXE function offsets, GPL VM
+  state addresses, palette cycle logic) that map to DS2.
+
+- **dsoageofheroes org** state as of 2026-05-17: 7 repos,
+  no new ones since the original RE pass. `libgff` last
+  updated 2025-05-04; `libsoloscuro` 2025-04-15;
+  `soloscuro` 2025-04-03. `soloscuro` shows recent
+  "client" + "server" + "lua interpreter" commits but
+  is still pre-playable. No public release-grade engine
+  re-impl has shipped.
+
+- **DSUN.EXE palette-cycle wall** (commit `6b6c464`):
+  three time-boxed passes ruled out the byte-pattern
+  approaches we have. Next moves require either DOS/4GW
+  ABI documentation (the engine doesn't install its own
+  DPMI interrupt vectors; the extender's runtime does)
+  or a function-table dump from the DSO debug build.
+  Neither's in our control. `region-render --animate`
+  pivots to entity-frame animation instead.
