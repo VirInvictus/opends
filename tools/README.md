@@ -22,11 +22,12 @@ implementation-language split.
 | [`region-render`](region-render/)        | Rust   | 0.5.0   | Render a region GFF's full visual stack: background tiles, walls, and entity sprites into a 2048x1568 palette-indexed PNG. v0.4.0 adds `--palette-preset {ds1-pink, ds1-rust, ds1-deep-red}` for one-knob DS1 palette switching. v0.5.0 lands a DSUN.EXE RE pass (`docs/dsun-exe-re.md`) that located the engine's `CMAT[id] -> CPAL[id]` per-region palette routine; default DS1 fallback now uses `CPAL:200` (engine-default) instead of `PAL :1000` (menu palette). Per-region family-id mapping and animated colours still queued.|
 | [`repro`](repro/)                        | Shell + Python | 0.2.1 | DOSBox-Staging repro harness. Boots a per-bug fixture under `bugs/<id>/` with overlay-mounted writes (the install stays byte-identical), evaluates pass/fail by elapsed time + scratch-dir artifacts. v0.1.0 shipped the harness pattern + `ds1-smoke`. v0.2.0 added `ds2-smoke` (DS2 boots through `imgmount` of `game.ins` CD audio), DOSBox stderr capture to `<scratch>/dosbox.log`, `--list`, DSUN.LOG preview on early-exit FAIL, and a `bugs/README.md` catalogue. **v0.2.1** adds `--play`: the same setup recipe as the harness (overlay-mount, factory-save staging, sound_ds-generated SOUND.CFG) but with no wall-clock budget, so the recipe that sidesteps the DARKSAVE / MEL gotchas lets you actually play the game instead of just running the regression test. Input automation and video capture roll into v0.3.0.|
 
+| [`opcode-fuzz`](opcode-fuzz/)            | Python | 0.1.0   | Phase 5's second tool: the eventual GPL opcode-discovery harness. **v0.1.0** ships the chunk-patchwork pipeline (`extract` / `pack` / `roundtrip`): pull a GPL chunk into a work-dir, edit its disassembly, repack it back into the GFF. The corpus roundtrip self-test verifies every GPL/MAS chunk in DS1 (250/250) and DS2 (350/350) survives extract→disasm→reasm→replace byte-identical. The DOSBox-side observation loop (swap a chunk, run the engine, diff DARKRUN.GFF) is v0.2.0+.|
+
 ## Planned
 
 In roadmap order. See [`../roadmap.md`](../roadmap.md).
 
 | Tool             | Lang             | Phase | Purpose                                              |
 |------------------|------------------|-------|------------------------------------------------------|
-| `opcode-fuzz`    | Python           | 5     | DOSBox-driven opcode discovery harness.              |
 | `extract.sh`     | Shell            | (deferred) | GOG installer → flat extracted file tree.       |

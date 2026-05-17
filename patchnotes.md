@@ -4,6 +4,56 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/opcode-fuzz/` v0.1.0** lands the Phase 5 second
+  tool's scaffold and chunk-patchwork pipeline. Same shape as
+  `repro` v0.1.0: ship the foundation, defer the discovery
+  loop. The eventual goal (run swapped GPL chunks under DOSBox
+  and watch what each opcode does to engine state) needs the
+  GPL VM state addresses in DSUN.EXE and a deterministic
+  DOSBox-launch path through repro, neither of which exist
+  yet; v0.1.0 ships the chunk-handling layer those depend on.
+  - **`opcode-fuzz extract <gff> <kind> <id> -o <work-dir>`**.
+    Stages a single GPL / MAS chunk into a work-dir as
+    `original.bin` (raw bytes, reference for diff),
+    `chunk.json` (gpl-disasm JSON, editable), `chunk.asm`
+    (gpl-disasm text listing, also editable), and `meta.json`
+    (source GFF + chunk coordinate so `pack` doesn't need
+    them re-specified).
+  - **`opcode-fuzz pack <work-dir> -o <new.gff>`**. Reads
+    `meta.json`, encodes the (possibly edited) `chunk.json`
+    via `gpl-asm` (which runs validate by default and aborts
+    on any branch-bound / Immediate14-overflow / RetVal-depth
+    error), replaces the chunk in the source GFF via
+    `gff-cat replace`, writes the result to `--output`.
+  - **`opcode-fuzz roundtrip <gff>`**. Corpus self-test:
+    `extract -> disasm -> reasm -> replace -> compare GFF`
+    for every GPL / MAS chunk. DS1 (250 / 250) and DS2
+    (350 / 350) round-trip byte-identical; the combined
+    600 / 600 matches `gpl-asm`'s per-chunk corpus test
+    exactly. The new value over gpl-asm's test is the full
+    GFF-level path: any `gff-cat replace` regression or
+    chunk-relocation bug surfaces here, not just per-chunk
+    encode mismatches.
+  - **Out of scope (v0.2.0+)**. The `run` subcommand that
+    swaps a chunk, launches DOSBox via repro, and diffs
+    pre/post `DARKRUN.GFF`. Per-opcode test-chunk generation
+    (the prologue / opcode-under-test / epilogue authoring
+    pattern). Identifying which chunks run on game boot
+    (depends on `dialog-extract`'s CFG and a DSUN.EXE main-
+    loop trace).
+  - **Open dependencies**. GPL VM state addresses in
+    DSUN.EXE; the 0x230e5 GMAP / entity-render finding in
+    dsun-exe-re.md §4.4 hints at where some engine state
+    lives, more work needed. Deterministic DOSBox-launch
+    through repro (queued for repro v0.3.0 alongside input
+    automation).
+  - **`roadmap.md` Phase 5 §opcode-fuzz**: chunk-pipeline
+    row ticked, tagged-v0.1.0 row ticked; the harness +
+    state-delta rows remain open and now reference the
+    concrete blockers (state addresses + deterministic
+    launch).
+  - **VERSION**: 0.1.0 (new tool).
+
 - **`tools/save-inspect/` v0.6.0** validates the DS2 item
   sub-block schema and finishes the DS2 save-state decode arc.
   Plus a bonus structural discovery: `SAVE0N.SAV` files are

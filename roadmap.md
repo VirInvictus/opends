@@ -406,13 +406,25 @@ just read it. Be able to discover unknown opcodes systematically.
 
 ### `tools/opcode-fuzz/` (Python; drives DOSBox debugger over IPC)
 
+- [x] Chunk-patchwork pipeline (opcode-fuzz v0.1.0): `extract`
+      stages a GPL/MAS chunk for editing; `pack` re-encodes
+      the (possibly edited) work-dir back into a patched GFF;
+      `roundtrip` corpus self-test verifies every GPL/MAS
+      chunk in DS1 (250 / 250) and DS2 (350 / 350) survives
+      `extract -> disasm -> reasm -> replace` byte-identical.
+      The foundation v0.2.0+ builds on.
 - [ ] Harness that runs the original game in DOSBox with a
-      single GPL chunk swapped to a one-opcode test.
+      single GPL chunk swapped to a one-opcode test. (v0.2.0+;
+      depends on a deterministic-launch path through repro
+      that doesn't currently exist, and on the GPL VM state
+      addresses inside DSUN.EXE that are still un-RE'd.)
 - [ ] Records the engine state delta (memory regions, register
-      state via DOSBox debugger).
+      state via DOSBox debugger). (v0.2.0+; the cheap path is
+      observing `DARKRUN.GFF` / `SAVE0N.SAV` diffs rather than
+      live debugger inspection, leveraging save-inspect v0.6.0.)
 - [ ] The fastest path to filling in unknown opcodes; turns
       "guess from context" into "observe the effect."
-- [ ] Tagged: `opcode-fuzz-v0.1.0`.
+- [x] Tagged: `opcode-fuzz-v0.1.0`. (chunk pipeline)
 
 **Done when**: we can author and verify a synthetic GPL chunk
 end-to-end, and `opcode-fuzz` can discover at least one
