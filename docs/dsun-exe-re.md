@@ -83,6 +83,64 @@ table by call-graph shape).
 
 ## 3. Per-region palette + remap (DS1 only)
 
+### 3.1 Routine overview
+
+The CMAT and CPAL pushes both live inside one function. The
+function is a **switch on a single 16-bit argument** (let's call
+it `family_id`) that picks one of five known cases. The CMAT /
+CPAL load lives in the `family_id == 200` and `family_id == 300`
+arms of that switch.
+
+| File offset | Element | Notes |
+|---|---|---|
+| `0x56490` | Helper function entry | Called by the dispatcher 3 times. Reads `[bp+6]` into `si`. Pushes `'ETAB'`, dword 1000, far-calls `0xf0:0x05d0`. Probably the region-load worker. |
+| `0x568be` | Dispatcher function entry | `55 8b ec 83 ec 0e 56 57 8b 76 06`. Reads `[bp+6]` (`family_id`) into `si`, zeros three dword locals (`[bp-4]`, `[bp-8]`, `[bp-12]`), tests global `[0x1162]`, then enters the switch. |
+| `0x568f1` | Switch dispatch | `mov cx, 5; mov bx, 0x073c; cs:[bx]` linear-scan of the cmp table, `jmp far cs:[bx+10]` when matched. |
+| `0x56bcc` | Switch comparison table | Five 16-bit entries: `{0, 1, 100, 200, 300}`. |
+| `0x56bd6` | Switch jump table | Five 16-bit `cs:` offsets: `{0x047a, 0x0532, 0x0574, 0x060d, 0x060d}`. |
+
+`cs.base` for this segment is at file offset `0x56490` (the
+preceding region is zero-padded, consistent with a segment-start
+alignment). Every `cs:0xXXXX` reference in this section
+resolves to file offset `0x56490 + 0xXXXX`.
+
+### 3.2 The five family cases
+
+| Case | `cs:off` | File offset | What it does |
+|---|---|---|---|
+| `si == 0` | `0x047a` | `0x5690a` | Calls helper `0x56490` with arg 0, then far-calls `0530:0025` (resource loader for a different chunk type), then far-calls `0660:0020(1)`. No CMAT/CPAL. |
+| `si == 1` | `0x0532` | `0x569c2` | Sets `di = 1`, calls helper `0x56490` with arg 1, then runs a similar load chain. No CMAT/CPAL. |
+| `si == 100` | `0x0574` | `0x56a04` | Three sequential far-calls to `0038:4723(1)` / `0038:4feb(0)` / `0038:4723(0)`, plus `0090:013f()`, then helper `0x56490(0)`. No CMAT/CPAL. |
+| `si == 200` | `0x060d` | `0x56a9d` | Two preliminary far-calls (`0088:22ba`, `0088:2c2c`), then the same `0038:` helper triplet as case 100, then **`load_resource('CMAT', 200, &buf); if (failed) load_resource('CPAL', 200, &buf);`**. |
+| `si == 300` | `0x060d` | `0x56a9d` | **Falls through to the same handler as 200.** The id 300 is supplied to the CMAT / CPAL load only because it's still in `si`. |
+
+Default (anything not in the five): `jmp +0x2db` → `0x56bc8`,
+which is the function's epilogue / fall-through.
+
+### 3.3 What we still need to crack
+
+The switch handles **five fixed family ids**, not 50-odd
+region numbers. So the engine's region-load path must compute
+`family_id ∈ {0, 1, 100, 200, 300}` from the region number
+*before* calling this dispatcher. Identifying that
+region-number-to-family-id mapping (per region in DS1) is the
+remaining gap.
+
+Pattern-search for callers of the dispatcher at `0x568be`
+turned up zero hits: no `9a 2e 04 <seg> <seg>` (16-bit far
+call), no `9a 2e 04 00 00 <seg> <seg>` (32-bit far call),
+no `e8` near call landing on `0x568be`, no occurrence of
+`0x568be` or `0x042e` as a stored 32-bit / 16-bit constant.
+The dispatcher is reachable via some indirect mechanism that
+byte-pattern search doesn't surface. Candidates worth trying
+next: vtable / function-pointer table walk-back from
+`0x568be`, or Watcom-style runtime dispatch through a register
+loaded from a table elsewhere in the data segment.
+
+### 3.4 Original finding: the CMAT-first / CPAL-fallback pattern
+
+
+
 DS1 ships exactly **one** code site that pushes `'CMAT'` or
 `'CPAL'`:
 
@@ -156,11 +214,14 @@ palettes come from a different chunk type entirely" is open.
 These are the next pieces an RE pass should crack, in rough
 order of value to the toolkit:
 
-1. **The region-to-palette-family map** (DS1). Trace the calling
-   routine at the CMAT/CPAL load site (file offset ~`0x56ac0`)
-   back to its caller; find where `si` is assigned. This is the
-   per-region palette mapping that `region-render` currently has
-   to fake with `--palette-preset`.
+1. **The region-number-to-family-id map** (DS1). §3.2 narrowed
+   the question: each region picks one of five family ids (`{0,
+   1, 100, 200, 300}`) before calling the dispatcher at
+   `0x568be`. Finding the caller (or whatever indirect dispatch
+   table reaches `0x568be`) gives us the lookup. Byte-pattern
+   search for direct callers turned up zero hits; the next try
+   is walking function-pointer tables in the data segment
+   backwards from `0x568be`.
 2. **The CMAT format**. With two known instances at 41,368 and
    21,643 bytes, the per-entry layout should be derivable from
    how the engine consumes the buffer. The success path after
