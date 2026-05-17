@@ -19,6 +19,76 @@ python3 save-inspect.py /path/to/CHARSAVE.GFF -o save.json
 JSON is emitted to stdout by default; `-o <file>` writes to a
 file instead.
 
+## What v0.3.0 ships
+
+**DS2 combat partial decode.** v0.2.0 surfaced the character
+name and raw hex for DS2 combat sub-blocks; v0.3.0 also decodes
+the DS1-shared prefix (the first ~24 bytes — HP, PSP,
+char_index, id, ready/weapon/pack item indices, data_block,
+special_attack, special_defense) and heuristically locates the
+stats block 8 bytes before the character-name field. Empirical:
+the stats anchor matches every DS2 CHARSAVE record we've tested
+(D&D 2e range 1..30 on six consecutive bytes).
+
+```json
+"decoded": {
+  "_format": "ds2_partial_combat",
+  "hp": 81,
+  "psp": 144,
+  "special_attack": 14,
+  "_likely_stats": {
+    "str": 20, "dex": 21, "con": 19,
+    "intel": 20, "wis": 20, "cha": 17
+  },
+  "_likely_name": "Anathea"
+}
+```
+
+Full DS2 schema RE (the remaining ~7 bytes of combat + the
+66-byte character record) is queued for v0.4.0; needs more
+saves to cross-reference.
+
+**Save diff subcommand.** Compare two `CHARSAVE.GFF`s and report
+what changed:
+
+```sh
+save-inspect.py diff a.GFF b.GFF --pretty
+```
+
+Output is structured JSON: every changed field carries a `path`
+(e.g. `["chunks[CHAR-30]", "body", "sub_blocks", 0, "decoded",
+"hp"]`), the old value, and the new. Added / removed chunks
+get their own kinds. The diff goes through `summarise` so
+DS1-fully-decoded fields show field-level diffs, and DS2's
+partial-decode fields show the same partial surface.
+
+```json
+{
+  "summary": {
+    "changed_chunk_count": 1,
+    "added_chunk_count": 0,
+    "removed_chunk_count": 0,
+    "change_count": 3
+  },
+  "changes": [
+    {
+      "path": ["chunks[CHAR-30]", "body", "sub_blocks", 0, "rdff_header", "blocknum"],
+      "kind": "value_changed",
+      "from": 29, "to": 30
+    },
+    ...
+  ]
+}
+```
+
+Usage:
+
+```sh
+save-inspect.py diff a.GFF b.GFF                 # JSON to stdout
+save-inspect.py diff a.GFF b.GFF --pretty        # indented
+save-inspect.py diff a.GFF b.GFF -o diff.json    # to file
+```
+
 ## What v0.2.0 ships
 
 v0.2.0 decodes the CHAR record body into structured combat /

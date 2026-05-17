@@ -237,8 +237,15 @@ look at the maps directly.
       (save-inspect v0.2.0; DS1 fully decoded, DS2 surfaces
       names + raw hex as a heuristic until DS2 schema is
       fully RE'd in v0.3.0+.)
-- [ ] Diff two saves: party state, inventory, flags.
-      (save-inspect v0.3.0)
+- [x] Diff two saves: structured JSON diff with `path` /
+      `kind` / `from` / `to` records per change.
+      (save-inspect v0.3.0: `save-inspect.py diff a.GFF
+      b.GFF`.)
+- [x] DS2 combat partial decode: DS1-shared prefix bytes
+      (HP, PSP, ids, item indices, special_*) plus heuristic
+      stats lookup 8 bytes before the name. Full DS2 schemas
+      (the rest of combat + the 66-byte character record) need
+      cross-reference saves; v0.4+ work. (save-inspect v0.3.0.)
 - [x] Tagged: `save-inspect-v0.1.0`. (this release)
 
 ### `tools/image-extract/` (Rust)

@@ -197,19 +197,57 @@ def _decode_combat(body: bytes) -> dict[str, Any]:
         # Heuristic: DS1 combat is 58 bytes; DS2 is 49. Anything
         # below ~56 is almost certainly the DS2 (or smaller)
         # variant whose layout we haven't fully RE'd.
-        out["_format"] = "ds2_or_unknown_combat_layout"
+        out["_format"] = "ds2_partial_combat" if n == 49 else "ds2_or_unknown_combat_layout"
         out["_note"] = (
             "combat sub-block is smaller than the DS1 ds1_combat_t "
-            "(58 bytes); field decoding deferred. See "
-            "docs/file-formats.md §2."
+            "(58 bytes); v0.3.0 decodes the DS1-shared prefix "
+            "(bytes 0..24: hp, psp, char_index, id, ready_item_index, "
+            "weapon_index, pack_index, data_block[8], special_attack, "
+            "special_defense) and heuristically locates the stats "
+            "block. See docs/file-formats.md §2."
         )
         out["_raw_hex"] = body.hex()
+        # DS1 prefix (first 24 bytes) appears to match DS2 byte-for-
+        # byte based on hex inspection of `.games/ds2/.../CHARSAVE`.
+        # Decode the prefix safely; later fields stay opaque.
+        if n >= 24:
+            (
+                out["hp"],
+                out["psp"],
+                out["char_index"],
+                out["id"],
+                out["ready_item_index"],
+                out["weapon_index"],
+                out["pack_index"],
+            ) = struct.unpack_from("<7h", body, 0)
+            out["data_block_hex"] = body[14:22].hex()
+            out["special_attack"] = body[22]
+            out["special_defense"] = body[23]
         # Best-effort name extraction: scan for a printable ASCII
-        # run, since the name field is somewhere in here.
+        # run.
         run, run_offset = _longest_ascii_run(body)
         if run:
             out["_likely_name"] = run
             out["_likely_name_offset"] = run_offset
+            # DS2's stats appear to live 8 bytes before the name
+            # (empirical: in chunk id=30 the name is at offset 33
+            # and bytes 25..31 = 14 15 13 14 14 11 = stats
+            # 20/21/19/20/20/17, which match D&D 2e range and
+            # decode as ds_stats_t). Surface heuristically when
+            # the 8-bytes-before window is plausible.
+            stats_off = run_offset - 8
+            if stats_off >= 24 and stats_off + 6 <= n:
+                candidate = body[stats_off : stats_off + 6]
+                if all(1 <= b <= 30 for b in candidate):
+                    out["_likely_stats"] = {
+                        "str": candidate[0],
+                        "dex": candidate[1],
+                        "con": candidate[2],
+                        "intel": candidate[3],
+                        "wis": candidate[4],
+                        "cha": candidate[5],
+                    }
+                    out["_likely_stats_offset"] = stats_off
         return out
     # The struct's layout via library headers (lengths in bytes):
     # i16 hp, psp, char_index, id, ready_item_index, weapon_index,
@@ -729,21 +767,183 @@ def summarise(parsed: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def main(argv: list[str] | None = None) -> int:
+def _diff_dict(a: Any, b: Any, path: list[Any]) -> list[dict[str, Any]]:
+    """Recursively compare two values; return a list of change
+    records describing where they differ. Each record carries the
+    `path` (a list of keys / indices) plus the two values."""
+    changes: list[dict[str, Any]] = []
+    if type(a) is not type(b):
+        changes.append({"path": list(path), "kind": "type_changed", "from": _short(a), "to": _short(b)})
+        return changes
+    if isinstance(a, dict):
+        keys = sorted(set(a.keys()) | set(b.keys()))
+        for k in keys:
+            if k not in a:
+                changes.append({"path": list(path) + [k], "kind": "added", "to": _short(b[k])})
+            elif k not in b:
+                changes.append({"path": list(path) + [k], "kind": "removed", "from": _short(a[k])})
+            else:
+                changes.extend(_diff_dict(a[k], b[k], path + [k]))
+        return changes
+    if isinstance(a, list):
+        # Align by index. Length-mismatch surfaces explicitly.
+        if len(a) != len(b):
+            changes.append({
+                "path": list(path),
+                "kind": "list_length_changed",
+                "from": len(a),
+                "to": len(b),
+            })
+        for i in range(min(len(a), len(b))):
+            changes.extend(_diff_dict(a[i], b[i], path + [i]))
+        return changes
+    if a != b:
+        changes.append({"path": list(path), "kind": "value_changed", "from": a, "to": b})
+    return changes
+
+
+def _short(v: Any) -> Any:
+    """Trim long values for diff-record display."""
+    if isinstance(v, str) and len(v) > 80:
+        return v[:77] + "..."
+    if isinstance(v, list) and len(v) > 8:
+        return v[:8] + ["..."]
+    if isinstance(v, dict):
+        return {k: _short(vv) for k, vv in list(v.items())[:12]}
+    return v
+
+
+def diff_summaries(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
+    """Produce a structured diff between two `summarise` outputs.
+    `chunks_by_kind` and `chunks` are compared by content; the
+    `source` / `tool_version` keys are skipped (they always
+    differ between separate runs).
+
+    Output shape:
+    ```
+    {
+        "tool": "save-inspect",
+        "version": <VERSION>,
+        "a": "<path>",
+        "b": "<path>",
+        "summary": {
+            "changed_chunk_count": N,
+            "added_chunk_count": N,
+            "removed_chunk_count": N,
+        },
+        "changes": [ { "path": [...], "kind": "...", ... }, ... ],
+    }
+    ```
+    """
+    # Compare chunks by (kind, id). Map each side into a keyed dict.
+    def keyed(s: dict[str, Any]) -> dict[tuple[str, int], dict[str, Any]]:
+        out: dict[tuple[str, int], dict[str, Any]] = {}
+        for c in s.get("chunks", []):
+            kind = c.get("kind", "?")
+            cid = int(c.get("id", -1))
+            out[(kind, cid)] = c
+        return out
+
+    a_keyed = keyed(a)
+    b_keyed = keyed(b)
+    keys = sorted(set(a_keyed.keys()) | set(b_keyed.keys()))
+    changes: list[dict[str, Any]] = []
+    changed = added = removed = 0
+    for k in keys:
+        if k not in a_keyed:
+            added += 1
+            changes.append({
+                "path": [f"chunks[{k[0]}-{k[1]}]"],
+                "kind": "chunk_added",
+                "to": _short(b_keyed[k]),
+            })
+            continue
+        if k not in b_keyed:
+            removed += 1
+            changes.append({
+                "path": [f"chunks[{k[0]}-{k[1]}]"],
+                "kind": "chunk_removed",
+                "from": _short(a_keyed[k]),
+            })
+            continue
+        sub = _diff_dict(a_keyed[k], b_keyed[k], [f"chunks[{k[0]}-{k[1]}]"])
+        if sub:
+            changed += 1
+            changes.extend(sub)
+    return {
+        "tool": "save-inspect",
+        "version": VERSION,
+        "summary": {
+            "changed_chunk_count": changed,
+            "added_chunk_count": added,
+            "removed_chunk_count": removed,
+            "change_count": len(changes),
+        },
+        "changes": changes,
+    }
+
+
+def _build_inspect_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="save-inspect", description=__doc__.strip().splitlines()[0]
     )
     p.add_argument("--version", action="version", version=f"save-inspect {VERSION}")
     p.add_argument("file", type=Path, help="path to CHARSAVE.GFF")
     p.add_argument(
-        "-o", "--output", type=Path, default=None, help="write JSON to file (default stdout)"
+        "-o", "--output", type=Path, default=None,
+        help="write JSON to file (default stdout)",
     )
     p.add_argument(
-        "--pretty",
-        action="store_true",
+        "--pretty", action="store_true",
         help="pretty-print JSON with 2-space indent",
     )
-    args = p.parse_args(argv)
+    return p
+
+
+def _build_diff_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="save-inspect diff",
+        description="Compare two CHARSAVE.GFFs and report what changed.",
+    )
+    p.add_argument("a", type=Path, help="first CHARSAVE.GFF")
+    p.add_argument("b", type=Path, help="second CHARSAVE.GFF")
+    p.add_argument(
+        "-o", "--output", type=Path, default=None,
+        help="write diff JSON to file (default stdout)",
+    )
+    p.add_argument(
+        "--pretty", action="store_true",
+        help="pretty-print JSON with 2-space indent",
+    )
+    return p
+
+
+def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    # Manual dispatch: if the first arg is `diff`, route to the
+    # diff subcommand; otherwise default to the v0.1.x inspect
+    # behaviour. Keeps both the positional `file` and the
+    # subcommand cleanly distinguishable for argparse.
+    if argv and argv[0] == "diff":
+        diff_args = _build_diff_parser().parse_args(argv[1:])
+        try:
+            sa = summarise(parse_gff(diff_args.a))
+            sb = summarise(parse_gff(diff_args.b))
+        except (FileNotFoundError, ValueError) as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 2
+        out = diff_summaries(sa, sb)
+        out["a"] = str(diff_args.a)
+        out["b"] = str(diff_args.b)
+        indent = 2 if diff_args.pretty else None
+        text = json.dumps(out, indent=indent, ensure_ascii=False)
+        if diff_args.output is None or str(diff_args.output) == "-":
+            sys.stdout.write(text + "\n")
+        else:
+            diff_args.output.write_text(text + "\n", encoding="utf-8")
+        return 0
+
+    args = _build_inspect_parser().parse_args(argv)
 
     try:
         parsed = parse_gff(args.file)
@@ -756,8 +956,7 @@ def main(argv: list[str] | None = None) -> int:
     text = json.dumps(summary, indent=indent, ensure_ascii=False)
 
     if args.output is None or str(args.output) == "-":
-        sys.stdout.write(text)
-        sys.stdout.write("\n")
+        sys.stdout.write(text + "\n")
     else:
         args.output.write_text(text + "\n", encoding="utf-8")
 

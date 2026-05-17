@@ -4,6 +4,46 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/save-inspect/` v0.3.0** ships DS2 combat partial-
+  decode upgrades and a new `diff` subcommand for comparing two
+  CHARSAVE.GFFs. Full DS2 schema RE rolls to v0.4.0.
+  - **DS2 combat partial decode**: v0.2.0 surfaced only the
+    character name + raw hex. v0.3.0 decodes the DS1-shared
+    prefix (the first 24 bytes — HP, PSP, char_index, id,
+    ready/weapon/pack item indices, data_block,
+    special_attack, special_defense) since hex inspection
+    confirms those fields match DS1 byte-for-byte on the GOG
+    1.10 corpus. The 6-byte stats block is heuristically
+    located 8 bytes before the character-name field; the
+    candidate is accepted only when all six bytes fall in the
+    1..30 D&D 2e stat range. Empirical: this anchor matches
+    every DS2 CHARSAVE record tested (HP 81, PSP 144, stats
+    20/21/19/20/20/17 for Anathea, etc.).
+  - **New `diff` subcommand**: `save-inspect.py diff a.GFF
+    b.GFF` produces a structured JSON diff. Each change record
+    carries a `path` (list of keys / indices through the
+    summary), a `kind` (`value_changed`, `chunk_added`,
+    `chunk_removed`, `type_changed`, `list_length_changed`,
+    `added`, `removed`), and the before/after values. Goes
+    through the existing `summarise` pipeline so DS1's full
+    decoded fields show field-level diffs and DS2's partial-
+    decode fields show the same partial surface.
+  - **CLI restructure**: the binary still defaults to the
+    v0.1.x `inspect` behaviour when called with a single file
+    argument. The `diff` subcommand is dispatched explicitly
+    by manual argv inspection (argparse subparsers couldn't
+    coexist with the positional `file` argument cleanly).
+    Both flows take `-o <path>` for file output and `--pretty`
+    for indented JSON.
+  - **New helpers**: `_diff_dict`, `_short`, `diff_summaries`,
+    `_build_inspect_parser`, `_build_diff_parser`. Stdlib-only
+    Python; no dependencies added.
+  - **Out of scope**: full DS2 schema RE for the 66-byte
+    character record + the remaining 7-byte tail on the
+    49-byte combat record. Needs cross-reference saves.
+    Tracked for v0.4.0.
+  - **VERSION**: 0.2.0 -> 0.3.0.
+
 - **`tools/region-render/` v0.2.0** ships the **wall layer**.
   `GMAP`'s low 5 bits per tile-byte are a wall-sprite index;
   each non-zero index looks up a `WALL` chunk at id
