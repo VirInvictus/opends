@@ -13,6 +13,79 @@ Depends on `gpl-disasm` for the [`DisasmResult`] type (and the
 `Deserialize` impls added there in v0.4.4 specifically so this
 crate can consume the same JSON the disassembler emits).
 
+## What `gpl-asm v0.5.0` ships
+
+The **author safety net**. Two pieces that improve the
+modder's experience when a hand-edited listing is wrong:
+
+### Caret-style parse errors
+
+The text-listing parser already tracked line numbers; v0.5.0
+extends every `ParseError` with a column and renders failures
+in a `rustc`-shaped format. New public surface in
+[`gpl_asm::parse`](src/parse.rs):
+
+- `pub fn error_line(err: &ParseError) -> usize`.
+- `pub fn error_span(err: &ParseError, source: &str) -> (usize, usize)`.
+- `pub fn format_with_caret(err: &ParseError, source: &str) -> String`.
+
+The `gpl-asm` binary wires `format_with_caret` into its
+text-mode parse path, so a typo lands with a pointer:
+
+```text
+parse error: line 12: bad opcode "ZZ"
+  --> input:12:7
+  |
+12 | 0024  ZZ  gpl_immed
+  |       ^^
+```
+
+For `BadExpression` (the most common authoring failure), the
+caret finds the offending token in the source line and
+underlines it.
+
+### Static validation pass
+
+New [`gpl_asm::validate`](src/validate.rs) catches whole
+classes of authoring mistakes before encoding, so the encoder
+doesn't have to surface them one at a time (or, worse,
+silently encode broken bytecode):
+
+- **Branch target bounds**: `gpl jump` / `gpl local sub` /
+  `gpl if` / `gpl while` / `gpl else` / `gpl wend` /
+  `gpl ifcompare` whose literal target falls outside
+  `[0, total_bytes)`. `gpl global sub` is skipped (cross-chunk
+  by design).
+- **`Immediate14` overflow**: the on-wire encoding is actually
+  15 bits (`(cop & 0x7F) << 8 | b`), ceiling 32767. Hand-edits
+  that push beyond that are flagged.
+- **`RetVal` nesting depth**: capped at
+  `gpl_disasm::MAX_RETVAL_DEPTH` (= 4). Deeper hand-built
+  programs are guaranteed unencodable.
+
+CLI:
+
+```text
+gpl-asm --validate-only chunk.asm   # exit 0 = clean, 1 = errors
+gpl-asm --no-validate chunk.asm     # bypass; encode anyway
+gpl-asm chunk.asm                   # default: validate then encode
+```
+
+Default mode runs the validator before every encode and aborts
+the run if any error fires, so a broken listing doesn't write
+broken bytecode to disk. The corpus passes 600 / 600 with zero
+false positives (`tests/validate_smoke.rs::corpus_chunks_validate_clean`).
+
+### Out of scope (queued for v0.6.0+)
+
+- Macros / forward-reference convenience syntax beyond `label:`.
+- Auto-resolution of `gpl_search` raw_tail in user-authored text.
+- Patch-manifest tooling (lives alongside `ds1-patch/` /
+  `ds2-patch/` Phase 6+ work, not in `gpl-asm` itself).
+- Cross-instruction sanity (e.g. `gpl if` paired with
+  `gpl endif`); needs CFG-level reasoning the validator
+  doesn't have.
+
 ## What `gpl-asm v0.4.0` ships
 
 Two pieces for the modder-authoring workflow:

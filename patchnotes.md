@@ -4,6 +4,61 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gpl-asm/` v0.5.0** ships the **author safety net**:
+  better diagnostics when an authored listing is wrong, plus a
+  static validator that catches whole classes of mistakes
+  before the encoder bites. Default mode runs the validator
+  before every encode; a failed validation aborts the run
+  without writing output, so broken bytecode never reaches
+  disk.
+  - **Caret-style parse errors**. New public helpers in
+    `gpl_asm::parse`: `format_with_caret(err, source)`,
+    `error_line(err)`, `error_span(err, source)`. The binary
+    wires `format_with_caret` into its text-mode parse path so
+    a typo lands with a rustc-shaped pointer:
+    ```
+    parse error: line 12: bad opcode "ZZ"
+      --> input:12:7
+      |
+    12 | 0024  ZZ  gpl_immed
+      |       ^^
+    ```
+    `BadExpression` (the most common authoring failure) finds
+    the offending token in the line and underlines it.
+  - **Static `validate()` pass**. New module
+    `gpl_asm::validate`. Three checks for v0.5.0:
+    - **Branch target bounds**: `gpl jump` / `gpl local sub` /
+      `gpl if` / `gpl while` / `gpl else` / `gpl wend` /
+      `gpl ifcompare` whose literal target falls outside
+      `[0, total_bytes)`. `gpl global sub` is skipped
+      (cross-chunk by design).
+    - **`Immediate14` overflow**. The on-the-wire encoding is
+      actually 15 bits (`(cop & 0x7F) << 8 | b`), ceiling
+      32767; the v0.5.0 work confirmed this against the corpus
+      (real chunks carry values up to 32767). Anything beyond
+      that is flagged.
+    - **`RetVal` nesting depth**. Capped at
+      `gpl_disasm::MAX_RETVAL_DEPTH` (= 4); deeper hand-built
+      trees are guaranteed unencodable.
+    `ValidationReport` returns all errors in one pass so the
+    author sees the full picture, not the first-encountered
+    issue.
+  - **CLI surface**. Two new flags on the existing binary:
+    `--validate-only` (parse + validate + exit, no encoding)
+    and `--no-validate` (skip the default pre-encode check).
+    Default mode validates first; on failure prints each error
+    and aborts before writing output.
+  - **Corpus**: 600 / 600 chunks across DS1+DS2 GPLDATA
+    validate clean with zero false positives. The round-trip
+    test still passes 600 / 600 byte-identical. New
+    `tests/validate_smoke.rs` makes the no-false-positive
+    invariant a regression test.
+  - **`roadmap.md` Phase 5 §gpl-asm**: author-conveniences
+    box ticked for the diagnostic + validator half; the
+    macro / forward-reference / search-composition row rolls
+    to v0.6.0+.
+  - **VERSION**: 0.4.0 -> 0.5.0.
+
 - **`tools/repro/` v0.1.0** ships the Phase 2 DOSBox-Staging
   repro harness, the prerequisite for every darkfix patch
   authoring + validation cycle from Phase 6 onward. The bar for

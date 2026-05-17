@@ -35,10 +35,13 @@ use gpl_disasm::{
 use thiserror::Error;
 
 pub mod parse;
-pub use parse::{ParseError, parse};
+pub use parse::{ParseError, error_line, error_span, format_with_caret, parse};
 
 pub mod edit;
 pub use edit::{EditError, Editor, can_edit_opcode, retarget_branches};
+
+pub mod validate;
+pub use validate::{ValidationError, ValidationReport, validate};
 
 #[derive(Debug, Error)]
 pub enum EncodeError {

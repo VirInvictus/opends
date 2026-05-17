@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, anyhow};
 use clap::Parser;
-use gpl_asm::{encode, parse as parse_text};
+use gpl_asm::{encode, format_with_caret, parse as parse_text, validate};
 use gpl_disasm::DisasmResult;
 
 #[derive(Parser)]
@@ -32,6 +32,16 @@ struct Cli {
     /// Force text-listing parsing (overrides auto-detect).
     #[arg(long, conflicts_with = "json")]
     text: bool,
+    /// Run the validator (branch bounds, Immediate14 range, RetVal
+    /// depth) and exit; don't encode. Exits 0 on a clean program,
+    /// 1 if any validation error fires.
+    #[arg(long, conflicts_with_all = ["output", "all_from", "no_validate"])]
+    validate_only: bool,
+    /// Skip the pre-encode validator pass. Default: validate
+    /// every chunk before encoding it; a failed validation aborts
+    /// the run before any output is written.
+    #[arg(long)]
+    no_validate: bool,
 }
 
 enum InputMode {
@@ -58,13 +68,59 @@ fn load_disasm_result(path: &Path, mode: &InputMode) -> Result<DisasmResult> {
     match mode {
         InputMode::Json => serde_json::from_str(&body)
             .with_context(|| format!("parsing JSON {}", path.display())),
-        InputMode::Text => parse_text(&body)
-            .with_context(|| format!("parsing text listing {}", path.display())),
+        InputMode::Text => parse_text(&body).map_err(|e| {
+            // Render the parse error with the same caret-style
+            // pointer the v0.5.0 helpers produce. Far more useful
+            // than the bare `line N: ...` string when authoring.
+            let caret = format_with_caret(&e, &body);
+            anyhow!("parsing text listing {}:\n{}", path.display(), caret)
+        }),
     }
+}
+
+fn report_validation(disasm: &DisasmResult, label: &str) -> Result<()> {
+    let report = validate(disasm);
+    if report.is_ok() {
+        return Ok(());
+    }
+    let mut buf = String::new();
+    for err in &report.errors {
+        buf.push_str("  ");
+        buf.push_str(&err.to_string());
+        buf.push('\n');
+    }
+    Err(anyhow!(
+        "{label}: {} validation error(s):\n{buf}",
+        report.len()
+    ))
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+
+    if cli.validate_only {
+        let input = cli
+            .input
+            .as_ref()
+            .ok_or_else(|| anyhow!("--validate-only requires an input path"))?
+            .clone();
+        let mode = detect_mode(&cli, &input);
+        let result = load_disasm_result(&input, &mode)?;
+        let report = validate(&result);
+        if report.is_ok() {
+            println!("{}: clean ({} instruction(s))", input.display(), result.instructions.len());
+            return Ok(());
+        }
+        eprintln!(
+            "{}: {} validation error(s):",
+            input.display(),
+            report.len()
+        );
+        for err in &report.errors {
+            eprintln!("  {err}");
+        }
+        std::process::exit(1);
+    }
 
     if let Some(src_dir) = cli.all_from.clone() {
         let out_dir = cli
@@ -103,6 +159,13 @@ fn main() -> Result<()> {
                 .and_then(|s| s.to_str())
                 .ok_or_else(|| anyhow!("bad stem on {}", path.display()))?;
             let out_path = out_dir.join(format!("{stem}.bin"));
+            if !cli.no_validate {
+                if let Err(e) = report_validation(&result, &path.display().to_string()) {
+                    eprintln!("skip {}: {e}", path.display());
+                    skipped_count += 1;
+                    continue;
+                }
+            }
             match encode(&result) {
                 Ok(bytes) => {
                     std::fs::write(&out_path, bytes)
@@ -131,6 +194,9 @@ fn main() -> Result<()> {
         .clone();
     let mode = detect_mode(&cli, &input);
     let result = load_disasm_result(&input, &mode)?;
+    if !cli.no_validate {
+        report_validation(&result, &input.display().to_string())?;
+    }
     let bytes = encode(&result).with_context(|| format!("encoding {}", input.display()))?;
     match cli.output.as_deref() {
         Some(p) if p.as_os_str() == "-" => {

@@ -66,6 +66,93 @@ pub enum ParseError {
 
 pub type Result<T> = std::result::Result<T, ParseError>;
 
+/// Return the 1-indexed line the error refers to.
+pub fn error_line(err: &ParseError) -> usize {
+    match err {
+        ParseError::MissingOffset { line }
+        | ParseError::BadOffset { line, .. }
+        | ParseError::MissingOpcode { line }
+        | ParseError::BadOpcode { line, .. }
+        | ParseError::MissingMnemonic { line }
+        | ParseError::ParamCount { line, .. }
+        | ParseError::BadExpression { line, .. }
+        | ParseError::UnsupportedOpcode { line, .. } => *line,
+    }
+}
+
+/// Derive the 0-indexed column where the error manifests inside
+/// the offending line. Returns a (column, span_length) pair so
+/// the caret can underline the right number of characters.
+///
+/// The disasm-emitted line layout is fixed:
+///   `OOOO  HH  MNEMONIC                <params>  ; trailer`
+///    0   4 6  8 10                     32
+///
+/// For statically-positioned errors we point at the relevant
+/// field; for `BadExpression` we search for the failing token
+/// substring in the line.
+pub fn error_span(err: &ParseError, source: &str) -> (usize, usize) {
+    let line_text = source
+        .lines()
+        .nth(error_line(err).saturating_sub(1))
+        .unwrap_or("");
+    match err {
+        ParseError::MissingOffset { .. } => (0, line_text.len().max(1)),
+        ParseError::BadOffset { got, .. } => (0, got.len().max(1)),
+        ParseError::MissingOpcode { .. } => (6, 2),
+        ParseError::BadOpcode { got, .. } => (6, got.len().max(1)),
+        ParseError::MissingMnemonic { .. } => (10, line_text.len().saturating_sub(10).max(1)),
+        ParseError::UnsupportedOpcode { .. } => (6, 2),
+        ParseError::ParamCount { .. } => {
+            // Params start after the 22-wide mnemonic field, at
+            // column 32; if the line is shorter, point at end.
+            let col = 32.min(line_text.len());
+            (col, line_text.len().saturating_sub(col).max(1))
+        }
+        ParseError::BadExpression { position, .. } => {
+            if let Some(c) = line_text.find(position.as_str()) {
+                (c, position.len().max(1))
+            } else {
+                let col = 32.min(line_text.len());
+                (col, line_text.len().saturating_sub(col).max(1))
+            }
+        }
+    }
+}
+
+/// Render the error with a Rust-compiler-style caret indicator
+/// against the source the parser saw. Multi-line output; meant
+/// for user-facing display (CLI, IDE).
+///
+/// Example:
+/// ```text
+/// parse error: line 42: bad opcode "ZZ"
+///   --> input:42:6
+///    |
+/// 42 | 0024  ZZ  gpl_immed
+///    |       ^^
+/// ```
+pub fn format_with_caret(err: &ParseError, source: &str) -> String {
+    let line_no = error_line(err);
+    let line_text = source
+        .lines()
+        .nth(line_no.saturating_sub(1))
+        .unwrap_or("");
+    let (col, span) = error_span(err, source);
+    let line_label = line_no.to_string();
+    let gutter = " ".repeat(line_label.len());
+    let caret_pad = " ".repeat(col);
+    let caret = "^".repeat(span.max(1));
+    format!(
+        "parse error: {err}\n\
+         {gutter} --> input:{line_no}:{col}\n\
+         {gutter} |\n\
+         {line_label} | {line_text}\n\
+         {gutter} | {caret_pad}{caret}\n",
+        col = col + 1,
+    )
+}
+
 /// Parse a text-format disassembly listing into a
 /// [`DisasmResult`]. The result has `cfg = None` and
 /// `cross_chunk_calls = []` — the parser builds an instruction
@@ -1316,5 +1403,50 @@ mod tests {
             ParseError::BadExpression { .. } => {}
             other => panic!("unexpected: {other:?}"),
         }
+    }
+
+    #[test]
+    fn caret_points_at_bad_offset_column_0() {
+        let src = "ZZZZ  3a  gpl_immed\n";
+        let err = parse(src).unwrap_err();
+        assert!(matches!(err, ParseError::BadOffset { .. }));
+        let (col, span) = error_span(&err, src);
+        assert_eq!(col, 0);
+        assert_eq!(span, 4);
+        let rendered = format_with_caret(&err, src);
+        assert!(rendered.contains("input:1:1"));
+        assert!(rendered.contains("ZZZZ"));
+        assert!(rendered.contains("^^^^"));
+    }
+
+    #[test]
+    fn caret_points_at_bad_opcode_column_6() {
+        let src = "0000  ZZ  gpl_immed\n";
+        let err = parse(src).unwrap_err();
+        assert!(matches!(err, ParseError::BadOpcode { .. }));
+        let (col, span) = error_span(&err, src);
+        assert_eq!(col, 6);
+        assert_eq!(span, 2);
+        let rendered = format_with_caret(&err, src);
+        assert!(rendered.contains("input:1:7"));
+        // Six leading spaces in the caret pad.
+        assert!(rendered.contains("\n  |       ^^\n"));
+    }
+
+    #[test]
+    fn caret_for_bad_expression_finds_token_in_line() {
+        // GNUM without `[id]` triggers BadExpression with
+        // `position = "GNUM"`; the caret should land at that
+        // substring inside the line.
+        let src = "0000  3e  gpl if                  GNUM\n";
+        let err = parse(src).unwrap_err();
+        assert!(matches!(err, ParseError::BadExpression { .. }));
+        let (col, span) = error_span(&err, src);
+        assert_eq!(span, 4);
+        // GNUM appears at column 34 (after `0000  3e  gpl if` + 22-wide field).
+        assert_eq!(&src[col..col + span], "GNUM");
+        let rendered = format_with_caret(&err, src);
+        assert!(rendered.contains("GNUM"));
+        assert!(rendered.contains("^^^^"));
     }
 }

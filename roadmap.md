@@ -361,9 +361,16 @@ just read it. Be able to discover unknown opcodes systematically.
       parser support for arbitrary user-chosen label names so
       modders can name their own branch targets. (gpl-asm
       v0.4.0; 6 new unit tests cover both halves.)
+- [x] Author safety net (gpl-asm v0.5.0): rustc-style caret
+      parse errors (`format_with_caret`, `error_line`,
+      `error_span`) anchor `ParseError` variants in the source,
+      and a static `validate()` pass (branch-target bounds,
+      `Immediate14` 15-bit overflow, RetVal depth) wired as the
+      default pre-encode check (`--validate-only`,
+      `--no-validate`). Corpus validates 600 / 600 clean.
 - [ ] Authoring conveniences (macros, forward-reference
       syntax beyond `label:`, `gpl_search` raw_tail
-      composition). v0.5.0.
+      composition). v0.6.0+.
 - [x] Tagged: `gpl-asm-v0.1.0`. (this release)
 
 ### `tools/opcode-fuzz/` (Python; drives DOSBox debugger over IPC)
