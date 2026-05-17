@@ -4,6 +4,42 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/save-inspect/` v0.4.0** locks the full DS2 combat
+  sub-block layout. v0.3.0 had a `_likely_stats` /
+  `_likely_name` heuristic that worked but advertised
+  itself as unverified; v0.4.0 ships first-class `stats` +
+  `name` fields backed by a layout that's empirically
+  consistent across every CHAR record in DS2 GOG 1.10's
+  `CHARSAVE.GFF`.
+  - **Schema**. The 49-byte DS2 combat sub-block is the DS1
+    24-byte shared prefix (hp / psp / char_index / id /
+    ready_item_index / weapon_index / pack_index /
+    data_block[8] / special_attack / special_defense), then
+    `_reserved_0` (1 byte, always 0x00), `stats` (6 bytes),
+    `_slot_31` (1 byte, low range 0..6), `_reserved_1` (1
+    byte, always 0x00), and `name[16]` (NUL-padded). DS2
+    saves 9 bytes vs DS1 by dropping `icon` (2), `ac` (1),
+    3-of-4 of `move/status/allegiance/data`, and trimming
+    `name` from 18 to 16 characters.
+  - **JSON output**. `_format` flips from
+    `ds2_partial_combat` to `ds2_combat`; the heuristic
+    `_likely_stats` and `_likely_name` keys are gone,
+    replaced by structured `stats` + `name` fields. Three
+    positions (24, 31, 32) still ship with placeholder names
+    (`_reserved_0`, `_slot_31`, `_reserved_1`) because their
+    semantics aren't pinned to DSUN.EXE source yet; surfacing
+    them as raw bytes is more honest than guessing.
+  - **Out of scope (queued for v0.5.0)**: DS2 character
+    sub-block (66 bytes). Still emitted as opaque hex. The
+    DSO symbol table names the writer (`SaveCharRec` at DSO
+    offset `0x0002C45F`); locating the DS2 DSUN.EXE
+    counterpart by call-graph shape against the CHARSAVE.GFF
+    string is the next step.
+  - **`roadmap.md` Phase 4 §save-inspect**: DS2 combat full
+    schema row ticked; full DS2 schemas (character + item
+    sub-blocks) remain queued.
+  - **VERSION**: 0.3.0 -> 0.4.0.
+
 - **`docs/dsun-exe-re.md`** gains a new §4 catalogueing the DS1
   palette I/O surface and partially decoding the animated-
   palette cycle routine. Pre-committed scope correction: with

@@ -250,9 +250,18 @@ look at the maps directly.
       b.GFF`.)
 - [x] DS2 combat partial decode: DS1-shared prefix bytes
       (HP, PSP, ids, item indices, special_*) plus heuristic
-      stats lookup 8 bytes before the name. Full DS2 schemas
-      (the rest of combat + the 66-byte character record) need
-      cross-reference saves; v0.4+ work. (save-inspect v0.3.0.)
+      stats lookup 8 bytes before the name. (save-inspect
+      v0.3.0.)
+- [x] DS2 combat **full** structured schema. v0.4.0 locks the
+      49-byte layout (shared 24-byte prefix, `_reserved_0`,
+      `stats[6]`, `_slot_31`, `_reserved_1`, `name[16]`), with
+      first-class `stats` + `name` fields replacing v0.3.0's
+      `_likely_*` heuristics. Three positions (24, 31, 32)
+      still ship as opaque bytes pending DSUN.EXE RE.
+- [ ] DS2 **character** sub-block (66 bytes). Drops 5 bytes
+      vs DS1's 71 in some combination of `palette` /
+      `legal_class_ext` / shorter `real_class` arrays. Pending
+      DSUN.EXE RE; queued for v0.5.0+.
 - [x] Tagged: `save-inspect-v0.1.0`. (this release)
 
 ### `tools/image-extract/` (Rust)

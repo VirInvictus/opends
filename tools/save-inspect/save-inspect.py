@@ -181,35 +181,98 @@ def _longest_ascii_run(body: bytes, min_len: int = 4) -> tuple[str | None, int]:
     return s, best[0]
 
 
-def _decode_combat(body: bytes) -> dict[str, Any]:
-    """Decode a combat sub-block per `ds1_combat_t` (libgff
-    `include/gff/object.h`, MIT).
+def _decode_combat_ds2(body: bytes) -> dict[str, Any]:
+    """Decode the DS2 49-byte combat sub-block.
 
-    The libgff struct is DS1-flavored at 58 bytes. DS2 combat
-    sub-blocks are 49 bytes with a different internal layout
-    (the name field appears earlier; field offsets don't match).
-    For DS2 we emit the body as opaque hex with a `_format` tag
-    rather than producing wrong-looking stat values.
+    Layout (empirically locked across all 19 CHAR records in
+    `.games/ds2/__support/save/CHARSAVE.GFF`; field semantics
+    for the prefix come from libgff's `ds1_combat_t`, the rest
+    from inspection):
+
+    | Offset | Size | Field |
+    |--------|------|-------|
+    | 0..1   | i16  | hp |
+    | 2..3   | i16  | psp |
+    | 4..5   | i16  | char_index |
+    | 6..7   | i16  | id |
+    | 8..9   | i16  | ready_item_index |
+    | 10..11 | i16  | weapon_index |
+    | 12..13 | i16  | pack_index |
+    | 14..21 | u8[8]| data_block (opaque combat-state bytes) |
+    | 22     | u8   | special_attack |
+    | 23     | u8   | special_defense |
+    | 24     | u8   | _reserved_0 (always 0x00 observed) |
+    | 25..30 | u8[6]| stats (str, dex, con, int, wis, cha) |
+    | 31     | u8   | _slot_31 (varies, low values; semantics open) |
+    | 32     | u8   | _reserved_1 (always 0x00 observed) |
+    | 33..48 | char[16] | name (NUL-padded) |
+
+    Bytes 24, 31, and 32 are the three positions whose semantics
+    haven't been pinned down. 24 and 32 are uniformly 0x00 across
+    the corpus (likely padding / reserved). Byte 31 takes a small
+    range (0..6 observed) and is probably an alignment / class /
+    flags byte. Documented as `_slot_31` until DSUN.EXE RE
+    confirms the meaning.
+    """
+    out: dict[str, Any] = {"_format": "ds2_combat"}
+    (
+        out["hp"],
+        out["psp"],
+        out["char_index"],
+        out["id"],
+        out["ready_item_index"],
+        out["weapon_index"],
+        out["pack_index"],
+    ) = struct.unpack_from("<7h", body, 0)
+    out["data_block_hex"] = body[14:22].hex()
+    out["special_attack"] = body[22]
+    out["special_defense"] = body[23]
+    out["_reserved_0"] = body[24]
+    out["stats"] = {
+        "str": body[25],
+        "dex": body[26],
+        "con": body[27],
+        "intel": body[28],
+        "wis": body[29],
+        "cha": body[30],
+    }
+    out["_slot_31"] = body[31]
+    out["_reserved_1"] = body[32]
+    out["name"] = body[33:49].split(b"\x00", 1)[0].decode("ascii", errors="replace")
+    return out
+
+
+def _decode_combat(body: bytes) -> dict[str, Any]:
+    """Decode a combat sub-block.
+
+    DS1's `ds1_combat_t` (libgff `include/gff/object.h`, MIT) is
+    58 bytes. DS2 ships a 49-byte variant that drops 9 bytes
+    compared to DS1: shorter name (16 vs 18), no `icon` /
+    `ac` / 3-of-4 of move/status/allegiance/data. Stats land
+    earlier in the record (offset 25 vs offset 34 in DS1).
+
+    The DS1-shared 24-byte prefix matches byte-for-byte between
+    DS1 and DS2 (hp, psp, char_index, id, ready_item_index,
+    weapon_index, pack_index, data_block[8], special_attack,
+    special_defense). v0.4.0 extends the DS2 decode beyond the
+    prefix with a structured field map derived from inspecting
+    every CHAR sub-block in DS1 and DS2 GOG 1.10. See
+    `docs/file-formats.md` §2 for the full layout.
     """
     out: dict[str, Any] = {}
     n = len(body)
+    if n == 49:
+        return _decode_combat_ds2(body)
     if n < 56:
-        # Heuristic: DS1 combat is 58 bytes; DS2 is 49. Anything
-        # below ~56 is almost certainly the DS2 (or smaller)
-        # variant whose layout we haven't fully RE'd.
-        out["_format"] = "ds2_partial_combat" if n == 49 else "ds2_or_unknown_combat_layout"
+        # Smaller than DS1's 58 and not the known DS2 49: unknown
+        # variant. Emit opaque + the shared 24-byte prefix.
+        out["_format"] = "ds2_or_unknown_combat_layout"
         out["_note"] = (
-            "combat sub-block is smaller than the DS1 ds1_combat_t "
-            "(58 bytes); v0.3.0 decodes the DS1-shared prefix "
-            "(bytes 0..24: hp, psp, char_index, id, ready_item_index, "
-            "weapon_index, pack_index, data_block[8], special_attack, "
-            "special_defense) and heuristically locates the stats "
-            "block. See docs/file-formats.md §2."
+            f"combat sub-block size {n} doesn't match DS1's 58 or "
+            "DS2's 49; emitting the DS1-shared 24-byte prefix and "
+            "the body as opaque hex."
         )
         out["_raw_hex"] = body.hex()
-        # DS1 prefix (first 24 bytes) appears to match DS2 byte-for-
-        # byte based on hex inspection of `.games/ds2/.../CHARSAVE`.
-        # Decode the prefix safely; later fields stay opaque.
         if n >= 24:
             (
                 out["hp"],
@@ -223,31 +286,6 @@ def _decode_combat(body: bytes) -> dict[str, Any]:
             out["data_block_hex"] = body[14:22].hex()
             out["special_attack"] = body[22]
             out["special_defense"] = body[23]
-        # Best-effort name extraction: scan for a printable ASCII
-        # run.
-        run, run_offset = _longest_ascii_run(body)
-        if run:
-            out["_likely_name"] = run
-            out["_likely_name_offset"] = run_offset
-            # DS2's stats appear to live 8 bytes before the name
-            # (empirical: in chunk id=30 the name is at offset 33
-            # and bytes 25..31 = 14 15 13 14 14 11 = stats
-            # 20/21/19/20/20/17, which match D&D 2e range and
-            # decode as ds_stats_t). Surface heuristically when
-            # the 8-bytes-before window is plausible.
-            stats_off = run_offset - 8
-            if stats_off >= 24 and stats_off + 6 <= n:
-                candidate = body[stats_off : stats_off + 6]
-                if all(1 <= b <= 30 for b in candidate):
-                    out["_likely_stats"] = {
-                        "str": candidate[0],
-                        "dex": candidate[1],
-                        "con": candidate[2],
-                        "intel": candidate[3],
-                        "wis": candidate[4],
-                        "cha": candidate[5],
-                    }
-                    out["_likely_stats_offset"] = stats_off
         return out
     # The struct's layout via library headers (lengths in bytes):
     # i16 hp, psp, char_index, id, ready_item_index, weapon_index,
