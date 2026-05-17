@@ -203,23 +203,30 @@ def stage_setup_files(fixture: BugFixture, overlay_dir: Path) -> None:
 
 def run_dosbox(
     cmd: list[str],
-    timeout_seconds: float,
+    timeout_seconds: float | None,
     log_path: Path,
 ) -> tuple[int, float, bool]:
-    """Launch DOSBox and enforce the wall-clock budget.
+    """Launch DOSBox and (optionally) enforce a wall-clock budget.
 
     Returns (exit_code, elapsed_seconds, timed_out). On timeout,
     sends SIGTERM, gives DOSBox 3 seconds to clean up, then
-    SIGKILLs. DOSBox's own stderr (CONFIG / SDL / MOUNT / MAPPER
-    / RENDER / CAPTURE log lines) is captured to `log_path`; on
-    failure that file is the first thing to look at for diagnosis.
+    SIGKILLs. Pass `timeout_seconds = None` to wait indefinitely
+    (the `--play` mode flow; the user quits the game in-engine,
+    DOSBox returns to its DOS prompt, `--exit` then closes it).
+
+    DOSBox's own stderr (CONFIG / SDL / MOUNT / MAPPER / RENDER /
+    CAPTURE log lines) is captured to `log_path`; on failure that
+    file is the first thing to look at for diagnosis.
     """
     start = time.monotonic()
     with log_path.open("wb") as log_file:
         proc = subprocess.Popen(cmd, stdout=log_file, stderr=subprocess.STDOUT)
         timed_out = False
         try:
-            proc.wait(timeout=timeout_seconds)
+            if timeout_seconds is None:
+                proc.wait()
+            else:
+                proc.wait(timeout=timeout_seconds)
         except subprocess.TimeoutExpired:
             timed_out = True
             proc.send_signal(signal.SIGTERM)
@@ -357,6 +364,25 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="leave the scratch directory in place after the run",
     )
+    ap.add_argument(
+        "--play",
+        action="store_true",
+        help=(
+            "Interactive play mode. Runs the fixture's full setup "
+            "(C: overlay, factory saves staged at C:\\ root, the "
+            "fixture's SOUND.CFG, the same dosbox-staging config "
+            "the harness uses) and launches DOSBox with NO "
+            "wall-clock budget; the user quits the game in-engine "
+            "and DOSBox closes itself. Skips pass/fail evaluation. "
+            "Always keeps the scratch dir so in-game saves persist "
+            "after exit (the path is printed at the end of the run). "
+            "Useful when you want to actually play the game with "
+            "the harness's setup rather than running the regression "
+            "test; the harness recipe sidesteps the DARKSAVE-not- "
+            "at-C:\\ and MEL-DSP-detect-fail gotchas that bite a "
+            "bare `dosbox DSUN.EXE` invocation."
+        ),
+    )
     args = ap.parse_args(argv)
 
     if args.list:
@@ -408,6 +434,12 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  game-dir    : {game_dir}")
     print(f"  scratch     : {scratch_dir}")
 
+    if args.play:
+        # Force the scratch retention path: in-game saves land in
+        # `<scratch>/c-overlay/` and the user almost certainly
+        # wants to keep them.
+        args.keep_scratch = True
+
     try:
         overlay_dir = scratch_dir / "c-overlay"
         overlay_dir.mkdir(parents=True, exist_ok=True)
@@ -419,8 +451,26 @@ def main(argv: list[str] | None = None) -> int:
         dosbox_log = scratch_dir / "dosbox.log"
         print(f"  dosbox      : {' '.join(cmdline)}")
         print(f"  dosbox.log  : {dosbox_log}")
-        print(f"  budget      : {fixture.timeout_seconds:.0f}s")
+        if args.play:
+            print(f"  mode        : --play (no budget; quit the game to close)")
+        else:
+            print(f"  budget      : {fixture.timeout_seconds:.0f}s")
         print()
+        if args.play:
+            print(f"playing {fixture.id} (interactive; no time budget)...")
+            exit_code, elapsed, timed_out = run_dosbox(
+                cmdline, None, dosbox_log
+            )
+            print(
+                f"DOSBox closed after {elapsed:.2f}s "
+                f"(rc={exit_code})"
+            )
+            print()
+            print(f"Scratch dir kept: {scratch_dir}")
+            print(f"In-game saves are at {overlay_dir}/ ; copy any of")
+            print(f"  CHARSAVE.GFF / DARKSAVE.GFF / BACKSAVE.GFF / DARKRUN.GFF")
+            print(f"out to a stable location before next run.")
+            return EXIT_PASS
         print(f"running {fixture.id}...")
         exit_code, elapsed, timed_out = run_dosbox(
             cmdline, fixture.timeout_seconds, dosbox_log

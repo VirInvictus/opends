@@ -4,6 +4,40 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/repro/` v0.2.1** adds `--play` mode: the same setup
+  recipe the regression test uses (overlay-mounted C:, factory
+  saves staged at C:\\ root, sound_ds-generated `SOUND.CFG`,
+  the harness's `configs/ds[12].conf`), but with no wall-clock
+  budget and no pass/fail evaluation. Lets the user actually
+  *play* the game with the harness's setup instead of just
+  proving the engine survives 30 seconds.
+  - **Why it exists**. A bare `dosbox DSUN.EXE` against the
+    GOG install hits two engine-side gotchas: `DARKSAVE.GFF`
+    is not at C:\\ root (so the engine fails the
+    `DARKSAVE -> DARKRUN` copy and exits), and the factory
+    `SOUND.CFG` fails MEL DSP detect (same bug family as
+    `docs/known-bugs.md` §2.6, exits inside a second). The
+    harness already had to solve both for the regression test
+    to function; `--play` exposes that workaround as a
+    user-facing mode.
+  - **Usage**. `repro.py ds1-smoke --play` /
+    `repro.py ds2-smoke --play`. DOSBox opens, user plays,
+    quits the game in-engine; the harness keeps `--exit` in
+    the command line so DOSBox closes cleanly on its own.
+  - **In-game saves land in `<scratch>/c-overlay/`**. The
+    harness always retains the scratch dir in `--play` mode
+    (the user almost certainly wants to keep their saves) and
+    prints the path at the end of the run so they can copy
+    CHARSAVE.GFF / DARKSAVE.GFF / BACKSAVE.GFF / DARKRUN.GFF
+    out to a stable location.
+  - **Resume across sessions** is **not** automatic in v0.2.1.
+    Each `--play` invocation creates a fresh scratch dir under
+    `/tmp`; to continue an existing playthrough, copy the
+    saved GFFs into the bug fixture's directory and add them
+    to `[setup].copy_files`. A `--scratch-dir` for stable
+    session paths is queued for v0.3.0.
+  - **VERSION**: 0.2.0 -> 0.2.1.
+
 - **`tools/save-inspect/` v0.5.0** locks the DS2 character
   sub-block schema (66 bytes). v0.4.0 fully decoded DS2 combat
   but still emitted the character sub-block as opaque hex;

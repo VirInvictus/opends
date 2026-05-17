@@ -1,12 +1,70 @@
 # repro
 
-DOSBox-Staging repro harness for OpenDS. v0.2.0.
+DOSBox-Staging repro harness for OpenDS. v0.2.1.
 
 Drives a per-bug fixture under `bugs/<id>/` against a working
 DOS install, validates pass/fail by elapsed time and scratch-dir
 artifacts, and never writes to the game install. The "any bug
 reproducible in five minutes" plumbing from
 [`roadmap.md`](../../roadmap.md) Phase 2.
+
+## What v0.2.1 adds
+
+`--play` mode. Same setup recipe the regression test uses, but
+the wall-clock budget is dropped and pass/fail evaluation is
+skipped, so you can actually *play* through the harness instead
+of just verifying that the engine doesn't crash in 30 seconds.
+
+### Why this exists
+
+A bare `dosbox DSUN.EXE` invocation against the GOG install
+hits two engine-side gotchas:
+
+1. **`DARKSAVE.GFF` is not at C:\\**. DSUN.EXE on launch copies
+   `C:\DARKSAVE.GFF` -> `C:\DARKRUN.GFF`. GOG ships those files
+   under `__support/save/`, so the copy fails and the engine
+   exits with `DARKSAVE.GFF to DARKRUN.GFF failed. path = C:\`.
+2. **The factory `SOUND.CFG` fails MEL DSP detect**. MEL aborts
+   with `Mel Fatal Error #26 trap #16, DSP Detect Fail` (same
+   bug family as `docs/known-bugs.md` §2.6) and the engine
+   exits inside a second.
+
+The regression harness sidesteps both by staging the factory
+saves and a `sound_ds`-generated `SOUND.CFG` into a writable
+C: overlay before launching. `--play` reuses that exact recipe
+without the timeout enforcement, so the same workaround that
+makes the test PASS lets you actually sit at the main menu and
+play.
+
+### Usage
+
+```sh
+python3 tools/repro/repro.py ds1-smoke --play
+python3 tools/repro/repro.py ds2-smoke --play
+```
+
+DOSBox opens. You play. Quit the game in-engine; DOSBox closes
+itself (the harness keeps `--exit` in the command line, so a
+clean DSUN.EXE exit propagates through to DOSBox quitting).
+
+In-game saves land in `<scratch>/c-overlay/CHARSAVE.GFF` and
+friends. The harness prints the scratch dir path at the end of
+the run and tells you which files to copy out if you want to
+keep your progress; the directory itself isn't auto-resumable
+(each `--play` invocation creates a fresh scratch dir under
+`/tmp`).
+
+### Limitations (intentional, v0.2.1)
+
+- Each run starts from the factory saves staged by
+  `populate_factory_saves`. To continue an existing playthrough
+  you'd copy your saved `CHARSAVE.GFF` / `DARKRUN.GFF` etc.
+  into the bug fixture's directory and add them to the
+  fixture's `[setup].copy_files` list (they'll then overlay on
+  top of the factory copies on next run). A `--scratch-dir`
+  flag for stable session paths is queued for v0.3.0.
+- No video / screenshot capture; that's still v0.3.0+ alongside
+  input automation.
 
 ## What v0.2.0 adds
 
