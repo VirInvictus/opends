@@ -4,6 +4,36 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/image-extract/` v0.2.1** root-causes the single
+  remaining `FrameOutOfBounds` failure from v0.2.0's 99.95%
+  decode rate and pins it in the corpus regression test. The
+  decoder is unchanged.
+  - **The chunk**: DS1 `RESOURCE.GFF` `ICON / 0x7f9`. 734
+    bytes, header declares 3 frames at offsets
+    `0x12 / 0x17 / 0x2d9` (18, 23, 729). Frames 0 + 1 decode
+    cleanly as 90 x 7 Ds1Rle. Frame 2's declared offset (729)
+    leaves only 5 bytes for the 9-byte frame header. **The
+    chunk is malformed in the GOG ship** (3 frames declared,
+    space for ~2.5). The engine almost certainly never
+    references frame 2, or it would crash; the dead frame
+    survived into the 1.10 build.
+  - **Decoder behaviour**: correct as-is. Frames 0 and 1
+    decode; frame 2 returns `ImageError::FrameOutOfBounds`.
+    No panic, no silent garbage.
+  - **`tests/corpus_smoke.rs` strengthening**: the test now
+    carries an `EXPECTED_FAILURES` list of exactly one entry
+    (`ds1/RESOURCE.GFF/ICON/0x7f9/frame 2`). New decoder
+    regressions that introduce additional failures break the
+    test; a future decoder improvement that decodes this
+    chunk also breaks the test (forcing the patchnote to
+    demote the limitation). Either way it's a load-bearing
+    invariant now, not a silently-tolerated count.
+  - **README** has a new "Known limitation" subsection
+    explaining the malformed chunk; first place to look if
+    someone wonders why the v0.2.x corpus stat reads 1,975 /
+    1,976 instead of 1,976 / 1,976.
+  - **VERSION**: 0.2.0 -> 0.2.1.
+
 - **`tools/repro/` v0.2.0** adds the DS2 path and quality-of-life
   on top of the v0.1.0 harness pattern. No new shape (input
   automation, video, differential capture all still v0.3.0+);

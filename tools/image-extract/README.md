@@ -11,6 +11,35 @@ chunks without firing up the engine.
 
 Depends on `gff-edit` for GFF I/O and `png` for PNG encoding.
 
+## What `image-extract v0.2.1` ships
+
+Diagnostic + regression test, no decoder change. The single
+remaining `FrameOutOfBounds` failure has been root-caused, the
+test pins it as the only expected failure, and the README
+documents it as a known limitation. The decoder is still at the
+v0.2.0 99.95% decode rate.
+
+### Known limitation: DS1 `RESOURCE.GFF` `ICON / 0x7f9` frame 2
+
+This is the one chunk of 1,976 corpus frames that fails. The
+chunk is 734 bytes; its header declares 3 frames, with frame
+offsets `0x12 / 0x17 / 0x2d9` (18, 23, 729). Frames 0 and 1
+decode normally (90 x 7 Ds1Rle). Frame 2's declared offset
+(729) leaves only 5 bytes for the 9-byte frame header. The
+chunk is **malformed in the GOG ship**: it claims a frame the
+data doesn't fit. The engine almost certainly never reads frame
+2 (or it'd crash), so this is dead data that survived into the
+1.10 build.
+
+The decoder behaviour is correct: report `FrameOutOfBounds` for
+frame 2, decode frames 0 and 1 fine. v0.2.1 strengthens
+`tests/corpus_smoke.rs` to pin this as the *only* expected
+failure; any new chunk that fails the decoder breaks the test.
+Removing the `EXPECTED_FAILURES` entry would also break the
+test, which is the right behaviour if a future decoder
+improvement makes this chunk decode (the patchnote moment
+that demotes this to "no known limitations").
+
 ## What `image-extract v0.2.0` ships
 
 **PLAN frame format**, plus a fix to PLNR's bit-chomp that

@@ -283,8 +283,12 @@ look at the maps directly.
       decoder ported from `dsun_music`'s `ImageReading`;
       simultaneously fixed PLNR's chomp by switching to the
       same big-endian chomper. Corpus now decodes 1,975 / 1,976
-      frames = **99.95%**; the lone non-decoded frame is a
-      malformed chunk that fails header parsing.)
+      frames = **99.95%**; image-extract v0.2.1 root-causes
+      the lone non-decoded frame as DS1
+      `RESOURCE.GFF:ICON/0x7f9` frame 2, a malformed chunk in
+      the GOG 1.10 ship (3 frames declared, space for ~2.5).
+      The decoder reports `FrameOutOfBounds` and the corpus
+      test pins it as the only expected failure.)
 - [ ] Sprite-frame animation export (multi-frame BMPs as GIF /
       animated PNG / spritesheet).
 - [x] Tagged: `image-extract-v0.1.0` (initial); `image-extract-v0.2.0`

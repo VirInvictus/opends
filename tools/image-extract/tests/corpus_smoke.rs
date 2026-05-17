@@ -33,6 +33,11 @@ fn every_bitmap_chunk_decodes_or_reports_cleanly() {
     let mut decoded_frames = 0usize;
     let mut by_type: std::collections::BTreeMap<String, (usize, usize)> =
         std::collections::BTreeMap::new();
+    // Per-failure breadcrumb: every (path, kind, id, frame_id,
+    // ImageError) tuple. Used to surface which specific chunks
+    // still fail the corpus once we're down to the long tail
+    // (one chunk at v0.2.0).
+    let mut failures: Vec<(String, String, i32, usize, String)> = Vec::new();
 
     for path in CORPUS {
         let p = Path::new(path);
@@ -83,7 +88,14 @@ fn every_bitmap_chunk_decodes_or_reports_cleanly() {
                             image_extract::ImageError::Ds1RleError { .. } => "Ds1RleError".to_string(),
                             other => format!("other:{other}"),
                         };
-                        *err_kinds.entry(kind).or_insert(0) += 1;
+                        *err_kinds.entry(kind.clone()).or_insert(0) += 1;
+                        failures.push((
+                            path.to_string(),
+                            c.kind.to_string(),
+                            c.id,
+                            frame_id,
+                            kind,
+                        ));
                     }
                 }
             }
@@ -105,6 +117,58 @@ fn every_bitmap_chunk_decodes_or_reports_cleanly() {
     for (kind, (ok, _total)) in &by_type {
         eprintln!("  {kind}: {ok}");
     }
+    if !failures.is_empty() {
+        eprintln!("per-failure breakdown ({} total):", failures.len());
+        for (path, kind, id, frame_id, err) in &failures {
+            let leaf = Path::new(path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or(path.as_str());
+            let game = if path.contains("/ds1/") { "ds1" } else { "ds2" };
+            eprintln!("  {game}/{leaf} {kind}/{id:#x} frame {frame_id}: {err}");
+        }
+    }
     assert!(total_chunks > 0, "no bitmap chunks found; check CORPUS paths");
     assert!(decoded_frames > 0, "no frames decoded");
+
+    // Known-bad chunks. Each entry is (game, file, kind, id,
+    // frame_id, error_kind). See image-extract/README.md
+    // "Known limitations" for the per-entry root cause.
+    const EXPECTED_FAILURES: &[(&str, &str, &str, i32, usize, &str)] = &[
+        ("ds1", "RESOURCE.GFF", "ICON", 0x7f9, 2, "FrameOutOfBounds"),
+    ];
+    let expected: std::collections::BTreeSet<(&str, &str, &str, i32, usize, &str)> =
+        EXPECTED_FAILURES.iter().copied().collect();
+    let observed: std::collections::BTreeSet<(String, String, String, i32, usize, String)> =
+        failures
+            .iter()
+            .map(|(path, kind, id, frame_id, err)| {
+                let leaf = Path::new(path)
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or(path.as_str())
+                    .to_string();
+                let game = if path.contains("/ds1/") { "ds1".to_string() } else { "ds2".to_string() };
+                (game, leaf, kind.clone(), *id, *frame_id, err.clone())
+            })
+            .collect();
+
+    let expected_str: std::collections::BTreeSet<_> = expected
+        .iter()
+        .map(|(g, f, k, i, fr, e)| (g.to_string(), f.to_string(), k.to_string(), *i, *fr, e.to_string()))
+        .collect();
+
+    let unexpected: Vec<_> = observed.difference(&expected_str).cloned().collect();
+    let missing: Vec<_> = expected_str.difference(&observed).cloned().collect();
+
+    assert!(
+        unexpected.is_empty(),
+        "image-extract corpus regressed: new failures not in EXPECTED_FAILURES: {:#?}",
+        unexpected
+    );
+    assert!(
+        missing.is_empty(),
+        "image-extract corpus improved! EXPECTED_FAILURES entries no longer fire (remove from the list and ship a patchnote): {:#?}",
+        missing
+    );
 }
