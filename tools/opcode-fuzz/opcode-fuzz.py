@@ -36,6 +36,9 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+HERE = Path(__file__).resolve().parent
+VERSION = (HERE / "VERSION").read_text().strip()
+
 GFF_CAT = REPO_ROOT / "target" / "release" / "gff-cat"
 GPL_DISASM = REPO_ROOT / "target" / "release" / "gpl-disasm"
 GPL_ASM = REPO_ROOT / "target" / "release" / "gpl-asm"
@@ -637,9 +640,92 @@ def cmd_roundtrip(args: argparse.Namespace) -> int:
     return EXIT_OK if not mismatched and not encode_failures else EXIT_FAIL
 
 
+def cmd_boot_chunks(args: argparse.Namespace) -> int:
+    """Identify GPL chunks the engine invokes "from the outside."
+
+    A chunk is a boot-chunk candidate iff nothing else in the GFF
+    calls it via `gpl global sub` (0x14). Those chunks are pure
+    entry points: the engine's main loop must dispatch them
+    directly (since no other chunk does). Whenever the fuzz
+    harness needs a chunk to swap out, a boot-chunk is the
+    safest target because the engine guarantees it'll fire.
+
+    Drives `gpl-disasm --global-cfg --json` against the input
+    GFF, parses the resulting CFG, and reports the inbound-edge
+    count for every chunk. Output is JSON for downstream
+    consumption (the future `fuzz --auto-pick` path) plus a
+    summary line on stderr.
+    """
+    require_built()
+    gff: Path = args.gff
+    if not gff.is_file():
+        print(f"opcode-fuzz: {gff} not found", file=sys.stderr)
+        return EXIT_HARNESS_ERROR
+
+    with tempfile.TemporaryDirectory(prefix="opcode-fuzz-cfg-") as tmp:
+        out_path = Path(tmp) / "gcfg.json"
+        try:
+            subprocess.run(
+                [
+                    str(GPL_DISASM), str(gff),
+                    "--global-cfg", str(out_path),
+                    "--json",
+                ],
+                check=True, capture_output=True, text=True,
+            )
+        except subprocess.CalledProcessError as e:
+            print(f"opcode-fuzz: gpl-disasm --global-cfg failed: {e.stderr}",
+                  file=sys.stderr)
+            return EXIT_HARNESS_ERROR
+        gcfg = json.loads(out_path.read_text())
+
+    # gpl-disasm --global-cfg already counts inbound / outbound
+    # per node, so we just read those directly.
+    boot_candidates: list[dict] = []
+    callable_chunks: list[dict] = []
+    for node in gcfg.get("nodes", []):
+        row = {
+            "kind": node["kind"],
+            "chunk_id": node["chunk_id"],
+            "inbound_calls": int(node.get("inbound_calls", 0)),
+            "outbound_calls": int(node.get("outbound_calls", 0)),
+            "entry_count": int(node.get("entry_count", 0)),
+            "block_count": int(node.get("block_count", 0)),
+        }
+        if row["inbound_calls"] == 0:
+            boot_candidates.append(row)
+        else:
+            callable_chunks.append(row)
+
+    boot_candidates.sort(key=lambda r: (r["kind"], r["chunk_id"]))
+    callable_chunks.sort(key=lambda r: (-r["inbound_calls"], r["kind"], r["chunk_id"]))
+
+    report = {
+        "tool": "opcode-fuzz",
+        "version": VERSION,
+        "mode": "boot-chunks",
+        "gff": str(gff),
+        "summary": {
+            "node_count": len(gcfg.get("nodes", [])),
+            "edge_count": len(gcfg.get("edges", [])),
+            "boot_candidate_count": len(boot_candidates),
+        },
+        "boot_candidates": boot_candidates,
+        "most_called": callable_chunks[:20],
+    }
+    print(json.dumps(report, indent=2))
+    print(
+        f"opcode-fuzz boot-chunks: {len(boot_candidates)} entry-point "
+        f"candidates out of {len(gcfg.get('nodes', []))} chunks "
+        f"({len(gcfg.get('edges', []))} edges in the global CFG)",
+        file=sys.stderr,
+    )
+    return EXIT_OK
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
-        description="OpenDS opcode-fuzz harness (v0.1.0: chunk patchwork pipeline)."
+        description="OpenDS opcode-fuzz harness (v0.3.0: chunk-patchwork + boot-chunks)."
     )
     sub = ap.add_subparsers(dest="cmd", required=True)
 
@@ -731,6 +817,20 @@ def main(argv: list[str] | None = None) -> int:
         help="override target_game inference from the source GFF path",
     )
     p_run.set_defaults(handler=cmd_run)
+
+    p_boot = sub.add_parser(
+        "boot-chunks",
+        help="Identify GPL chunks the engine invokes directly (no inbound gpl global sub calls).",
+        description=(
+            "Drives `gpl-disasm --global-cfg --json` against the "
+            "input GFF and reports per-chunk inbound-edge counts. "
+            "Chunks with zero inbound edges are pure entry points: "
+            "the engine's main loop must dispatch them directly, "
+            "so they're the safest swap target for fuzz runs."
+        ),
+    )
+    p_boot.add_argument("gff", type=Path, help="GFF to analyse (typically GPLDATA.GFF)")
+    p_boot.set_defaults(handler=cmd_boot_chunks)
 
     args = ap.parse_args(argv)
     return args.handler(args)

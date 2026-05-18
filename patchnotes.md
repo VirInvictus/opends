@@ -4,6 +4,45 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/opcode-fuzz/` v0.3.0** ships **`boot-chunks`** (the
+  discovery half of the long-promised fuzz loop) plus a
+  forward-looking **`recipes/`** scaffold. Item #9 of the
+  human-friendliness sprint; the inherited S10 from yesterday
+  with three of its four dependencies now landed
+  (`save-inspect v0.7.0` + `v0.8.0`, `repro v0.4.0`,
+  `gff-edit v0.5.0` builder).
+  - **`opcode-fuzz boot-chunks <gff>`**: drives `gpl-disasm
+    --global-cfg --json` and reports per-chunk
+    `inbound_calls` counts. Chunks with **zero inbound
+    `gpl global sub` edges** are entry points the engine
+    must dispatch directly (since nobody else does), so
+    they're the safest swap target for fuzz runs. Output is
+    JSON with `boot_candidates` + `most_called` arrays plus a
+    stderr summary line.
+    - DS1 GPLDATA: 129 boot candidates out of 250 chunks
+      (587 edges).
+    - DS2 GPLDATA: 196 boot candidates out of 350 chunks
+      (797 edges).
+    - DS1's most-called chunk is GPL/74 (169 inbound calls);
+      DS2's is GPL/27 (218 inbound calls). Those are engine
+      utility / helper functions the toolkit can curate names
+      for once the role is RE'd.
+  - **`recipes/` scaffold** with a README documenting the
+    intended recipe format and the reasons it's not active
+    yet. The `fuzz <opcode>` subcommand needs either a
+    short-form preprocessor in opcode-fuzz or a `gpl-asm
+    v0.8.0` extension that accepts mnemonic-only input
+    (today's gpl-asm requires the full `<offset> <byte>
+    <mnemonic>` listing format). Recipe-driven `fuzz` ships
+    in v0.3.1+ once that format settles.
+  - **Existing v0.2.0 subcommands** (`extract`, `pack`,
+    `roundtrip`, `run`) unchanged. Corpus round-trip stays at
+    250 / 250 byte-identical on DS1 GPLDATA.
+  - **No `fuzz` subcommand in v0.3.0**. Scope-cut for honesty:
+    a half-functional fuzz would mislead more than it'd help.
+    The discovery half (boot-chunks) ships now; the recipe-
+    execution half waits.
+
 - **`tools/repro/` v0.4.0** ships **scheduled keystrokes**
   (ydotool) and **video capture** (ffmpeg). Item #8 of the
   human-friendliness sprint; the deferred S9 from yesterday's

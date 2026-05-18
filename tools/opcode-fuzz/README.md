@@ -1,14 +1,54 @@
 # opcode-fuzz
 
-OpenDS opcode-fuzz harness. v0.2.0.
+OpenDS opcode-fuzz harness. v0.3.0.
 
 The Phase 5 tool that closes the GPL reverse-engineering arc.
 `gpl-disasm` reads GPL bytecode; `gpl-asm` writes it; this tool
-will eventually run swapped-in test chunks under DOSBox-Staging
-to **observe** what individual opcodes do, turning "guess from
-context" into "watch the engine react." That's the v0.2.0+
-shape; v0.1.0 ships the chunk-patchwork pipeline the discovery
-loop sits on.
+runs swapped-in test chunks under DOSBox-Staging to **observe**
+what individual opcodes do, turning "guess from context" into
+"watch the engine react." v0.1.0 shipped the chunk-patchwork
+pipeline; v0.2.0 added the run + observe loop; v0.3.0 ships
+the boot-chunk discovery half.
+
+## What v0.3.0 ships
+
+**`opcode-fuzz boot-chunks <gff>`**: identifies the safest
+chunks to swap. Drives `gpl-disasm --global-cfg --json` and
+reports per-chunk inbound-call counts. Chunks with **zero
+inbound `gpl global sub` edges** are pure entry points: the
+engine's main loop must dispatch them directly (since no other
+chunk does), so swapping in a test chunk is guaranteed to fire.
+
+```sh
+python3 opcode-fuzz.py boot-chunks .games/ds1/GPLDATA.GFF
+# stderr: opcode-fuzz boot-chunks: 129 entry-point candidates out
+# of 250 chunks (587 edges in the global CFG)
+# stdout: JSON report with boot_candidates and most_called arrays
+```
+
+Corpus tallies:
+
+| Game | Chunks | Boot candidates | Edges | Top utility |
+|------|-------:|----------------:|------:|:-----------|
+| DS1  |    250 |             129 |   587 | GPL/74 (169 inbound) |
+| DS2  |    350 |             196 |   797 | GPL/27 (218 inbound) |
+
+The top-utility chunks (highest inbound-call counts) are
+engine-helper / shared-subroutine candidates worth curating
+names for in `gpl-disasm/syms/functions.toml` once their role
+is RE'd.
+
+### `recipes/` scaffold (forward-looking)
+
+The `recipes/` directory exists for v0.3.1+'s `fuzz <opcode>`
+subcommand. v0.3.0 ships a `README.md` documenting the intended
+recipe format and the reasons it's not active yet (gpl-asm
+v0.7.0 parses the full text-listing format; a short-form
+mnemonic-only recipe needs either a preprocessor in
+opcode-fuzz or a gpl-asm extension that lands in v0.8.0).
+Recipe-driven `fuzz` ships once that format settles.
+
+---
 
 ## What v0.2.0 ships
 

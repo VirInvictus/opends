@@ -523,6 +523,16 @@ just read it. Be able to discover unknown opcodes systematically.
       live debugger inspection, leveraging save-inspect v0.6.0.)
 - [ ] The fastest path to filling in unknown opcodes; turns
       "guess from context" into "observe the effect."
+- [x] **Boot-chunk identification** (opcode-fuzz v0.3.0): new
+      `boot-chunks <gff>` subcommand drives `gpl-disasm
+      --global-cfg --json` and surfaces every chunk with zero
+      inbound `gpl global sub` edges (the engine must dispatch
+      them directly; safest swap targets for fuzz runs). DS1
+      GPLDATA: 129 boot candidates / 250 chunks; DS2: 196 /
+      350. `recipes/` scaffold lands as forward-looking
+      documentation; recipe-driven `fuzz` ships in v0.3.1+
+      once the recipe format (short-form mnemonics vs JSON vs
+      gpl-asm extension) settles.
 - [x] Tagged: `opcode-fuzz-v0.1.0`. (chunk pipeline)
 
 **Done when**: we can author and verify a synthetic GPL chunk
