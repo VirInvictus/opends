@@ -4,6 +4,47 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/atlas/` v0.1.0** (new crate). Item #7 of the
+  human-friendliness sprint: the static-HTML site generator.
+  Drives the existing tools as subprocesses and produces a
+  browsable directory of HTML pages. The first "open the whole
+  game and look around" surface on the toolkit.
+  - **One subcommand**: `atlas build --games-dir DIR -o OUT`.
+    Auto-detects game installs by presence of `DSUN.EXE` (one
+    subdir per game, or a single game install).
+  - **Three sections per game**:
+    - **Sprite gallery**: `image-extract --all` drives every
+      BMP / PORT / ICON / BMAP / OMAP / TILE chunk in
+      `RESOURCE.GFF` into PNG; one paginated grid page per
+      game (`sprites-RESOURCE.html`).
+    - **Region maps**: `region-render` drives every `RGN*.GFF`
+      into a PNG; one inline-image page per game
+      (`regions.html`).
+    - **Dialog browser**: drives `dialog-extract --format
+      html` against `GPLDATA.GFF` and threads the cross-
+      section nav bar into the output.
+  - **Cross-section nav** carried through every page; root
+    `index.html` links to per-game indexes; per-game indexes
+    link to each section. Static; opens via `file://`; no
+    JavaScript.
+  - **Tool discovery** mirrors the umbrella `opends` crate:
+    `target/release/` > `target/debug/` > `$PATH`; Python
+    tools resolve to `tools/<crate>/<script>.py` and invoke
+    via `python3`. Missing tools print a warning and skip
+    that section gracefully.
+  - **Smoke against the corpus**: 1685 sprites (DS1 649 +
+    DS2 1036), 53 region maps (DS1 33 + DS2 20), 2 dialog
+    browsers. Full site ~92 MB on disk.
+  - **Stdlib-only Python**; no template engine, no third-
+    party deps. CSS is a single embedded string injected
+    into every page. Templating uses Python f-strings.
+  - **No tests**. v0.1.0 is mostly subprocess plumbing; the
+    smoke is the corpus-build above. Failed builds surface
+    per-section warnings instead of crashing.
+  - **Out of v0.1.0 scope**: cross-references between
+    sections, search, save inspector, GPL chunk index,
+    per-frame sprite animation. Each is a v0.2.0 candidate.
+
 - **`tools/dialog-extract/` v0.7.0** ships **`--format
   transcript`** (per-NPC plain-text dialog listing) and
   **`--format html`** (single-file static HTML browser).
