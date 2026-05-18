@@ -839,6 +839,103 @@ def decode_text(payload: bytes) -> str:
     return payload.decode("latin-1", errors="replace").replace("\r\n", "\n")
 
 
+def decode_stxt(payload: bytes) -> dict[str, Any]:
+    """Decode a STXT chunk: in DARKRUN.GFF this is the save name
+    (the user's "FUCK" / "Brundle" / etc.). Stored as a null-
+    terminated ASCII string padded with zero bytes to a fixed
+    chunk length. Pull the leading text up to the first null;
+    everything after is padding.
+    """
+    end = payload.find(b"\x00")
+    name = payload[:end] if end >= 0 else payload
+    out: dict[str, Any] = {
+        "_format": "stxt_save_name",
+        "name": name.decode("ascii", errors="replace"),
+        "length_used": len(name),
+        "length_total": len(payload),
+    }
+    return out
+
+
+def decode_save_chunk(chunk_id: int, payload: bytes) -> dict[str, Any]:
+    """Decode a SAVE chunk inside DARKRUN.GFF.
+
+    SAVE chunks are per-region world state: entity positions, NPC
+    activity, trigger flags, quest progression. The engine writes
+    ~60 of them per saved game. No public schema; v0.7.0 surfaces
+    the structural shape we know (chunk-id-keyed; small ids carry
+    fixed-size scalars; large ids carry per-region or per-party
+    blobs) and leaves the body as opaque hex pending empirical RE.
+
+    What we do know after one DS1 played save vs the factory:
+      - Chunk id 1 (largest, ~10 KB) carries the party / PC data.
+      - Chunk ids 10-17 are exactly 2 bytes (u16 LE) each. They
+        store small counters or coordinates; values vary per save.
+      - Chunk id 18 is a 51-byte boolean array (all 0x01 in the
+        sample save: 51 region-visited flags?).
+      - The remaining ids span 100 bytes to a few KB and almost
+        certainly hold per-region world state. Field semantics
+        TBD; ship as opaque hex so downstream consumers see the
+        bytes without making up structure.
+
+    Per-game tag: v0.7.0 ships only `_format: ds1_save_chunk`.
+    DS2 likely shares the wire format (the engine code is the
+    same shape per `docs/dso-symbols.md`) but we have no played
+    DS2 sample to verify. The tag is updated to `ds2_save_chunk`
+    or split into two variants once that data exists.
+    """
+    out: dict[str, Any] = {
+        "_format": "ds1_save_chunk",
+        "chunk_id": chunk_id,
+        "byte_length": len(payload),
+    }
+    if len(payload) == 2:
+        # The id 10-17 family: each is a single u16 LE scalar.
+        out["u16_value"] = int.from_bytes(payload, "little")
+    out["raw_hex"] = hex_preview(payload, limit=128)
+    return out
+
+
+def decode_etme(payload: bytes) -> dict[str, Any]:
+    """Decode an ETME chunk: the engine-template-metadata block
+    that DARKRUN / DARKSAVE both ship. ASCII text with comments
+    (`;` lines) describing the file's expected GFS layout. Not
+    semantically meaningful for modders; surfaced as text so the
+    JSON output is readable.
+    """
+    return {
+        "_format": "etme_template_text",
+        "text": decode_text(payload),
+        "byte_length": len(payload),
+    }
+
+
+def decode_etab(payload: bytes) -> dict[str, Any]:
+    """Decode an ETAB chunk: the engine's entity table. In
+    DARKRUN.GFF the ETAB chunk is consistently 10000 bytes wide
+    and mostly zero in newly-played saves; the cells fill in
+    as entities spawn into the active region. Schema is part of
+    the DARKRUN-side RE thread that v0.7.0 doesn't crack; surface
+    as opaque hex with a tag.
+    """
+    out: dict[str, Any] = {
+        "_format": "etab_entity_table",
+        "byte_length": len(payload),
+        "raw_hex": hex_preview(payload, limit=128),
+    }
+    # Cheap fingerprint: how many leading zero bytes? Newly-started
+    # games have huge zero runs; deep into a playthrough this
+    # drops. Surface as a one-number anomaly check.
+    leading_zeros = 0
+    for b in payload:
+        if b == 0:
+            leading_zeros += 1
+        else:
+            break
+    out["leading_zero_bytes"] = leading_zeros
+    return out
+
+
 def decode_chunk(chunk: dict[str, Any]) -> dict[str, Any]:
     """Decode a single chunk's payload into a JSON-friendly dict."""
     kind = chunk["kind"]
@@ -886,6 +983,25 @@ def decode_chunk(chunk: dict[str, Any]) -> dict[str, Any]:
         base["raw_hex"] = hex_preview(payload, limit=128)
     elif kind == "TEXT":
         base["text"] = decode_text(payload)
+    elif kind == "SAVE":
+        # v0.7.0: per-region world state (DARKRUN.GFF). Schema is
+        # empirically incomplete; the decoder surfaces structural
+        # shape (length, optional u16 for 2-byte chunks) plus an
+        # opaque hex preview. See `decode_save_chunk` for details.
+        base.update(decode_save_chunk(chunk["id"], payload))
+    elif kind == "STXT":
+        # v0.7.0: in DARKRUN.GFF this is the save name (e.g. the
+        # "FUCK" save). Null-terminated ASCII padded to chunk
+        # length.
+        base.update(decode_stxt(payload))
+    elif kind == "ETAB":
+        # v0.7.0: engine entity table (10 KB allocation, mostly
+        # zero in fresh saves). Opaque-hex surface for now.
+        base.update(decode_etab(payload))
+    elif kind == "ETME":
+        # v0.7.0: engine-template-metadata text block, present in
+        # both DARKSAVE.GFF (factory) and DARKRUN.GFF (played).
+        base.update(decode_etme(payload))
     else:
         # Unknown chunk type: bytes only.
         base["raw_hex"] = hex_preview(payload, limit=128)
@@ -1060,12 +1176,136 @@ def _build_diff_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _build_save_diff_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="save-inspect save-diff",
+        description=(
+            "Compare two DARKRUN-shape GFFs (DARKRUN.GFF / SAVE0N.SAV) "
+            "and report SAVE-chunk differences: per-chunk byte-diff "
+            "counts plus full structural surface."
+        ),
+    )
+    p.add_argument("a", type=Path, help="first DARKRUN.GFF (factory or earlier)")
+    p.add_argument("b", type=Path, help="second DARKRUN.GFF (played or later)")
+    p.add_argument(
+        "-o", "--output", type=Path, default=None,
+        help="write diff JSON to file (default stdout)",
+    )
+    p.add_argument(
+        "--pretty", action="store_true",
+        help="pretty-print JSON with 2-space indent",
+    )
+    p.add_argument(
+        "--all-chunks", action="store_true",
+        help="include non-SAVE chunk differences too (default: SAVE only)",
+    )
+    return p
+
+
+def save_chunk_diff(
+    a_parsed: dict[str, Any],
+    b_parsed: dict[str, Any],
+    only_save: bool = True,
+) -> dict[str, Any]:
+    """SAVE-chunk-focused diff between two parsed DARKRUN-shape GFFs.
+
+    Unlike `diff_summaries` (which walks the decoded summary trees
+    field-by-field), this one operates at the chunk-byte level: for
+    each chunk that exists in both files, it reports the byte-diff
+    count and the first 64 bytes of the differing region. The
+    intent is to make empirical SAVE-chunk RE easy: do an action
+    in-game, save, compare against the pre-action save, see exactly
+    which bytes changed where.
+
+    By default the report only covers SAVE chunks; `only_save=False`
+    includes ETAB / STXT / ETME / etc. as well.
+    """
+    def keyed_bytes(parsed: dict[str, Any]) -> dict[tuple[str, int], bytes]:
+        out: dict[tuple[str, int], bytes] = {}
+        for c in parsed.get("chunks", []):
+            out[(c["kind"], int(c["id"]))] = c["bytes"]
+        return out
+
+    a_chunks = keyed_bytes(a_parsed)
+    b_chunks = keyed_bytes(b_parsed)
+    keys = sorted(set(a_chunks.keys()) | set(b_chunks.keys()))
+    if only_save:
+        keys = [k for k in keys if k[0] == "SAVE"]
+
+    added: list[dict[str, Any]] = []
+    removed: list[dict[str, Any]] = []
+    changed: list[dict[str, Any]] = []
+    unchanged_count = 0
+    for k in keys:
+        if k not in a_chunks:
+            added.append({
+                "chunk": f"{k[0]}-{k[1]}",
+                "kind": k[0],
+                "id": k[1],
+                "byte_length": len(b_chunks[k]),
+                "raw_hex_preview": hex_preview(b_chunks[k], limit=64),
+            })
+            continue
+        if k not in b_chunks:
+            removed.append({
+                "chunk": f"{k[0]}-{k[1]}",
+                "kind": k[0],
+                "id": k[1],
+                "byte_length": len(a_chunks[k]),
+                "raw_hex_preview": hex_preview(a_chunks[k], limit=64),
+            })
+            continue
+        ab = a_chunks[k]
+        bb = b_chunks[k]
+        if ab == bb:
+            unchanged_count += 1
+            continue
+        # Same chunk, different bytes. Compute the byte-diff count
+        # and the first differing-byte offset.
+        diff_bytes = 0
+        first_diff = None
+        for i in range(max(len(ab), len(bb))):
+            av = ab[i] if i < len(ab) else None
+            bv = bb[i] if i < len(bb) else None
+            if av != bv:
+                diff_bytes += 1
+                if first_diff is None:
+                    first_diff = i
+        changed.append({
+            "chunk": f"{k[0]}-{k[1]}",
+            "kind": k[0],
+            "id": k[1],
+            "a_byte_length": len(ab),
+            "b_byte_length": len(bb),
+            "byte_diff_count": diff_bytes,
+            "first_diff_offset": first_diff,
+            "a_hex_preview": hex_preview(ab, limit=64),
+            "b_hex_preview": hex_preview(bb, limit=64),
+        })
+
+    return {
+        "tool": "save-inspect",
+        "version": VERSION,
+        "mode": "save-diff",
+        "filter": "save-only" if only_save else "all-chunks",
+        "summary": {
+            "added_chunk_count": len(added),
+            "removed_chunk_count": len(removed),
+            "changed_chunk_count": len(changed),
+            "unchanged_chunk_count": unchanged_count,
+            "total_byte_diff": sum(c["byte_diff_count"] for c in changed),
+        },
+        "added": added,
+        "removed": removed,
+        "changed": changed,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
-    # Manual dispatch: if the first arg is `diff`, route to the
-    # diff subcommand; otherwise default to the v0.1.x inspect
-    # behaviour. Keeps both the positional `file` and the
-    # subcommand cleanly distinguishable for argparse.
+    # Manual dispatch: if the first arg is a known subcommand,
+    # route there. Otherwise default to the v0.1.x inspect path
+    # (the bare-file form `save-inspect <file>`).
     if argv and argv[0] == "diff":
         diff_args = _build_diff_parser().parse_args(argv[1:])
         try:
@@ -1083,6 +1323,24 @@ def main(argv: list[str] | None = None) -> int:
             sys.stdout.write(text + "\n")
         else:
             diff_args.output.write_text(text + "\n", encoding="utf-8")
+        return 0
+    if argv and argv[0] == "save-diff":
+        sd_args = _build_save_diff_parser().parse_args(argv[1:])
+        try:
+            pa = parse_gff(sd_args.a)
+            pb = parse_gff(sd_args.b)
+        except (FileNotFoundError, ValueError) as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 2
+        out = save_chunk_diff(pa, pb, only_save=not sd_args.all_chunks)
+        out["a"] = str(sd_args.a)
+        out["b"] = str(sd_args.b)
+        indent = 2 if sd_args.pretty else None
+        text = json.dumps(out, indent=indent, ensure_ascii=False)
+        if sd_args.output is None or str(sd_args.output) == "-":
+            sys.stdout.write(text + "\n")
+        else:
+            sd_args.output.write_text(text + "\n", encoding="utf-8")
         return 0
 
     args = _build_inspect_parser().parse_args(argv)

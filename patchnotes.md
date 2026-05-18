@@ -4,6 +4,57 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/save-inspect/` v0.7.0** ships SAVE-chunk
+  structural decoding plus a `save-diff` subcommand for
+  empirical world-state RE. Item #4 of the human-friendliness
+  sprint; inherits S8's scope (DARKRUN-side decode) from
+  yesterday's plan with the realistic ceiling: schema is
+  empirically incomplete, so v0.7.0 surfaces what's locked
+  (chunk-id-keyed shape; u16 scalars in the 2-byte family)
+  and leaves the body as opaque hex with the per-game tag
+  `_format: ds1_save_chunk`. DS2's wire format probably
+  matches but we have no played DS2 sample to verify; the
+  tag is updated once that data exists.
+  - **Four new decoder branches in `decode_chunk`**: `SAVE`
+    (per-region world state inside DARKRUN.GFF; ~60 per
+    save), `STXT` (the save name, e.g. the "FUCK" save;
+    null-terminated ASCII padded to chunk length), `ETAB`
+    (the engine entity table; 10 KB allocation, mostly zero
+    in fresh saves; opaque hex + leading-zero-byte
+    fingerprint), `ETME` (engine-template-metadata text
+    block present in both factory DARKSAVE and played
+    DARKRUN; surfaced as text).
+  - **`save-diff` subcommand**: new sibling to the existing
+    `diff` (which compares CHARSAVE summaries). `save-diff`
+    operates at the chunk-byte level: for each chunk that
+    exists in both files, reports `byte_diff_count` and
+    `first_diff_offset` plus 64-byte hex previews of both
+    sides. Defaults to SAVE-chunks-only; `--all-chunks`
+    extends to ETAB / STXT / ETME / etc.
+    The intent is empirical SAVE-chunk RE: do an action
+    in-game, save, compare against the pre-action save, see
+    exactly which bytes changed in which chunk. Drops the
+    diff size from "all changed fields per chunk" (the
+    existing `diff`) to "byte-counts per chunk."
+  - **Inventory captured from the one Brandon-played DS1
+    save** (the "FUCK" save at
+    `~/.wine/drive_c/GOG Games/Dark Sun/DARKRUN.GFF`):
+    60 SAVE chunks ranging from 2 bytes to 10240 bytes.
+    Notable patterns:
+    - Chunk id 1 (10240 bytes): the largest; almost
+      certainly the party / PC data.
+    - Chunk ids 10-17: each exactly 2 bytes (u16 LE).
+      v0.7.0 decodes them as `u16_value`.
+    - Chunk id 18 (51 bytes, all 0x01 in the sample save):
+      51 boolean flags; speculation is region-visited or
+      party-known flags.
+    - All other ids: opaque hex, schema TBD.
+  - **No tests** for the new decoders (the existing CHAR/
+    PSIN/etc. decoders also ship test-free in the script).
+    Smoke covers all four branches on the played DARKRUN +
+    the regression on the v0.6.0 CHARSAVE inspect / diff
+    paths.
+
 - **`tools/opends/` v0.1.0** (new crate). Item #3 of the
   human-friendliness sprint: the umbrella CLI that auto-
   dispatches by file magic. New contributors who don't yet

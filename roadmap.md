@@ -318,10 +318,20 @@ look at the maps directly.
       Per-item `_format` tag (`ds1_item` / `ds2_item`) added.
       Save-slot files (`SAVE0N.SAV`) discovered to be
       byte-identical snapshots of `DARKRUN.GFF`; save-inspect
-      reads them natively. The `SAVE` chunk inside
-      `DARKRUN.GFF` (per-region world state, ~60 per save)
-      is the next un-decoded surface; queued without a
-      version target.
+      reads them natively.
+- [~] **SAVE chunk structural decode** (save-inspect v0.7.0):
+      per-region world state inside `DARKRUN.GFF` (~60 per
+      save). Schema is empirically incomplete, so v0.7.0
+      surfaces what's locked (chunk-id-keyed shape; u16
+      scalars in the 2-byte chunk family at ids 10..17; ETME
+      template text; STXT save name) and leaves the rest as
+      opaque hex with the per-game tag `_format:
+      ds1_save_chunk`. New `save-diff` subcommand operates at
+      the chunk-byte level: per-chunk byte-diff counts plus
+      first-diff offsets, defaulting to SAVE chunks only.
+      Field-by-field RE continues as more played saves
+      surface; the v0.7.0 deliverable is the harness the RE
+      runs through, not the full schema.
 - [x] Tagged: `save-inspect-v0.1.0`. (this release)
 
 ### `tools/image-extract/` (Rust)

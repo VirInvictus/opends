@@ -19,6 +19,76 @@ python3 save-inspect.py /path/to/CHARSAVE.GFF -o save.json
 JSON is emitted to stdout by default; `-o <file>` writes to a
 file instead.
 
+## What v0.7.0 ships
+
+**SAVE-chunk structural decode + `save-diff` subcommand.**
+v0.1.0 - v0.6.0 closed CHARSAVE.GFF (every PC sub-block now
+decodes). v0.7.0 opens the DARKRUN side: per-region world
+state inside `DARKRUN.GFF` (or its byte-identical twin
+`SAVE0N.SAV`), ~60 SAVE chunks per saved game.
+
+The schema is empirically incomplete (no public docs; no game
+source). v0.7.0 ships the **harness the RE runs through**, not
+the full schema:
+
+- **`decode_chunk` now handles four new kinds**: `SAVE` (world
+  state; `_format: ds1_save_chunk`; the 2-byte family at chunk
+  ids 10..17 decodes as `u16_value`; rest as opaque hex),
+  `STXT` (save name, null-terminated ASCII padded; the "FUCK"
+  save's name surfaces as `{"name": "FUCK", "length_used": 4,
+  "length_total": 45}`), `ETAB` (engine entity table; opaque
+  hex + leading-zero-byte fingerprint), `ETME` (engine-template
+  text, present in both factory DARKSAVE.GFF and played
+  DARKRUN.GFF).
+- **`save-diff` subcommand**:
+
+  ```sh
+  python3 save-inspect.py save-diff factory.gff played.gff --pretty
+  ```
+
+  Operates at the chunk-byte level (unlike the existing `diff`,
+  which walks decoded summaries field-by-field). Per-chunk
+  `byte_diff_count` plus `first_diff_offset` plus 64-byte hex
+  previews of both sides. Default: SAVE chunks only;
+  `--all-chunks` includes ETAB / STXT / ETME / etc.
+
+  Intended workflow for working out world-state semantics
+  empirically: do an action in-game, save, run `save-diff`
+  against the pre-action save, see exactly which bytes changed
+  in which chunk.
+
+### What's known about SAVE-chunk structure
+
+Based on one DS1 played save (the "FUCK" save at
+`~/.wine/drive_c/GOG Games/Dark Sun/DARKRUN.GFF`):
+
+| Chunk id   | Size           | Speculation                          |
+|------------|----------------|--------------------------------------|
+| 1          | 10240 bytes    | Largest. Almost certainly party / PCs.|
+| 2-9        | 100-3000 bytes | Per-region world state (varies).     |
+| 10-17      | 2 bytes (u16)  | Counters / coords / region pointers. |
+| 18         | 51 bytes       | Boolean array (all 0x01 in sample).  |
+| 19-60      | 100-2000 bytes | More per-region or per-NPC blobs.    |
+
+DS2 likely shares the wire format (engine code is the same
+shape per `docs/dso-symbols.md`) but no played DS2 sample
+exists yet to verify. The `_format` tag stays `ds1_save_chunk`
+until that data lands.
+
+### What v0.7.0 does NOT ship
+
+- **Per-field decode of the SAVE bodies**. Schema is unmapped
+  beyond the structural shape above. Field discovery is a
+  multi-session empirical RE thread that needs more played
+  saves (and ideally the `repro v0.4.0` input automation to
+  reproduce specific game states deterministically).
+- **DS2 SAVE schema**. Same wire format suspected, no
+  validation data yet.
+- **`save-edit` write path**. That's v0.8.0; v0.7.0 is
+  read-only.
+
+---
+
 ## What v0.6.0 ships
 
 **DS2 item sub-block validation, plus per-item `_format` tag.**
