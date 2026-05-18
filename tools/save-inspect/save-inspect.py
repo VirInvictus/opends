@@ -239,6 +239,11 @@ def _decode_combat_ds2(body: bytes) -> dict[str, Any]:
     out["_slot_31"] = body[31]
     out["_reserved_1"] = body[32]
     out["name"] = body[33:49].split(b"\x00", 1)[0].decode("ascii", errors="replace")
+    # Real saves leave non-zero garbage in the name field's trailing
+    # bytes (the engine doesn't always zero the buffer between writes).
+    # Preserve those bytes verbatim so encode→decode round-trips
+    # byte-identically when the user hasn't edited `name`.
+    out["_name_raw_hex"] = body[33:49].hex()
     return out
 
 
@@ -377,6 +382,9 @@ def _decode_combat(body: bytes) -> dict[str, Any]:
         pass
     else:
         out["name"] = name_bytes.split(b"\x00", 1)[0].decode("latin-1", errors="replace")
+        # Preserve trailing-garbage bytes for round-trip fidelity
+        # (the engine doesn't always zero the name buffer).
+        out["_name_raw_hex"] = name_bytes.hex()
     if pos < n:
         out["_trailing_hex"] = body[pos:].hex()
     return out
@@ -684,6 +692,12 @@ def _decode_item(body: bytes) -> dict[str, Any]:
         nonlocal pos
         if pos + size > n:
             out["_truncated_at"] = key
+            # Capture remaining bytes so encoders can re-emit them.
+            # Without this, DS1 21-byte items (which truncate at the
+            # 2-byte `priority` field at pos=20 with 1 byte left)
+            # lose that byte on round-trip.
+            if pos < n:
+                out["_trailing_hex"] = body[pos:].hex()
             return False
         v = struct.unpack_from(t, body, pos)[0]
         pos += size
@@ -893,6 +907,10 @@ def decode_save_chunk(chunk_id: int, payload: bytes) -> dict[str, Any]:
         # The id 10-17 family: each is a single u16 LE scalar.
         out["u16_value"] = int.from_bytes(payload, "little")
     out["raw_hex"] = hex_preview(payload, limit=128)
+    # Full bytes for round-trip; the truncated raw_hex above stays
+    # for human inspection. Necessary because SAVE chunks can be
+    # 10 KB and the truncation would lose the tail on re-encode.
+    out["_raw_bytes_hex"] = payload.hex()
     return out
 
 
@@ -922,6 +940,7 @@ def decode_etab(payload: bytes) -> dict[str, Any]:
         "_format": "etab_entity_table",
         "byte_length": len(payload),
         "raw_hex": hex_preview(payload, limit=128),
+        "_raw_bytes_hex": payload.hex(),
     }
     # Cheap fingerprint: how many leading zero bytes? Newly-started
     # games have huge zero runs; deep into a playthrough this
@@ -934,6 +953,524 @@ def decode_etab(payload: bytes) -> dict[str, Any]:
             break
     out["leading_zero_bytes"] = leading_zeros
     return out
+
+
+# ---------- encoders (v0.8.0) ----------
+#
+# Each `_encode_X` is the inverse of `_decode_X`. The invariant
+# every encoder upholds: bytes produced have length equal to the
+# original sub-block's wire length, so the rdff_header `len` field
+# stays unchanged on re-encode. Decoded fields with a known type
+# (i16, u8, char[N]) flow back through the inverse `struct.pack`;
+# `_raw_hex` and `*_hex` keys flow back through `bytes.fromhex`;
+# enum dicts (`{"value": N, "name": "X"}`) extract `value`.
+#
+# Each encoder raises `EncodeError` on a missing required field or
+# a value out of range. The errors surface to the user as part of
+# the schema-validation pass before any write touches disk.
+
+
+class EncodeError(ValueError):
+    """Raised when a decoded JSON record can't be re-encoded.
+
+    The message names the path that failed (e.g.
+    `chunk CHAR/29 / character / stats.str: expected u8, got 999`)
+    so a hand-edited JSON's typos surface with line-of-sight to
+    the offending key.
+    """
+
+
+def _enum_value(v: Any) -> int:
+    """Extract the integer from a `_name_enum` dict, or pass an int
+    through. Used by encoders for fields like `alignment` / `slot`
+    that the decoder wraps as `{"value": N, "name": "X"}`."""
+    if isinstance(v, dict):
+        return int(v["value"])
+    return int(v)
+
+
+def _pack_u8(v: int, ctx: str) -> bytes:
+    if not (0 <= v <= 255):
+        raise EncodeError(f"{ctx}: expected u8 in 0..255, got {v}")
+    return bytes([v])
+
+
+def _pack_i8(v: int, ctx: str) -> bytes:
+    if not (-128 <= v <= 127):
+        raise EncodeError(f"{ctx}: expected i8 in -128..127, got {v}")
+    return struct.pack("<b", v)
+
+
+def _pack_u16(v: int, ctx: str) -> bytes:
+    if not (0 <= v <= 0xFFFF):
+        raise EncodeError(f"{ctx}: expected u16 in 0..65535, got {v}")
+    return struct.pack("<H", v)
+
+
+def _pack_i16(v: int, ctx: str) -> bytes:
+    if not (-32768 <= v <= 32767):
+        raise EncodeError(f"{ctx}: expected i16, got {v}")
+    return struct.pack("<h", v)
+
+
+def _pack_u32(v: int, ctx: str) -> bytes:
+    if not (0 <= v <= 0xFFFFFFFF):
+        raise EncodeError(f"{ctx}: expected u32, got {v}")
+    return struct.pack("<I", v)
+
+
+def _pack_name(name: str, length: int, ctx: str) -> bytes:
+    """Pack a name string into a fixed-length NUL-padded buffer."""
+    raw = name.encode("latin-1", errors="replace")
+    if len(raw) > length:
+        raise EncodeError(
+            f"{ctx}: name {name!r} is {len(raw)} bytes, max {length}"
+        )
+    return raw.ljust(length, b"\x00")
+
+
+def _pack_hex(hex_str: str, expected_len: int | None, ctx: str) -> bytes:
+    try:
+        out = bytes.fromhex(hex_str)
+    except ValueError as e:
+        raise EncodeError(f"{ctx}: bad hex string: {e}")
+    if expected_len is not None and len(out) != expected_len:
+        raise EncodeError(
+            f"{ctx}: expected {expected_len} bytes from hex, got {len(out)}"
+        )
+    return out
+
+
+def _encode_stats(stats: dict[str, Any], ctx: str) -> bytes:
+    """Pack the 6-byte stats array in canonical str/dex/con/int/wis/cha order."""
+    out = bytearray(6)
+    for i, key in enumerate(("str", "dex", "con", "intel", "wis", "cha")):
+        if key not in stats:
+            raise EncodeError(f"{ctx}: stats.{key} missing")
+        out[i:i+1] = _pack_u8(int(stats[key]), f"{ctx}/stats.{key}")
+    return bytes(out)
+
+
+def _encode_saving_throw(st: dict[str, Any], ctx: str) -> bytes:
+    out = bytearray(5)
+    for i, key in enumerate(("paralysis", "wand", "petrify", "breath", "spell")):
+        if key not in st:
+            raise EncodeError(f"{ctx}: saving_throw.{key} missing")
+        out[i:i+1] = _pack_u8(int(st[key]), f"{ctx}/saving_throw.{key}")
+    return bytes(out)
+
+
+def _encode_combat_ds2(d: dict[str, Any], ctx: str) -> bytes:
+    out = bytearray(49)
+    out[0:14] = struct.pack(
+        "<7h",
+        int(d["hp"]), int(d["psp"]), int(d["char_index"]),
+        int(d["id"]), int(d["ready_item_index"]),
+        int(d["weapon_index"]), int(d["pack_index"]),
+    )
+    out[14:22] = _pack_hex(d["data_block_hex"], 8, f"{ctx}/data_block_hex")
+    out[22:23] = _pack_u8(int(d["special_attack"]), f"{ctx}/special_attack")
+    out[23:24] = _pack_u8(int(d["special_defense"]), f"{ctx}/special_defense")
+    out[24:25] = _pack_u8(int(d.get("_reserved_0", 0)), f"{ctx}/_reserved_0")
+    out[25:31] = _encode_stats(d["stats"], ctx)
+    out[31:32] = _pack_u8(int(d.get("_slot_31", 0)), f"{ctx}/_slot_31")
+    out[32:33] = _pack_u8(int(d.get("_reserved_1", 0)), f"{ctx}/_reserved_1")
+    # Prefer `_name_raw_hex` when present (preserves engine
+    # garbage in the trailing padding bytes for byte-identical
+    # round-trip). Falls back to null-padded `name` when the
+    # user has edited the field and removed the raw-hex tag.
+    if "_name_raw_hex" in d:
+        out[33:49] = _pack_hex(d["_name_raw_hex"], 16, f"{ctx}/_name_raw_hex")
+    else:
+        out[33:49] = _pack_name(d.get("name", ""), 16, f"{ctx}/name")
+    return bytes(out)
+
+
+def _encode_combat(d: dict[str, Any], ctx: str) -> bytes:
+    """Encode a combat sub-block. Dispatches by `_format` tag (or
+    by `_raw_hex` fallback for unknown variants).
+    """
+    fmt = d.get("_format")
+    if fmt == "ds2_combat":
+        return _encode_combat_ds2(d, ctx)
+    if "_raw_hex" in d:
+        return _pack_hex(d["_raw_hex"], None, f"{ctx}/_raw_hex")
+    # DS1: 58 bytes.
+    out = bytearray()
+    out.extend(struct.pack(
+        "<7h",
+        int(d["hp"]), int(d["psp"]), int(d["char_index"]),
+        int(d["id"]), int(d["ready_item_index"]),
+        int(d["weapon_index"]), int(d["pack_index"]),
+    ))
+    out.extend(_pack_hex(d["data_block_hex"], 8, f"{ctx}/data_block_hex"))
+    out.extend(_pack_u8(int(d["special_attack"]), f"{ctx}/special_attack"))
+    out.extend(_pack_u8(int(d["special_defense"]), f"{ctx}/special_defense"))
+    out.extend(_pack_i16(int(d["icon"]), f"{ctx}/icon"))
+    out.extend(_pack_i8(int(d["ac"]), f"{ctx}/ac"))
+    for key in ("move", "status", "allegiance", "data"):
+        out.extend(_pack_u8(int(d[key]), f"{ctx}/{key}"))
+    out.extend(_pack_i8(int(d["thac0"]), f"{ctx}/thac0"))
+    for key in ("priority", "flags"):
+        out.extend(_pack_u8(int(d[key]), f"{ctx}/{key}"))
+    out.extend(_encode_stats(d["stats"], ctx))
+    # Same name-padding preservation as the DS2 path.
+    if "_name_raw_hex" in d:
+        out.extend(_pack_hex(d["_name_raw_hex"], 18, f"{ctx}/_name_raw_hex"))
+    elif "name" in d:
+        out.extend(_pack_name(d["name"], 18, f"{ctx}/name"))
+    if "_trailing_hex" in d:
+        out.extend(_pack_hex(d["_trailing_hex"], None, f"{ctx}/_trailing_hex"))
+    return bytes(out)
+
+
+def _encode_character_ds2(d: dict[str, Any], ctx: str) -> bytes:
+    out = bytearray(66)
+    struct.pack_into("<II", out, 0, int(d["current_xp"]), int(d["high_xp"]))
+    struct.pack_into(
+        "<HHHH", out, 8,
+        int(d["base_hp"]), int(d["high_hp"]),
+        int(d["base_psp"]), int(d["id"]),
+    )
+    out[16:18] = _pack_hex(d["_data1"], 2, f"{ctx}/_data1")
+    out[18:20] = _pack_u16(int(d["legal_class"]), f"{ctx}/legal_class")
+    out[20:21] = _pack_u8(_enum_value(d["alignment"]), f"{ctx}/alignment")
+    out[21:27] = _encode_stats(d["stats"], ctx)
+    for i in range(3):
+        out[27 + i : 28 + i] = _pack_i8(int(d["real_class"][i]), f"{ctx}/real_class[{i}]")
+    for i in range(3):
+        out[30 + i : 31 + i] = _pack_u8(int(d["level"][i]), f"{ctx}/level[{i}]")
+    out[33:34] = _pack_i8(int(d["base_ac"]), f"{ctx}/base_ac")
+    out[34:35] = _pack_u8(int(d["base_move"]), f"{ctx}/base_move")
+    out[35:36] = _pack_u8(int(d["magic_resistance"]), f"{ctx}/magic_resistance")
+    out[36:37] = _pack_u8(int(d["num_blows"]), f"{ctx}/num_blows")
+    for i in range(3):
+        out[37 + i : 38 + i] = _pack_u8(int(d["num_attacks"][i]), f"{ctx}/num_attacks[{i}]")
+    for i in range(3):
+        out[40 + i : 41 + i] = _pack_u8(int(d["num_dice"][i]), f"{ctx}/num_dice[{i}]")
+    for i in range(3):
+        out[43 + i : 44 + i] = _pack_u8(int(d["num_sides"][i]), f"{ctx}/num_sides[{i}]")
+    for i in range(3):
+        out[46 + i : 47 + i] = _pack_u8(int(d["num_bonuses"][i]), f"{ctx}/num_bonuses[{i}]")
+    out[49:54] = _encode_saving_throw(d["saving_throw"], ctx)
+    out[54:55] = _pack_u8(int(d["allegiance"]), f"{ctx}/allegiance")
+    out[55:56] = _pack_u8(int(d["size"]), f"{ctx}/size")
+    out[56:57] = _pack_u8(int(d["spell_group"]), f"{ctx}/spell_group")
+    for i in range(3):
+        out[57 + i : 58 + i] = _pack_u8(int(d["high_level"][i]), f"{ctx}/high_level[{i}]")
+    out[60:62] = _pack_u16(int(d["sound_fx"]), f"{ctx}/sound_fx")
+    out[62:64] = _pack_u16(int(d["attack_sound"]), f"{ctx}/attack_sound")
+    out[64:65] = _pack_u8(int(d["psi_group"]), f"{ctx}/psi_group")
+    out[65:66] = _pack_u8(int(d["palette"]), f"{ctx}/palette")
+    return bytes(out)
+
+
+def _encode_character(d: dict[str, Any], ctx: str) -> bytes:
+    fmt = d.get("_format")
+    if fmt == "ds2_character":
+        return _encode_character_ds2(d, ctx)
+    if "_raw_hex" in d:
+        return _pack_hex(d["_raw_hex"], None, f"{ctx}/_raw_hex")
+    # DS1: 71 or 72 bytes (palette optional).
+    out = bytearray()
+    out.extend(_pack_u32(int(d["current_xp"]), f"{ctx}/current_xp"))
+    out.extend(_pack_u32(int(d["high_xp"]), f"{ctx}/high_xp"))
+    out.extend(_pack_u16(int(d["base_hp"]), f"{ctx}/base_hp"))
+    out.extend(_pack_u16(int(d["high_hp"]), f"{ctx}/high_hp"))
+    out.extend(_pack_u16(int(d["base_psp"]), f"{ctx}/base_psp"))
+    out.extend(_pack_u16(int(d["id"]), f"{ctx}/id"))
+    out.extend(_pack_hex(d["_data1"], 2, f"{ctx}/_data1"))
+    out.extend(_pack_u16(int(d["legal_class"]), f"{ctx}/legal_class"))
+    out.extend(_pack_hex(d["_data2"], 4, f"{ctx}/_data2"))
+    out.extend(_pack_u8(_enum_value(d["race"]), f"{ctx}/race"))
+    out.extend(_pack_u8(_enum_value(d["gender"]), f"{ctx}/gender"))
+    out.extend(_pack_u8(_enum_value(d["alignment"]), f"{ctx}/alignment"))
+    out.extend(_encode_stats(d["stats"], ctx))
+    for i in range(3):
+        out.extend(_pack_i8(int(d["real_class"][i]), f"{ctx}/real_class[{i}]"))
+    for i in range(3):
+        out.extend(_pack_u8(int(d["level"][i]), f"{ctx}/level[{i}]"))
+    out.extend(_pack_i8(int(d["base_ac"]), f"{ctx}/base_ac"))
+    out.extend(_pack_u8(int(d["base_move"]), f"{ctx}/base_move"))
+    out.extend(_pack_u8(int(d["magic_resistance"]), f"{ctx}/magic_resistance"))
+    out.extend(_pack_u8(int(d["num_blows"]), f"{ctx}/num_blows"))
+    for i in range(3):
+        out.extend(_pack_u8(int(d["num_attacks"][i]), f"{ctx}/num_attacks[{i}]"))
+    for i in range(3):
+        out.extend(_pack_u8(int(d["num_dice"][i]), f"{ctx}/num_dice[{i}]"))
+    for i in range(3):
+        out.extend(_pack_u8(int(d["num_sides"][i]), f"{ctx}/num_sides[{i}]"))
+    for i in range(3):
+        out.extend(_pack_u8(int(d["num_bonuses"][i]), f"{ctx}/num_bonuses[{i}]"))
+    out.extend(_encode_saving_throw(d["saving_throw"], ctx))
+    for key in ("allegiance", "size", "spell_group"):
+        out.extend(_pack_u8(int(d[key]), f"{ctx}/{key}"))
+    for i in range(3):
+        out.extend(_pack_u8(int(d["high_level"][i]), f"{ctx}/high_level[{i}]"))
+    out.extend(_pack_u16(int(d["sound_fx"]), f"{ctx}/sound_fx"))
+    out.extend(_pack_u16(int(d["attack_sound"]), f"{ctx}/attack_sound"))
+    out.extend(_pack_u8(int(d["psi_group"]), f"{ctx}/psi_group"))
+    if "palette" in d:
+        out.extend(_pack_u8(int(d["palette"]), f"{ctx}/palette"))
+    if "_trailing_hex" in d:
+        out.extend(_pack_hex(d["_trailing_hex"], None, f"{ctx}/_trailing_hex"))
+    return bytes(out)
+
+
+def _encode_item(d: dict[str, Any], ctx: str) -> bytes:
+    """Encode an item sub-block. DS1 = 21 bytes (truncates at
+    `bonus`); DS2 = 23 bytes (includes `priority` + `data0`).
+    Format dispatch follows the `_format` tag the decoder set.
+    """
+    fmt = d.get("_format")
+    out = bytearray()
+    out.extend(_pack_i16(int(d["id"]), f"{ctx}/id"))
+    out.extend(_pack_u16(int(d["quantity"]), f"{ctx}/quantity"))
+    out.extend(_pack_i16(int(d["next"]), f"{ctx}/next"))
+    out.extend(_pack_u16(int(d["value"]), f"{ctx}/value"))
+    out.extend(_pack_i16(int(d["pack_index"]), f"{ctx}/pack_index"))
+    out.extend(_pack_i16(int(d["item_index"]), f"{ctx}/item_index"))
+    out.extend(_pack_i16(int(d["icon"]), f"{ctx}/icon"))
+    out.extend(_pack_u16(int(d["charges"]), f"{ctx}/charges"))
+    out.extend(_pack_u8(int(d["special"]), f"{ctx}/special"))
+    out.extend(_pack_u8(_enum_value(d["slot"]), f"{ctx}/slot"))
+    out.extend(_pack_u8(int(d["name_idx"]), f"{ctx}/name_idx"))
+    out.extend(_pack_i8(int(d["bonus"]), f"{ctx}/bonus"))
+    if fmt == "ds2_item":
+        out.extend(_pack_u16(int(d["priority"]), f"{ctx}/priority"))
+        out.extend(_pack_i8(int(d["data0"]), f"{ctx}/data0"))
+    if "_trailing_hex" in d:
+        out.extend(_pack_hex(d["_trailing_hex"], None, f"{ctx}/_trailing_hex"))
+    return bytes(out)
+
+
+def encode_rdff_header(h: dict[str, Any], ctx: str) -> bytes:
+    """Inverse of `decode_rdff_header`: pack the 10-byte
+    `gff_rdff_header_t`.
+    """
+    return struct.pack(
+        "<bbhhhh",
+        int(h["load_action"]),
+        int(h["blocknum"]),
+        int(h["type"]),
+        int(h["index"]),
+        int(h["from"]),
+        int(h["len"]),
+    )
+
+
+def encode_char_body(body: dict[str, Any], ctx: str) -> bytes:
+    """Inverse of `decode_char_body`: walk every sub-block, encode
+    via the role-specific encoder, prepend the rdff header. The
+    `len` field in each rdff_header stays canonical (the encoder
+    asserts byte-length equivalence so the header doesn't need to
+    be recomputed).
+    """
+    out = bytearray()
+    for sb in body.get("sub_blocks", []):
+        header = sb.get("rdff_header")
+        if header is None:
+            raise EncodeError(f"{ctx}/sub_blocks[{sb.get('index','?')}]: missing rdff_header")
+        out.extend(encode_rdff_header(header, ctx))
+        if sb.get("terminator"):
+            # RDFF_END: 10-byte header, no body.
+            continue
+        role = sb.get("role")
+        decoded = sb.get("decoded", {})
+        sub_ctx = f"{ctx}/sub_blocks[{sb['index']}]({role})"
+        if role == "combat":
+            body_bytes = _encode_combat(decoded, sub_ctx)
+        elif role == "character":
+            body_bytes = _encode_character(decoded, sub_ctx)
+        elif role == "item":
+            body_bytes = _encode_item(decoded, sub_ctx)
+        else:
+            raise EncodeError(f"{sub_ctx}: unknown sub-block role {role!r}")
+        expected = int(header["len"])
+        if len(body_bytes) != expected:
+            raise EncodeError(
+                f"{sub_ctx}: encoder produced {len(body_bytes)} bytes, "
+                f"rdff_header.len says {expected}"
+            )
+        out.extend(body_bytes)
+    if "_trailing_hex" in body:
+        out.extend(_pack_hex(body["_trailing_hex"], None, f"{ctx}/_trailing_hex"))
+    return bytes(out)
+
+
+def encode_chunk(chunk: dict[str, Any]) -> bytes:
+    """Inverse of `decode_chunk`: produce the bytes for a single
+    chunk's payload. Handles every kind that has a structured
+    decoder; falls back to `raw_hex` for everything else.
+
+    Required input shape: the chunk dict that `decode_chunk`
+    produces. The encoder ignores `kind` / `id` / `offset` /
+    `length` (those are GFF-container metadata, not payload).
+    """
+    kind = chunk["kind"]
+    ctx = f"chunk {kind}/{chunk['id']}"
+
+    if kind == "CHAR":
+        # CHAR is a sequence of `rdff_header + sub_block_body`
+        # records. The decoder surfaces the leading rdff_header
+        # twice (once as `rdff_header` for convenience, once
+        # inside `body.sub_blocks[0].rdff_header`); we only encode
+        # the latter so the leading header doesn't double-emit.
+        if "body" in chunk:
+            return encode_char_body(chunk["body"], ctx)
+        if "body_hex_preview" in chunk:
+            raise EncodeError(
+                f"{ctx}: CHAR chunk has body_hex_preview but no structured body; "
+                "re-emit through `save-inspect` and edit the JSON tree"
+            )
+        raise EncodeError(f"{ctx}: CHAR chunk missing `body`")
+    if kind == "PSIN":
+        if "types" in chunk:
+            if len(chunk["types"]) != 7:
+                raise EncodeError(f"{ctx}/types: expected 7 entries")
+            out = bytearray()
+            for i, v in enumerate(chunk["types"]):
+                out.append(int(v) & 0xFF)
+            if "trailing_hex" in chunk:
+                out.extend(_pack_hex(chunk["trailing_hex"], None, f"{ctx}/trailing_hex"))
+            return bytes(out)
+        return _pack_hex(chunk.get("raw_hex", ""), None, f"{ctx}/raw_hex")
+    if kind == "PSST":
+        if "psionics" in chunk:
+            if len(chunk["psionics"]) != 34:
+                raise EncodeError(f"{ctx}/psionics: expected 34 entries")
+            out = bytearray(int(v) & 0xFF for v in chunk["psionics"])
+            if "trailing_hex" in chunk:
+                out.extend(_pack_hex(chunk["trailing_hex"], None, f"{ctx}/trailing_hex"))
+            return bytes(out)
+        return _pack_hex(chunk.get("raw_hex", ""), None, f"{ctx}/raw_hex")
+    if kind == "TEXT":
+        # decode_text normalises CRLF to LF; reverse that on encode.
+        text = chunk.get("text", "")
+        return text.replace("\n", "\r\n").encode("latin-1", errors="replace")
+    if kind == "STXT":
+        if "name" not in chunk or "length_total" not in chunk:
+            raise EncodeError(f"{ctx}: STXT missing name / length_total")
+        total = int(chunk["length_total"])
+        name = chunk["name"].encode("ascii", errors="replace")
+        if len(name) + 1 > total:
+            raise EncodeError(
+                f"{ctx}: STXT name + null exceeds length_total ({len(name)+1} > {total})"
+            )
+        return name + b"\x00" * (total - len(name))
+    if kind == "SAVE":
+        # v0.7.0 surface is opaque hex. The encoder uses the full
+        # bytes (`_raw_bytes_hex`) so SAVE chunks larger than the
+        # 128-byte preview cap round-trip correctly.
+        if "_raw_bytes_hex" in chunk:
+            return _pack_hex(chunk["_raw_bytes_hex"], None, f"{ctx}/_raw_bytes_hex")
+        return _pack_hex(chunk.get("raw_hex", ""), None, f"{ctx}/raw_hex")
+    if kind == "ETME":
+        # ETME is plain text; reverse the LF-normalisation.
+        text = chunk.get("text", "")
+        return text.replace("\n", "\r\n").encode("latin-1", errors="replace")
+    if kind == "ETAB":
+        if "_raw_bytes_hex" in chunk:
+            return _pack_hex(chunk["_raw_bytes_hex"], None, f"{ctx}/_raw_bytes_hex")
+        return _pack_hex(chunk.get("raw_hex", ""), None, f"{ctx}/raw_hex")
+    if kind in ("SPST", "CACT", "PREF", "GREQ"):
+        # Prefer the full _raw_bytes_hex; fall back to the truncated
+        # raw_hex (which may fail with `bad hex string` if the chunk
+        # was over 128 bytes and got the "...(N more bytes)" suffix).
+        if "_raw_bytes_hex" in chunk:
+            return _pack_hex(chunk["_raw_bytes_hex"], None, f"{ctx}/_raw_bytes_hex")
+        return _pack_hex(chunk.get("raw_hex", ""), None, f"{ctx}/raw_hex")
+    # Unknown kind: rely on raw_hex.
+    if "_raw_bytes_hex" in chunk:
+        return _pack_hex(chunk["_raw_bytes_hex"], None, f"{ctx}/_raw_bytes_hex")
+    if "raw_hex" not in chunk:
+        raise EncodeError(f"{ctx}: no raw_hex; cannot encode unknown kind")
+    return _pack_hex(chunk["raw_hex"], None, f"{ctx}/raw_hex")
+
+
+def write_gff(parsed: dict[str, Any], chunk_bytes: list[tuple[str, int, bytes]]) -> bytes:
+    """Re-pack a GFF file from a header + per-chunk (kind, id, body)
+    list. Inverse of `parse_gff` for indexed-only files.
+
+    Layout: 28-byte header (already in `parsed["header"]`),
+    contiguous chunk data area, TOC at the end. The TOC has a
+    4-byte free-list offset, then types section: u16 num_types,
+    per-type 4-byte FOURCC + u32 chunk_count, per-chunk
+    `(i32 id, u32 offset, u32 length)`.
+
+    We use the original `data_location` (always 28) and rebuild
+    the TOC; the free-list is emitted as zero entries (matches what
+    most GFFs ship with).
+    """
+    header = parsed["header"]
+    data_location = 28  # canonical; matches every GFF we read
+
+    # Group chunks by kind, preserving original (kind, id) order
+    # for stability. Same id within different kinds is permitted.
+    by_kind: dict[str, list[tuple[int, bytes]]] = {}
+    kind_order: list[str] = []
+    for kind, cid, body in chunk_bytes:
+        if kind not in by_kind:
+            by_kind[kind] = []
+            kind_order.append(kind)
+        by_kind[kind].append((cid, body))
+
+    # Lay out chunk bodies contiguously starting at data_location.
+    cursor = data_location
+    placements: dict[tuple[str, int], tuple[int, int, bytes]] = {}
+    for kind in kind_order:
+        for cid, body in by_kind[kind]:
+            placements[(kind, cid)] = (cursor, len(body), body)
+            cursor += len(body)
+    data_end = cursor
+
+    # TOC starts at data_end. The TOC begins with two u32 offsets
+    # (types-list, free-list); the types-list comes first (offset
+    # 8 = right after these two u32s) and the free-list is empty.
+    toc_buf = bytearray()
+    types_offset = 8  # relative to TOC start
+    free_list_offset = 0  # 0 sentinel = empty free list
+    toc_buf.extend(struct.pack("<II", types_offset, free_list_offset))
+    toc_buf.extend(struct.pack("<H", len(kind_order)))
+    for kind in kind_order:
+        kind_bytes = kind.encode("latin-1")
+        if len(kind_bytes) != 4:
+            raise EncodeError(f"chunk kind {kind!r} is not 4 bytes")
+        toc_buf.extend(kind_bytes)
+        toc_buf.extend(struct.pack("<I", len(by_kind[kind])))  # no segmented flag
+        for cid, body in by_kind[kind]:
+            offset, length, _ = placements[(kind, cid)]
+            toc_buf.extend(struct.pack("<iII", cid, offset, length))
+
+    toc_location = data_end
+    toc_length = len(toc_buf)
+
+    # Build the 28-byte header.
+    out = bytearray()
+    out.extend(b"GFFI")
+    out.extend(struct.pack(
+        "<IIIIII",
+        int(header["version"]),
+        data_location,
+        toc_location,
+        toc_length,
+        int(header["file_flags"]),
+        int(header["data0"]),
+    ))
+    # Pad to data_location (it's always 28 = HEADER_SIZE, no pad
+    # needed, but be defensive).
+    while len(out) < data_location:
+        out.append(0)
+    # Append every chunk body in placement order.
+    for kind in kind_order:
+        for cid, body in by_kind[kind]:
+            out.extend(body)
+    # Append the TOC.
+    out.extend(toc_buf)
+    return bytes(out)
+
+
+# ---------- end encoders ----------
 
 
 def decode_chunk(chunk: dict[str, Any]) -> dict[str, Any]:
@@ -981,6 +1518,9 @@ def decode_chunk(chunk: dict[str, Any]) -> dict[str, Any]:
             base["raw_hex"] = hex_preview(payload)
     elif kind in ("SPST", "CACT", "PREF", "GREQ"):
         base["raw_hex"] = hex_preview(payload, limit=128)
+        # Full bytes for round-trip; the truncated `raw_hex` above
+        # stays for human-readable inspection.
+        base["_raw_bytes_hex"] = payload.hex()
     elif kind == "TEXT":
         base["text"] = decode_text(payload)
     elif kind == "SAVE":
@@ -1176,6 +1716,193 @@ def _build_diff_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _build_roundtrip_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="save-inspect roundtrip",
+        description=(
+            "Round-trip a GFF through decode_chunk -> encode_chunk -> "
+            "write_gff and report whether the bytes match the original. "
+            "Per-chunk diagnostics surface where the encoders are missing "
+            "fields or wrong layouts."
+        ),
+    )
+    p.add_argument("file", type=Path, help="path to the GFF to round-trip")
+    p.add_argument(
+        "--pretty", action="store_true",
+        help="pretty-print JSON report",
+    )
+    return p
+
+
+def roundtrip_gff(path: Path) -> dict[str, Any]:
+    """Decode every chunk, re-encode, compare to original bytes.
+
+    Returns a JSON-friendly report: per-chunk byte-length and a
+    `bytes_equal` flag plus the file-level outcome. Used both as
+    a standalone subcommand (`save-inspect roundtrip foo.gff`)
+    and as the corpus-test surface for v0.8.0.
+    """
+    parsed = parse_gff(path)
+    original_bytes = path.read_bytes()
+    per_chunk: list[dict[str, Any]] = []
+    chunk_rebuilds: list[tuple[str, int, bytes]] = []
+    ok = True
+    encode_errors: list[str] = []
+    for c in parsed["chunks"]:
+        decoded = decode_chunk(c)
+        try:
+            re_body = encode_chunk(decoded)
+            err: str | None = None
+        except EncodeError as e:
+            re_body = None
+            err = str(e)
+            encode_errors.append(err)
+            ok = False
+        if re_body is None:
+            per_chunk.append({
+                "chunk": f"{c['kind']}-{c['id']}",
+                "original_len": len(c["bytes"]),
+                "encoded_ok": False,
+                "encode_error": err,
+            })
+            chunk_rebuilds.append((c["kind"], c["id"], c["bytes"]))
+            continue
+        match = re_body == c["bytes"]
+        per_chunk.append({
+            "chunk": f"{c['kind']}-{c['id']}",
+            "original_len": len(c["bytes"]),
+            "encoded_len": len(re_body),
+            "bytes_equal": match,
+        })
+        if not match:
+            ok = False
+        chunk_rebuilds.append((c["kind"], c["id"], re_body))
+
+    # File-level round-trip: rebuild the GFF and compare.
+    try:
+        rebuilt = write_gff(parsed, chunk_rebuilds)
+        file_equal = rebuilt == original_bytes
+    except EncodeError as e:
+        rebuilt = b""
+        file_equal = False
+        encode_errors.append(f"write_gff: {e}")
+
+    return {
+        "tool": "save-inspect",
+        "version": VERSION,
+        "mode": "roundtrip",
+        "file": str(path),
+        "summary": {
+            "all_chunks_ok": ok,
+            "file_bytes_equal": file_equal,
+            "original_file_size": len(original_bytes),
+            "rebuilt_file_size": len(rebuilt),
+            "encode_errors": encode_errors,
+        },
+        "chunks": per_chunk,
+    }
+
+
+def _build_save_edit_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="save-inspect save-edit",
+        description=(
+            "Apply a JSON edit to a GFF save and write the result. "
+            "Input JSON must match the `save-inspect <file> --pretty` "
+            "output schema. The encoder re-packs every chunk; the GFF "
+            "writer rebuilds the TOC."
+        ),
+    )
+    p.add_argument("json_path", type=Path, help="edited JSON input")
+    p.add_argument("original", type=Path, help="original GFF (used for header sanity-check)")
+    p.add_argument(
+        "-o", "--output", type=Path, default=None,
+        help="output GFF path. Default: write back to `original` after backup.",
+    )
+    p.add_argument(
+        "--no-backup", action="store_true",
+        help="skip the .bak.<timestamp> snapshot (default: take one)",
+    )
+    p.add_argument(
+        "--dry-run", action="store_true",
+        help="print what would be written; don't touch disk",
+    )
+    return p
+
+
+def save_edit(
+    json_path: Path,
+    original: Path,
+    output: Path | None,
+    take_backup: bool,
+    dry_run: bool,
+) -> dict[str, Any]:
+    """Re-encode `json_path` against `original`, write the result.
+
+    Returns a JSON-friendly report. Validation errors raise
+    `EncodeError` (caught by the caller and surfaced as exit-2).
+    """
+    summary = summarise(parse_gff(original))
+    incoming = json.loads(json_path.read_text(encoding="utf-8"))
+    if "chunks" not in incoming:
+        raise EncodeError("input JSON has no top-level `chunks` array")
+    if len(incoming["chunks"]) != len(summary["chunks"]):
+        raise EncodeError(
+            f"input JSON has {len(incoming['chunks'])} chunks; "
+            f"original has {len(summary['chunks'])}. "
+            f"save-edit doesn't add or remove chunks in v0.8.0."
+        )
+
+    # Re-encode every chunk; collect (kind, id, body) tuples that
+    # write_gff packs.
+    rebuilds: list[tuple[str, int, bytes]] = []
+    per_chunk: list[dict[str, Any]] = []
+    for orig, edited in zip(summary["chunks"], incoming["chunks"]):
+        if orig["kind"] != edited.get("kind") or orig["id"] != edited.get("id"):
+            raise EncodeError(
+                f"chunk mismatch: original {orig['kind']}/{orig['id']} "
+                f"vs input {edited.get('kind')}/{edited.get('id')}"
+            )
+        body = encode_chunk(edited)
+        rebuilds.append((orig["kind"], orig["id"], body))
+        per_chunk.append({
+            "chunk": f"{orig['kind']}-{orig['id']}",
+            "original_len": orig["length"],
+            "encoded_len": len(body),
+            "changed": body != parse_gff(original)["chunks"][len(per_chunk)]["bytes"]
+                       if not dry_run else None,
+        })
+
+    parsed_for_header = parse_gff(original)
+    new_bytes = write_gff(parsed_for_header, rebuilds)
+
+    out_path = output if output is not None else original
+    backup_path: Path | None = None
+    if not dry_run:
+        if take_backup and out_path.exists():
+            ts = str(int(out_path.stat().st_mtime))
+            backup_path = out_path.with_name(out_path.name + f".bak.{ts}")
+            backup_path.write_bytes(out_path.read_bytes())
+        out_path.write_bytes(new_bytes)
+
+    return {
+        "tool": "save-inspect",
+        "version": VERSION,
+        "mode": "save-edit",
+        "input_json": str(json_path),
+        "original": str(original),
+        "output": str(out_path),
+        "backup": str(backup_path) if backup_path is not None else None,
+        "dry_run": dry_run,
+        "summary": {
+            "chunks_processed": len(rebuilds),
+            "original_size": parsed_for_header["file_size"],
+            "new_size": len(new_bytes),
+        },
+        "chunks": per_chunk,
+    }
+
+
 def _build_save_diff_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="save-inspect save-diff",
@@ -1323,6 +2050,31 @@ def main(argv: list[str] | None = None) -> int:
             sys.stdout.write(text + "\n")
         else:
             diff_args.output.write_text(text + "\n", encoding="utf-8")
+        return 0
+    if argv and argv[0] == "roundtrip":
+        rt_args = _build_roundtrip_parser().parse_args(argv[1:])
+        try:
+            report = roundtrip_gff(rt_args.file)
+        except (FileNotFoundError, ValueError) as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 2
+        indent = 2 if rt_args.pretty else None
+        sys.stdout.write(json.dumps(report, indent=indent, ensure_ascii=False) + "\n")
+        return 0 if report["summary"]["all_chunks_ok"] and report["summary"]["file_bytes_equal"] else 1
+    if argv and argv[0] == "save-edit":
+        se_args = _build_save_edit_parser().parse_args(argv[1:])
+        try:
+            report = save_edit(
+                se_args.json_path,
+                se_args.original,
+                se_args.output,
+                take_backup=not se_args.no_backup,
+                dry_run=se_args.dry_run,
+            )
+        except (FileNotFoundError, ValueError, EncodeError) as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 2
+        sys.stdout.write(json.dumps(report, indent=2, ensure_ascii=False) + "\n")
         return 0
     if argv and argv[0] == "save-diff":
         sd_args = _build_save_diff_parser().parse_args(argv[1:])

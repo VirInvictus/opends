@@ -19,6 +19,110 @@ python3 save-inspect.py /path/to/CHARSAVE.GFF -o save.json
 JSON is emitted to stdout by default; `-o <file>` writes to a
 file instead.
 
+## What v0.8.0 ships
+
+**The write path: `save-edit` plus a `roundtrip` regression
+harness.** v0.1.0 - v0.7.0 read; v0.8.0 closes the loop and
+delivers the first true mod workflow on the toolkit. Edit a
+character's HP from a JSON file, run `save-edit`, the game
+loads the modified save.
+
+```sh
+# Decode → edit → encode → game-ready GFF.
+python3 save-inspect.py CHARSAVE.GFF -o save.json
+# ...edit save.json (e.g. change combat.hp from 54 to 999)...
+python3 save-inspect.py save-edit save.json CHARSAVE.GFF \
+    -o patched.gff
+# patched.gff now loads in the game with HP=999.
+```
+
+Backup-before-write (`patched.gff.bak.<mtime>` next to the
+output), `--dry-run` mode, `--no-backup` opt-out. Refuses to
+add or remove chunks (the count must match the original).
+
+### Built-in round-trip test
+
+```sh
+python3 save-inspect.py roundtrip CHARSAVE.GFF
+```
+
+Decodes every chunk, re-encodes, asserts byte-identical;
+exit 0 if every chunk round-trips, exit 1 if any fail.
+
+Corpus results at v0.8.0:
+
+| Save                                   | Result    |
+|----------------------------------------|-----------|
+| DS1 factory CHARSAVE.GFF               | 27 / 27   |
+| DS2 factory CHARSAVE.GFF               | 98 / 98   |
+| DS1 factory DARKSAVE.GFF               | 1 / 1     |
+| DS1 played DARKRUN.GFF (Brandon's)     | 63 / 63   |
+
+**100% chunk-level byte-identity across every save in the
+corpus.** File-level output is smaller than the original
+(the original carries 1.6 KB of pre-allocated gap space
+between chunks; the writer packs contiguously);
+engine-equivalent, just compacted.
+
+### Encoders shipped
+
+Every existing decoder gets a sibling encoder, same field
+ordering, same `struct.pack` format:
+
+- `_encode_combat` / `_encode_combat_ds2` (58 / 49 bytes)
+- `_encode_character` / `_encode_character_ds2` (71-72 / 66)
+- `_encode_item` (21 / 23 bytes; dispatches by `_format`)
+- `_encode_stats`, `_encode_saving_throw` (sub-helpers)
+- Chunk-level paths for CHAR / PSIN / PSST / TEXT / STXT /
+  SAVE / ETME / ETAB.
+
+Plus a pure-Python `write_gff(parsed, chunk_bytes)` that
+inverts `parse_gff`: 28-byte header, contiguous chunk data
+starting at offset 28, TOC at the end.
+
+### Fidelity fixes (the messy real-world bytes)
+
+Three issues surfaced during corpus round-trip and were
+fixed without changing the JSON output schema for v0.6.0
+consumers:
+
+- **Combat name padding**. Real saves leave non-zero
+  garbage in the trailing bytes of the 16-char name field
+  (the engine doesn't always zero the buffer). The
+  decoder now captures `_name_raw_hex` alongside `name`;
+  the encoder uses the raw hex for byte-identical
+  round-trip. When the user edits `name` and deletes
+  `_name_raw_hex` from the JSON, the encoder falls back
+  to clean null-padding (engine-valid; not byte-identical
+  with the original).
+- **DS1 item truncation**. DS1's 21-byte items truncate
+  the decoder at the 2-byte `priority` field with 1 byte
+  remaining. The decoder now captures the leftover in
+  `_trailing_hex`; the encoder re-emits it.
+- **Opaque-chunk full bytes**. SAVE / ETAB / SPST / CACT /
+  PREF / GREQ decoders emit `_raw_bytes_hex` (full
+  bytes) alongside the truncated `raw_hex` preview.
+  Necessary because DARKRUN SAVE chunks hit 10 KB and the
+  128-byte preview cap would lose the tail on re-encode.
+
+### What v0.8.0 does NOT ship
+
+- **Edit-time validation against game schemas**. The
+  encoder validates byte ranges (u8 fits in 0..255) but
+  doesn't know that, e.g., a Cleric character can't have
+  alignment Chaotic Evil. Game-rule validation is a
+  separate feature; for now, the engine catches
+  inconsistencies at load time.
+- **Adding or removing chunks**. The chunk count must
+  match the original. Adding inventory beyond the original
+  count is a v0.9.0 candidate.
+- **Per-region SAVE chunk structured editing**. SAVE
+  chunks are still opaque hex (v0.7.0 surface); editing
+  party position or quest state requires hand-editing the
+  hex. Field-level decoding is multi-session RE work.
+
+---
+
 ## What v0.7.0 ships
 
 **SAVE-chunk structural decode + `save-diff` subcommand.**

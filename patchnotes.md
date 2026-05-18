@@ -4,6 +4,80 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/save-inspect/` v0.8.0** ships the **write path**:
+  `save-edit` takes a JSON edit, re-encodes every chunk, and
+  writes a patched GFF. Item #5 of the human-friendliness
+  sprint and the first true end-to-end mod workflow on the
+  toolkit (decode → edit field → encode → game-compatible
+  output).
+  - **`save-edit` subcommand**:
+
+    ```sh
+    save-inspect.py CHARSAVE.GFF -o save.json
+    # ... edit save.json (e.g. bump combat.hp from 54 to 999) ...
+    save-inspect.py save-edit save.json CHARSAVE.GFF -o patched.gff
+    ```
+
+    Backup-before-write (`<output>.bak.<mtime>`), `--dry-run`
+    mode, `--no-backup` opt-out. Refuses to add or remove
+    chunks (count must match the original).
+  - **`roundtrip` subcommand**: built-in regression check.
+    Decodes every chunk, re-encodes, asserts byte-identical;
+    exit 0 if every chunk round-trips, exit 1 if any fail.
+    Corpus result: **27 / 27** chunks for DS1 CHARSAVE,
+    **98 / 98** for DS2 CHARSAVE, **1 / 1** for the factory
+    DARKSAVE, **63 / 63** for Brandon's played DS1
+    DARKRUN.GFF. **100% chunk-level byte-identity across
+    every save in the corpus.**
+  - **Encoders for every existing decoder branch**:
+    `_encode_combat` / `_encode_combat_ds2` (combat
+    sub-block, 58 / 49 bytes), `_encode_character` /
+    `_encode_character_ds2` (71-72 / 66 bytes),
+    `_encode_item` (21 / 23 bytes), `_encode_stats`,
+    `_encode_saving_throw`, plus chunk-level paths for
+    CHAR / PSIN / PSST / TEXT / STXT / SAVE / ETME / ETAB.
+    Mechanical inverse of each `_decode_X`; same field
+    ordering and pack format.
+  - **Pure-Python GFF writer** (`write_gff`). Inverse of
+    `parse_gff` for indexed-only files: 28-byte header,
+    contiguous chunk-data area starting at offset 28,
+    TOC at the end with type list and per-chunk
+    `(id, offset, length)`. File-level output is smaller
+    than the original (the original carries 1.6 KB of
+    pre-allocated gap space between chunks; the writer
+    packs contiguously). Engine-equivalent; gaps are
+    layout-only.
+  - **Round-trip fidelity fixes**:
+    - **Combat name field**: real saves leave non-zero
+      garbage in the name field's trailing padding bytes
+      (the engine doesn't always zero the buffer between
+      writes). The decoder now captures `_name_raw_hex`
+      alongside `name`; the encoder prefers the raw hex
+      so round-trip stays byte-identical. When the user
+      edits `name` and deletes `_name_raw_hex`, the
+      encoder falls back to null-padded encoding (clean,
+      not byte-identical-with-original, still
+      engine-valid).
+    - **Item decoder truncation**: DS1's 21-byte items
+      truncate at the 2-byte `priority` field (1 byte
+      left at pos 20). The decoder now captures that
+      trailing byte in `_trailing_hex` so the encoder
+      can re-emit it. Same fix shape for any future
+      decoder that returns early on truncation.
+    - **Opaque-chunk full-bytes capture**: `SAVE`,
+      `ETAB`, `SPST`, `CACT`, `PREF`, `GREQ` decoders
+      now also emit `_raw_bytes_hex` (full bytes)
+      alongside the truncated `raw_hex` preview. The
+      preview stays for human readability; the full
+      hex is what the encoder uses so chunks bigger
+      than the 128-byte preview cap round-trip
+      correctly. Necessary because DARKRUN SAVE chunks
+      hit 10 KB.
+  - **End-to-end smoke**: edit CHAR-36 combat.hp from 54
+    to 999 via the JSON, run save-edit, re-decode the
+    patched GFF: hp = 999 in the output. The first true
+    mod workflow on the toolkit.
+
 - **`tools/save-inspect/` v0.7.0** ships SAVE-chunk
   structural decoding plus a `save-diff` subcommand for
   empirical world-state RE. Item #4 of the human-friendliness

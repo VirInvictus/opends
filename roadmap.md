@@ -319,6 +319,18 @@ look at the maps directly.
       Save-slot files (`SAVE0N.SAV`) discovered to be
       byte-identical snapshots of `DARKRUN.GFF`; save-inspect
       reads them natively.
+- [x] **Save-edit write path** (save-inspect v0.8.0): every
+      existing decoder gets a sibling encoder (combat /
+      character / item DS1+DS2; PSIN/PSST/TEXT/STXT/SAVE/
+      ETME/ETAB) plus a pure-Python `write_gff` that inverts
+      `parse_gff`. New `save-edit` subcommand (JSON-in,
+      GFF-out, backup + dry-run) plus a `roundtrip`
+      regression test that hits 100% chunk-level
+      byte-identity on every CHARSAVE / DARKSAVE / DARKRUN
+      in the corpus (27/27 + 98/98 + 1/1 + 63/63).
+      End-to-end smoke proves the modder workflow: edit a
+      PC's HP field in the JSON, save-edit, re-decode, HP
+      updated. The first true mod workflow on the toolkit.
 - [~] **SAVE chunk structural decode** (save-inspect v0.7.0):
       per-region world state inside `DARKRUN.GFF` (~60 per
       save). Schema is empirically incomplete, so v0.7.0
