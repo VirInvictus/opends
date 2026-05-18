@@ -4,6 +4,52 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gpl-asm/` v0.8.0** ships **declarative patch-script
+  mode** (`gpl-asm --patch fix.patch chunk.bin -o new.bin`).
+  B-tier item; the authoring surface darkfix patches will use
+  once Phase 6 starts. Offset-based MVP; label-relative
+  addressing (`at = "label_0x42 + 3"`) lands in v0.8.1.
+  - **Patch TOML schema**:
+
+    ```toml
+    [[edit]]
+    at_offset = 0x000B
+    bytes_old = "54"
+    bytes_new = "55"
+    reason = "off-by-one in flag check"
+    ```
+
+    Hex strings accept `"01"`, `"0x01"`, `"01 02 03"` (spaces
+    allowed). `at_offset` accepts decimal or TOML's hex form.
+    `bytes_old` and `bytes_new` must be the same length
+    (offset edits don't grow or shrink the chunk).
+  - **bytes_old fingerprint verification**: the patcher refuses
+    to apply if the original bytes at `at_offset` don't match.
+    Protects against applying the wrong patch to the wrong
+    chunk:
+
+    ```
+    Error: edit[0]: bytes_old fingerprint mismatch at offset 0x17
+      expected: 99
+      actual:   4f
+      (refusing to apply; bytes_old verifies the patch targets the right chunk)
+    ```
+  - **`--dry-run`** reports what would change without writing.
+  - **End-to-end smoke**: extracted DS1 GPLDATA GPL/1, wrote a
+    two-edit patch (one no-op fingerprint check + one
+    deliberate byte flip), ran dry-run + real apply, verified
+    the byte changed.
+  - **What v0.8.0 doesn't ship**: label-relative addressing
+    (`at = "label_0x42 + 3"`) needs the disassembly context to
+    resolve; v0.8.1 will pull that in. Snippet library
+    (`%include`-able common idioms) is v0.8.x+ once the patch
+    workflow has more shape.
+  - **No new test failures**; existing 48 lib + 2 corpus tests
+    pass at release.
+  - **Toml dep added** to gpl-asm's `Cargo.toml` (workspace
+    `toml = "0.8"`, already pre-approved for format I/O per
+    spec §7a; same dep gpl-disasm uses for `syms/*.toml`).
+
 - **`tools/gff-edit/` v0.6.0** ships **`gff-cat what <kind>
   <id>`**: per-chunk describer that combines the kind purpose
   (from KIND_CATALOGUE), chunk size, chunk-specific facts

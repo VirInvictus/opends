@@ -1,6 +1,6 @@
 [package]
 name = "gpl-asm"
-version = "0.7.0"
+version = "0.8.0"
 description = "Reassembler for SSI's GPL (Game Programming Language) bytecode (Dark Sun)."
 readme = "README.md"
 edition.workspace = true
@@ -24,3 +24,4 @@ thiserror.workspace = true
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+toml.workspace = true

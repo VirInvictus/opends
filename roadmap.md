@@ -502,6 +502,16 @@ just read it. Be able to discover unknown opcodes systematically.
       replace so caret error line numbers still match the
       user's source. Corpus stays at 600 / 600. Parameterised
       macros and `@include` directives are queued for v0.7.0+.
+- [x] **Declarative patch-script mode** (gpl-asm v0.8.0):
+      `gpl-asm --patch fix.patch chunk.bin -o new.bin`
+      applies offset-based byte edits from a TOML script. Each
+      `[[edit]]` carries `at_offset`, `bytes_old`
+      (fingerprint-verified; refuses to apply on mismatch),
+      `bytes_new` (same length), and an optional `reason`.
+      `--dry-run` previews. The authoring surface darkfix
+      patches will use for 1-3 byte tweaks once Phase 6
+      starts. Label-relative addressing
+      (`at = "label_0x42 + 3"`) deferred to v0.8.1.
 - [x] Tagged: `gpl-asm-v0.1.0`. (this release)
 
 ### `tools/opcode-fuzz/` (Python; drives DOSBox debugger over IPC)

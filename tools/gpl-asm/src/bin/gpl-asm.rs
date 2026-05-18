@@ -4,6 +4,7 @@ use anyhow::{Context, Result, anyhow};
 use clap::Parser;
 use gpl_asm::{encode, format_with_caret, parse as parse_text, validate};
 use gpl_disasm::DisasmResult;
+use serde::Deserialize;
 
 #[derive(Parser)]
 #[command(
@@ -42,6 +43,156 @@ struct Cli {
     /// the run before any output is written.
     #[arg(long)]
     no_validate: bool,
+    /// Apply a declarative patch script to the original chunk
+    /// bytes (the positional input). The patch is a TOML file
+    /// with `[[edit]]` records (see the gpl-asm README for the
+    /// schema). v0.8.0 supports absolute-offset edits with
+    /// bytes_old fingerprint verification; label-relative edits
+    /// land in v0.8.1+.
+    #[arg(long, conflicts_with_all = ["all_from", "validate_only", "json", "text"])]
+    patch: Option<PathBuf>,
+    /// With --patch: report what would change without writing.
+    #[arg(long)]
+    dry_run: bool,
+}
+
+/// Patch-script schema (v0.8.0). Each `[[edit]]` carries an
+/// absolute byte offset, the expected original bytes (for
+/// fingerprint verification), and the replacement bytes. The
+/// patcher refuses to apply if `bytes_old` doesn't match the
+/// chunk at `at_offset` — protects against applying the wrong
+/// patch to the wrong chunk.
+#[derive(Debug, Deserialize)]
+struct PatchScript {
+    #[serde(rename = "edit", default)]
+    edits: Vec<EditRecord>,
+}
+
+#[derive(Debug, Deserialize)]
+struct EditRecord {
+    /// Absolute byte offset into the chunk. Accepts decimal or
+    /// `0x`-prefixed hex (TOML's `0x42` integer form, or a
+    /// decimal `66`).
+    at_offset: i64,
+    /// Original bytes the patcher EXPECTS to find at
+    /// `at_offset`. Hex string (with or without `0x` prefix,
+    /// spaces allowed: `"01"`, `"0x01"`, `"01 02 03"`).
+    bytes_old: String,
+    /// Replacement bytes (same hex string format). Must be the
+    /// same length as `bytes_old` (offset edits don't grow or
+    /// shrink the chunk).
+    bytes_new: String,
+    /// Optional human-readable description; surfaces in the
+    /// dry-run report.
+    #[serde(default)]
+    reason: Option<String>,
+}
+
+fn parse_hex_bytes(s: &str, ctx: &str) -> Result<Vec<u8>> {
+    let cleaned: String = s
+        .replace("0x", "")
+        .replace("0X", "")
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect();
+    if cleaned.len() % 2 != 0 {
+        return Err(anyhow!(
+            "{ctx}: hex string has odd nibble count ({})",
+            cleaned.len(),
+        ));
+    }
+    let mut out = Vec::with_capacity(cleaned.len() / 2);
+    for i in (0..cleaned.len()).step_by(2) {
+        let byte = u8::from_str_radix(&cleaned[i..i + 2], 16)
+            .with_context(|| format!("{ctx}: bad hex byte {:?}", &cleaned[i..i + 2]))?;
+        out.push(byte);
+    }
+    Ok(out)
+}
+
+fn cmd_patch(
+    patch_path: &Path,
+    chunk_path: &Path,
+    output: Option<&Path>,
+    dry_run: bool,
+) -> Result<()> {
+    let patch_text = std::fs::read_to_string(patch_path)
+        .with_context(|| format!("reading {}", patch_path.display()))?;
+    let script: PatchScript = toml::from_str(&patch_text)
+        .with_context(|| format!("parsing TOML patch {}", patch_path.display()))?;
+    let mut chunk = std::fs::read(chunk_path)
+        .with_context(|| format!("reading {}", chunk_path.display()))?;
+
+    if script.edits.is_empty() {
+        return Err(anyhow!(
+            "{}: no [[edit]] records found",
+            patch_path.display()
+        ));
+    }
+
+    let mut applied = 0usize;
+    for (i, edit) in script.edits.iter().enumerate() {
+        let label = format!("edit[{i}]");
+        let old_bytes = parse_hex_bytes(&edit.bytes_old, &format!("{label}/bytes_old"))?;
+        let new_bytes = parse_hex_bytes(&edit.bytes_new, &format!("{label}/bytes_new"))?;
+        if old_bytes.len() != new_bytes.len() {
+            return Err(anyhow!(
+                "{label}: bytes_old length {} != bytes_new length {} \
+                 (offset edits don't grow or shrink the chunk)",
+                old_bytes.len(),
+                new_bytes.len(),
+            ));
+        }
+        let offset = if edit.at_offset < 0 {
+            return Err(anyhow!("{label}: at_offset must be >= 0, got {}",
+                edit.at_offset));
+        } else {
+            edit.at_offset as usize
+        };
+        if offset + old_bytes.len() > chunk.len() {
+            return Err(anyhow!(
+                "{label}: edit at offset 0x{offset:x} length {} extends past chunk end ({})",
+                old_bytes.len(),
+                chunk.len(),
+            ));
+        }
+        let actual = &chunk[offset..offset + old_bytes.len()];
+        if actual != old_bytes.as_slice() {
+            let actual_hex: String = actual.iter().map(|b| format!("{b:02x}")).collect::<Vec<_>>().join(" ");
+            let expected_hex: String = old_bytes.iter().map(|b| format!("{b:02x}")).collect::<Vec<_>>().join(" ");
+            return Err(anyhow!(
+                "{label}: bytes_old fingerprint mismatch at offset 0x{offset:x}\n  \
+                 expected: {expected_hex}\n  \
+                 actual:   {actual_hex}\n  \
+                 (refusing to apply; bytes_old verifies the patch targets the right chunk)",
+            ));
+        }
+        let reason = edit.reason.as_deref().unwrap_or("(no reason given)");
+        let new_hex: String = new_bytes.iter().map(|b| format!("{b:02x}")).collect::<Vec<_>>().join(" ");
+        if dry_run {
+            eprintln!("would apply {label} at 0x{offset:x}: {} bytes -> {new_hex}  ({reason})",
+                old_bytes.len());
+        } else {
+            chunk[offset..offset + old_bytes.len()].copy_from_slice(&new_bytes);
+            eprintln!("applied {label} at 0x{offset:x}: {} bytes -> {new_hex}  ({reason})",
+                old_bytes.len());
+        }
+        applied += 1;
+    }
+
+    if dry_run {
+        eprintln!("dry-run: {applied} edit(s) would apply cleanly. No output written.");
+        return Ok(());
+    }
+
+    // Write output. Default: rewrite the input chunk path
+    // (matches the `save-edit` pattern; backups are the user's
+    // responsibility for now).
+    let out = output.unwrap_or(chunk_path);
+    std::fs::write(out, &chunk)
+        .with_context(|| format!("writing {}", out.display()))?;
+    eprintln!("wrote {} bytes to {}", chunk.len(), out.display());
+    Ok(())
 }
 
 enum InputMode {
@@ -97,6 +248,15 @@ fn report_validation(disasm: &DisasmResult, label: &str) -> Result<()> {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+
+    if let Some(patch_path) = cli.patch.as_ref() {
+        let chunk_path = cli
+            .input
+            .as_ref()
+            .ok_or_else(|| anyhow!("--patch requires a chunk path as the positional input"))?
+            .clone();
+        return cmd_patch(patch_path, &chunk_path, cli.output.as_deref(), cli.dry_run);
+    }
 
     if cli.validate_only {
         let input = cli
