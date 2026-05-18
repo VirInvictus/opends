@@ -2099,6 +2099,298 @@ def cmd_list_items(args: argparse.Namespace) -> int:
     return 0
 
 
+def _apply_pc_edits(
+    pc: dict[str, Any],
+    edits: dict[str, Any],
+) -> list[str]:
+    """Mutate `pc` in place: write each edit into the right
+    sub-block. Returns a list of human-readable "applied N -> M"
+    lines for the dry-run report.
+
+    Field routing:
+      - combat sub-block: hp, psp, stats.{str,dex,con,intel,wis,cha}
+      - character sub-block: base_hp ("max_hp"), base_psp
+        ("max_psp"), current_xp, stats.* (kept in sync with combat)
+      - both combat AND character carry stats; we write to both so
+        the values stay consistent.
+    """
+    blocks = pc.get("body", {}).get("sub_blocks", [])
+    combat = next((b.get("decoded") for b in blocks if b.get("role") == "combat"), None)
+    character = next((b.get("decoded") for b in blocks if b.get("role") == "character"), None)
+    if combat is None or character is None:
+        raise EncodeError(
+            f"PC {pc.get('pc_index')} (CHAR {pc.get('id')}): missing combat "
+            "or character sub-block; can't edit"
+        )
+    log: list[str] = []
+    if "hp" in edits:
+        log.append(f"hp: {combat.get('hp')} -> {edits['hp']}")
+        combat["hp"] = int(edits["hp"])
+    if "psp" in edits:
+        log.append(f"psp: {combat.get('psp')} -> {edits['psp']}")
+        combat["psp"] = int(edits["psp"])
+    if "max_hp" in edits:
+        log.append(f"max_hp (character.base_hp): {character.get('base_hp')} -> {edits['max_hp']}")
+        character["base_hp"] = int(edits["max_hp"])
+    if "max_psp" in edits:
+        log.append(f"max_psp (character.base_psp): {character.get('base_psp')} -> {edits['max_psp']}")
+        character["base_psp"] = int(edits["max_psp"])
+    if "current_xp" in edits:
+        log.append(f"current_xp: {character.get('current_xp')} -> {edits['current_xp']}")
+        character["current_xp"] = int(edits["current_xp"])
+    for stat_key, edit_key in (
+        ("str", "str"), ("dex", "dex"), ("con", "con"),
+        ("intel", "int"), ("wis", "wis"), ("cha", "cha"),
+    ):
+        if edit_key in edits:
+            new = int(edits[edit_key])
+            for owner_name, owner in (("combat.stats", combat.get("stats")),
+                                       ("character.stats", character.get("stats"))):
+                if owner is not None:
+                    log.append(f"{owner_name}.{stat_key}: {owner.get(stat_key)} -> {new}")
+                    owner[stat_key] = new
+    return log
+
+
+def _rewrite_save_with_edits(
+    parsed: dict[str, Any],
+    summary: dict[str, Any],
+    edited_chunks_by_key: dict[tuple[str, int], dict[str, Any]],
+) -> bytes:
+    """Encode every chunk (modified or not) and run write_gff.
+
+    `edited_chunks_by_key`: keyed `(kind, id)` -> the chunk dict
+    (from summary.chunks) AS MUTATED by the editor. Chunks not
+    in the dict use their original summary entry (which encodes
+    back byte-identically per the v0.8.0 round-trip property).
+    """
+    rebuilds: list[tuple[str, int, bytes]] = []
+    for c in summary["chunks"]:
+        key = (c["kind"], int(c["id"]))
+        source = edited_chunks_by_key.get(key, c)
+        body = encode_chunk(source)
+        rebuilds.append((c["kind"], int(c["id"]), body))
+    return write_gff(parsed, rebuilds)
+
+
+def _build_edit_pc_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="save-inspect edit-pc",
+        description=(
+            "Edit one PC's high-leverage fields and write the "
+            "patched save. Backups land at <save>.bak.<timestamp> "
+            "by default. Pass --dry-run to preview the changes "
+            "without writing."
+        ),
+    )
+    p.add_argument("file", type=Path, help="path to CHARSAVE.GFF")
+    p.add_argument("--pc", type=int, required=True,
+                   help="PC index (0-based; see `list-pcs`)")
+    p.add_argument("--hp", type=int, default=None, help="set current HP")
+    p.add_argument("--psp", type=int, default=None, help="set current PSP")
+    p.add_argument("--max-hp", type=int, default=None,
+                   help="set max HP (character.base_hp)")
+    p.add_argument("--max-psp", type=int, default=None,
+                   help="set max PSP (character.base_psp)")
+    p.add_argument("--xp", dest="current_xp", type=int, default=None,
+                   help="set current XP (character.current_xp)")
+    for stat in ("str", "dex", "con", "int", "wis", "cha"):
+        p.add_argument(f"--{stat}", type=int, default=None,
+                       help=f"set {stat} (1..25 D&D 2e range)")
+    p.add_argument(
+        "-o", "--output", type=Path, default=None,
+        help="output GFF path (default: rewrite the input in place after backup)",
+    )
+    p.add_argument(
+        "--no-backup", action="store_true",
+        help="skip the .bak.<mtime> snapshot (default: take one)",
+    )
+    p.add_argument(
+        "--dry-run", action="store_true",
+        help="report what would change; don't touch disk",
+    )
+    return p
+
+
+def cmd_edit_pc(args: argparse.Namespace) -> int:
+    edits: dict[str, Any] = {}
+    for k in ("hp", "psp", "max_hp", "max_psp", "current_xp",
+              "str", "dex", "con", "int", "wis", "cha"):
+        val = getattr(args, k, None)
+        if val is not None:
+            edits[k] = val
+    if not edits:
+        print("error: pass at least one field flag (--hp, --psp, --str, etc.)",
+              file=sys.stderr)
+        return 2
+
+    try:
+        parsed = parse_gff(args.file)
+    except (FileNotFoundError, ValueError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+    summary = summarise(parsed)
+    pcs = _enumerate_pcs(summary)
+    if args.pc < 0 or args.pc >= len(pcs):
+        print(f"error: --pc {args.pc} out of range (have {len(pcs)} PC(s)). "
+              f"Run `list-pcs` to see indices.", file=sys.stderr)
+        return 2
+    pc = pcs[args.pc]
+    name = (pc.get("body", {}).get("sub_blocks", [{}])[0]
+             .get("decoded", {}).get("name", "?") or "?").strip()
+    try:
+        log = _apply_pc_edits(pc, edits)
+    except EncodeError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+
+    print(f"PC {args.pc} '{name}' (CHAR {pc['id']}):")
+    for line in log:
+        print(f"  {line}")
+
+    if args.dry_run:
+        print("\ndry-run: no file written.")
+        return 0
+
+    # Re-encode + write. The pc dict (mutated) is one of the
+    # summary['chunks'] entries; build the rewrite via summary
+    # so other chunks pass through.
+    try:
+        new_bytes = _rewrite_save_with_edits(
+            parsed, summary, {(pc["kind"], int(pc["id"])): pc}
+        )
+    except EncodeError as e:
+        print(f"error: encode failed: {e}", file=sys.stderr)
+        return 2
+
+    out_path = args.output if args.output is not None else args.file
+    backup_path: Path | None = None
+    if not args.no_backup and out_path.exists():
+        ts = str(int(out_path.stat().st_mtime))
+        backup_path = out_path.with_name(out_path.name + f".bak.{ts}")
+        backup_path.write_bytes(out_path.read_bytes())
+    out_path.write_bytes(new_bytes)
+    print(f"\nwrote {len(new_bytes)} bytes to {out_path}")
+    if backup_path is not None:
+        print(f"backup at {backup_path}")
+    return 0
+
+
+def _build_edit_item_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="save-inspect edit-item",
+        description=(
+            "Edit one item-slot's fields in place (no chunk "
+            "growth; the existing slot stays at its size). The "
+            "bootstrap loop for `syms/items.toml`: pick an empty "
+            "or unwanted slot, set --item-id to a candidate, "
+            "load the save in DOSBox, see what shows up, tag it."
+        ),
+    )
+    p.add_argument("file", type=Path, help="path to CHARSAVE.GFF")
+    p.add_argument("--pc", type=int, required=True,
+                   help="PC index (0-based; see `list-pcs`)")
+    p.add_argument("--slot", type=int, required=True,
+                   help="item-slot index within the PC (0-based; see `list-items`)")
+    p.add_argument("--item-id", type=int, default=None,
+                   help="set the item id (i16; the value `list-items` shows in the ID column)")
+    p.add_argument("--quantity", type=int, default=None,
+                   help="set quantity (u16)")
+    p.add_argument("--charges", type=int, default=None,
+                   help="set charges (u16)")
+    p.add_argument("--value", type=int, default=None,
+                   help="set sale value (u16)")
+    p.add_argument(
+        "-o", "--output", type=Path, default=None,
+        help="output GFF path (default: rewrite the input in place after backup)",
+    )
+    p.add_argument(
+        "--no-backup", action="store_true",
+        help="skip the .bak.<mtime> snapshot (default: take one)",
+    )
+    p.add_argument(
+        "--dry-run", action="store_true",
+        help="report what would change; don't touch disk",
+    )
+    return p
+
+
+def cmd_edit_item(args: argparse.Namespace) -> int:
+    edits: dict[str, Any] = {}
+    for k in ("item_id", "quantity", "charges", "value"):
+        val = getattr(args, k, None)
+        if val is not None:
+            edits[k] = val
+    if not edits:
+        print("error: pass at least one field (--item-id, --quantity, --charges, --value)",
+              file=sys.stderr)
+        return 2
+
+    try:
+        parsed = parse_gff(args.file)
+    except (FileNotFoundError, ValueError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+    summary = summarise(parsed)
+    pcs = _enumerate_pcs(summary)
+    if args.pc < 0 or args.pc >= len(pcs):
+        print(f"error: --pc {args.pc} out of range (have {len(pcs)} PC(s))",
+              file=sys.stderr)
+        return 2
+    pc = pcs[args.pc]
+    blocks = pc.get("body", {}).get("sub_blocks", [])
+    items = [b for b in blocks if b.get("role") == "item"]
+    if args.slot < 0 or args.slot >= len(items):
+        print(f"error: --slot {args.slot} out of range "
+              f"(PC {args.pc} has {len(items)} item slot(s))", file=sys.stderr)
+        return 2
+    item = items[args.slot]
+    decoded = item.setdefault("decoded", {})
+    name = (blocks[0].get("decoded", {}).get("name", "?") or "?").strip()
+
+    log: list[str] = []
+    if "item_id" in edits:
+        log.append(f"id: {decoded.get('id')} -> {edits['item_id']}")
+        decoded["id"] = int(edits["item_id"])
+    if "quantity" in edits:
+        log.append(f"quantity: {decoded.get('quantity')} -> {edits['quantity']}")
+        decoded["quantity"] = int(edits["quantity"])
+    if "charges" in edits:
+        log.append(f"charges: {decoded.get('charges')} -> {edits['charges']}")
+        decoded["charges"] = int(edits["charges"])
+    if "value" in edits:
+        log.append(f"value: {decoded.get('value')} -> {edits['value']}")
+        decoded["value"] = int(edits["value"])
+
+    print(f"PC {args.pc} '{name}' slot {args.slot}:")
+    for line in log:
+        print(f"  {line}")
+
+    if args.dry_run:
+        print("\ndry-run: no file written.")
+        return 0
+
+    try:
+        new_bytes = _rewrite_save_with_edits(
+            parsed, summary, {(pc["kind"], int(pc["id"])): pc}
+        )
+    except EncodeError as e:
+        print(f"error: encode failed: {e}", file=sys.stderr)
+        return 2
+
+    out_path = args.output if args.output is not None else args.file
+    backup_path: Path | None = None
+    if not args.no_backup and out_path.exists():
+        ts = str(int(out_path.stat().st_mtime))
+        backup_path = out_path.with_name(out_path.name + f".bak.{ts}")
+        backup_path.write_bytes(out_path.read_bytes())
+    out_path.write_bytes(new_bytes)
+    print(f"\nwrote {len(new_bytes)} bytes to {out_path}")
+    if backup_path is not None:
+        print(f"backup at {backup_path}")
+    return 0
+
+
 # ---------- end v0.9.0 ----------
 
 
@@ -2279,6 +2571,10 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_list_pcs(_build_list_pcs_parser().parse_args(argv[1:]))
     if argv and argv[0] == "list-items":
         return cmd_list_items(_build_list_items_parser().parse_args(argv[1:]))
+    if argv and argv[0] == "edit-pc":
+        return cmd_edit_pc(_build_edit_pc_parser().parse_args(argv[1:]))
+    if argv and argv[0] == "edit-item":
+        return cmd_edit_item(_build_edit_item_parser().parse_args(argv[1:]))
     if argv and argv[0] == "save-diff":
         sd_args = _build_save_diff_parser().parse_args(argv[1:])
         try:

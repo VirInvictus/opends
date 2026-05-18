@@ -4,6 +4,48 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/save-inspect/` v0.9.1** adds the **edit half** of the
+  modder-altitude surface: `edit-pc` and `edit-item`. Pairs
+  with v0.9.0's `list-pcs` / `list-items` discovery commands.
+  Brandon: "we have a saved game; if we can add items by a
+  reference we have four character inventories we can fill."
+  - **`edit-pc <save> --pc N`** with short flags for the
+    high-leverage fields:
+
+        --hp N --psp N --max-hp N --max-psp N --xp N
+        --str N --dex N --con N --int N --wis N --cha N
+
+    Each flag writes the right sub-block (combat for current
+    hp/psp/stats; character for max-* and xp). Stats write to
+    BOTH combat.stats and character.stats so the values stay
+    consistent (the engine reads from both at different times).
+    `--dry-run` previews; backup-before-write to
+    `<file>.bak.<mtime>`; `--no-backup` opts out.
+  - **`edit-item <save> --pc N --slot K`** with short flags:
+
+        --item-id X --quantity Q --charges C --value V
+
+    Overwrites an existing inventory slot in place (no chunk
+    growth; safe). Same backup + dry-run conventions. Opens
+    the bootstrap loop for `syms/items.toml`: pick a spare
+    slot, set --item-id to a candidate, load in DOSBox, see
+    what shows up, tag it.
+  - **`docs/cookbook/edit-pc-hp.md`** is the first cookbook
+    entry I've actually written instead of promised. Real
+    commands against Brandon's DS2 played save (Ar'Anda PC 15
+    at 34/57 HP); real before/after; documented caveats
+    (derived fields, class changes, DS1 vs DS2). The
+    walkthrough takes about 60 seconds end-to-end.
+  - **Smoke**: copied factory DS2 CHARSAVE.GFF; edited Caron
+    (PC 0) HP 21 → 999, max-HP 21 → 999, STR/CON 17 → 18,
+    verified via list-pcs that the values stuck.
+  - **What still doesn't ship**: `give-item` (append a new
+    inventory slot) — needs RE of the `rdff_header.index` and
+    `item.next` chaining conventions; deferred to v0.9.2+.
+    `edit-item` covers the bootstrap-catalogue use case
+    without the chunk-growth complexity.
+  - **No new external deps**.
+
 - **`tools/save-inspect/` v0.9.0** opens the modder-altitude
   discovery surface: `list-pcs` and `list-items`. First piece
   of the "no more JSON-edit-by-hand" pivot Brandon called out;
