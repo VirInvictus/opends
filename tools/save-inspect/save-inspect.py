@@ -2535,6 +2535,25 @@ def cmd_give_item(args: argparse.Namespace) -> int:
     # Determine item body length from the template (DS1 = 21, DS2 = 23).
     template_len = int(last_item["rdff_header"]["len"])
 
+    # Chain-continuation `from` value: DS1 uses 1, DS2 uses 2.
+    # Pull from an existing continuation (load_action=4) item
+    # rather than hardcoding so we work for both games. If the
+    # PC has no continuation items (every chain is a single
+    # head), we'd be creating a brand-new chain shape and don't
+    # know `from` for that — refuse cleanly.
+    continuation_template = next(
+        (b for b in items if int(b["rdff_header"]["load_action"]) == 4),
+        None,
+    )
+    if continuation_template is None:
+        print(f"error: PC {args.pc} has no chain-continuation items "
+              "(every chain is a single head); can't infer the `from` "
+              "field for a continuation. Use a PC whose inventory "
+              "spans multiple items in at least one chain.",
+              file=sys.stderr)
+        return 2
+    continuation_from = int(continuation_template["rdff_header"]["from"])
+
     # Build the new item: clone template's decoded, override the
     # editable fields, set next=9999 (new chain tail).
     new_decoded = dict(last_item["decoded"])
@@ -2552,7 +2571,7 @@ def cmd_give_item(args: argparse.Namespace) -> int:
             "blocknum": old_combat_bn - 1,  # = (new block position) - 1
             "type": 1,
             "index": new_index,
-            "from": 2,
+            "from": continuation_from,
             "len": template_len,
         },
         "decoded": new_decoded,

@@ -4,6 +4,28 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/save-inspect/` v0.9.4** fixes a DS1 bug in
+  `give-item`: chain-continuation items use `from = 1` in DS1
+  but `from = 2` in DS2. v0.9.3 hardcoded `from = 2`. Caught
+  on smoking against Brandon's actual played DS1 save
+  (`~/.wine/.../Dark Sun/CHARSAVE.GFF`; 8 PCs starting with
+  T'kir'taap).
+  - **Fix**: `give-item` now copies the `from` value from an
+    existing chain-continuation item in the same PC, so the
+    correct convention falls out per-save. If the PC has NO
+    chain-continuation items (every chain is a single head),
+    refuses with a clear message (use a PC with multi-item
+    chains instead).
+  - **Smoke**: Aticus (PC 1) had 5 items; gave him a 6th
+    (id -1023 cloned from Lanthazar's loadout); round-trip
+    `all_chunks_ok=True, file_bytes_equal=True`; list-items
+    shows the new item at slot 5.
+  - This makes DS1 the right test bed for `give-item`'s
+    real-DOSBox verification — Brandon's
+    `~/.wine/.../Dark Sun 2/CHARSAVE.GFF` isn't connected to
+    a working DS2 install (his DS2 playthrough used
+    `repro.py --play` sessions instead).
+
 - **`tools/save-inspect/` v0.9.3** ships **`give-item`** with
   chain-invariant validation. The append path I deferred in
   v0.9.2 now lands, after empirical RE of the item linked-list
