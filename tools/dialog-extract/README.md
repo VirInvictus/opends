@@ -12,6 +12,81 @@ that appear in `GPL ` and `MAS ` bytecode chunks.
 - **Version**: see [`VERSION`](VERSION).
 - **License**: MIT.
 
+## What v0.6.0 ships
+
+**CFG-distance-ordered `possible_writers`.** v0.5.0 attached
+the array but it was unordered; v0.6.0 sorts it by graph
+distance so the closest writer comes first, making the
+human-or-tool reader's first guess the most likely one.
+
+### Each writer carries a `distance`
+
+```json
+{
+  "source": "text:lstring",
+  "text_id": 0,
+  "unresolved": true,
+  "possible_writers": [
+    {"chunk": "GPL-166", "kind": "GPL ", "id": 166,
+     "offset": 412, "source": "inline",
+     "value": "  Welcome, traveller.", "sub_type": "compressed",
+     "distance": 0},
+    {"chunk": "GPL-100", "kind": "GPL ", "id": 100,
+     "offset": 18,  "source": "inline",
+     "value": "  Default greeting.", "sub_type": "compressed",
+     "distance": 1}
+  ],
+  "possible_writers_filter": "callgraph-reachable"
+}
+```
+
+- `distance: 0` = writer is in the same chunk as the read.
+- `distance: 1` = writer's chunk is an immediate
+  `gpl global sub` caller of the read site.
+- `distance: N` = N hops on the reverse callgraph.
+- `distance: null` = no static path (the global-fallback
+  case; writers exist somewhere but the BFS doesn't connect
+  them to the read site).
+
+Records sort ascending by `(distance, kind, id, offset)`;
+`null` distances sort last.
+
+### `--quick-resolve`
+
+```sh
+dialog-extract DS1 GPLDATA.GFF --text-source RESOURCE.GFF --quick-resolve
+```
+
+Restricts each `possible_writers` list to `distance <= 1`
+(same-chunk + direct callers). Useful for the common case
+where the LSTR is set by the immediate caller and the
+longer ancestor tail is noise. The `possible_writers_filter`
+label becomes `callgraph-reachable+quick-resolve` (or the
+matching fallback variant). LSTR reads whose only candidates
+were further-away callers move from `possible_resolved` to
+`no_writers` in `lstr_stats` under this mode.
+
+### Corpus signal (DS1 `GPLDATA.GFF`)
+
+Without `--quick-resolve`: 255 LSTR reads, 230 resolved
+exactly (90.2%), 25 via `possible_writers`. Distance
+histogram across the writer records on those 25 reads:
+
+| distance | count |
+|---------:|------:|
+| 0        |    31 |
+| `null` (global-fallback) | 68 |
+
+The bimodal distribution surfaces a real corpus property:
+when the static callgraph *does* connect a writer to a
+read, that writer tends to be in the same chunk; the
+common cross-chunk caller-writes-then-callee-reads idiom
+is dominated by *exact* resolution (the path-aware tracker
+in v0.4.0 catches those), leaving only same-chunk and
+truly-disconnected writers behind. `--quick-resolve` drops
+to 23 reads with writers (the 2 global-fallback cases
+become `no_writers`).
+
 ## What v0.5.0 ships
 
 The **LSTR tail closer**. v0.4.0 left 32 LSTR reads

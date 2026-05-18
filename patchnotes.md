@@ -4,6 +4,42 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/dialog-extract/` v0.6.0** orders the v0.5.0
+  `possible_writers` array by graph distance, so the closest
+  writer surfaces first. The reverse-CFG BFS now records
+  shortest-path distance per ancestor (BFS instead of v0.5's
+  visited-set DFS); each writer record carries a `distance`
+  field (0 = same chunk, 1 = direct caller, N = N hops);
+  `possible_writers` sorts ascending by
+  `(distance, kind, id, offset)`. `null` distances (the
+  global-fallback case where no static path connects writer
+  to reader) sort last.
+  - **`--quick-resolve`** flag restricts the list to
+    `distance <= 1` (same-chunk + direct callers). Useful
+    for the common case where the LSTR is set by the
+    immediate caller and the longer ancestor tail is noise.
+    Filter label becomes
+    `callgraph-reachable+quick-resolve` (or the matching
+    fallback variant). Slots whose only candidates were
+    further-away callers move from `possible_resolved` to
+    `no_writers` in `lstr_stats` under this mode.
+  - **Corpus signal (DS1 GPLDATA)**: 255 LSTR reads, 230
+    exact (90.2%), 25 via `possible_writers`. Writer
+    distance histogram is bimodal: 31 at distance 0
+    (same-chunk writes the flat-scan tracker missed) and
+    68 at distance `null` (global-fallback). The "caller
+    writes then callee reads" idiom is dominated by exact
+    resolution (the v0.4.0 path-aware tracker catches it),
+    so distance 1+ is uncommon in the unresolved tail.
+    `--quick-resolve` drops to 23 reads with writers; the
+    2 global-fallback cases become `no_writers` since
+    `null > 1`.
+  - **No regression**: exact resolution count is unchanged
+    (still 230 / 255 on DS1 GPLDATA). The only change is
+    the *order* of the writer list and the new `distance`
+    field; v0.5.0 consumers that ignored the order keep
+    working.
+
 - **`tools/region-render/` v0.6.0** pivots past the
   palette-cycle wall (`docs/dsun-exe-re.md` §4.5 documents
   why the DSUN.EXE byte-pattern search has run its course on

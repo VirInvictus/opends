@@ -1103,17 +1103,23 @@ def build_lstr_writer_index(
 
 def build_reachable_callers(
     disasm_results: list[dict],
-) -> dict[tuple[str, int], set[tuple[str, int]]]:
+) -> dict[tuple[str, int], dict[tuple[str, int], int]]:
     """For each chunk (kind, id), compute the transitive closure
-    of callers that can reach it via `gpl global sub` edges.
-    Used by `attach_possible_writers` to narrow the global
-    writer set for an unresolved LSTR read to writers in chunks
-    that can actually reach the read site via the static
-    callgraph.
+    of callers that can reach it via `gpl global sub` edges,
+    along with the shortest-path *distance* (in caller-hops) from
+    each ancestor to the read site.
+
+    Used by `attach_possible_writers` to narrow + order the
+    global writer set for an unresolved LSTR read: writers in
+    the same chunk are distance 0 (added by the caller),
+    immediate `gpl global sub` callers are distance 1, their
+    callers distance 2, etc.
 
     The forward edge `caller -> callee` comes from each chunk's
-    `cross_chunk_calls` (gpl-disasm v0.4.1+). The reverse closure
-    is `chunk -> {ancestors that can reach chunk}`.
+    `cross_chunk_calls` (gpl-disasm v0.4.1+). v0.6.0 replaces
+    v0.5.0's set-of-ancestors return shape with a dict that
+    maps each ancestor to its shortest BFS distance on the
+    reverse graph.
     """
     # Forward graph: caller -> set of callees.
     forward: dict[tuple[str, int], set[tuple[str, int]]] = {}
@@ -1142,29 +1148,35 @@ def build_reachable_callers(
         for callee in callees:
             reverse.setdefault(callee, set()).add(caller)
 
-    # Transitive closure on the reverse graph (BFS per node).
-    reachable: dict[tuple[str, int], set[tuple[str, int]]] = {}
+    # BFS on the reverse graph; record the first (smallest)
+    # distance to each ancestor.
+    from collections import deque
+
+    reachable: dict[tuple[str, int], dict[tuple[str, int], int]] = {}
     for node in all_nodes:
-        seen: set[tuple[str, int]] = set()
-        frontier = list(reverse.get(node, set()))
-        while frontier:
-            n = frontier.pop()
-            if n in seen:
+        distances: dict[tuple[str, int], int] = {}
+        queue: deque[tuple[tuple[str, int], int]] = deque()
+        for parent in reverse.get(node, set()):
+            queue.append((parent, 1))
+        while queue:
+            n, dist = queue.popleft()
+            if n in distances:
                 continue
-            seen.add(n)
-            for parent in reverse.get(n, set()):
-                if parent not in seen:
-                    frontier.append(parent)
-        reachable[node] = seen
+            distances[n] = dist
+            for grand_parent in reverse.get(n, set()):
+                if grand_parent not in distances:
+                    queue.append((grand_parent, dist + 1))
+        reachable[node] = distances
     return reachable
 
 
 def attach_possible_writers(
     strings: list[dict],
     writer_index: dict[int, list[dict]],
-    reachable_callers: dict[tuple[str, int], set[tuple[str, int]]] | None,
+    reachable_callers: dict[tuple[str, int], dict[tuple[str, int], int]] | None,
     chunk_kind: str,
     chunk_id: int,
+    quick_resolve: bool = False,
 ) -> None:
     """Mutate `strings` in place: for every unresolved
     `text:lstring` record, attach a `possible_writers` array
@@ -1173,12 +1185,25 @@ def attach_possible_writers(
     statically reach the read site. Same-chunk writers are
     always included (the linear flat-scan tracker may have
     missed them via a CFG quirk).
+
+    v0.6.0: each writer record carries a `distance` field
+    (0 = same chunk, 1 = direct caller, N = N hops on the
+    reverse callgraph). `possible_writers` is sorted ascending
+    by `(distance, kind, id, offset)` so the human-or-tool
+    reader's first guess is the closest writer.
+
+    When `quick_resolve=True`, the writer list is also filtered
+    to `distance <= 1` (same-chunk + direct callers); useful for
+    the common case where the LSTR is set by the immediate
+    caller and the longer tail is noise.
     """
     self_node = (chunk_kind, chunk_id)
-    reachable: set[tuple[str, int]] | None = None
+    # distances[ancestor_node] = distance from ancestor to self_node.
+    # Same-chunk writers (self_node) → distance 0.
+    distances: dict[tuple[str, int], int] | None = None
     if reachable_callers is not None:
-        reachable = set(reachable_callers.get(self_node, set()))
-        reachable.add(self_node)
+        distances = dict(reachable_callers.get(self_node, {}))
+        distances[self_node] = 0
     for s in strings:
         if not s.get("unresolved"):
             continue
@@ -1188,22 +1213,48 @@ def attach_possible_writers(
         if slot is None:
             continue
         all_writers = writer_index.get(slot, [])
-        if reachable is None:
-            filtered = all_writers
+        if distances is None:
+            filtered = [dict(w) for w in all_writers]
             filter_label = "global"
         else:
-            filtered = [
-                w for w in all_writers
-                if (w.get("kind"), int(w.get("id"))) in reachable
-            ]
+            filtered = []
+            for w in all_writers:
+                node = (w.get("kind"), int(w.get("id")))
+                if node not in distances:
+                    continue
+                rec = dict(w)
+                rec["distance"] = distances[node]
+                filtered.append(rec)
             filter_label = "callgraph-reachable"
             # Fall back to unfiltered when the reachable set
-            # leaves zero matches (better than nothing).
+            # leaves zero matches (better than nothing). The
+            # fallback writers have no `distance` (no path
+            # exists on the static graph), surfaced as None.
             if not filtered and all_writers:
-                filtered = all_writers
+                filtered = [dict(w, distance=None) for w in all_writers]
                 filter_label = "global-fallback"
+        # Sort ascending by (distance, kind, id, offset).
+        # `None` distance sorts last (no path exists).
+        filtered.sort(
+            key=lambda w: (
+                _DISTANCE_INFINITY if w.get("distance") is None else w["distance"],
+                w.get("kind") or "",
+                int(w.get("id") or 0),
+                int(w.get("offset") or 0),
+            )
+        )
+        if quick_resolve:
+            filtered = [
+                w
+                for w in filtered
+                if w.get("distance") is not None and w["distance"] <= 1
+            ]
+            filter_label = filter_label + "+quick-resolve"
         s["possible_writers"] = filtered
         s["possible_writers_filter"] = filter_label
+
+
+_DISTANCE_INFINITY = 10**9
 
 
 def build_summary(
@@ -1212,6 +1263,7 @@ def build_summary(
     text_chunks: dict[int, str] | None,
     text_source: Path | None,
     grep: re.Pattern[str] | None,
+    quick_resolve: bool = False,
 ) -> dict:
     chunks_out: list[dict] = []
     total_strings = 0
@@ -1263,6 +1315,7 @@ def build_summary(
             reachable_callers,
             entry["chunk_kind"],
             int(entry["chunk_id"]),
+            quick_resolve=quick_resolve,
         )
         for s in strings:
             is_lstring = s.get("source") == "text:lstring"
@@ -1366,6 +1419,14 @@ def main(argv: list[str] | None = None) -> int:
         help="path to gff-cat binary, used only with --text-source "
         "(default: $PATH or ../../target/release/gff-cat)",
     )
+    p.add_argument(
+        "--quick-resolve",
+        action="store_true",
+        help="restrict `possible_writers` to distance <= 1 "
+        "(same-chunk + direct callers). Useful for the common "
+        "case where the LSTR is set by the immediate caller and "
+        "the longer ancestor tail is noise.",
+    )
     args = p.parse_args(argv)
 
     gpl_disasm = locate_binary("gpl-disasm", args.gpl_disasm)
@@ -1418,7 +1479,12 @@ def main(argv: list[str] | None = None) -> int:
             return 2
 
     summary = build_summary(
-        args.file, disasm_results, text_chunks, args.text_source, grep_re
+        args.file,
+        disasm_results,
+        text_chunks,
+        args.text_source,
+        grep_re,
+        quick_resolve=args.quick_resolve,
     )
     indent = 2 if args.pretty else None
     text = json.dumps(summary, indent=indent, ensure_ascii=False)
