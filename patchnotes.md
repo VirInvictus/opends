@@ -4,6 +4,19 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/atlas/` v0.1.1** fixes DS1 region rendering. v0.1.0
+  inherited `region-render`'s default `--palette-preset
+  ds1-rust` (CPAL:200), which flattens every DS1 region into
+  one rusty-red colour family and loses vegetation / sand /
+  water distinctions (the engine's per-region palette routine
+  isn't fully RE'd yet; see `docs/dsun-exe-re.md` §4.5). v0.1.1
+  detects DS1 regions by stem length (`RGN??` = DS1, `RGN???`
+  = DS2) and passes `--palette-preset ds1-pink` (PAL :1000)
+  for DS1 only. Terrain types are now visually distinct. DS2
+  unchanged (uses inline per-region palettes correctly).
+  Pink off-camera void is a known cosmetic quirk pending the
+  per-region palette RE.
+
 - **`tools/atlas/` v0.1.0** (new crate). Item #7 of the
   human-friendliness sprint: the static-HTML site generator.
   Drives the existing tools as subprocesses and produces a

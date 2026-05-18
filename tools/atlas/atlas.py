@@ -195,10 +195,20 @@ def build_region_gallery(
     failed: list[tuple[str, str]] = []
     for rgn in rgn_gffs:
         out_png = pngs_dir / f"{rgn.stem}.png"
-        res = subprocess.run(
-            [str(region_render), str(rgn), "-o", str(out_png)],
-            capture_output=True, text=True,
-        )
+        cmd = [str(region_render), str(rgn), "-o", str(out_png)]
+        # DS1 regions don't ship inline palettes and the engine's
+        # per-region palette routine isn't fully RE'd yet (see
+        # docs/dsun-exe-re.md §4.5). region-render's default
+        # fallback is CPAL:200 ("ds1-rust"), which renders
+        # everything in one rusty-red colour family and loses
+        # vegetation / sand / water distinctions. ds1-pink
+        # (PAL :1000) is the v0.1.0 default and the only preset
+        # where terrain types remain visually distinct.
+        # Detect DS1 by region-stem length: `RGN??` (2 hex chars)
+        # is DS1; `RGN???` (3 hex chars) is DS2.
+        if len(rgn.stem) == 5:  # "RGNxx" -> DS1
+            cmd += ["--palette-preset", "ds1-pink"]
+        res = subprocess.run(cmd, capture_output=True, text=True)
         if res.returncode == 0 and out_png.is_file():
             rendered.append(out_png)
         else:
