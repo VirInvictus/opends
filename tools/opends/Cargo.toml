@@ -1,0 +1,17 @@
+[package]
+name = "opends"
+version = "0.1.0"
+description = "Umbrella CLI for the OpenDS toolkit (auto-dispatch by file magic)."
+readme = "README.md"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "opends"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true

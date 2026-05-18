@@ -4,6 +4,37 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/opends/` v0.1.0** (new crate). Item #3 of the
+  human-friendliness sprint: the umbrella CLI that auto-
+  dispatches by file magic. New contributors who don't yet
+  know which tool reads which file have a single entry point:
+  `opends inspect <file>`.
+  - **Subcommands**: `inspect`, `render`, `find`, `extract`,
+    `tools`. All thin shells over the existing toolkit; no
+    logic reimplemented.
+  - **`opends inspect <file>`**: GFF magic (`GFFI`) →
+    `gff-cat info`; save filenames (`DARKRUN.GFF`,
+    `CHARSAVE.GFF`, `DARKSAVE.GFF`, `SAVE??.SAV`) →
+    `save-inspect`; PNG signature → inline summary +
+    `image-pack` pointer (for indexed) or conversion hint
+    (for non-indexed); anything else → magic-byte readout.
+  - **`opends tools`**: reads every wrapped tool's `VERSION`
+    file and prints a table with the resolved binary path,
+    so contributors see at a glance what's built and where.
+  - **Tool discovery**: prefers in-tree
+    `<workspace-root>/target/release/<name>` over
+    `target/debug/<name>` over `$PATH`. Workspace root is
+    found by walking up from the running binary's directory
+    looking for `Cargo.lock` and a sibling `tools/` dir.
+    Python tools (`*.py`) resolve to
+    `<workspace-root>/tools/<crate>/<name>.py` and invoke via
+    `python3`.
+  - **Workspace registration**: added `tools/opends` to the
+    workspace `Cargo.toml` members list.
+  - **No tests yet**; v0.1.0 is mostly subprocess plumbing and
+    file-magic detection. End-to-end smoke covers all three
+    dispatch paths (GFF / save / PNG) on real game files.
+
 - **`tools/image-extract/` v0.4.0** ships the inverse of the
   v0.1.0 decoder: a companion `image-pack` binary that encodes
   palette-indexed PNGs back into DS1 RLE bitmap chunks. Item
