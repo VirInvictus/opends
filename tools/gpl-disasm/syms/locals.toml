@@ -1,0 +1,32 @@
+# gpl-disasm symbol catalogue — per-chunk local-variable names.
+#
+# Schema (gpl-disasm v0.6.0+):
+#
+#   [[lbyte]]
+#   file     = "GPLDATA.GFF"      # source GFF basename (case-insensitive)
+#   kind     = "GPL "             # chunk FOURCC, trailing space preserved
+#   chunk_id = 1                  # integer chunk id (matches gff-edit)
+#   id       = 7                  # local-variable id within the chunk
+#   name     = "loop_counter"     # display name
+#   doc      = "..."              # optional documentation
+#
+# One [[<kind>]] table per local-variable kind. Supported kinds:
+# lbyte, lnum, lbignum, lflag, lname, lstring.
+#
+# Decoration appears in both text and JSON output, mirroring the
+# globals path:
+#
+#   LBYTE[7 (loop_counter)]
+#
+# The (file, kind, chunk_id, var_kind, id) quintuple gates each
+# match; mis-targeted rows are silently inert.
+#
+# Curation rule: only commit a row once you've confirmed what the
+# local actually represents. The chunk's surrounding bytecode
+# (loop guards, condition reads, write-then-read patterns) is the
+# evidence. Rows that turn out wrong make every reader's
+# understanding worse than no decoration at all.
+#
+# v0.6.0 ships this file empty by design. Locals are extremely
+# chunk-specific; the catalogue grows organically as RE / patch
+# authoring surfaces meaningful slots.

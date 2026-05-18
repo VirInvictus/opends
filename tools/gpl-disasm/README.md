@@ -14,6 +14,58 @@ chunks so modders can read what a script does.
 
 Depends on `gff-edit` for GFF I/O.
 
+## What `gpl-disasm v0.6.0` ships
+
+**Per-chunk local-variable overlays + a DSO-symbol importer
+script.** The first ship of the human-friendliness sprint
+(see [`docs/next-versions.md`](../../docs/next-versions.md)).
+Two modder-facing wins:
+
+**Locals naming.** New `syms/locals.toml` extends the
+v0.5.0 globals path to per-chunk local variables (`LBYTE`,
+`LNUM`, `LFLAG`, etc.). Each row is keyed by `(file, kind,
+chunk_id, var_kind, id)` so the decoration fires only inside
+the named chunk; mis-targeted rows are silently inert. Same
+render surface as globals (`LBYTE[7 (loop_counter)]` in text,
+`name` field on `Expression::Variable` in JSON). v0.6.0 ships
+the catalogue empty; the file's header carries the curation
+rule.
+
+**DSO symbol importer.** New
+`scripts/import-dso-symbols.py` (stdlib-only) parses the
+3,527 functions + 2,246 globals in
+`.dso-online/tools/symbols.txt` and emits review-ready
+proposals:
+
+```sh
+# Default: summary counts.
+python3 scripts/import-dso-symbols.py
+
+# 100 opcode-rename proposals, suitable for cherry-picking
+# into syms/opcodes.toml. Review per the curation rule.
+python3 scripts/import-dso-symbols.py --opcodes-proposed
+
+# 15 DSO Decode* names with no obvious libgff slot.
+# Candidates for libgff's `gpl default` rows once the
+# DSUN.EXE dispatch table is RE'd.
+python3 scripts/import-dso-symbols.py --unmatched-decoders
+
+# GPL/GFF-related engine intrinsics, markdown table.
+python3 scripts/import-dso-symbols.py --functions-summary
+```
+
+The script never writes to `syms/` directly. Every commit is
+hand-reviewed; v0.6.0 itself commits zero new opcode rows.
+
+**Bug fixes (latent from v0.5.0):**
+- Single-chunk path now decorates globals (the `--all`
+  and `--global-cfg` paths already did; the single path
+  missed the `apply_to_variables` call).
+- A `syms/` dir with *only* variables (or only locals)
+  is no longer discarded by the CLI's early-out check.
+
+---
+
 ## What `gpl-disasm v0.5.0` ships
 
 **Global-variable naming.** The disassembler's

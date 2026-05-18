@@ -1164,11 +1164,16 @@ pub struct Symbols {
     /// Global-variable catalogue keyed by `(VarKind, id)`.
     /// Populated from `tools/gpl-disasm/syms/variables.toml`
     /// (gpl-disasm v0.5.0+). The lookup table is global; locals
-    /// (LSTR, LNUM, etc.) are intentionally out of scope (they're
-    /// chunk-scoped and need a per-chunk override surface,
-    /// queued for v0.6.0).
+    /// have a chunk-scoped surface in [`Symbols::locals`].
     #[serde(default)]
     pub variables: Vec<VariableSymbol>,
+    /// Per-chunk local-variable catalogue keyed by
+    /// `(file_basename, chunk_kind, chunk_id, VarKind, id)`.
+    /// Populated from `tools/gpl-disasm/syms/locals.toml`
+    /// (gpl-disasm v0.6.0+). Decorates `LBYTE` / `LNUM` /
+    /// `LFLAG` / etc. references in matching chunks only.
+    #[serde(default)]
+    pub locals: Vec<LocalSymbol>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1195,6 +1200,34 @@ pub struct OpcodeSymbol {
     pub dso_source: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub verified_by: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LocalSymbol {
+    /// Variable kind. Restricted by convention to the L-prefixed
+    /// kinds (`Lbyte`, `Lnum`, `Lbignum`, `Lflag`, `Lname`,
+    /// `Lstring`); the loader writes one per `[[<kind>]]` array
+    /// in `locals.toml`. G-kind rows here would never match a
+    /// global expression and are silently inert.
+    pub var_kind: VarKind,
+    /// Source GFF basename, e.g. `GPLDATA.GFF`. Matched
+    /// case-insensitively (consistent with `FunctionSymbol`).
+    pub file: String,
+    /// Chunk FOURCC including any trailing space, e.g. `GPL ` or
+    /// `MAS `.
+    pub kind: String,
+    pub chunk_id: i32,
+    /// Local-variable id within the chunk (u16; matches the
+    /// in-chunk dispatch value).
+    pub id: u16,
+    /// Human-readable name. Rendered inline as `LBYTE[id (name)]`
+    /// in text output and surfaces as a `name` field on the
+    /// JSON `Expression::Variable`, exactly mirroring the global
+    /// path.
+    pub name: String,
+    /// Optional documentation; not used by the renderer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub doc: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1287,6 +1320,46 @@ impl Symbols {
             }
             syms.variables = combined;
         }
+        // v0.6.0: load locals.toml. Same per-kind-arrays shape
+        // as variables.toml, plus per-row chunk context (file,
+        // kind, chunk_id) so the decorator only fires inside
+        // the named chunk.
+        let locals_path = dir.join("locals.toml");
+        if locals_path.is_file() {
+            let body = fs::read_to_string(&locals_path).map_err(|e| {
+                SymbolsLoadError::Io {
+                    path: locals_path.display().to_string(),
+                    source: e,
+                }
+            })?;
+            let parsed: LocalsFile =
+                toml::from_str(&body).map_err(|e| SymbolsLoadError::Parse {
+                    path: locals_path.display().to_string(),
+                    source: e,
+                })?;
+            let mut combined: Vec<LocalSymbol> = Vec::new();
+            for (var_kind, entries) in [
+                (VarKind::Lbyte, parsed.lbyte),
+                (VarKind::Lnum, parsed.lnum),
+                (VarKind::Lbignum, parsed.lbignum),
+                (VarKind::Lflag, parsed.lflag),
+                (VarKind::Lname, parsed.lname),
+                (VarKind::Lstring, parsed.lstring),
+            ] {
+                for entry in entries.unwrap_or_default() {
+                    combined.push(LocalSymbol {
+                        var_kind,
+                        file: entry.file,
+                        kind: entry.kind,
+                        chunk_id: entry.chunk_id,
+                        id: entry.id,
+                        name: entry.name,
+                        doc: entry.doc,
+                    });
+                }
+            }
+            syms.locals = combined;
+        }
         Ok(syms)
     }
 
@@ -1337,6 +1410,90 @@ impl Symbols {
                 for inner in inner_params {
                     for tok in inner {
                         self.decorate_variable(tok);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Look up the curated name for a local variable in a specific
+    /// chunk. File matching is case-insensitive on basename; kind
+    /// matching is byte-exact on the 4-char FOURCC (caller normalises).
+    /// Returns `None` if no row matches the full quintuple.
+    pub fn local_name(
+        &self,
+        file_basename: &str,
+        kind: &str,
+        chunk_id: i32,
+        var_kind: VarKind,
+        id: u16,
+    ) -> Option<&str> {
+        let target = file_basename.to_ascii_lowercase();
+        self.locals
+            .iter()
+            .find(|l| {
+                l.var_kind == var_kind
+                    && l.id == id
+                    && l.chunk_id == chunk_id
+                    && l.kind == kind
+                    && l.file.to_ascii_lowercase() == target
+            })
+            .map(|l| l.name.as_str())
+    }
+
+    /// Walk `result.instructions` and decorate every
+    /// `Expression::Variable` whose `(file, kind, chunk_id,
+    /// var_kind, id)` has an entry in `self.locals`. No-op when
+    /// the locals catalogue is empty. Pairs with
+    /// [`Self::apply_to_variables`] which handles the global
+    /// catalogue; the local pass needs chunk context the caller
+    /// already has from the GFF read site.
+    pub fn apply_to_locals(
+        &self,
+        result: &mut DisasmResult,
+        file_basename: &str,
+        kind: &str,
+        chunk_id: i32,
+    ) {
+        if self.locals.is_empty() {
+            return;
+        }
+        for instr in &mut result.instructions {
+            for param in &mut instr.params {
+                for tok in param {
+                    self.decorate_local(tok, file_basename, kind, chunk_id);
+                }
+            }
+        }
+    }
+
+    fn decorate_local(
+        &self,
+        expr: &mut Expression,
+        file_basename: &str,
+        kind: &str,
+        chunk_id: i32,
+    ) {
+        match expr {
+            Expression::Variable {
+                var_kind,
+                id,
+                name,
+                ..
+            } => {
+                if name.is_none() {
+                    if let Some(n) =
+                        self.local_name(file_basename, kind, chunk_id, *var_kind, *id)
+                    {
+                        *name = Some(Cow::Owned(n.to_string()));
+                    }
+                }
+            }
+            Expression::RetVal { inner_params, .. } => {
+                for inner in inner_params {
+                    for tok in inner {
+                        self.decorate_local(tok, file_basename, kind, chunk_id);
                     }
                 }
             }
@@ -1447,6 +1604,33 @@ struct VariablesFile {
 
 #[derive(Debug, Deserialize)]
 struct VariableEntry {
+    id: u16,
+    name: String,
+    #[serde(default)]
+    doc: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct LocalsFile {
+    #[serde(default)]
+    lbyte: Option<Vec<LocalEntry>>,
+    #[serde(default)]
+    lnum: Option<Vec<LocalEntry>>,
+    #[serde(default)]
+    lbignum: Option<Vec<LocalEntry>>,
+    #[serde(default)]
+    lflag: Option<Vec<LocalEntry>>,
+    #[serde(default)]
+    lname: Option<Vec<LocalEntry>>,
+    #[serde(default)]
+    lstring: Option<Vec<LocalEntry>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct LocalEntry {
+    file: String,
+    kind: String,
+    chunk_id: i32,
     id: u16,
     name: String,
     #[serde(default)]
@@ -3720,7 +3904,8 @@ mod tests {
                     notes: None,
                 },
             ],
-        variables: Vec::new(),
+            variables: Vec::new(),
+            locals: Vec::new(),
         };
         let gcfg = build_global_cfg("TEST.GFF", &summaries, Some(&syms));
         assert_eq!(gcfg.edges.len(), 1);
@@ -3764,7 +3949,8 @@ mod tests {
                     notes: None,
                 },
             ],
-        variables: Vec::new(),
+            variables: Vec::new(),
+            locals: Vec::new(),
         };
         syms.apply_to_labels(&mut cfg, "TEST.GFF", "GPL ", 7);
         assert_eq!(
@@ -3790,7 +3976,8 @@ mod tests {
                 name: "n".to_string(),
                 notes: None,
             }],
-        variables: Vec::new(),
+            variables: Vec::new(),
+            locals: Vec::new(),
         };
         assert_eq!(syms.function_name("gpldata.gff", "GPL ", 1, 1), Some("n"));
         assert_eq!(syms.function_name("GPLDATA.GFF", "GPL ", 1, 1), Some("n"));
@@ -3829,7 +4016,8 @@ mod tests {
         let syms = Symbols {
             opcodes,
             functions: vec![],
-        variables: Vec::new(),
+            variables: Vec::new(),
+            locals: Vec::new(),
         };
         syms.apply_to_mnemonics(&mut result);
         assert_eq!(
@@ -3886,7 +4074,8 @@ mod tests {
         let syms = Symbols {
             opcodes,
             functions: vec![],
-        variables: Vec::new(),
+            variables: Vec::new(),
+            locals: Vec::new(),
         };
         syms.apply_to_mnemonics(&mut result);
         assert_eq!(
@@ -3999,6 +4188,7 @@ name = "PARTY_GOLD"
                 name: "POV_FLAGS".to_string(),
                 doc: None,
             }],
+            locals: Vec::new(),
         };
         syms.apply_to_variables(&mut result);
         let last = result.instructions.last().unwrap();
@@ -4012,5 +4202,143 @@ name = "PARTY_GOLD"
         // Render: short form decoration shows in Display.
         let rendered = format!("{}", var);
         assert_eq!(rendered, "GBYTE[42 (POV_FLAGS)]");
+    }
+
+    fn synth_local_ref(var_kind: VarKind, id: u16) -> Instruction {
+        Instruction {
+            offset: 0,
+            length: 2,
+            opcode: 0x00,
+            mnemonic: Some(Cow::Borrowed("test")),
+            params: vec![vec![Expression::Variable {
+                var_kind,
+                id,
+                extended: false,
+                name: None,
+            }]],
+            best_effort: false,
+            string_run: None,
+            raw_tail: None,
+        }
+    }
+
+    #[test]
+    fn symbols_load_locals_from_toml() {
+        use std::time::SystemTime;
+        let nanos = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let dir = std::env::temp_dir().join(format!("gpl-disasm-locals-{nanos}"));
+        std::fs::create_dir_all(&dir).expect("create tempdir");
+        std::fs::write(
+            dir.join("locals.toml"),
+            r#"
+[[lbyte]]
+file = "GPLDATA.GFF"
+kind = "GPL "
+chunk_id = 1
+id = 7
+name = "loop_counter"
+
+[[lnum]]
+file = "GPLDATA.GFF"
+kind = "GPL "
+chunk_id = 2
+id = 0
+name = "hp_temp"
+"#,
+        )
+        .expect("write locals.toml");
+        let syms = Symbols::load_from_dir(&dir).expect("load");
+        let _ = std::fs::remove_dir_all(&dir);
+        assert_eq!(syms.locals.len(), 2);
+        assert_eq!(
+            syms.local_name("GPLDATA.GFF", "GPL ", 1, VarKind::Lbyte, 7),
+            Some("loop_counter")
+        );
+        assert_eq!(
+            syms.local_name("gpldata.gff", "GPL ", 1, VarKind::Lbyte, 7),
+            Some("loop_counter"),
+            "file match should be case-insensitive"
+        );
+        // Wrong chunk: no match.
+        assert_eq!(
+            syms.local_name("GPLDATA.GFF", "GPL ", 99, VarKind::Lbyte, 7),
+            None
+        );
+        // Wrong var kind: no match.
+        assert_eq!(
+            syms.local_name("GPLDATA.GFF", "GPL ", 1, VarKind::Lnum, 7),
+            None
+        );
+    }
+
+    #[test]
+    fn apply_to_locals_decorates_matching_chunk_only() {
+        let mut result = DisasmResult {
+            instructions: vec![synth_local_ref(VarKind::Lbyte, 7)],
+            bytes_consumed: 2,
+            total_bytes: 2,
+            aligned: true,
+            cfg: None,
+            cross_chunk_calls: vec![],
+        };
+        let syms = Symbols {
+            opcodes: BTreeMap::new(),
+            functions: vec![],
+            variables: vec![],
+            locals: vec![LocalSymbol {
+                var_kind: VarKind::Lbyte,
+                file: "GPLDATA.GFF".to_string(),
+                kind: "GPL ".to_string(),
+                chunk_id: 1,
+                id: 7,
+                name: "loop_counter".to_string(),
+                doc: None,
+            }],
+        };
+        // Decorate against the matching chunk (file=GPLDATA, chunk=1).
+        syms.apply_to_locals(&mut result, "GPLDATA.GFF", "GPL ", 1);
+        match &result.instructions[0].params[0][0] {
+            Expression::Variable { name, .. } => {
+                assert_eq!(name.as_deref(), Some("loop_counter"));
+            }
+            _ => panic!("expected Variable"),
+        }
+        let rendered = format!("{}", &result.instructions[0].params[0][0]);
+        assert_eq!(rendered, "LBYTE[7 (loop_counter)]");
+    }
+
+    #[test]
+    fn apply_to_locals_skips_non_matching_chunk() {
+        let mut result = DisasmResult {
+            instructions: vec![synth_local_ref(VarKind::Lbyte, 7)],
+            bytes_consumed: 2,
+            total_bytes: 2,
+            aligned: true,
+            cfg: None,
+            cross_chunk_calls: vec![],
+        };
+        let syms = Symbols {
+            opcodes: BTreeMap::new(),
+            functions: vec![],
+            variables: vec![],
+            locals: vec![LocalSymbol {
+                var_kind: VarKind::Lbyte,
+                file: "GPLDATA.GFF".to_string(),
+                kind: "GPL ".to_string(),
+                chunk_id: 1,
+                id: 7,
+                name: "loop_counter".to_string(),
+                doc: None,
+            }],
+        };
+        // Decorate against a DIFFERENT chunk: no match, no decoration.
+        syms.apply_to_locals(&mut result, "GPLDATA.GFF", "GPL ", 99);
+        match &result.instructions[0].params[0][0] {
+            Expression::Variable { name, .. } => assert!(name.is_none()),
+            _ => panic!("expected Variable"),
+        }
     }
 }

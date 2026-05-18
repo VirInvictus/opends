@@ -125,6 +125,7 @@ fn main() -> Result<()> {
                 }
                 syms.apply_to_mnemonics(&mut result);
                 syms.apply_to_variables(&mut result);
+                syms.apply_to_locals(&mut result, &file_basename, &kind_str_padded, c.id);
             }
             chunks.push((kind_str_padded, c.id, result));
         }
@@ -191,6 +192,7 @@ fn main() -> Result<()> {
                 }
                 syms.apply_to_mnemonics(&mut result);
                 syms.apply_to_variables(&mut result);
+                syms.apply_to_locals(&mut result, &file_basename, &kind_str_padded, c.id);
             }
             if result.aligned {
                 aligned_count += 1;
@@ -255,6 +257,8 @@ fn main() -> Result<()> {
             syms.apply_to_labels(cfg, &file_basename, &kind_str_padded, id);
         }
         syms.apply_to_mnemonics(&mut result);
+        syms.apply_to_variables(&mut result);
+        syms.apply_to_locals(&mut result, &file_basename, &kind_str_padded, id);
     }
 
     if cli.entries {
@@ -352,7 +356,11 @@ fn load_symbols(
     };
     let syms = Symbols::load_from_dir(&dir)
         .with_context(|| format!("loading symbols from {}", dir.display()))?;
-    if syms.opcodes.is_empty() && syms.functions.is_empty() {
+    if syms.opcodes.is_empty()
+        && syms.functions.is_empty()
+        && syms.variables.is_empty()
+        && syms.locals.is_empty()
+    {
         return Ok(None);
     }
     Ok(Some(syms))

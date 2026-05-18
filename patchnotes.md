@@ -4,6 +4,67 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gpl-disasm/` v0.6.0** is the first ship of the
+  human-friendliness sprint (see
+  [`docs/next-versions.md`](docs/next-versions.md)). Two
+  modder-facing wins, plus the latent variables-bug fix the
+  v0.5.0 ship missed.
+  - **Per-chunk local-variable overlays**. New
+    `syms/locals.toml` schema with per-kind tables (`[[lbyte]]`
+    / `[[lnum]]` / `[[lbignum]]` / `[[lflag]]` / `[[lname]]`
+    / `[[lstring]]`) keyed by `(file, kind, chunk_id, id,
+    name, doc?)`. Decoration renders as `LBYTE[7
+    (loop_counter)]` in text output and as a `name` field on
+    `Expression::Variable` in JSON, exactly mirroring v0.5.0's
+    global pass. Library: `Symbols::local_name` lookup +
+    `Symbols::apply_to_locals(result, file, kind, chunk_id)`
+    walker; the CLI wires it in at every disassembly site
+    (single-chunk, `--all`, `--global-cfg`). v0.6.0 ships
+    `syms/locals.toml` empty by design; the catalogue grows
+    organically per the curation rule in the file's header.
+  - **DSO-symbol importer script** at
+    `tools/gpl-disasm/scripts/import-dso-symbols.py` (stdlib-
+    only Python). Parses `.dso-online/tools/symbols.txt`
+    (3,527 functions + 2,246 globals from the DSO v1.0
+    Crimson Sands client) and emits review-ready proposals:
+    - `--opcodes-proposed`: 100 TOML opcode-byte rename
+      proposals where libgff's mnemonic matches DSO's
+      `Decode*` handler family by PascalCase equivalence.
+      Cherry-pick into `syms/opcodes.toml`; the existing
+      curation rule (don't relax) still applies; v0.6.0
+      itself commits zero rows (the script is the review
+      surface, not the writer).
+    - `--unmatched-decoders`: 15 DSO `Decode*` names with no
+      obvious libgff slot. Most are libgff's `*trigger`
+      family under DSO's `*check` naming (e.g.
+      `DecodeAttackcheck` against libgff's
+      `gpl attacktrigger` at 0x65); `DecodeDefault` is real
+      (libgff's `gpl default` at 0x26 names a real handler,
+      not a placeholder). These are research candidates for
+      a follow-up curation pass.
+    - `--functions-summary` / `--globals-summary`: markdown
+      tables of GPL/GFF-related engine intrinsics suitable
+      for pasting into `docs/dso-symbols.md`'s "Highest-value
+      symbols" tier.
+    The script never writes to `syms/` directly. Per the
+    curation rule, every row commit is hand-reviewed.
+  - **Bug fix (latent from v0.5.0)**: the single-chunk
+    disassembly path (`gpl-disasm --kind GPL --id N`) didn't
+    call `apply_to_variables`, so globals went undecorated
+    even when `variables.toml` had entries. The `--all` and
+    `--global-cfg` paths got it right. Both paths now also
+    call the new `apply_to_locals`.
+  - **Bug fix (latent from v0.5.0)**: the CLI's `load_symbols`
+    early-out only checked `opcodes.is_empty() &&
+    functions.is_empty()`, so a `syms/` dir with *only*
+    variables (or, now, locals) was treated as empty and
+    discarded. The check now covers all four catalogues.
+  - **Tests**: three new lib tests
+    (`symbols_load_locals_from_toml`,
+    `apply_to_locals_decorates_matching_chunk_only`,
+    `apply_to_locals_skips_non_matching_chunk`) plus the
+    existing 600/600 corpus round-trip stays clean.
+
 - **`tools/gpl-asm/` v0.7.0** adds two real authoring
   features on top of v0.6.0's directive infrastructure. Pure
   preprocessor work; the encoder is unchanged, and the

@@ -205,6 +205,20 @@ runs through it.
       both text and JSON output via
       `Symbols::apply_to_mnemonics`. Ships with the catalogue
       empty by design and a documented curation rule.
+- [x] Per-chunk local-variable overlays (gpl-disasm v0.6.0):
+      `syms/locals.toml` with per-kind tables
+      (`[[lbyte]]` / `[[lnum]]` / ...) keyed by `(file, kind,
+      chunk_id, id, name)`. `Symbols::apply_to_locals` walker
+      mirrors the v0.5.0 globals path with chunk context;
+      catalogue ships empty by design.
+- [x] DSO-symbol importer (gpl-disasm v0.6.0):
+      `scripts/import-dso-symbols.py` (stdlib-only) parses
+      `.dso-online/tools/symbols.txt` and emits review-ready
+      proposals: 100 opcode-byte rename candidates by libgff /
+      DSO PascalCase equivalence, plus 15 unmatched DSO
+      `Decode*` handlers (candidates for libgff's
+      `gpl default` rows). Script is the review surface; no
+      automatic commits.
 
 **Done when**: `gpl-disasm extracted/ds1/GPLDATA.GFF` produces
 output that lets a reader locate a quest-script function by
