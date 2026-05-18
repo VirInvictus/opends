@@ -1,3 +1,13 @@
+; ILLUSTRATIVE ONLY — opcode-fuzz v0.3.0 does NOT consume this
+; file. gpl-asm v0.7.0 parses the full text-listing format
+; (per-line `<offset>  <byte>  <mnemonic>  <params>`); the
+; short-form mnemonics below need either a preprocessor in
+; opcode-fuzz or a gpl-asm extension before they can encode.
+; See recipes/README.md for the format-decision status.
+;
+; This file documents the *intent* of the byte-inc recipe so
+; whichever short-form path lands first has a target shape.
+;
 ; opcode-fuzz recipe: increment a sentinel GBYTE
 ;
 ; The simplest possible discovery loop. Pre-state: SENTINEL_GBYTE
