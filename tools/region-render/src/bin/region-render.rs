@@ -75,7 +75,121 @@ struct Cli {
     /// cap or extend the sequence.
     #[arg(long = "frame-count", requires = "animate_entities")]
     frame_count: Option<usize>,
+    /// With --animate-entities: bundle the PNG sequence into a
+    /// single animated GIF via `ffmpeg`. The output path passed
+    /// to `-o` becomes the GIF file (the per-frame PNGs land in
+    /// a sibling `<output>-frames/` directory you can keep or
+    /// delete). Requires `ffmpeg` on `$PATH`.
+    #[arg(long = "gif", requires = "animate_entities")]
+    gif: bool,
+    /// With --gif: target frame rate in frames per second.
+    /// Default: 8 (slow enough to read; fast enough that wallpaper
+    /// flicker tiles look animated).
+    #[arg(long = "gif-fps", requires = "gif", default_value_t = 8)]
+    gif_fps: u32,
 }
+
+/// Bundle the per-frame PNGs in `frames_dir` (with `<stem>-frame-N.png`
+/// naming) into a single animated GIF at `output`. Shells to
+/// ffmpeg; the palette pre-pass step gives noticeably better
+/// colour fidelity on pixel-art than the single-pass default.
+///
+/// ffmpeg is detected lazily; a missing binary is a clear error
+/// message rather than a silent skip (the caller asked for a GIF
+/// explicitly).
+fn assemble_gif(
+    frames_dir: &std::path::Path,
+    stem: &str,
+    output: &std::path::Path,
+    fps: u32,
+) -> Result<()> {
+    let ffmpeg = which::find("ffmpeg")
+        .ok_or_else(|| anyhow!(
+            "--gif requires `ffmpeg` on $PATH. Install via `dnf install ffmpeg`."
+        ))?;
+    let frame_pattern = frames_dir.join(format!("{stem}-frame-%d.png"));
+    // Park the palette in $TMPDIR so ffmpeg's image2 demuxer
+    // doesn't try to read it as part of the frame sequence
+    // (which prints a noisy warning even though the encode
+    // succeeds).
+    let palette_path = std::env::temp_dir().join(format!(
+        "region-render-palette-{}-{}.png",
+        stem,
+        std::process::id(),
+    ));
+
+    // Pre-pass: generate an optimised palette from the frame
+    // sequence. Without this, ffmpeg's single-pass GIF encoder
+    // produces dithered output that looks terrible on pixel art.
+    // Stderr captured (not inherited) so the image2 demuxer's
+    // "filename doesn't match sequence pattern" warning doesn't
+    // clutter the user's output. Surfaced only on encode failure.
+    let pal_out = std::process::Command::new(&ffmpeg)
+        .args(["-y", "-loglevel", "error", "-framerate"])
+        .arg(fps.to_string())
+        .args(["-i"])
+        .arg(&frame_pattern)
+        .args(["-vf", "palettegen=stats_mode=diff"])
+        .arg(&palette_path)
+        .output()
+        .with_context(|| format!("running {}", ffmpeg.display()))?;
+    if !pal_out.status.success() {
+        return Err(anyhow!(
+            "ffmpeg palettegen failed (exit {}): {}",
+            pal_out.status,
+            String::from_utf8_lossy(&pal_out.stderr),
+        ));
+    }
+
+    // Encode the GIF using the generated palette.
+    let enc_out = std::process::Command::new(&ffmpeg)
+        .args(["-y", "-loglevel", "error", "-framerate"])
+        .arg(fps.to_string())
+        .args(["-i"])
+        .arg(&frame_pattern)
+        .args(["-i"])
+        .arg(&palette_path)
+        .args([
+            "-filter_complex",
+            "[0:v][1:v]paletteuse=dither=none",
+        ])
+        .arg(output)
+        .output()
+        .with_context(|| format!("running {}", ffmpeg.display()))?;
+    let status = enc_out.status;
+    if !status.success() {
+        return Err(anyhow!(
+            "ffmpeg paletteuse failed (exit {}): {}",
+            status,
+            String::from_utf8_lossy(&enc_out.stderr),
+        ));
+    }
+    // Tidy up the intermediate palette.
+    let _ = std::fs::remove_file(&palette_path);
+    let size = std::fs::metadata(output).map(|m| m.len()).unwrap_or(0);
+    eprintln!("wrote animated GIF to {} ({} bytes, {fps} fps)",
+        output.display(), size);
+    Ok(())
+}
+
+mod which {
+    use std::path::PathBuf;
+
+    /// Stdlib-only $PATH lookup; mirrors `shutil.which`. Kept in
+    /// a private module so the binary doesn't need a separate
+    /// crate dep for this one function.
+    pub fn find(name: &str) -> Option<PathBuf> {
+        let path = std::env::var_os("PATH")?;
+        for dir in std::env::split_paths(&path) {
+            let candidate = dir.join(name);
+            if candidate.is_file() {
+                return Some(candidate);
+            }
+        }
+        None
+    }
+}
+
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -124,15 +238,32 @@ fn main() -> Result<()> {
         if n_frames == 0 {
             return Err(anyhow!("--frame-count must be at least 1"));
         }
-        std::fs::create_dir_all(&cli.output)
-            .with_context(|| format!("creating output dir {}", cli.output.display()))?;
+        // GIF mode: output path is the .gif file; PNG frames
+        // land in a sibling `<gif-path>-frames/` directory so
+        // the user can keep or delete them. Non-GIF mode keeps
+        // the v0.6.0 behaviour where -o is the PNG directory.
+        let frames_dir = if cli.gif {
+            let mut d = cli.output.clone();
+            let stem = d
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("region")
+                .to_string();
+            let parent = d.parent().map(|p| p.to_path_buf()).unwrap_or_default();
+            d = parent.join(format!("{stem}-frames"));
+            d
+        } else {
+            cli.output.clone()
+        };
+        std::fs::create_dir_all(&frames_dir)
+            .with_context(|| format!("creating frames dir {}", frames_dir.display()))?;
         let stem = cli
             .file
             .file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("region");
         for frame_idx in 0..n_frames {
-            let frame_path = cli.output.join(format!("{stem}-frame-{frame_idx}.png"));
+            let frame_path = frames_dir.join(format!("{stem}-frame-{frame_idx}.png"));
             region
                 .write_png_frame(&frame_path, frame_idx)
                 .with_context(|| format!("writing frame {} to {}", frame_idx, frame_path.display()))?;
@@ -142,7 +273,7 @@ fn main() -> Result<()> {
             region_render::REGION_PIXEL_WIDTH,
             region_render::REGION_PIXEL_HEIGHT,
             if region.used_map_kind { "MAP " } else { "RMAP" },
-            cli.output.display(),
+            frames_dir.display(),
         );
         eprintln!(
             "  entities: {} ETAB records; {} animated sprite ids loaded; \
@@ -153,6 +284,9 @@ fn main() -> Result<()> {
             region.missing_entity_ids.len(),
             region.entity_decode_failures.len(),
         );
+        if cli.gif {
+            assemble_gif(&frames_dir, stem, &cli.output, cli.gif_fps)?;
+        }
         return Ok(());
     }
 

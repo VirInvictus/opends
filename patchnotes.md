@@ -4,6 +4,43 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/region-render/` v0.7.0** ships **animated GIF
+  output**. Closes the B-tier sprint. `--animate-entities`
+  already emits a numbered PNG sequence (v0.6.0); v0.7.0 adds
+  `--gif` to bundle that sequence into a single shareable GIF
+  via `ffmpeg`.
+
+  ```sh
+  region-render RGN02.GFF --palette-preset ds1-pink \
+      --animate-entities --frame-count 8 \
+      --gif --gif-fps 8 -o rgn02.gif
+  # wrote rgn02.gif (1438763 bytes, 8 fps); frames stay in
+  # rgn02-frames/ alongside
+  ```
+
+  Two-pass ffmpeg pipeline (palettegen + paletteuse with
+  `dither=none`) so pixel-art colour fidelity stays clean.
+  Default 8 fps; `--gif-fps N` overrides. Palette intermediate
+  parks in `$TMPDIR` and is cleaned up after encode. Stderr
+  from ffmpeg captured (surfaced only on encode failure) so the
+  image2 demuxer's harmless sequence-pattern warning doesn't
+  clutter the output.
+
+  Per-frame PNGs land in a sibling `<output-stem>-frames/`
+  directory so the user can keep them around (for sprite
+  editing) or delete after.
+
+  Text annotations (`--annotate` entity-name overlays + region-
+  id labels) skipped from v0.7.0 — no in-tree Rust font
+  available without a new dep. Land in v0.7.1 once we pick
+  between embedding a bitmap font const, a small font crate, or
+  the SVG-sidecar route.
+
+  ffmpeg detected via a stdlib-only `$PATH` lookup (no `which`
+  crate dep; reused the umbrella `opends` crate's pattern).
+  Missing ffmpeg surfaces as a clear error message pointing
+  to the install command.
+
 - **`tools/gpl-asm/` v0.8.0** ships **declarative patch-script
   mode** (`gpl-asm --patch fix.patch chunk.bin -o new.bin`).
   B-tier item; the authoring surface darkfix patches will use

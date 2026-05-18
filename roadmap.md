@@ -445,6 +445,17 @@ the friction is felt.
       `CPAL:200` (engine-default). What's still open: tracing
       the caller to find the region-number-to-family-id map.
       Write-up at `docs/dsun-exe-re.md`.
+- [x] **Animated GIF output** (region-render v0.7.0): new
+      `--gif` flag bundles the `--animate-entities` PNG
+      sequence into a single shareable GIF via a two-pass
+      ffmpeg pipeline (palettegen + paletteuse with
+      `dither=none` for clean pixel-art colour fidelity).
+      Default 8 fps; `--gif-fps N` overrides. Frames stay in
+      a sibling `<stem>-frames/` directory for editing reuse.
+      ffmpeg detected via stdlib-only `$PATH` lookup; missing
+      dep gets a clear error. Text annotations
+      (`--annotate` entity-name overlays) deferred to v0.7.1
+      (no in-tree Rust font without a new dep).
 - [x] Tagged: `region-render-v0.1.0`. (this release)
 
 **Done when**: dialog-extract, save-inspect, image-extract, and
