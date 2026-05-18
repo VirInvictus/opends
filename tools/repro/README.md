@@ -1,12 +1,106 @@
 # repro
 
-DOSBox-Staging repro harness for OpenDS. v0.3.0.
+DOSBox-Staging repro harness for OpenDS. v0.4.0.
 
 Drives a per-bug fixture under `bugs/<id>/` against a working
 DOS install, validates pass/fail by elapsed time and scratch-dir
 artifacts, and never writes to the game install. The "any bug
 reproducible in five minutes" plumbing from
 [`roadmap.md`](../../roadmap.md) Phase 2.
+
+## What v0.4.0 adds
+
+**Scheduled keystrokes (ydotool) + video capture (ffmpeg).**
+A bug fixture can now drive the game with a scripted input
+schedule and capture the full run as MP4. The dependent half of
+`opcode-fuzz v0.3.0`'s automated discovery loop and the
+deterministic-execution piece for any "click through this menu,
+then trigger the bug" fixture.
+
+### Scheduled keystrokes
+
+Add a `[[trigger.keystrokes]]` array to `bug.toml`:
+
+```toml
+[[trigger.keystrokes]]
+at_seconds = 8
+send = "Return"            # KEY_ENTER
+
+[[trigger.keystrokes]]
+at_seconds = 12
+send = "type:dsun"         # type a string
+
+[[trigger.keystrokes]]
+at_seconds = 15
+send = "16:1 16:0"          # raw KEY_Q press + release
+```
+
+`send` accepts:
+
+- Friendly aliases: `Return` / `Enter`, `space`, `Escape` /
+  `Esc`, `Tab`.
+- `type:<string>` for arbitrary typed input.
+- Raw `<code>:<state> <code>:<state> ...` pairs (Linux input
+  event codes from `linux/input-event-codes.h`; `1` = press,
+  `0` = release).
+
+The scheduler runs as a daemon thread; keystrokes that miss
+their window log to `<scratch>/automation.log` but never abort
+the run.
+
+### Video capture
+
+Set `record_video = true` in `[expected]`:
+
+```toml
+[expected]
+timeout_seconds = 30
+record_video = true
+```
+
+`ffmpeg -f x11grab` captures `$DISPLAY` to
+`<scratch>/repro.mp4` (libx264, 24fps, mute, `veryfast`
+preset). GNOME-Wayland users get capture via DOSBox-Staging's
+XWayland surface automatically; no Wayland-native screencast
+portal needed.
+
+### One-time setup (Fedora)
+
+```sh
+# ydotool: virtual-input daemon for the Wayland-friendly
+# keystroke path. Brandon-approved dep (2026-05-17).
+sudo dnf install ydotool
+# Run ydotoold as a user systemd unit (ydotool 1.x ships
+# this; if your build doesn't, run `sudo ydotoold &`).
+systemctl --user enable --now ydotoold
+
+# ffmpeg is already in the toolchain.
+sudo dnf install ffmpeg
+```
+
+After the first install you may need to log out + back in for
+group / udev rules to take effect.
+
+The harness detects both binaries via `$PATH`:
+
+- If `ydotool` is missing or `ydotoold` isn't running,
+  keystrokes are skipped with a warning line in
+  `automation.log`.
+- If `ffmpeg` is missing, video capture is skipped (warning).
+
+The bug run still completes either way; missing automation is
+a degraded-mode signal, not a hard fail.
+
+### Output artefacts
+
+In addition to `dosbox.log`, v0.4.0 adds:
+
+- `automation.log` — per-keystroke timestamps and the
+  recorder's lifecycle messages.
+- `repro.mp4` — captured video (only when
+  `record_video = true` and ffmpeg succeeded).
+
+---
 
 ## What v0.3.0 adds
 

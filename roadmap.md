@@ -135,11 +135,17 @@ save library, recording wrapper.
       plus `--list-sessions` and `--reset-session`. Real
       bug-triggering save curation continues alongside input
       automation in v0.3.x / v0.4.0+.)
-- [ ] Recording wrapper: one command, one bug ID → DOSBox
-      launches at the right save, records video to
-      `scratch/<bug-id>/repro.mp4`. Queued for v0.3.0
-      (paired with input automation; both touch the same
-      "non-interactive bug repros" problem).
+- [x] Recording wrapper + input automation (repro v0.4.0):
+      `[expected].record_video = true` enables `ffmpeg -f
+      x11grab` capture to `<scratch>/repro.mp4` (libx264,
+      24fps, mute; XWayland surface is visible so GNOME-
+      Wayland works without a portal). `[[trigger.keystrokes]]`
+      schedule fires `ydotool key`/`type` at scheduled
+      offsets from a daemon thread. Both gracefully degrade
+      when the dep is missing (log warning, skip automation,
+      run still completes). README documents the one-time
+      Fedora setup. v0.4.0 unblocks the deterministic-
+      execution half of `opcode-fuzz v0.3.0`.
 - [ ] Differential capture: run-with-patch and run-without-patch
       side-by-side helper. (v0.4.0+.)
 

@@ -4,6 +4,62 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/repro/` v0.4.0** ships **scheduled keystrokes**
+  (ydotool) and **video capture** (ffmpeg). Item #8 of the
+  human-friendliness sprint; the deferred S9 from yesterday's
+  plan with Brandon's deps approved 2026-05-17. Unblocks the
+  deterministic-execution half of `opcode-fuzz v0.3.0`'s
+  automated discovery loop and any future "click through this
+  menu, then trigger the bug" fixture.
+  - **`[[trigger.keystrokes]]` schema** in `bug.toml`:
+
+    ```toml
+    [[trigger.keystrokes]]
+    at_seconds = 8
+    send = "Return"            # KEY_ENTER
+
+    [[trigger.keystrokes]]
+    at_seconds = 12
+    send = "type:dsun"         # type a string
+
+    [[trigger.keystrokes]]
+    at_seconds = 15
+    send = "16:1 16:0"          # raw scancode pairs
+    ```
+
+    Friendly aliases for `Return` / `Enter` / `space` /
+    `Escape` / `Esc` / `Tab`; `type:<string>` for arbitrary
+    typed input; raw `<code>:<state> <code>:<state>` pairs
+    for arbitrary scancodes. The scheduler runs as a daemon
+    thread; keystrokes that miss their window log to
+    `<scratch>/automation.log` but never abort the run.
+  - **`[expected].record_video`** flag enables `ffmpeg -f
+    x11grab` capture to `<scratch>/repro.mp4`. Picks up
+    `$DISPLAY` automatically; XWayland surfaces (which
+    DOSBox-Staging produces by default on GNOME-Wayland) are
+    visible to x11grab, so no Wayland-native screencast
+    portal is needed. Encoded as libx264 yuv420p 24fps mute
+    with the `veryfast` preset. ffmpeg gets `SIGINT` at
+    DOSBox-exit so the MP4 finalises cleanly.
+  - **Graceful degradation**. The harness probes `ydotool`
+    and `ffmpeg` on `$PATH`. Missing dependency logs a
+    warning to `automation.log` and skips that automation
+    surface; the bug run still completes. Modders without
+    ydotool installed still get the v0.3.0 functionality.
+  - **`automation.log`** captures every keystroke's
+    `+<elapsed>s <args> -> <result>` line and the recorder's
+    lifecycle. Useful for debugging timing issues
+    independently of `dosbox.log`.
+  - **`BugFixture.keystrokes` + `BugFixture.record_video`**
+    dataclass fields default to `[]` and `False`
+    respectively, so existing fixtures (`ds1-smoke`,
+    `ds2-smoke`) keep their v0.3.0 behaviour without
+    modification.
+  - **README walkthrough** for the one-time `dnf install
+    ydotool` + `systemctl --user enable --now ydotoold`
+    setup. Notes that group / udev rules may require a
+    logout + back-in to take effect.
+
 - **`tools/atlas/` v0.1.1** fixes DS1 region rendering. v0.1.0
   inherited `region-render`'s default `--palette-preset
   ds1-rust` (CPAL:200), which flattens every DS1 region into

@@ -18,9 +18,10 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 
@@ -71,6 +72,13 @@ class BugFixture:
     require_files: list[str]
     forbid_files: list[str]
     bug_dir: Path
+    # v0.4.0: optional keystroke schedule and video capture.
+    # Each entry is `{at_seconds: float, send: str}` where `send`
+    # is a ydotool key name (e.g. "Return", "space", "Escape") or
+    # a typed string prefixed with `"type:"` (e.g. "type:dsun").
+    keystrokes: list[dict] = field(default_factory=list)
+    # When true, ffmpeg captures the DOSBox window for the run.
+    record_video: bool = False
 
     @classmethod
     def load(cls, bug_dir: Path) -> "BugFixture":
@@ -96,6 +104,8 @@ class BugFixture:
                 require_files=list(data["expected"].get("require_files", []) or []),
                 forbid_files=list(data["expected"].get("forbid_files", []) or []),
                 bug_dir=bug_dir,
+                keystrokes=list(data.get("trigger", {}).get("keystrokes", []) or []),
+                record_video=bool(data.get("expected", {}).get("record_video", False)),
             )
         except KeyError as e:
             raise SystemExit(
@@ -224,10 +234,193 @@ def stage_setup_files(fixture: BugFixture, overlay_dir: Path) -> None:
         shutil.copy2(src, dst)
 
 
+# ---------- v0.4.0: keystroke scheduler + video recorder ----------
+
+
+def ydotool_available() -> str | None:
+    """Return the ydotool binary path if it's usable, else None.
+
+    Probes both the binary and the daemon socket. ydotool needs
+    `ydotoold` running with uinput access; if the socket is
+    missing we still surface the binary so the warning has
+    enough context to direct the user to README setup.
+    """
+    return shutil.which("ydotool")
+
+
+def ffmpeg_available() -> str | None:
+    return shutil.which("ffmpeg")
+
+
+class KeystrokeScheduler(threading.Thread):
+    """Background thread that fires `ydotool key <X>` (or `type
+    <S>`) at each scheduled offset after `start_time`.
+
+    Each schedule entry is one of:
+
+        {at_seconds: float, send: "Return"}           # key press
+        {at_seconds: float, send: "type:dsun.exe"}    # type string
+
+    The thread exits when `stop_event` is set OR every entry has
+    fired. Per-keystroke errors print to stderr but don't abort
+    the run; an in-flight keystroke that misses its window is
+    less bad than a crashed test harness.
+
+    ydotool key syntax is the Linux input event name (the
+    `KEY_*` constants from `linux/input-event-codes.h`); the
+    Wayland-side daemon translates those to virtual events.
+    Common names: `KEY_ENTER`, `KEY_SPACE`, `KEY_ESC`, `KEY_A`.
+    For modder convenience we accept the friendlier aliases
+    `Return`, `Enter`, `space`, `Escape`, `Esc` and the bare
+    letter / digit forms (`a`, `1`).
+    """
+
+    KEY_ALIASES = {
+        "return": "29:1 29:0",      # KEY_ENTER press + release
+        "enter": "29:1 29:0",
+        "space": "57:1 57:0",
+        "esc": "1:1 1:0",
+        "escape": "1:1 1:0",
+        "tab": "15:1 15:0",
+    }
+
+    def __init__(
+        self,
+        ydotool_bin: str,
+        schedule: list[dict],
+        start_time: float,
+        stop_event: threading.Event,
+        log_lines: list[str],
+    ) -> None:
+        super().__init__(daemon=True, name="ydotool-scheduler")
+        self.ydotool_bin = ydotool_bin
+        self.schedule = sorted(schedule, key=lambda e: float(e["at_seconds"]))
+        self.start_time = start_time
+        self.stop_event = stop_event
+        self.log_lines = log_lines
+
+    def run(self) -> None:
+        for entry in self.schedule:
+            at = float(entry["at_seconds"])
+            sleep_for = at - (time.monotonic() - self.start_time)
+            if sleep_for > 0:
+                if self.stop_event.wait(timeout=sleep_for):
+                    return
+            if self.stop_event.is_set():
+                return
+            send = str(entry["send"])
+            try:
+                if send.startswith("type:"):
+                    self._fire(["type", "--", send[len("type:"):]])
+                else:
+                    key = send.strip().lower()
+                    if key in self.KEY_ALIASES:
+                        # ydotool's `key` subcommand wants `code:state`
+                        # pairs; pass them as a single shell arg.
+                        self._fire(["key"] + self.KEY_ALIASES[key].split())
+                    else:
+                        # Caller passed a raw `code:state` string;
+                        # forward verbatim. Lets power users send
+                        # arbitrary scancodes without us mapping
+                        # every KEY_* name.
+                        self._fire(["key", send])
+            except Exception as e:
+                self.log_lines.append(
+                    f"ydotool error at +{at:.2f}s for {send!r}: {e}"
+                )
+
+    def _fire(self, args: list[str]) -> None:
+        res = subprocess.run(
+            [self.ydotool_bin] + args,
+            capture_output=True, text=True,
+        )
+        elapsed = time.monotonic() - self.start_time
+        if res.returncode != 0:
+            self.log_lines.append(
+                f"ydotool +{elapsed:.2f}s {' '.join(args)} -> "
+                f"rc={res.returncode} stderr={res.stderr.strip()!r}"
+            )
+        else:
+            self.log_lines.append(
+                f"ydotool +{elapsed:.2f}s {' '.join(args)} -> ok"
+            )
+
+
+class VideoRecorder:
+    """ffmpeg-x11grab wrapper for the run.
+
+    Picks up `$DISPLAY` and grabs the whole virtual screen for
+    the duration. XWayland surfaces (DOSBox-Staging's SDL2 uses
+    XWayland by default on GNOME-Wayland) are visible to
+    x11grab so this works on both X11 and XWayland setups
+    without a Wayland-specific path. The output file is
+    `<scratch>/repro.mp4` (libx264, mute, 24fps).
+
+    If the user has explicit GNOME-Wayland-only needs (no
+    XWayland), this falls back gracefully: ffmpeg errors land
+    in the log and the run continues without video.
+    """
+
+    def __init__(self, ffmpeg_bin: str, output_path: Path, log_lines: list[str]) -> None:
+        self.ffmpeg_bin = ffmpeg_bin
+        self.output_path = output_path
+        self.log_lines = log_lines
+        self.proc: subprocess.Popen | None = None
+
+    def start(self) -> None:
+        display = os.environ.get("DISPLAY", ":0")
+        cmd = [
+            self.ffmpeg_bin,
+            "-y",
+            "-loglevel", "warning",
+            "-f", "x11grab",
+            "-framerate", "24",
+            "-i", display,
+            "-c:v", "libx264",
+            "-pix_fmt", "yuv420p",
+            "-preset", "veryfast",
+            "-an",
+            str(self.output_path),
+        ]
+        try:
+            self.proc = subprocess.Popen(
+                cmd,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+            )
+            self.log_lines.append(
+                f"ffmpeg started (pid {self.proc.pid}) -> {self.output_path}"
+            )
+        except FileNotFoundError as e:
+            self.log_lines.append(f"ffmpeg not launchable: {e}")
+            self.proc = None
+
+    def stop(self) -> None:
+        if self.proc is None:
+            return
+        # ffmpeg wants `q` on stdin or SIGINT to flush cleanly.
+        # SIGTERM (signal.SIGTERM) leaves the mp4 unfinalised in
+        # most cases; SIGINT mirrors a Ctrl-C and produces a
+        # playable file.
+        try:
+            self.proc.send_signal(signal.SIGINT)
+            self.proc.wait(timeout=5.0)
+        except subprocess.TimeoutExpired:
+            self.proc.kill()
+            self.proc.wait()
+        rc = self.proc.returncode
+        size = self.output_path.stat().st_size if self.output_path.exists() else 0
+        self.log_lines.append(f"ffmpeg stopped (rc={rc}, output size={size} bytes)")
+
+
 def run_dosbox(
     cmd: list[str],
     timeout_seconds: float | None,
     log_path: Path,
+    keystrokes: list[dict] | None = None,
+    video_path: Path | None = None,
+    automation_log_path: Path | None = None,
 ) -> tuple[int, float, bool]:
     """Launch DOSBox and (optionally) enforce a wall-clock budget.
 
@@ -240,10 +433,50 @@ def run_dosbox(
     DOSBox's own stderr (CONFIG / SDL / MOUNT / MAPPER / RENDER /
     CAPTURE log lines) is captured to `log_path`; on failure that
     file is the first thing to look at for diagnosis.
+
+    v0.4.0 optionally drives `ydotool` for scheduled keystrokes
+    (`keystrokes`) and `ffmpeg -f x11grab` for video capture
+    (`video_path`). Both are no-ops when the dependency is
+    missing or `keystrokes`/`video_path` is None. The automation
+    log lands at `automation_log_path` (one line per fired
+    keystroke + recorder lifecycle messages).
     """
+    automation_lines: list[str] = []
+    ydotool_bin: str | None = None
+    if keystrokes:
+        ydotool_bin = ydotool_available()
+        if ydotool_bin is None:
+            automation_lines.append(
+                "WARN ydotool not found; keystrokes skipped. "
+                "Install via `dnf install ydotool` and start "
+                "ydotoold (see tools/repro/README.md)."
+            )
+    ffmpeg_bin: str | None = None
+    recorder: VideoRecorder | None = None
+    if video_path is not None:
+        ffmpeg_bin = ffmpeg_available()
+        if ffmpeg_bin is None:
+            automation_lines.append(
+                "WARN ffmpeg not found; video capture skipped."
+            )
+
     start = time.monotonic()
     with log_path.open("wb") as log_file:
         proc = subprocess.Popen(cmd, stdout=log_file, stderr=subprocess.STDOUT)
+        # Give DOSBox a moment to create its window before either
+        # ffmpeg grabs the screen or ydotool fires keystrokes.
+        time.sleep(1.0)
+        stop_event = threading.Event()
+        scheduler: KeystrokeScheduler | None = None
+        if ydotool_bin and keystrokes:
+            scheduler = KeystrokeScheduler(
+                ydotool_bin, keystrokes, start, stop_event, automation_lines
+            )
+            scheduler.start()
+        if ffmpeg_bin and video_path is not None:
+            recorder = VideoRecorder(ffmpeg_bin, video_path, automation_lines)
+            recorder.start()
+
         timed_out = False
         try:
             if timeout_seconds is None:
@@ -258,7 +491,19 @@ def run_dosbox(
             except subprocess.TimeoutExpired:
                 proc.kill()
                 proc.wait()
+        finally:
+            stop_event.set()
+            if recorder is not None:
+                recorder.stop()
+            if scheduler is not None:
+                scheduler.join(timeout=2.0)
     elapsed = time.monotonic() - start
+
+    if automation_log_path is not None and automation_lines:
+        automation_log_path.write_text(
+            "\n".join(automation_lines) + "\n", encoding="utf-8"
+        )
+
     return proc.returncode, elapsed, timed_out
 
 
@@ -591,7 +836,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.play:
             print(f"playing {fixture.id} (interactive; no time budget)...")
             exit_code, elapsed, timed_out = run_dosbox(
-                cmdline, None, dosbox_log
+                cmdline,
+                None,
+                dosbox_log,
+                keystrokes=fixture.keystrokes or None,
+                video_path=(scratch_dir / "repro.mp4") if fixture.record_video else None,
+                automation_log_path=scratch_dir / "automation.log",
             )
             print(
                 f"DOSBox closed after {elapsed:.2f}s "
@@ -609,7 +859,12 @@ def main(argv: list[str] | None = None) -> int:
             return EXIT_PASS
         print(f"running {fixture.id}...")
         exit_code, elapsed, timed_out = run_dosbox(
-            cmdline, fixture.timeout_seconds, dosbox_log
+            cmdline,
+            fixture.timeout_seconds,
+            dosbox_log,
+            keystrokes=fixture.keystrokes or None,
+            video_path=(scratch_dir / "repro.mp4") if fixture.record_video else None,
+            automation_log_path=scratch_dir / "automation.log",
         )
         if timed_out:
             end_marker = "SIGTERM after timeout (game was still running)"
