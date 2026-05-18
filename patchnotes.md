@@ -4,6 +4,25 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/region-render/` v0.7.1** fixes entity-sprite vertical
+  orientation. Brandon caught it visually on both DS1 outdoor
+  RGN02 and DS2 dungeon RGN033: NPCs and creatures rendered
+  upside-down while tiles, walls, and furniture stayed correct.
+  - **Root cause**: `image-extract`'s `decode_frame` produces
+    sprites with the orientation that's right for ICON / WALL /
+    TILE chunks (libgff's `create_ds1_rgba` flip is correct for
+    those), but entity sprites in BOTH SEGOBJEX (DS1) and OBJEX
+    (DS2) need the inverse orientation.
+  - **Fix**: new `WallSprite::flip_vertical()` helper; applied
+    once at each entity-load site (non-animated + animated
+    paths). Walls and tiles unchanged.
+  - Verified by direct ASCII-dump comparison of one SEGOBJEX
+    entity decoded both ways (`head at top` only matches when
+    the libgff flip is undone for entity sprites).
+  - All 6 lib tests + corpus tests still pass.
+  - Atlas rebuild on the corpus succeeds (DS1 33 regions, DS2
+    20 regions); ready for Brandon to eyeball.
+
 - **`tools/region-render/` v0.7.0** ships **animated GIF
   output**. Closes the B-tier sprint. `--animate-entities`
   already emits a numbered PNG sequence (v0.6.0); v0.7.0 adds

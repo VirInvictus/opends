@@ -187,6 +187,35 @@ struct WallSprite {
     y_offset: i16,
 }
 
+impl WallSprite {
+    /// Flip the pixel rows top-to-bottom in place.
+    ///
+    /// Used for entity sprites only. The libgff/image-extract
+    /// pipeline produces ICON / WALL / TILE chunks correctly
+    /// oriented (the libgff `create_ds1_rgba` flip is right for
+    /// DS1_RLE, and PLNR / PLAN's no-flip is right for tiles),
+    /// but entity sprites in BOTH SEGOBJEX (DS1) and OBJEX (DS2)
+    /// come out vertically inverted relative to how the engine
+    /// renders them. One extra row flip at load time fixes them
+    /// without disturbing the other consumers of image-extract.
+    /// Verified by Brandon against the in-game rendering of DS1
+    /// outdoor + DS2 dungeon regions.
+    fn flip_vertical(&mut self) {
+        let w = self.width as usize;
+        let h = self.height as usize;
+        for y in 0..h / 2 {
+            let top_start = y * w;
+            let bot_start = (h - 1 - y) * w;
+            // Two non-overlapping rows; safe to swap via a
+            // temporary buffer.
+            let mut tmp = vec![0u8; w];
+            tmp.copy_from_slice(&self.pixels[top_start..top_start + w]);
+            self.pixels.copy_within(bot_start..bot_start + w, top_start);
+            self.pixels[bot_start..bot_start + w].copy_from_slice(&tmp);
+        }
+    }
+}
+
 /// Reason a `TILE` chunk couldn't be turned into a 16x16 tile.
 #[derive(Debug, Clone)]
 pub struct TileDecodeFailure {
@@ -354,6 +383,11 @@ impl RegionMap {
                     // expand WallSprite to carry offsets too.
                     sprite.x_offset = x_off;
                     sprite.y_offset = y_off;
+                    // Entity sprites in SEGOBJEX (DS1) and
+                    // OBJEX (DS2) come out vertically inverted
+                    // relative to in-game rendering; flip them
+                    // here. Walls / tiles / ICON are unaffected.
+                    sprite.flip_vertical();
                     self.entity_sprites.insert(ojff_id, sprite);
                 }
                 Err(mut failure) => {
@@ -427,7 +461,12 @@ impl RegionMap {
             };
             let bmp_bytes = entities_gff.read_chunk(bmp_chunk);
             match decode_all_wall_frames(ojff_id, bmp_bytes, x_off, y_off) {
-                Ok(frames) if !frames.is_empty() => {
+                Ok(mut frames) if !frames.is_empty() => {
+                    // Flip each animation frame, matching the
+                    // non-animated entity path above.
+                    for f in frames.iter_mut() {
+                        f.flip_vertical();
+                    }
                     self.entity_sprite_frames.insert(ojff_id, frames);
                 }
                 Ok(_) => {
