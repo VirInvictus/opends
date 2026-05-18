@@ -200,6 +200,17 @@ enum Cmd {
         #[arg(long)]
         list: bool,
     },
+    /// Per-chunk describer: kind purpose + size + chunk-specific
+    /// facts (bitmap dimensions, text preview, etc.). Combines
+    /// what a user would otherwise get by running `kind` +
+    /// `info` + `extract` separately.
+    What {
+        file: PathBuf,
+        /// 3- or 4-character chunk kind (e.g. `BMP`, `GPL`,
+        /// `TEXT`).
+        kind: String,
+        id: i32,
+    },
 }
 
 fn main() -> Result<()> {
@@ -225,6 +236,7 @@ fn main() -> Result<()> {
         Cmd::DumpText { file, output } => cmd_dump_text(file, output),
         Cmd::PackText { file, dir, output } => cmd_pack_text(file, dir, output),
         Cmd::Kind { fourcc, list } => cmd_kind(fourcc, list),
+        Cmd::What { file, kind, id } => cmd_what(file, kind, id),
     }
 }
 
@@ -479,6 +491,88 @@ fn cmd_pack_text(file: PathBuf, dir: PathBuf, output: PathBuf) -> Result<()> {
     );
     Ok(())
 }
+
+fn cmd_what(file: PathBuf, kind: String, id: i32) -> Result<()> {
+    let gff = Gff::open(&file)
+        .with_context(|| format!("opening {}", file.display()))?;
+    let fc = parse_kind_padded(&kind)?;
+    let bytes = gff
+        .read(fc, id)
+        .ok_or_else(|| anyhow!("no chunk '{}' id={} in {}", fc, id, file.display()))?;
+    let kind_desc = kind_description(fc).unwrap_or("(no catalogue entry)");
+    println!("{fc} id={id}  ({len} bytes)", len = bytes.len());
+    println!("  purpose: {kind_desc}");
+    // Per-kind chunk-specific facts. Best-effort: surface
+    // whatever the chunk's header makes cheaply available without
+    // calling the per-tool decoders. This is the entry point a
+    // modder uses to decide whether to invoke image-extract,
+    // gpl-disasm, save-inspect, etc.
+    let fc_bytes = fc.as_bytes();
+    match fc_bytes {
+        b"BMP " | b"PORT" | b"ICON" | b"BMAP" | b"OMAP" | b"TILE" => {
+            // Bitmap header: u32 chunk_size + u16 frame_count +
+            // u32 × frame_count frame_offsets + per-frame u16 w +
+            // u16 h. Reads via the documented offsets without
+            // pulling image-extract as a dep.
+            if bytes.len() >= 6 {
+                let frame_count = u16::from_le_bytes([bytes[4], bytes[5]]);
+                println!("  bitmap: {frame_count} frame(s)");
+                let table_end = 6 + 4 * frame_count as usize;
+                if frame_count >= 1 && bytes.len() >= table_end + 4 {
+                    let off = u32::from_le_bytes([
+                        bytes[6], bytes[7], bytes[8], bytes[9],
+                    ]) as usize;
+                    if off + 4 <= bytes.len() {
+                        let w = u16::from_le_bytes([bytes[off], bytes[off + 1]]);
+                        let h = u16::from_le_bytes([bytes[off + 2], bytes[off + 3]]);
+                        println!("  frame 0 size: {w} x {h}");
+                    }
+                }
+            }
+            println!("  next step: `image-extract {} --kind {} --id {} -o sprite.png`",
+                     file.display(), kind.trim_end(), id);
+        }
+        b"PAL " | b"CPAL" => {
+            println!("  palette: 256 entries (768 bytes 6-bit RGB)");
+            println!("  next step: pass via `--palette {}:{kind}:{id}` to image-extract / region-render",
+                     file.display());
+        }
+        b"GPL " | b"MAS " => {
+            println!("  GPL bytecode chunk");
+            println!("  next step: `gpl-disasm {} --kind {} --id {}`",
+                     file.display(), kind.trim_end(), id);
+        }
+        b"TEXT" | b"ETME" | b"MERR" | b"NAME" | b"SPIN" => {
+            // Plain DOS text (CRLF). Show the first ~80 chars,
+            // CRLF normalised, as a preview.
+            let preview_end = bytes.len().min(160);
+            let preview = String::from_utf8_lossy(&bytes[..preview_end])
+                .replace("\r\n", "  ")
+                .replace('\n', "  ");
+            let truncated = preview.len() > 80;
+            let head: String = preview.chars().take(80).collect();
+            println!("  text preview: {head:?}{}", if truncated { " ..." } else { "" });
+            println!("  next step: `gff-cat dump-text {} -o text-dir/`",
+                     file.display());
+        }
+        b"CHAR" | b"SAVE" | b"STXT" | b"PSIN" | b"PSST" | b"SPST" | b"CACT" | b"PREF" | b"GREQ" | b"ETAB" => {
+            println!("  save-game record");
+            println!("  next step: `python3 tools/save-inspect/save-inspect.py {}`",
+                     file.display());
+        }
+        b"RMAP" | b"GMAP" => {
+            println!("  region tile / passability map");
+            println!("  next step: `region-render {} -o region.png`",
+                     file.display());
+        }
+        _ => {
+            // No tool dispatch hint; the user is on their own.
+            // The kind description above is the best signpost.
+        }
+    }
+    Ok(())
+}
+
 
 fn cmd_kind(fourcc: Option<String>, list: bool) -> Result<()> {
     if list {

@@ -4,6 +4,42 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gff-edit/` v0.6.0** ships **`gff-cat what <kind>
+  <id>`**: per-chunk describer that combines the kind purpose
+  (from KIND_CATALOGUE), chunk size, chunk-specific facts
+  (bitmap dimensions, text preview), and a next-step pointer to
+  the right tool. The "I have this chunk, what do I do with it?"
+  answer in one command.
+
+  ```
+  $ gff-cat what RESOURCE.GFF BMP 3007
+  BMP  id=3007  (9998 bytes)
+    purpose: Bitmap, one or more frames.
+    bitmap: 1 frame(s)
+    frame 0 size: 320 x 200
+    next step: `image-extract RESOURCE.GFF --kind BMP --id 3007 -o sprite.png`
+  ```
+
+  Dispatch by FOURCC family: bitmap kinds point at
+  `image-extract`; `GPL `/`MAS ` at `gpl-disasm`;
+  `TEXT`/`ETME`/`MERR`/`NAME`/`SPIN` show a text preview and
+  point at `gff-cat dump-text`; save-record kinds
+  (`CHAR`/`SAVE`/`STXT`/`PSIN`/`PSST`/`SPST`/`CACT`/`PREF`/
+  `GREQ`/`ETAB`) point at `save-inspect`; `RMAP`/`GMAP` point
+  at `region-render`. Kinds without a tool match still get the
+  KIND_CATALOGUE purpose line.
+
+  Pure-Rust facts only (no pulling tool-specific decoders as
+  deps); the previews are best-effort from the chunk's header
+  bytes.
+
+  **Segmented-type GffBuilder** (deferred from v0.5.0) stays
+  deferred to v0.6.1+. The use case (modders building GFFs from
+  scratch with segmented chunks) is rare; sprite mods and save
+  edits all work on existing GFFs which the v0.3.0 replace
+  path covers. Promoting the segmented build only when a
+  consumer needs it.
+
 - **`tools/verify-install/` v0.3.0** ships **`--rollback`** and
   **`--summary`**. First of the B-tier ships from the human-
   friendliness sprint plan; small but useful both ways.

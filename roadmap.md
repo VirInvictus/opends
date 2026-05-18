@@ -110,7 +110,11 @@ library plus `gff-cat` binary. Tagged release:
       pending v0.6.0). Tagged: `gff-edit-v0.5.0`.
 - [ ] Segmented-type build (the secondary-table + `GFFI`
       cross-reference dance) so the builder covers the full GFF
-      feature set. Targeted for `gff-edit-v0.6.0`.
+      feature set. Originally targeted for `gff-edit-v0.6.0`;
+      deferred to v0.6.1+ once a downstream consumer needs it.
+      v0.6.0 instead landed `gff-cat what` (per-chunk describer
+      with tool-dispatch hints) as the higher-value
+      human-friendliness piece.
 
 **Done when**: every GFF under `.games/ds1/` and `.games/ds2/`
 opens, lists, and round-trips cleanly through the Rust crate
