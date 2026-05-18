@@ -72,7 +72,32 @@ pub enum ParseError {
     BadSearchTailSyntax { line: usize },
     #[error("line {line}: %search-tail conflicts with a `; raw_tail=...` trailer on the same instruction")]
     DuplicateSearchTail { line: usize },
+    #[error("line {line}: parameterised %define needs `<name>(<args>) <body>`")]
+    BadParamMacroSyntax { line: usize },
+    #[error("line {line}: parameterised %define {name:?}: parameter {param:?} appears twice")]
+    DuplicateMacroParam { line: usize, name: String, param: String },
+    #[error("line {line}: macro {name:?} call needs {expected} arguments, found {found}")]
+    MacroParamCount {
+        line: usize,
+        name: String,
+        expected: usize,
+        found: usize,
+    },
+    #[error("line {line}: @include directive needs `\"path/file.asm\"`")]
+    BadIncludeSyntax { line: usize },
+    #[error("line {line}: @include {path:?}: {detail}")]
+    IncludeIo { line: usize, path: String, detail: String },
+    #[error("line {line}: @include {path:?}: would cause a cycle")]
+    CircularInclude { line: usize, path: String },
+    #[error("line {line}: @include {path:?}: include depth exceeds limit ({limit})")]
+    IncludeDepthExceeded { line: usize, path: String, limit: usize },
 }
+
+/// Maximum nested-`@include` depth before the preprocessor
+/// gives up. Generous enough to cover any realistic
+/// authoring setup; the limit is a circuit-breaker against
+/// runaway includes, not a design constraint.
+pub const INCLUDE_DEPTH_LIMIT: usize = 16;
 
 pub type Result<T> = std::result::Result<T, ParseError>;
 
@@ -91,7 +116,14 @@ pub fn error_line(err: &ParseError) -> usize {
         | ParseError::BadDefineName { line, .. }
         | ParseError::DuplicateDefine { line, .. }
         | ParseError::BadSearchTailSyntax { line }
-        | ParseError::DuplicateSearchTail { line } => *line,
+        | ParseError::DuplicateSearchTail { line }
+        | ParseError::BadParamMacroSyntax { line }
+        | ParseError::DuplicateMacroParam { line, .. }
+        | ParseError::MacroParamCount { line, .. }
+        | ParseError::BadIncludeSyntax { line }
+        | ParseError::IncludeIo { line, .. }
+        | ParseError::CircularInclude { line, .. }
+        | ParseError::IncludeDepthExceeded { line, .. } => *line,
     }
 }
 
@@ -138,7 +170,14 @@ pub fn error_span(err: &ParseError, source: &str) -> (usize, usize) {
         | ParseError::BadDefineName { .. }
         | ParseError::DuplicateDefine { .. }
         | ParseError::BadSearchTailSyntax { .. }
-        | ParseError::DuplicateSearchTail { .. } => (0, line_text.len().max(1)),
+        | ParseError::DuplicateSearchTail { .. }
+        | ParseError::BadParamMacroSyntax { .. }
+        | ParseError::DuplicateMacroParam { .. }
+        | ParseError::MacroParamCount { .. }
+        | ParseError::BadIncludeSyntax { .. }
+        | ParseError::IncludeIo { .. }
+        | ParseError::CircularInclude { .. }
+        | ParseError::IncludeDepthExceeded { .. } => (0, line_text.len().max(1)),
     }
 }
 
@@ -183,10 +222,33 @@ pub fn format_with_caret(err: &ParseError, source: &str) -> String {
 /// `%search-tail` directive bodies keyed by the line number of
 /// the instruction the directive attaches to (the next
 /// non-directive, non-comment, non-label instruction line).
+///
+/// v0.7.0 adds parameterised macros and `@include`; both are
+/// expanded fully inside the preprocessor so the
+/// instruction-parsing stage sees pre-expanded text. Included
+/// files contribute additional lines beyond the user's source,
+/// but the line-number invariant only holds for the top-level
+/// source (errors inside included files still refer to a line
+/// in the post-expansion buffer).
 #[derive(Debug, Default)]
 struct Preprocessed {
     text: String,
     search_tail_attachments: HashMap<usize, Vec<u8>>,
+}
+
+/// A parameterised macro: `%define name(p1, p2) <body>`.
+/// Substitution captures each parameter name in the body and
+/// replaces it with the actual argument text on call.
+///
+/// v0.7.0 keeps substitution textual (no type checking, no
+/// hygiene); parameter names follow the same `is_valid_define_
+/// name` shape as plain `%define`. Inside the body, a parameter
+/// is recognised when it appears as a whole identifier token
+/// (the same scan-for-identifier rule `apply_defines` uses).
+#[derive(Debug, Clone)]
+struct ParamMacro {
+    params: Vec<String>,
+    body: String,
 }
 
 /// Reserved identifiers that cannot be `%define`d (would
@@ -223,13 +285,20 @@ fn is_valid_define_name(name: &str) -> bool {
     name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
 }
 
-/// Apply `%define` substitutions to a line, replacing every
-/// identifier-shaped token that matches a defined name.
-/// Skips quoted regions (`"..."`) and the per-line trailer
-/// after the first `  ; ` outside of quotes.
-fn apply_defines(line: &str, defines: &HashMap<String, String>) -> String {
-    if defines.is_empty() {
-        return line.to_string();
+/// Apply `%define` substitutions (plain and parameterised) to
+/// a line. Plain `%define` matches an identifier; parameterised
+/// `%define name(args) body` matches `name(actual1, actual2)`
+/// at identifier-start positions and substitutes the args into
+/// the body. Skips quoted regions (`"..."`) and the per-line
+/// trailer after the first `  ; ` outside of quotes.
+fn apply_defines(
+    line: &str,
+    defines: &HashMap<String, String>,
+    macros: &HashMap<String, ParamMacro>,
+    line_no: usize,
+) -> Result<String> {
+    if defines.is_empty() && macros.is_empty() {
+        return Ok(line.to_string());
     }
     let bytes = line.as_bytes();
     let mut out = String::with_capacity(line.len());
@@ -283,6 +352,60 @@ fn apply_defines(line: &str, defines: &HashMap<String, String>) -> String {
                 i += 1;
             }
             let token = &line[start..i];
+            // Parameterised macro call? `name(...)` where
+            // `name` is in the macro table. The opening paren
+            // must immediately follow the identifier.
+            if let Some(macro_def) = macros.get(token) {
+                if i < bytes.len() && bytes[i] == b'(' {
+                    let (args, args_consumed) =
+                        match split_macro_call_args(&line[i..]) {
+                            Some(v) => v,
+                            None => {
+                                // Unterminated `(`: leave the
+                                // token untouched and let the
+                                // downstream parser complain.
+                                out.push_str(token);
+                                continue;
+                            }
+                        };
+                    if args.len() != macro_def.params.len() {
+                        return Err(ParseError::MacroParamCount {
+                            line: line_no,
+                            name: token.to_string(),
+                            expected: macro_def.params.len(),
+                            found: args.len(),
+                        });
+                    }
+                    let mut local_defines = defines.clone();
+                    for (p, a) in macro_def.params.iter().zip(args.iter()) {
+                        // Pre-expand the argument text against
+                        // the outer defines/macros table so a
+                        // `wrap(SLOT)` call where `SLOT` is a
+                        // plain `%define` resolves before the
+                        // param binding (avoids the recursive
+                        // body never re-scanning the substituted
+                        // text).
+                        let expanded_arg =
+                            apply_defines(a.trim(), defines, macros, line_no)?;
+                        local_defines.insert(p.clone(), expanded_arg);
+                    }
+                    // Expand the body with arg substitutions
+                    // applied via apply_defines (recursive call;
+                    // the empty macros table prevents infinite
+                    // recursion since the body cannot re-invoke
+                    // itself by name without an explicit
+                    // re-definition).
+                    let expanded = apply_defines(
+                        &macro_def.body,
+                        &local_defines,
+                        &HashMap::new(),
+                        line_no,
+                    )?;
+                    out.push_str(&expanded);
+                    i += args_consumed;
+                    continue;
+                }
+            }
             if let Some(replacement) = defines.get(token) {
                 out.push_str(replacement);
             } else {
@@ -293,7 +416,72 @@ fn apply_defines(line: &str, defines: &HashMap<String, String>) -> String {
         out.push(b as char);
         i += 1;
     }
-    out
+    Ok(out)
+}
+
+/// Parse the parenthesised argument list of a parameterised
+/// macro call. `s` starts with `(`. Returns `Some((args,
+/// bytes_consumed))` where `bytes_consumed` includes the
+/// opening and closing parens. Splits arguments on top-level
+/// commas (not inside nested parens or quoted strings).
+/// Returns `None` for an unterminated call.
+fn split_macro_call_args(s: &str) -> Option<(Vec<String>, usize)> {
+    let bytes = s.as_bytes();
+    if bytes.is_empty() || bytes[0] != b'(' {
+        return None;
+    }
+    let mut depth = 0i32;
+    let mut in_string = false;
+    let mut args: Vec<String> = Vec::new();
+    let mut current = String::new();
+    let mut i = 0usize;
+    while i < bytes.len() {
+        let b = bytes[i];
+        if in_string {
+            current.push(b as char);
+            if b == b'\\' && i + 1 < bytes.len() {
+                current.push(bytes[i + 1] as char);
+                i += 2;
+                continue;
+            }
+            if b == b'"' {
+                in_string = false;
+            }
+            i += 1;
+            continue;
+        }
+        match b {
+            b'"' => {
+                in_string = true;
+                current.push('"');
+            }
+            b'(' => {
+                depth += 1;
+                if depth > 1 {
+                    current.push('(');
+                }
+            }
+            b')' => {
+                depth -= 1;
+                if depth == 0 {
+                    let trimmed = current.trim().to_string();
+                    if !(trimmed.is_empty() && args.is_empty()) {
+                        args.push(trimmed);
+                    }
+                    return Some((args, i + 1));
+                } else {
+                    current.push(')');
+                }
+            }
+            b',' if depth == 1 => {
+                args.push(current.trim().to_string());
+                current.clear();
+            }
+            _ => current.push(b as char),
+        }
+        i += 1;
+    }
+    None
 }
 
 fn parse_hex_byte(s: &str) -> Option<u8> {
@@ -303,33 +491,153 @@ fn parse_hex_byte(s: &str) -> Option<u8> {
     u8::from_str_radix(s, 16).ok()
 }
 
-/// First pass over the source. Recognises three directive
+/// Top-level preprocessor pass. Recognises four directive
 /// shapes:
 ///
 /// - `%define <name> <replacement>`: register a token
 ///   substitution applied to all subsequent non-directive
 ///   lines.
+/// - `%define <name>(<args>) <body>`: register a parameterised
+///   macro. Calls of the form `<name>(actual1, actual2)` at
+///   identifier positions expand to `<body>` with `<args>`
+///   substituted (v0.7.0+).
 /// - `%search-tail <hex-bytes>`: queue raw_tail bytes that
 ///   will attach to the *next* instruction line (the same
 ///   role the `; raw_tail=HEX` trailer comment plays for the
 ///   disassembler-emitted form).
-/// - Lines that aren't directives pass through with
-///   `apply_defines` token substitution.
+/// - `@include "path/file.asm"`: textually include another
+///   file relative to `include_root`. Circular-include guard
+///   tracks each included path canonically; depth is capped
+///   by [`INCLUDE_DEPTH_LIMIT`] (v0.7.0+).
 ///
 /// Lines are blank-replaced (not removed) so line numbers in
 /// caret errors continue to match the source the user wrote.
+/// Included files contribute additional lines beyond the
+/// top-level source; their content is inserted at the
+/// `@include` site and the post-expansion buffer is what the
+/// instruction-parsing stage sees.
 fn preprocess(input: &str) -> Result<Preprocessed> {
+    preprocess_with_root(input, std::path::Path::new("."))
+}
+
+fn preprocess_with_root(
+    input: &str,
+    include_root: &std::path::Path,
+) -> Result<Preprocessed> {
     let mut defines: HashMap<String, String> = HashMap::new();
+    let mut macros: HashMap<String, ParamMacro> = HashMap::new();
     let mut search_tail_attachments: HashMap<usize, Vec<u8>> = HashMap::new();
     let mut pending_tail: Option<Vec<u8>> = None;
     let mut out_lines: Vec<String> = Vec::new();
+    let mut visited: std::collections::HashSet<std::path::PathBuf> =
+        std::collections::HashSet::new();
 
+    preprocess_recursive(
+        input,
+        include_root,
+        &mut defines,
+        &mut macros,
+        &mut search_tail_attachments,
+        &mut pending_tail,
+        &mut out_lines,
+        &mut visited,
+        /* depth */ 0,
+    )?;
+
+    Ok(Preprocessed {
+        text: out_lines.join("\n"),
+        search_tail_attachments,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn preprocess_recursive(
+    input: &str,
+    include_root: &std::path::Path,
+    defines: &mut HashMap<String, String>,
+    macros: &mut HashMap<String, ParamMacro>,
+    search_tail_attachments: &mut HashMap<usize, Vec<u8>>,
+    pending_tail: &mut Option<Vec<u8>>,
+    out_lines: &mut Vec<String>,
+    visited: &mut std::collections::HashSet<std::path::PathBuf>,
+    depth: usize,
+) -> Result<()> {
     for (i, raw_line) in input.lines().enumerate() {
         let line_no = i + 1;
         let trimmed = raw_line.trim_start();
         if let Some(rest) = trimmed.strip_prefix("%define") {
             let body = rest.trim_start();
-            // Split into (name, replacement) on first whitespace.
+            // Parameterised form? `name(args...) body`.
+            if let Some(paren_idx) = body.find('(') {
+                let name = body[..paren_idx].trim();
+                if !name.is_empty()
+                    && body[..paren_idx].find(char::is_whitespace).is_none()
+                {
+                    let after_open = &body[paren_idx + 1..];
+                    let close_idx = match after_open.find(')') {
+                        Some(c) => c,
+                        None => {
+                            return Err(ParseError::BadParamMacroSyntax {
+                                line: line_no,
+                            });
+                        }
+                    };
+                    let params_str = &after_open[..close_idx];
+                    let macro_body = after_open[close_idx + 1..].trim();
+                    if !is_valid_define_name(name) {
+                        return Err(ParseError::BadDefineName {
+                            line: line_no,
+                            name: name.to_string(),
+                        });
+                    }
+                    if defines.contains_key(name) || macros.contains_key(name) {
+                        return Err(ParseError::DuplicateDefine {
+                            line: line_no,
+                            name: name.to_string(),
+                        });
+                    }
+                    if macro_body.is_empty() {
+                        return Err(ParseError::BadParamMacroSyntax {
+                            line: line_no,
+                        });
+                    }
+                    let params: Vec<String> = if params_str.trim().is_empty() {
+                        Vec::new()
+                    } else {
+                        params_str
+                            .split(',')
+                            .map(|p| p.trim().to_string())
+                            .collect()
+                    };
+                    let mut seen: std::collections::HashSet<&str> =
+                        std::collections::HashSet::new();
+                    for p in &params {
+                        if !is_valid_define_name(p) {
+                            return Err(ParseError::BadDefineName {
+                                line: line_no,
+                                name: p.clone(),
+                            });
+                        }
+                        if !seen.insert(p.as_str()) {
+                            return Err(ParseError::DuplicateMacroParam {
+                                line: line_no,
+                                name: name.to_string(),
+                                param: p.clone(),
+                            });
+                        }
+                    }
+                    macros.insert(
+                        name.to_string(),
+                        ParamMacro {
+                            params,
+                            body: macro_body.to_string(),
+                        },
+                    );
+                    out_lines.push(String::new());
+                    continue;
+                }
+            }
+            // Plain form: `name replacement` on one line.
             let (name, replacement) = match body.find(char::is_whitespace) {
                 Some(idx) => (&body[..idx], body[idx..].trim()),
                 None => return Err(ParseError::BadDefineSyntax { line: line_no }),
@@ -343,7 +651,7 @@ fn preprocess(input: &str) -> Result<Preprocessed> {
                     name: name.to_string(),
                 });
             }
-            if defines.contains_key(name) {
+            if defines.contains_key(name) || macros.contains_key(name) {
                 return Err(ParseError::DuplicateDefine {
                     line: line_no,
                     name: name.to_string(),
@@ -368,15 +676,66 @@ fn preprocess(input: &str) -> Result<Preprocessed> {
             if bytes.is_empty() {
                 return Err(ParseError::BadSearchTailSyntax { line: line_no });
             }
-            pending_tail = Some(bytes);
+            *pending_tail = Some(bytes);
             out_lines.push(String::new());
+            continue;
+        }
+        if let Some(rest) = trimmed.strip_prefix("@include") {
+            let path_str = parse_quoted_include_path(rest).ok_or(
+                ParseError::BadIncludeSyntax { line: line_no },
+            )?;
+            if depth >= INCLUDE_DEPTH_LIMIT {
+                return Err(ParseError::IncludeDepthExceeded {
+                    line: line_no,
+                    path: path_str.clone(),
+                    limit: INCLUDE_DEPTH_LIMIT,
+                });
+            }
+            let resolved = include_root.join(&path_str);
+            let canon = match std::fs::canonicalize(&resolved) {
+                Ok(c) => c,
+                Err(e) => {
+                    return Err(ParseError::IncludeIo {
+                        line: line_no,
+                        path: path_str,
+                        detail: e.to_string(),
+                    });
+                }
+            };
+            if !visited.insert(canon.clone()) {
+                return Err(ParseError::CircularInclude {
+                    line: line_no,
+                    path: path_str,
+                });
+            }
+            let body = std::fs::read_to_string(&canon).map_err(|e| {
+                ParseError::IncludeIo {
+                    line: line_no,
+                    path: path_str.clone(),
+                    detail: e.to_string(),
+                }
+            })?;
+            let nested_root = canon.parent().unwrap_or(include_root).to_path_buf();
+            out_lines.push(String::new());
+            preprocess_recursive(
+                &body,
+                &nested_root,
+                defines,
+                macros,
+                search_tail_attachments,
+                pending_tail,
+                out_lines,
+                visited,
+                depth + 1,
+            )?;
+            visited.remove(&canon);
             continue;
         }
 
         // Non-directive line. Apply `%define` substitution and
         // see whether this is the instruction line that the
         // pending `%search-tail` attaches to.
-        let substituted = apply_defines(raw_line, &defines);
+        let substituted = apply_defines(raw_line, defines, macros, line_no)?;
         let stripped = substituted.trim();
         let is_instruction = !stripped.is_empty()
             && !stripped.starts_with(';')
@@ -390,11 +749,31 @@ fn preprocess(input: &str) -> Result<Preprocessed> {
         }
         out_lines.push(substituted);
     }
+    Ok(())
+}
 
-    Ok(Preprocessed {
-        text: out_lines.join("\n"),
-        search_tail_attachments,
-    })
+fn parse_quoted_include_path(s: &str) -> Option<String> {
+    let trimmed = s.trim();
+    if !trimmed.starts_with('"') {
+        return None;
+    }
+    let bytes = trimmed.as_bytes();
+    let mut i = 1usize;
+    let mut out = String::new();
+    while i < bytes.len() {
+        let b = bytes[i];
+        if b == b'\\' && i + 1 < bytes.len() {
+            out.push(bytes[i + 1] as char);
+            i += 2;
+            continue;
+        }
+        if b == b'"' {
+            return Some(out);
+        }
+        out.push(b as char);
+        i += 1;
+    }
+    None
 }
 
 /// Parse a text-format disassembly listing into a
@@ -1779,7 +2158,14 @@ mod tests {
         // not substituted.
         let mut defines = HashMap::new();
         defines.insert("FOO".to_string(), "BAR".to_string());
-        let out = apply_defines("0000  92  gpl_str               \"FOO BAR\"", &defines);
+        let macros = HashMap::new();
+        let out = apply_defines(
+            "0000  92  gpl_str               \"FOO BAR\"",
+            &defines,
+            &macros,
+            1,
+        )
+        .expect("apply_defines");
         assert!(out.contains("\"FOO BAR\""), "{}", out);
     }
 
@@ -1841,5 +2227,126 @@ mod tests {
         let src = "%search-tail 01 zz\n";
         let err = parse(src).unwrap_err();
         assert!(matches!(err, ParseError::BadSearchTailSyntax { line: 1 }));
+    }
+
+    // v0.7.0: parameterised macros + @include -------------------
+
+    #[test]
+    fn param_macro_expands_at_call_site() {
+        // A two-arg macro that produces a known token sequence.
+        // The macro body uses parameter names that match the
+        // arg list; calling it substitutes the actuals in.
+        let src = "\
+            %define imm_to_byte(slot, value) GBYTE[slot]\n\
+            0000  03  gpl_load              imm_to_byte(42, 7)\n";
+        let parsed = parse(src).expect("parses");
+        let instr = &parsed.instructions[0];
+        assert_eq!(instr.opcode, 0x03);
+        // First parameter should be the expanded variable ref.
+        let var = &instr.params[0][0];
+        assert!(
+            matches!(
+                var,
+                Expression::Variable { var_kind: VarKind::Gbyte, id: 42, .. }
+            ),
+            "got {var:?}"
+        );
+    }
+
+    #[test]
+    fn param_macro_wrong_arg_count_is_flagged() {
+        let src = "\
+            %define two_args(a, b) GBYTE[a]\n\
+            0000  03  gpl_load              two_args(1)\n";
+        let err = parse(src).unwrap_err();
+        assert!(
+            matches!(&err, ParseError::MacroParamCount { name, expected: 2, found: 1, .. } if name == "two_args"),
+            "got {err:?}"
+        );
+    }
+
+    #[test]
+    fn param_macro_duplicate_param_is_flagged() {
+        let src = "%define bad(a, a) GBYTE[a]\n";
+        let err = parse(src).unwrap_err();
+        assert!(
+            matches!(&err, ParseError::DuplicateMacroParam { name, param, .. } if name == "bad" && param == "a"),
+            "got {err:?}"
+        );
+    }
+
+    #[test]
+    fn param_macro_and_plain_define_coexist() {
+        // A plain %define value flowing into a macro arg
+        // should expand to the substituted text.
+        let src = "\
+            %define SLOT 9\n\
+            %define wrap(id) GBYTE[id]\n\
+            0000  03  gpl_load              wrap(SLOT)\n";
+        let parsed = parse(src).expect("parses");
+        let var = &parsed.instructions[0].params[0][0];
+        assert!(
+            matches!(
+                var,
+                Expression::Variable { var_kind: VarKind::Gbyte, id: 9, .. }
+            ),
+            "got {var:?}"
+        );
+    }
+
+    #[test]
+    fn include_directive_pulls_in_external_file() {
+        use std::time::SystemTime;
+        let nanos = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let dir = std::env::temp_dir().join(format!("gpl-asm-include-{nanos}"));
+        std::fs::create_dir_all(&dir).expect("create");
+        let inc_path = dir.join("inc.asm");
+        std::fs::write(
+            &inc_path,
+            "%define MY_SLOT 17\n",
+        )
+        .expect("write");
+        let main_src = format!(
+            "@include \"inc.asm\"\n0000  03  gpl_load              GBYTE[MY_SLOT]\n"
+        );
+        let parsed = preprocess_with_root(&main_src, &dir).expect("preprocess");
+        assert!(
+            parsed.text.contains("GBYTE[17]"),
+            "include + define expansion failed: {}",
+            parsed.text
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn include_circular_is_flagged() {
+        use std::time::SystemTime;
+        let nanos = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let dir = std::env::temp_dir().join(format!("gpl-asm-circ-{nanos}"));
+        std::fs::create_dir_all(&dir).expect("create");
+        std::fs::write(dir.join("a.asm"), "@include \"b.asm\"\n").unwrap();
+        std::fs::write(dir.join("b.asm"), "@include \"a.asm\"\n").unwrap();
+        let err = preprocess_with_root("@include \"a.asm\"\n", &dir).unwrap_err();
+        let _ = std::fs::remove_dir_all(&dir);
+        assert!(
+            matches!(err, ParseError::CircularInclude { .. }),
+            "got {err:?}"
+        );
+    }
+
+    #[test]
+    fn include_missing_file_is_flagged() {
+        let dir = std::env::temp_dir().join("gpl-asm-missing-include-test");
+        std::fs::create_dir_all(&dir).expect("create");
+        let err =
+            preprocess_with_root("@include \"does-not-exist.asm\"\n", &dir)
+                .unwrap_err();
+        assert!(matches!(err, ParseError::IncludeIo { .. }), "got {err:?}");
     }
 }

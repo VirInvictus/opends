@@ -13,6 +13,82 @@ Depends on `gpl-disasm` for the [`DisasmResult`] type (and the
 `Deserialize` impls added there in v0.4.4 specifically so this
 crate can consume the same JSON the disassembler emits).
 
+## What `gpl-asm v0.7.0` ships
+
+Two real authoring features on top of v0.6.0's directive
+infrastructure. Both are pure preprocessor work: the bytecode
+the encoder produces is unchanged, and the corpus round-trip
+stays at 600 / 600.
+
+### Parameterised macros
+
+`%define <name>(<params>) <body>` registers a textual,
+function-like macro. A call `<name>(actual1, actual2)` at
+identifier positions expands to `<body>` with `<params>` bound
+to the actuals.
+
+```text
+%define mark_visited(slot) GBYTE[slot]
+
+0000  3a  gpl_immed             mark_visited(47)
+; expands to: 0000  3a  gpl_immed             GBYTE[47]
+```
+
+Parameter names follow the same `is_valid_define_name` rule as
+plain `%define`. Duplicate params (`%define bad(a, a) ...`) are
+a hard error. A wrong-arity call surfaces as `MacroParamCount`
+with the expected vs found counts.
+
+Arguments are pre-expanded against the outer `%define` / macro
+table before binding to the parameter, so a plain define cleanly
+flows into a macro:
+
+```text
+%define SLOT 9
+%define wrap(id) GBYTE[id]
+
+0000  3a  gpl_immed             wrap(SLOT)
+; expands to: 0000  3a  gpl_immed             GBYTE[9]
+```
+
+Substitution is textual (no type checking, no hygiene): a
+parameter name shadows the global `%define` namespace inside
+the macro body, which is the natural shape for text-substitution.
+Macro names share the global namespace with plain `%define`;
+declaring both is a `DuplicateDefine` error.
+
+### `@include "path/file.asm"`
+
+Textual include relative to the current file. Useful for
+splitting common macro / define libraries out of an
+instruction file.
+
+```text
+@include "macros/common.asm"
+@include "syms/region-flags.asm"
+
+0000  3a  gpl_immed             wrap(SLOT)
+```
+
+The included file goes through the same preprocessor
+recursively; defines and macros declared inside it are visible
+after the `@include` directive. A canonical-path circular-
+include guard rejects `a.asm` -> `b.asm` -> `a.asm`; an
+absolute `INCLUDE_DEPTH_LIMIT = 16` cap is the fallback
+circuit-breaker.
+
+Errors surface as `BadIncludeSyntax`, `IncludeIo`,
+`CircularInclude`, or `IncludeDepthExceeded` per the
+respective failure mode.
+
+### Round-trip safety
+
+All 600 / 600 corpus chunks still encode byte-identical under
+`gpl-asm` (release-mode `text_roundtrip` test). The
+preprocessor expands directives entirely in the preprocessor
+pass; the instruction-parsing stage sees post-expansion text
+and is unchanged from v0.6.0.
+
 ## What `gpl-asm v0.6.0` ships
 
 Authoring conveniences for hand-written GPL listings. The

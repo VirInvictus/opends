@@ -4,6 +4,45 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gpl-asm/` v0.7.0** adds two real authoring
+  features on top of v0.6.0's directive infrastructure. Pure
+  preprocessor work; the encoder is unchanged, and the
+  corpus round-trip stays at 600 / 600.
+  - **Parameterised macros**: `%define <name>(<params>)
+    <body>`. A call `<name>(actual1, actual2)` at identifier
+    positions expands to `<body>` with `<params>` bound to
+    the actuals. Arguments are pre-expanded against the
+    outer `%define` table before binding so plain defines
+    flow naturally into macro args (e.g. `%define SLOT 9` +
+    `%define wrap(id) GBYTE[id]` + `wrap(SLOT)` → `GBYTE
+    [9]`). Wrong-arity calls surface as
+    `MacroParamCount`; duplicate param names as
+    `DuplicateMacroParam`. Macro names share the namespace
+    with plain `%define` (declaring both is a
+    `DuplicateDefine`).
+  - **`@include "path/file.asm"`** for textual include
+    relative to the current file. Used to split common
+    macro / define libraries out of an instruction file.
+    Canonical-path circular-include guard
+    (`CircularInclude`); `INCLUDE_DEPTH_LIMIT = 16` cap
+    (`IncludeDepthExceeded`). Errors land as
+    `BadIncludeSyntax`, `IncludeIo`, etc.
+  - **`apply_defines` signature change**: now also takes a
+    `macros` table and `line_no` so macro-expansion errors
+    can be reported with line attribution. Existing
+    consumers update mechanically; the preprocessor is the
+    only intra-crate caller.
+  - **Library API surfaces**: `INCLUDE_DEPTH_LIMIT`
+    constant; private `preprocess_with_root(input, root)`
+    for tests / future programmatic-include use. The public
+    `parse(input)` continues to resolve `@include` relative
+    to `"."` (the process cwd).
+  - **Tests**: 6 new lib tests cover macro expansion,
+    wrong-arity, duplicate params, plain-define-flows-into-
+    macro, `@include` happy path, circular detection, and
+    missing-file. 600 / 600 release-mode corpus round-trip
+    unchanged.
+
 - **`tools/gpl-disasm/` v0.5.0** + **`tools/gpl-asm/`
   decorated-form parser**: variable-naming infrastructure.
   Currently the disassembler emits `GBYTE[42]`, `GNUM[3]`,
