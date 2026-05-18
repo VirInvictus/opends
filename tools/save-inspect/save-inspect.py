@@ -1903,6 +1903,205 @@ def save_edit(
     }
 
 
+# ---------- v0.9.0 modder-friendly PC discovery / edit surface ----------
+
+
+def _enumerate_pcs(summary: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return the CHAR chunks in record order, with --pc index
+    attached as `pc_index`. The PCs are the playable characters
+    inside the CHARSAVE.GFF; we ignore non-CHAR chunks (PSIN,
+    PSST, CACT, etc.).
+    """
+    out: list[dict[str, Any]] = []
+    for c in summary.get("chunks", []):
+        if c.get("kind") != "CHAR":
+            continue
+        rec = dict(c)
+        rec["pc_index"] = len(out)
+        out.append(rec)
+    return out
+
+
+def _pc_overview(pc: dict[str, Any]) -> dict[str, Any]:
+    """Pull the high-leverage fields from a CHAR record's
+    structured sub-blocks. Defensive: returns Nones for fields the
+    decoder couldn't pin (DS1 saves don't carry the `_format` tag
+    but the field names are the same).
+    """
+    blocks = pc.get("body", {}).get("sub_blocks", [])
+    combat = next((b.get("decoded", {}) for b in blocks if b.get("role") == "combat"), {})
+    character = next((b.get("decoded", {}) for b in blocks if b.get("role") == "character"), {})
+    items = [b for b in blocks if b.get("role") == "item"]
+    return {
+        "pc_index": pc.get("pc_index"),
+        "chunk_id": pc.get("id"),
+        "name": combat.get("name", "?").strip(),
+        "hp": combat.get("hp"),
+        "psp": combat.get("psp"),
+        "char_id": combat.get("id"),
+        "max_hp": character.get("base_hp"),
+        "max_psp": character.get("base_psp"),
+        "current_xp": character.get("current_xp"),
+        "stats": combat.get("stats") or character.get("stats") or {},
+        "alignment": character.get("alignment"),
+        "level": character.get("level"),
+        "item_count": len(items),
+    }
+
+
+def _build_list_pcs_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="save-inspect list-pcs",
+        description=(
+            "List every PC in a CHARSAVE.GFF with name, HP, PSP, "
+            "XP, and inventory count. Use the PC column as the "
+            "--pc index for edit-pc / list-items / give-item."
+        ),
+    )
+    p.add_argument("file", type=Path, help="path to CHARSAVE.GFF")
+    p.add_argument("--json", action="store_true",
+                   help="emit a JSON array instead of the human table")
+    return p
+
+
+def cmd_list_pcs(args: argparse.Namespace) -> int:
+    try:
+        parsed = parse_gff(args.file)
+    except (FileNotFoundError, ValueError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+    summary = summarise(parsed)
+    pcs = _enumerate_pcs(summary)
+    overviews = [_pc_overview(p) for p in pcs]
+    if args.json:
+        sys.stdout.write(json.dumps(overviews, indent=2) + "\n")
+        return 0
+    if not overviews:
+        print(f"no CHAR records in {args.file}", file=sys.stderr)
+        return 1
+    print(f"{len(overviews)} PC(s) in {args.file}:\n")
+    print(f"  {'PC':3} {'CHAR':5} {'Name':16} {'HP':>4}/{'Max':>4}  "
+          f"{'PSP':>4}/{'Max':>4}  {'XP':>8}  Items")
+    print("  " + "-" * 70)
+    for o in overviews:
+        name = (o["name"] or "?")[:16]
+        hp = o["hp"] if o["hp"] is not None else "?"
+        mhp = o["max_hp"] if o["max_hp"] is not None else "?"
+        psp = o["psp"] if o["psp"] is not None else "?"
+        mpsp = o["max_psp"] if o["max_psp"] is not None else "?"
+        xp = o["current_xp"] if o["current_xp"] is not None else "?"
+        print(f"  {o['pc_index']:3} {o['chunk_id']:5} {name:16} "
+              f"{hp:>4}/{mhp:>4}  {psp:>4}/{mpsp:>4}  {xp:>8}  "
+              f"{o['item_count']}")
+    return 0
+
+
+# Item-name catalogue. Loaded from tools/save-inspect/syms/items.toml
+# at command time. The bootstrap workflow: list-items shows raw
+# ids; the modder identifies each in the game; rows get added
+# here; subsequent list-items show names.
+
+HERE_DIR = Path(__file__).resolve().parent
+ITEMS_CATALOGUE_PATH = HERE_DIR / "syms" / "items.toml"
+
+
+def _load_items_catalogue() -> dict[int, dict[str, Any]]:
+    if not ITEMS_CATALOGUE_PATH.is_file():
+        return {}
+    import tomllib
+    data = tomllib.loads(ITEMS_CATALOGUE_PATH.read_text(encoding="utf-8"))
+    out: dict[int, dict[str, Any]] = {}
+    for row in data.get("item", []):
+        if "id" in row and "name" in row:
+            out[int(row["id"])] = row
+    return out
+
+
+def _build_list_items_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="save-inspect list-items",
+        description=(
+            "List one PC's inventory. Each row shows the item id, "
+            "quantity, slot, charges, and a name lookup from "
+            "syms/items.toml (empty by default; grows as you tag "
+            "items in-game)."
+        ),
+    )
+    p.add_argument("file", type=Path, help="path to CHARSAVE.GFF")
+    p.add_argument("--pc", type=int, required=True,
+                   help="PC index (0-based; see `list-pcs`)")
+    p.add_argument("--json", action="store_true",
+                   help="emit a JSON array instead of the human table")
+    return p
+
+
+def cmd_list_items(args: argparse.Namespace) -> int:
+    try:
+        parsed = parse_gff(args.file)
+    except (FileNotFoundError, ValueError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+    summary = summarise(parsed)
+    pcs = _enumerate_pcs(summary)
+    if args.pc < 0 or args.pc >= len(pcs):
+        print(f"error: --pc {args.pc} out of range (have {len(pcs)} PC(s)). "
+              f"Run `list-pcs` to see indices.", file=sys.stderr)
+        return 2
+    pc = pcs[args.pc]
+    overview = _pc_overview(pc)
+    blocks = pc.get("body", {}).get("sub_blocks", [])
+    items = [b for b in blocks if b.get("role") == "item"]
+    catalogue = _load_items_catalogue()
+
+    if args.json:
+        rows = []
+        for slot_idx, b in enumerate(items):
+            d = b.get("decoded", {})
+            iid = d.get("id")
+            cat = catalogue.get(iid, {})
+            rows.append({
+                "slot_index": slot_idx,
+                "item_id": iid,
+                "name": cat.get("name"),
+                "notes": cat.get("notes"),
+                "quantity": d.get("quantity"),
+                "charges": d.get("charges"),
+                "value": d.get("value"),
+                "slot": d.get("slot"),
+                "icon": d.get("icon"),
+            })
+        sys.stdout.write(json.dumps(rows, indent=2) + "\n")
+        return 0
+
+    name = (overview["name"] or "?")[:24]
+    print(f"PC {args.pc} '{name}' (CHAR {pc['id']}) inventory ({len(items)} item(s)):\n")
+    if not items:
+        print("  (no items)")
+        return 0
+    print(f"  {'Slot':4} {'ID':>6} {'Qty':>4} {'Chg':>4} {'SlotKind':10} "
+          f"Name (from syms/items.toml)")
+    print("  " + "-" * 70)
+    unknown_ids: set[int] = set()
+    for slot_idx, b in enumerate(items):
+        d = b.get("decoded", {})
+        iid = d.get("id")
+        cat = catalogue.get(iid, {})
+        slot_kind = (d.get("slot") or {}).get("name", "?")
+        name = cat.get("name", "?")
+        if iid is not None and iid not in catalogue:
+            unknown_ids.add(iid)
+        print(f"  {slot_idx:>4} {iid:>6} {d.get('quantity', 0):>4} "
+              f"{d.get('charges', 0):>4} {slot_kind:10} {name}")
+    if unknown_ids:
+        print()
+        print(f"  {len(unknown_ids)} unknown item id(s). Add rows to")
+        print(f"  {ITEMS_CATALOGUE_PATH.relative_to(HERE_DIR.parent.parent)} as you identify them in-game.")
+    return 0
+
+
+# ---------- end v0.9.0 ----------
+
+
 def _build_save_diff_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="save-inspect save-diff",
@@ -2076,6 +2275,10 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         sys.stdout.write(json.dumps(report, indent=2, ensure_ascii=False) + "\n")
         return 0
+    if argv and argv[0] == "list-pcs":
+        return cmd_list_pcs(_build_list_pcs_parser().parse_args(argv[1:]))
+    if argv and argv[0] == "list-items":
+        return cmd_list_items(_build_list_items_parser().parse_args(argv[1:]))
     if argv and argv[0] == "save-diff":
         sd_args = _build_save_diff_parser().parse_args(argv[1:])
         try:

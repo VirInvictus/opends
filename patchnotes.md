@@ -4,6 +4,52 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/save-inspect/` v0.9.0** opens the modder-altitude
+  discovery surface: `list-pcs` and `list-items`. First piece
+  of the "no more JSON-edit-by-hand" pivot Brandon called out;
+  the high-level fields above the v0.8.0 raw-JSON write path.
+  - **`list-pcs <save>`** enumerates every CHAR record in the
+    save with PC index, CHAR id, name, current/max HP, current/
+    max PSP, current XP, and inventory count. Sorted by record
+    order; the PC index is the `--pc N` handle every other
+    PC-targeted command consumes.
+
+    ```
+    $ list-pcs CHARSAVE.GFF
+    19 PC(s):
+      PC  CHAR  Name             HP/Max  PSP/Max     XP  Items
+      15    50  Ar'Anda          34/57  162/202  1400000  11
+      18    53  Terrannus        88/113  11/91   2475000  10
+      ...
+    ```
+
+  - **`list-items <save> --pc N`** lists one PC's inventory.
+    Each row shows item slot index, raw `id`, quantity, charges,
+    slot kind (`ARM`/`AMMO`/`HAND0`/etc.), and a name lookup
+    from a new `syms/items.toml` catalogue. The catalogue ships
+    empty by design; the bootstrap is Brandon's idea
+    (2026-05-18):
+    1. Run `list-items` to see the raw ids in your save
+    2. Load the save in DOSBox; observe what each slot actually
+       contains in the inventory screen
+    3. Add rows to `syms/items.toml` (`id = -746, name = "Iron
+       Sword"`)
+    4. Re-run `list-items`; the name column populates
+  - **`syms/items.toml`** scaffold + curation rule header.
+    Per-game-agnostic by default; an `applies_to = ["ds2"]`
+    field handles game-specific clashes when they surface.
+  - Both subcommands `--json` for tooling.
+  - Verified against both Brandon's played saves:
+    - DS1 `~/.wine/.../Dark Sun/CHARSAVE.GFF`: 8 PCs
+      (T'kir'taap, Aticus, Lanthazar, Garn, etc.)
+    - DS2 `~/.wine/.../Dark Sun 2/CHARSAVE.GFF`: 19 records
+      including the high-XP played party (Ar'Anda 1.4M XP,
+      Terrannus 2.4M XP) with full 27-item inventories.
+  - No new external deps (stdlib `tomllib` for the catalogue).
+  - Next: `edit-pc` (high-leverage hp/psp/stat/xp edits via
+    short flags) + `give-item` (open the bootstrap loop) +
+    `docs/cookbook/edit-pc-hp.md` walkthrough.
+
 - **`tools/region-render/` v0.7.1** fixes entity-sprite vertical
   orientation. Brandon caught it visually on both DS1 outdoor
   RGN02 and DS2 dungeon RGN033: NPCs and creatures rendered

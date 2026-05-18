@@ -1,0 +1,29 @@
+# save-inspect items catalogue.
+#
+# Maps the i16 `item.id` you see in `list-items` output to a
+# human-readable name (and optional notes). Used by:
+#
+#   save-inspect list-items <save> --pc N    (renders the name column)
+#   save-inspect give-item ... (validates the id; v0.9.x)
+#
+# Bootstrap workflow (Brandon's idea, 2026-05-18):
+#
+#   1. `list-items <save> --pc N` shows raw ids you haven't tagged.
+#   2. Take that save into DOSBox; open the inventory screen;
+#      observe what each slot contains.
+#   3. Add a row here:
+#
+#        [[item]]
+#        id    = -746
+#        name  = "Iron Sword"
+#        notes = "DS2 found in Anathea's inventory slot 0"
+#
+#   4. Re-run `list-items`; the name column populates.
+#
+# The catalogue is per-game-agnostic on purpose: the same id may
+# mean different things in DS1 vs DS2. If we discover a clash,
+# add an `applies_to = ["ds2"]` field and the loader will filter.
+# For v0.9.0 nothing forces uniqueness; later rows override
+# earlier rows.
+#
+# v0.9.0 ships this empty by design. Grows organically.
