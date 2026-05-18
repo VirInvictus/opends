@@ -1,0 +1,28 @@
+# Global-variable catalogue for the Dark Sun GPL bytecode VM.
+#
+# Schema (gpl-disasm v0.5.0+):
+#
+#   [[gbyte]]
+#   id   = 42
+#   name = "POV_FLAGS"
+#   doc  = "Bit flags for the active character."
+#
+# One [[<kind>]] table per variable kind. Supported kinds:
+# gbyte, gnum, gbignum, gflag, gname, gstring. Locals (LSTR,
+# LNUM, etc.) are out of scope for v0.5.0: they're chunk-scoped
+# and need a per-chunk override surface (queued for v0.6.0+).
+#
+# Each entry has:
+#   id   (u16, required)   the in-chunk dispatch value
+#   name (string, required) the display name; rendered inline as
+#                           "KIND[id (name)]" in text output, and
+#                           surfaces as a `name` field on JSON
+#                           `Expression::Variable`.
+#   doc  (string, optional) free-form documentation; not used
+#                           by the renderer.
+#
+# Entries are curated by hand from cross-referencing with
+# DSUN.EXE RE, dialog-extract output, and gameplay observation.
+# The v0.5.0 ship is intentionally empty; the catalogue grows
+# organically as meaningful slots are surfaced. Adding an entry
+# here has no effect on bytecode encoding; it's display only.

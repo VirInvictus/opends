@@ -180,6 +180,7 @@ pub fn encode_instruction(out: &mut Vec<u8>, instr: &Instruction) -> Result<()> 
                     var_kind,
                     id,
                     extended,
+                    name: _,
                 } => {
                     let datatype = var_kind.to_tag() | if *extended { EXTENDED_VAR } else { 0 };
                     // Match libgff convention: high bit set on the
@@ -357,6 +358,7 @@ pub fn encode_expression(out: &mut Vec<u8>, instr_offset: usize, expr: &Expressi
             var_kind,
             id,
             extended,
+            name: _,
         } => {
             let dispatch = var_kind.to_tag() | if *extended { EXTENDED_VAR } else { 0 } | 0x80;
             out.push(dispatch);

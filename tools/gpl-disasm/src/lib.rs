@@ -674,11 +674,18 @@ pub enum Expression {
         value: String,
     },
     /// Variable reference. `id` is 1 byte (without `EXTENDED_VAR`)
-    /// or 2 bytes (with).
+    /// or 2 bytes (with). `name` is the curated symbol name from
+    /// `syms/variables.toml` (gpl-disasm v0.5.0+); `None` when no
+    /// catalogue entry exists or `Symbols::apply_to_variables`
+    /// hasn't been called. The name does not affect encoding;
+    /// it is decoration for text output and downstream
+    /// JSON consumers.
     Variable {
         var_kind: VarKind,
         id: u16,
         extended: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        name: Option<Cow<'static, str>>,
     },
     /// Infix binary operator. Always appears between two values.
     BinaryOp { op: Op },
@@ -1154,6 +1161,31 @@ pub struct Symbols {
     /// the chunk.
     #[serde(default)]
     pub functions: Vec<FunctionSymbol>,
+    /// Global-variable catalogue keyed by `(VarKind, id)`.
+    /// Populated from `tools/gpl-disasm/syms/variables.toml`
+    /// (gpl-disasm v0.5.0+). The lookup table is global; locals
+    /// (LSTR, LNUM, etc.) are intentionally out of scope (they're
+    /// chunk-scoped and need a per-chunk override surface,
+    /// queued for v0.6.0).
+    #[serde(default)]
+    pub variables: Vec<VariableSymbol>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct VariableSymbol {
+    /// Variable kind. Serialised via `VarKind`'s snake_case
+    /// rename (`gbyte`, `gnum`, etc.).
+    pub kind: VarKind,
+    /// Variable id (u16; matches the in-chunk dispatch value).
+    pub id: u16,
+    /// Human-readable name. Rendered inline as
+    /// `KIND[id (name)]` in text output; surfaces as a `name`
+    /// field on the JSON `Expression::Variable`.
+    pub name: String,
+    /// Optional documentation; not used by the renderer.
+    /// Surfaces only through the loaded `Symbols` struct.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub doc: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1217,7 +1249,99 @@ impl Symbols {
                 })?;
             syms.functions = parsed.function.unwrap_or_default();
         }
+        // v0.5.0: load variables.toml. Schema is per-kind arrays
+        // of tables (`[[gbyte]]`, `[[gnum]]`, ...) so each kind
+        // gets its own namespace; the loader flattens them into
+        // a single `variables: Vec<VariableSymbol>` keyed by
+        // (kind, id).
+        let variables_path = dir.join("variables.toml");
+        if variables_path.is_file() {
+            let body = fs::read_to_string(&variables_path).map_err(|e| {
+                SymbolsLoadError::Io {
+                    path: variables_path.display().to_string(),
+                    source: e,
+                }
+            })?;
+            let parsed: VariablesFile =
+                toml::from_str(&body).map_err(|e| SymbolsLoadError::Parse {
+                    path: variables_path.display().to_string(),
+                    source: e,
+                })?;
+            let mut combined: Vec<VariableSymbol> = Vec::new();
+            for (kind, entries) in [
+                (VarKind::Gbyte, parsed.gbyte),
+                (VarKind::Gnum, parsed.gnum),
+                (VarKind::Gbignum, parsed.gbignum),
+                (VarKind::Gflag, parsed.gflag),
+                (VarKind::Gname, parsed.gname),
+                (VarKind::Gstring, parsed.gstring),
+            ] {
+                for entry in entries.unwrap_or_default() {
+                    combined.push(VariableSymbol {
+                        kind,
+                        id: entry.id,
+                        name: entry.name,
+                        doc: entry.doc,
+                    });
+                }
+            }
+            syms.variables = combined;
+        }
         Ok(syms)
+    }
+
+    /// Look up the curated name for a `(VarKind, id)` global.
+    /// Returns `None` for kinds outside the catalogue's scope
+    /// (locals, or globals with no entry).
+    pub fn variable_name(&self, kind: VarKind, id: u16) -> Option<&str> {
+        self.variables
+            .iter()
+            .find(|v| v.kind == kind && v.id == id)
+            .map(|v| v.name.as_str())
+    }
+
+    /// Walk `result.instructions` and decorate every
+    /// `Expression::Variable` whose `(kind, id)` has an entry
+    /// in `self.variables`. No-op when the catalogue is empty.
+    /// Walks nested expressions inside `Expression::RetVal` so
+    /// variable references inside compound functions are
+    /// decorated too.
+    pub fn apply_to_variables(&self, result: &mut DisasmResult) {
+        if self.variables.is_empty() {
+            return;
+        }
+        for instr in &mut result.instructions {
+            for param in &mut instr.params {
+                for tok in param {
+                    self.decorate_variable(tok);
+                }
+            }
+        }
+    }
+
+    fn decorate_variable(&self, expr: &mut Expression) {
+        match expr {
+            Expression::Variable {
+                var_kind,
+                id,
+                name,
+                ..
+            } => {
+                if name.is_none() {
+                    if let Some(n) = self.variable_name(*var_kind, *id) {
+                        *name = Some(Cow::Owned(n.to_string()));
+                    }
+                }
+            }
+            Expression::RetVal { inner_params, .. } => {
+                for inner in inner_params {
+                    for tok in inner {
+                        self.decorate_variable(tok);
+                    }
+                }
+            }
+            _ => {}
+        }
     }
 
     /// Look up a function name for a specific (file, kind, chunk_id,
@@ -1303,6 +1427,30 @@ struct OpcodesFile {
 struct FunctionsFile {
     #[serde(default)]
     function: Option<Vec<FunctionSymbol>>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct VariablesFile {
+    #[serde(default)]
+    gbyte: Option<Vec<VariableEntry>>,
+    #[serde(default)]
+    gnum: Option<Vec<VariableEntry>>,
+    #[serde(default)]
+    gbignum: Option<Vec<VariableEntry>>,
+    #[serde(default)]
+    gflag: Option<Vec<VariableEntry>>,
+    #[serde(default)]
+    gname: Option<Vec<VariableEntry>>,
+    #[serde(default)]
+    gstring: Option<Vec<VariableEntry>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct VariableEntry {
+    id: u16,
+    name: String,
+    #[serde(default)]
+    doc: Option<String>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1415,6 +1563,7 @@ fn read_expression_with_depth(bytes: &[u8], cursor: usize, retval_depth: u8) -> 
                     var_kind,
                     id,
                     extended,
+                    name: None,
                 });
             } else {
                 match dispatch {
@@ -1772,6 +1921,7 @@ fn read_instruction_params_with_depth(
                             var_kind,
                             id,
                             extended,
+                            name: None,
                         }]);
                     } else {
                         be = true;
@@ -2512,9 +2662,13 @@ impl fmt::Display for Expression {
                 var_kind,
                 id,
                 extended,
+                name,
             } => {
                 let suffix = if *extended { "+" } else { "" };
-                write!(f, "{}{suffix}[{id}]", var_kind.short_name())
+                match name {
+                    Some(n) => write!(f, "{}{suffix}[{id} ({n})]", var_kind.short_name()),
+                    None => write!(f, "{}{suffix}[{id}]", var_kind.short_name()),
+                }
             }
             Expression::BinaryOp { op } => write!(f, "{}", op.symbol()),
             Expression::OpenParen => write!(f, "("),
@@ -2882,6 +3036,7 @@ mod tests {
                 var_kind: VarKind::Gflag,
                 id: 18,
                 extended: false,
+                name: None,
             }]
         );
     }
@@ -2897,6 +3052,7 @@ mod tests {
                 var_kind: VarKind::Gflag,
                 id: 0x0123,
                 extended: true,
+                name: None,
             }]
         );
     }
@@ -3564,6 +3720,7 @@ mod tests {
                     notes: None,
                 },
             ],
+        variables: Vec::new(),
         };
         let gcfg = build_global_cfg("TEST.GFF", &summaries, Some(&syms));
         assert_eq!(gcfg.edges.len(), 1);
@@ -3607,6 +3764,7 @@ mod tests {
                     notes: None,
                 },
             ],
+        variables: Vec::new(),
         };
         syms.apply_to_labels(&mut cfg, "TEST.GFF", "GPL ", 7);
         assert_eq!(
@@ -3632,6 +3790,7 @@ mod tests {
                 name: "n".to_string(),
                 notes: None,
             }],
+        variables: Vec::new(),
         };
         assert_eq!(syms.function_name("gpldata.gff", "GPL ", 1, 1), Some("n"));
         assert_eq!(syms.function_name("GPLDATA.GFF", "GPL ", 1, 1), Some("n"));
@@ -3670,6 +3829,7 @@ mod tests {
         let syms = Symbols {
             opcodes,
             functions: vec![],
+        variables: Vec::new(),
         };
         syms.apply_to_mnemonics(&mut result);
         assert_eq!(
@@ -3726,6 +3886,7 @@ mod tests {
         let syms = Symbols {
             opcodes,
             functions: vec![],
+        variables: Vec::new(),
         };
         syms.apply_to_mnemonics(&mut result);
         assert_eq!(
@@ -3773,5 +3934,83 @@ name = "test_fn"
         assert_eq!(syms.opcodes.get("0x12").map(|s| s.name.as_str()), Some("gpl jmp"));
         assert_eq!(syms.functions.len(), 1);
         assert_eq!(syms.functions[0].name, "test_fn");
+    }
+
+    #[test]
+    fn symbols_load_variables_from_toml() {
+        use std::time::SystemTime;
+        let nanos = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let dir = std::env::temp_dir().join(format!("gpl-disasm-vars-{nanos}"));
+        std::fs::create_dir_all(&dir).expect("create tempdir");
+        std::fs::write(
+            dir.join("variables.toml"),
+            r#"
+[[gbyte]]
+id = 42
+name = "POV_FLAGS"
+doc = "Active-character bit flags."
+
+[[gnum]]
+id = 3
+name = "PARTY_GOLD"
+"#,
+        )
+        .expect("write variables.toml");
+        let syms = Symbols::load_from_dir(&dir).expect("load");
+        let _ = std::fs::remove_dir_all(&dir);
+        assert_eq!(syms.variables.len(), 2);
+        assert_eq!(syms.variable_name(VarKind::Gbyte, 42), Some("POV_FLAGS"));
+        assert_eq!(syms.variable_name(VarKind::Gnum, 3), Some("PARTY_GOLD"));
+        assert_eq!(syms.variable_name(VarKind::Gbyte, 99), None);
+    }
+
+    #[test]
+    fn apply_to_variables_decorates_matching_expressions() {
+        // Synthetic chunk: gpl_load_variable GBYTE[42] followed by
+        // some end instruction. We don't care about the rest; we
+        // just want Symbols::apply_to_variables to set the `name`
+        // field where a curated entry exists.
+        let mut result = disassemble(&[0x12, 0x00, 0x03, 0x67]);
+        // No variable refs in jump+endif; build one synthetically.
+        result.instructions.push(Instruction {
+            offset: 4,
+            length: 2,
+            opcode: 0x00,
+            mnemonic: Some(Cow::Borrowed("test")),
+            params: vec![vec![Expression::Variable {
+                var_kind: VarKind::Gbyte,
+                id: 42,
+                extended: false,
+                name: None,
+            }]],
+            best_effort: false,
+            string_run: None,
+            raw_tail: None,
+        });
+        let syms = Symbols {
+            opcodes: BTreeMap::new(),
+            functions: vec![],
+            variables: vec![VariableSymbol {
+                kind: VarKind::Gbyte,
+                id: 42,
+                name: "POV_FLAGS".to_string(),
+                doc: None,
+            }],
+        };
+        syms.apply_to_variables(&mut result);
+        let last = result.instructions.last().unwrap();
+        let var = &last.params[0][0];
+        match var {
+            Expression::Variable { name, .. } => {
+                assert_eq!(name.as_deref(), Some("POV_FLAGS"));
+            }
+            _ => panic!("expected Variable"),
+        }
+        // Render: short form decoration shows in Display.
+        let rendered = format!("{}", var);
+        assert_eq!(rendered, "GBYTE[42 (POV_FLAGS)]");
     }
 }

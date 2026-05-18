@@ -4,6 +4,48 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gpl-disasm/` v0.5.0** + **`tools/gpl-asm/`
+  decorated-form parser**: variable-naming infrastructure.
+  Currently the disassembler emits `GBYTE[42]`, `GNUM[3]`,
+  etc. as raw indices; v0.5.0 lets a curated
+  `syms/variables.toml` attach names to specific slots,
+  decorating output across the toolkit. Every consumer
+  (gpl-asm, dialog-extract, opcode-fuzz) sees the names
+  automatically because the disasm output is the universal
+  input format.
+  - **`syms/variables.toml`** schema: one `[[gbyte]]` /
+    `[[gnum]]` / `[[gbignum]]` / `[[gflag]]` / `[[gname]]` /
+    `[[gstring]]` per-kind array. Each entry has `id`
+    (u16), `name` (string), and optional `doc`. Locals
+    (LSTR / LNUM / etc.) are intentionally out of scope
+    (per-chunk override surface queued for v0.6.0+).
+  - **`Expression::Variable.name`** optional field
+    (`Option<Cow<'static, str>>`), serde-skipped when None
+    so the v0.4.6 JSON shape is unchanged for callers that
+    don't ship a catalogue.
+  - **Text rendering**: `KIND[id]` when no name, `KIND[id
+    (NAME)]` when curated. Decorated form survives a
+    `gpl-asm` parse round-trip: the parser accepts both
+    plain and decorated forms, discards the annotation
+    (it's documentation, not encoding), and rebuilds the
+    dispatch byte from `var_kind + id + extended`.
+  - **`Symbols::apply_to_variables`** walks every
+    instruction's params (including nested `Expression::
+    RetVal::inner_params`) and decorates matching
+    `(VarKind, id)` pairs. The `gpl-disasm` binary now
+    calls it alongside `apply_to_labels` / `apply_to_
+    mnemonics` on every disasm pass.
+  - **Empty catalogue ships in v0.5.0**: `syms/variables
+    .toml` carries the schema commentary and zero entries.
+    The catalogue grows organically as the toolkit
+    surfaces meaningful slots; adding an entry has no
+    effect on bytecode encoding (display only).
+  - **Corpus**: 600 / 600 gpl-asm corpus round-trip
+    unchanged (the decoration affects display, not the
+    encoded byte stream). New unit tests:
+    `symbols_load_variables_from_toml`,
+    `apply_to_variables_decorates_matching_expressions`.
+
 - **`tools/dialog-extract/` v0.6.0** orders the v0.5.0
   `possible_writers` array by graph distance, so the closest
   writer surfaces first. The reverse-CFG BFS now records

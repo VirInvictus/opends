@@ -949,16 +949,21 @@ fn parse_one_expression(
         return Ok((Expression::BinaryOp { op }, n));
     }
 
-    // Variable: SHORT[id] or SHORT+[id]. Runs before label-ref
-    // so that if a user accidentally names a label after a
-    // variable short (e.g. "GNUM"), the variable token still
-    // wins when followed by `[id]`.
+    // Variable: SHORT[id] or SHORT+[id] or the decorated form
+    // SHORT[id (NAME)] / SHORT+[id (NAME)] emitted by
+    // gpl-disasm v0.5.0+ when a `syms/variables.toml` entry
+    // is loaded. The decoration is round-trippable: gpl-asm
+    // parses it back, discards the annotation (it's
+    // documentation, not encoding), and reconstructs the
+    // dispatch byte from `var_kind` + `id` + `extended`.
+    // Plain `SHORT[id]` keeps working unchanged.
     if let Some((vk, extended, id, n)) = try_parse_variable(s) {
         return Ok((
             Expression::Variable {
                 var_kind: vk,
                 id,
                 extended,
+                name: None,
             },
             n,
         ));
@@ -1543,14 +1548,25 @@ fn try_parse_variable(s: &str) -> Option<(VarKind, bool, u16, usize)> {
             let after_plus = if extended { &rest[1..] } else { rest };
             if let Some(after_open) = after_plus.strip_prefix('[') {
                 if let Some(close_idx) = after_open.find(']') {
-                    let id_str = &after_open[..close_idx];
-                    if let Ok(id) = id_str.parse::<u16>() {
+                    let inner = &after_open[..close_idx];
+                    // Accept both the plain form `[id]` and the
+                    // decorated form `[id (NAME)]` emitted by
+                    // gpl-disasm v0.5.0+ when a syms/variables.toml
+                    // entry is loaded. The name is documentation
+                    // only and is discarded during parse; the
+                    // dispatch byte is reconstructed from
+                    // var_kind + id + extended on encode.
+                    let id_part = match inner.find(" (") {
+                        Some(i) if inner.ends_with(')') => &inner[..i],
+                        _ => inner,
+                    };
+                    if let Ok(id) = id_part.parse::<u16>() {
                         // Bytes consumed: prefix + optional `+` +
-                        // `[` + id_str + `]`.
+                        // `[` + entire inner content + `]`.
                         let consumed = prefix.len()
                             + (if extended { 1 } else { 0 })
                             + 1
-                            + id_str.len()
+                            + inner.len()
                             + 1;
                         return Some((*vk, extended, id, consumed));
                     }

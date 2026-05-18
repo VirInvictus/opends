@@ -14,6 +14,51 @@ chunks so modders can read what a script does.
 
 Depends on `gff-edit` for GFF I/O.
 
+## What `gpl-disasm v0.5.0` ships
+
+**Global-variable naming.** The disassembler's
+`Expression::Variable` now carries an optional `name` field
+populated from a curated `syms/variables.toml`. Decorated
+output reads like `GBYTE[42 (POV_FLAGS)]` instead of raw
+`GBYTE[42]`, and every consumer (gpl-asm, dialog-extract,
+opcode-fuzz) sees the names automatically through the JSON
+schema.
+
+### `syms/variables.toml` schema
+
+```toml
+[[gbyte]]
+id   = 42
+name = "POV_FLAGS"
+doc  = "Bit flags for the active character."
+
+[[gnum]]
+id   = 3
+name = "PARTY_GOLD"
+```
+
+Per-kind arrays: `[[gbyte]]`, `[[gnum]]`, `[[gbignum]]`,
+`[[gflag]]`, `[[gname]]`, `[[gstring]]`. Each entry needs
+`id` (u16) and `name` (string); `doc` is optional. Locals
+(LSTR / LNUM / etc.) are intentionally out of scope (per-
+chunk override surface queued for v0.6.0+).
+
+### Round-trip safety
+
+Decorated text parses cleanly through `gpl-asm`: the
+parser accepts both `GBYTE[42]` and `GBYTE[42 (POV_FLAGS)]`,
+discards the annotation, and rebuilds the dispatch byte
+from `var_kind + id + extended`. 600 / 600 corpus round-
+trip unchanged (the decoration affects display, not the
+encoded byte stream).
+
+### v0.5.0 ships an empty catalogue
+
+`syms/variables.toml` carries the schema commentary and
+zero entries. The catalogue grows organically as the
+toolkit surfaces meaningful slots; adding an entry has no
+effect on bytecode encoding.
+
 ## What `gpl-disasm v0.4.6` ships
 
 Text-format tweaks that make the human-readable listing

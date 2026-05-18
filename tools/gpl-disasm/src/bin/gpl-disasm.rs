@@ -124,6 +124,7 @@ fn main() -> Result<()> {
                     syms.apply_to_labels(cfg, &file_basename, &kind_str_padded, c.id);
                 }
                 syms.apply_to_mnemonics(&mut result);
+                syms.apply_to_variables(&mut result);
             }
             chunks.push((kind_str_padded, c.id, result));
         }
@@ -189,6 +190,7 @@ fn main() -> Result<()> {
                     syms.apply_to_labels(cfg, &file_basename, &kind_str_padded, c.id);
                 }
                 syms.apply_to_mnemonics(&mut result);
+                syms.apply_to_variables(&mut result);
             }
             if result.aligned {
                 aligned_count += 1;
