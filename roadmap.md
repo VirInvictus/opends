@@ -37,7 +37,13 @@ are extractable on Fedora.
       `innoextract` to restore canonical bytes; backs up the
       pre-repair files to `__verify-install-backup/<path>`;
       `--dry-run` previews the plan). Tagged:
-      `verify-install-v0.2.0`.
+      `verify-install-v0.2.0`. **v0.3.0** adds `--rollback`
+      (inverse of `--repair`; restores every file in the
+      `__verify-install-backup/` dir and removes it; pairs
+      with `--dry-run`) and `--summary` (one-line plain-
+      English status for the common-case modder check; frames
+      next-step advice so the user doesn't have to remember
+      which flag does what). Tagged: `verify-install-v0.3.0`.
 - [x] Source-hash manifests at
       `docs/source-hashes/ds1-gog-1.10.toml` and
       `ds2-gog-1.10.toml` — SHA256 of every shipped file per

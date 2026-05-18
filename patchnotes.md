@@ -4,6 +4,32 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/verify-install/` v0.3.0** ships **`--rollback`** and
+  **`--summary`**. First of the B-tier ships from the human-
+  friendliness sprint plan; small but useful both ways.
+  - **`--rollback`** restores every file under
+    `<install>/__verify-install-backup/` to its original
+    location and removes the backup dir. The inverse of
+    v0.2.0's `--repair`. Pairs with `--dry-run` to preview
+    what would be restored. No-op (with a clear message) if
+    no backup dir exists.
+  - **`--summary`** emits a one-line plain-English status
+    instead of the full hash-by-hash table. For the
+    common-case modder running `verify-install` out of habit:
+    "is my install in shape; yes / no; what to do." Pluralises
+    properly ("1 mismatched file" not "1 mismatched files").
+    Frames the next-step advice (`--repair`, `--rollback`,
+    `--show-extras`) so the user doesn't have to remember which
+    flag does what.
+
+    ```
+    $ verify-install --game ds1 --summary
+    Your Dark Sun: Shattered Lands install matches the canonical
+    GOG hash manifest. 111 extras (probably saves / DOSBox
+    config / DSUN.LOG). 17 runtime-state files skipped by policy.
+      (57 files matched, no mismatches, no missing files.)
+    ```
+
 - **`tools/opcode-fuzz/` v0.3.0** ships **`boot-chunks`** (the
   discovery half of the long-promised fuzz loop) plus a
   forward-looking **`recipes/`** scaffold. Item #9 of the

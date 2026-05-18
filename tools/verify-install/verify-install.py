@@ -304,6 +304,102 @@ def cmd_repair(
         shutil.rmtree(extracted_root, ignore_errors=True)
 
 
+def cmd_rollback(args: argparse.Namespace, install: Path) -> int:
+    """Restore every file under `<install>/__verify-install-backup/`
+    to its original location. Inverse of v0.2.0's `--repair`. The
+    backup dir was populated by `cmd_repair` with the
+    pre-repair contents; after a successful rollback the dir is
+    removed (with `--dry-run` it just lists what would happen).
+    """
+    backup_root = install / "__verify-install-backup"
+    if not backup_root.is_dir():
+        print(
+            f"verify-install: no backup directory at {backup_root}; "
+            "nothing to roll back.",
+            file=sys.stderr,
+        )
+        return 0
+    targets: list[Path] = sorted(
+        p for p in backup_root.rglob("*") if p.is_file()
+    )
+    if not targets:
+        print(f"verify-install: backup directory {backup_root} is empty.",
+              file=sys.stderr)
+        return 0
+    if args.dry_run:
+        print(f"rollback --dry-run: would restore {len(targets)} file(s):")
+        for src in targets:
+            rel = src.relative_to(backup_root)
+            print(f"  {rel}")
+        return 0
+    restored = 0
+    for src in targets:
+        rel = src.relative_to(backup_root)
+        dst = install / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+        restored += 1
+        print(f"  restored {rel}")
+    print(
+        f"rollback: restored {restored} file(s) from {backup_root}; "
+        f"removing backup directory."
+    )
+    shutil.rmtree(backup_root, ignore_errors=True)
+    return 0
+
+
+def _print_summary(meta: dict, report: dict) -> None:
+    """One-line plain-English status for the common case.
+
+    The full table (`_print_report`) is still useful but
+    dense; `--summary` is for the modder running `verify-install`
+    out of habit who just wants to know whether their install is
+    in shape. Frame the line by the dominant failure category
+    (mismatched > missing > extras-only > clean), and surface the
+    single most actionable next step.
+    """
+    m = len(report["mismatched"])
+    miss = len(report["missing"])
+    extras = len(report["extras"])
+    skipped = len(report["skipped"])
+    matched = len(report["matched"])
+    game_label = {"ds1": "Dark Sun: Shattered Lands",
+                  "ds2": "Dark Sun: Wake of the Ravager"}.get(
+                      meta.get("game"), meta.get("game", "?"))
+    src_label = meta.get("source", "?")
+    def plural(n: int, singular: str, plural_form: str | None = None) -> str:
+        word = plural_form or (singular + "s")
+        return f"{n} {singular if n == 1 else word}"
+
+    if report["ok"]:
+        bits = [f"Your {game_label} install matches the canonical {src_label} hash manifest."]
+        if extras > 0:
+            bits.append(
+                f"{plural(extras, 'extra')} (probably saves / DOSBox config / DSUN.LOG)."
+            )
+        if skipped > 0:
+            bits.append(f"{plural(skipped, 'runtime-state file')} skipped by policy.")
+        print(" ".join(bits))
+        print(f"  ({plural(matched, 'file')} matched, no mismatches, no missing files.)")
+        return
+    bits: list[str] = []
+    if m > 0:
+        bits.append(plural(m, "mismatched file"))
+    if miss > 0:
+        bits.append(plural(miss, "missing file"))
+    issue_summary = " + ".join(bits) if bits else "an issue"
+    print(f"Your {game_label} install has {issue_summary}.")
+    if m + miss > 0:
+        print(
+            "  Run with --repair <GOG-installer.exe> to restore canonical bytes."
+        )
+        print("  --rollback restores a previous --repair from the backup dir.")
+    if extras > 0:
+        print(
+            f"  Also: {plural(extras, 'extra')} (saves / config); use --show-extras to list."
+        )
+
+
 def cmd_verify(args: argparse.Namespace) -> int:
     install = args.path.resolve()
     if not install.is_dir():
@@ -345,8 +441,15 @@ def cmd_verify(args: argparse.Namespace) -> int:
             "ok": report["ok"],
         }
         print(json.dumps(report_json, indent=2))
+    elif args.summary:
+        _print_summary(meta, report)
     else:
         _print_report(meta, report, args)
+
+    if args.rollback:
+        rc = cmd_rollback(args, install)
+        if rc != 0:
+            return rc
 
     if args.repair is not None:
         # Run repair after the verify; the repair flow uses
@@ -454,8 +557,28 @@ def build_parser() -> argparse.ArgumentParser:
         "--dry-run",
         action="store_true",
         help=(
-            "with --repair: report what would be restored without "
-            "writing anything."
+            "with --repair / --rollback: report what would be "
+            "restored without writing anything."
+        ),
+    )
+    p.add_argument(
+        "--rollback",
+        action="store_true",
+        help=(
+            "verify-mode: restore every file under "
+            "<install>/__verify-install-backup/ to its original "
+            "location and remove the backup directory. Inverse of "
+            "--repair. Pair with --dry-run to preview."
+        ),
+    )
+    p.add_argument(
+        "--summary",
+        action="store_true",
+        help=(
+            "verify-mode: emit a one-line plain-English status "
+            "instead of the full hash-by-hash table. Useful for "
+            "the common-case modder check: \"is my install in "
+            "shape, yes / no, what's wrong.\""
         ),
     )
     return p
