@@ -2391,6 +2391,226 @@ def cmd_edit_item(args: argparse.Namespace) -> int:
     return 0
 
 
+def _validate_item_chains(blocks: list[dict[str, Any]]) -> None:
+    """Sanity-check the item linked-list structure post-edit.
+
+    Conventions (RE'd empirically from DS2 CHARSAVE.GFF;
+    CHAR-29 and CHAR-30 sampled, 5 and 27 items respectively):
+
+      - Each item has `rdff_header.index = X` (the chain-link id)
+      - Each item has `decoded.next = Y` (= the next item's `X`,
+        or 9999 to terminate a chain)
+      - Chain HEAD: `load_action = 2`, `blocknum = 0`
+      - Chain CONTINUATION: `load_action = 4`, `blocknum =
+        block_index - 1`, `from = 2`
+      - Number of chain heads must equal number of chain tails
+        (each chain that starts must end)
+
+    Validation failures raise `EncodeError`. Designed to fire
+    BEFORE write_gff, so an invariant-violating edit never lands
+    on disk.
+    """
+    items = [b for b in blocks if b.get("role") == "item"]
+    if not items:
+        return
+    indexes: list[int] = []
+    for b in items:
+        idx = int(b["rdff_header"]["index"])
+        if idx in indexes:
+            raise EncodeError(
+                f"duplicate rdff_header.index {idx} across two items; "
+                "chain integrity broken"
+            )
+        indexes.append(idx)
+    index_set = set(indexes)
+    for b in items:
+        idx = int(b["rdff_header"]["index"])
+        nxt = int(b["decoded"]["next"])
+        if nxt != 9999 and nxt not in index_set:
+            raise EncodeError(
+                f"item index {idx} has next={nxt}, which doesn't "
+                "resolve to any other item; chain integrity broken"
+            )
+    heads = sum(1 for b in items if int(b["rdff_header"]["load_action"]) == 2)
+    tails = sum(1 for b in items if int(b["decoded"]["next"]) == 9999)
+    if heads != tails:
+        raise EncodeError(
+            f"chain head count ({heads}) != chain tail count ({tails}); "
+            "chains malformed (each chain that starts must end)"
+        )
+
+
+def _build_give_item_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="save-inspect give-item",
+        description=(
+            "Append a new inventory item to a PC. Extends the "
+            "PC's last chain (the item-slot list inside CHAR is "
+            "a linked list via `rdff_header.index <-> "
+            "decoded.next`). Chain invariants are validated "
+            "BEFORE writing; an invariant-violating edit never "
+            "touches disk. Prefer `edit-item` when a spare slot "
+            "is available (safer, no chunk growth)."
+        ),
+    )
+    p.add_argument("file", type=Path, help="path to CHARSAVE.GFF")
+    p.add_argument("--pc", type=int, required=True,
+                   help="PC index (0-based; see `list-pcs`)")
+    p.add_argument("--item-id", type=int, required=True,
+                   help="item id to append (i16 range)")
+    p.add_argument("--quantity", type=int, default=1,
+                   help="quantity (u16; default 1)")
+    p.add_argument("--charges", type=int, default=0,
+                   help="charges (u16; default 0)")
+    p.add_argument(
+        "-o", "--output", type=Path, default=None,
+        help="output GFF path (default: rewrite in place after backup)",
+    )
+    p.add_argument(
+        "--no-backup", action="store_true",
+        help="skip the .bak.<mtime> snapshot",
+    )
+    p.add_argument(
+        "--dry-run", action="store_true",
+        help="show the planned edit + validation result; don't touch disk",
+    )
+    return p
+
+
+def cmd_give_item(args: argparse.Namespace) -> int:
+    try:
+        parsed = parse_gff(args.file)
+    except (FileNotFoundError, ValueError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+    summary = summarise(parsed)
+    pcs = _enumerate_pcs(summary)
+    if args.pc < 0 or args.pc >= len(pcs):
+        print(f"error: --pc {args.pc} out of range (have {len(pcs)} PC(s))",
+              file=sys.stderr)
+        return 2
+    pc = pcs[args.pc]
+    blocks = pc.get("body", {}).get("sub_blocks", [])
+    if not blocks:
+        print(f"error: PC {args.pc} has no sub-blocks", file=sys.stderr)
+        return 2
+    items = [b for b in blocks if b.get("role") == "item"]
+    if not items:
+        print(f"error: PC {args.pc} has no items; can't infer chain "
+              "structure to extend. Use a PC that has at least one item.",
+              file=sys.stderr)
+        return 2
+    # Find terminator + verify last item's chain is in valid shape.
+    term_idx = next(
+        (i for i, b in enumerate(blocks) if b.get("terminator")),
+        None,
+    )
+    if term_idx is None:
+        print(f"error: PC {args.pc} has no RDFF_END terminator; "
+              "can't safely append. Run --dry-run on the unedited "
+              "file to inspect the structure.", file=sys.stderr)
+        return 2
+    last_item = items[-1]
+    if int(last_item["decoded"]["next"]) != 9999:
+        print(f"error: last item (slot {len(items)-1}) has next="
+              f"{last_item['decoded']['next']} (not 9999); the last "
+              "block isn't a chain tail. Refusing to extend.",
+              file=sys.stderr)
+        return 2
+
+    name = (blocks[0].get("decoded", {}).get("name", "?") or "?").strip()
+    combat = blocks[0]
+    old_combat_bn = int(combat["rdff_header"]["blocknum"])
+
+    # Allocate fresh chain-link index. Take max + 1 for
+    # predictability; if max is already u16-max, give up cleanly.
+    existing_indexes = [int(b["rdff_header"]["index"]) for b in items]
+    new_index = max(existing_indexes) + 1
+    if new_index > 0xFFFF:
+        print(f"error: index space exhausted (max existing = "
+              f"{max(existing_indexes)}); can't allocate a new id",
+              file=sys.stderr)
+        return 2
+
+    # Determine item body length from the template (DS1 = 21, DS2 = 23).
+    template_len = int(last_item["rdff_header"]["len"])
+
+    # Build the new item: clone template's decoded, override the
+    # editable fields, set next=9999 (new chain tail).
+    new_decoded = dict(last_item["decoded"])
+    new_decoded["id"] = int(args.item_id)
+    new_decoded["quantity"] = int(args.quantity)
+    new_decoded["charges"] = int(args.charges)
+    new_decoded["next"] = 9999
+
+    new_item = {
+        "index": term_idx,  # informational; encoder ignores
+        "offset": 0,
+        "role": "item",
+        "rdff_header": {
+            "load_action": 4,  # chain continuation
+            "blocknum": old_combat_bn - 1,  # = (new block position) - 1
+            "type": 1,
+            "index": new_index,
+            "from": 2,
+            "len": template_len,
+        },
+        "decoded": new_decoded,
+    }
+
+    # Patch the chain tail: previous last item's next -> new index.
+    last_item["decoded"]["next"] = new_index
+
+    # Insert new item BEFORE terminator.
+    blocks.insert(term_idx, new_item)
+
+    # Bump combat + terminator blocknum.
+    combat["rdff_header"]["blocknum"] = old_combat_bn + 1
+    blocks[term_idx + 1]["rdff_header"]["blocknum"] = old_combat_bn + 1  # terminator
+
+    # Validate chain invariants BEFORE encoding / writing.
+    try:
+        _validate_item_chains(blocks)
+    except EncodeError as e:
+        print(f"error: chain validation failed: {e}", file=sys.stderr)
+        print("       (no changes written to disk)", file=sys.stderr)
+        return 2
+
+    print(f"PC {args.pc} '{name}' (CHAR {pc['id']}):")
+    print(f"  appending item: id={args.item_id} quantity={args.quantity} "
+          f"charges={args.charges} (new slot {len(items)})")
+    print(f"  allocated rdff_header.index = {new_index}")
+    print(f"  patched previous chain tail (slot {len(items)-1}): "
+          f"next 9999 -> {new_index}")
+    print(f"  combat.blocknum: {old_combat_bn} -> {old_combat_bn + 1}")
+
+    if args.dry_run:
+        print("\ndry-run: chain invariants validated; no file written.")
+        return 0
+
+    try:
+        new_bytes = _rewrite_save_with_edits(
+            parsed, summary, {(pc["kind"], int(pc["id"])): pc}
+        )
+    except EncodeError as e:
+        print(f"error: encode failed: {e}", file=sys.stderr)
+        return 2
+
+    out_path = args.output if args.output is not None else args.file
+    backup_path: Path | None = None
+    if not args.no_backup and out_path.exists():
+        ts = str(int(out_path.stat().st_mtime))
+        backup_path = out_path.with_name(out_path.name + f".bak.{ts}")
+        backup_path.write_bytes(out_path.read_bytes())
+    out_path.write_bytes(new_bytes)
+    print(f"\nwrote {len(new_bytes)} bytes to {out_path}")
+    if backup_path is not None:
+        print(f"backup at {backup_path}")
+    print("\nload the save in DOSBox; the new item should appear in "
+          f"PC {args.pc}'s inventory at the bottom of the slot list.")
+    return 0
+
+
 def _build_find_empty_slots_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="save-inspect find-empty-slots",
@@ -2638,6 +2858,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_edit_item(_build_edit_item_parser().parse_args(argv[1:]))
     if argv and argv[0] == "find-empty-slots":
         return cmd_find_empty_slots(_build_find_empty_slots_parser().parse_args(argv[1:]))
+    if argv and argv[0] == "give-item":
+        return cmd_give_item(_build_give_item_parser().parse_args(argv[1:]))
     if argv and argv[0] == "save-diff":
         sd_args = _build_save_diff_parser().parse_args(argv[1:])
         try:

@@ -4,6 +4,58 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/save-inspect/` v0.9.3** ships **`give-item`** with
+  chain-invariant validation. The append path I deferred in
+  v0.9.2 now lands, after empirical RE of the item linked-list
+  conventions inside CHAR records. **The save's round-trip
+  identity stays intact after the edit** (`roundtrip
+  all_chunks_ok=True, file_bytes_equal=True`), which is the
+  strongest pre-DOSBox correctness signal we have. Brandon's
+  actual test is loading the patched save and confirming the
+  new item is visible.
+  - **Conventions RE'd from comparing CHAR-29 (5 items) and
+    CHAR-30 (27 items) in the DS2 factory CHARSAVE.GFF**:
+    - Items form a linked list via
+      `rdff_header.index <-> decoded.next`
+    - **Chain HEAD**: `load_action = 2`, `blocknum = 0`,
+      `from = 16/17/4` (variable; relates to chain semantics
+      we haven't isolated)
+    - **Chain CONTINUATION**: `load_action = 4`, `from = 2`,
+      `type = 1`, `blocknum = sub_block_index - 1`
+    - `decoded.next = 9999` terminates a chain
+    - `combat.blocknum = total_sub_blocks - 1` (excludes
+      terminator)
+    - `terminator.blocknum = combat.blocknum`
+  - **`give-item <save> --pc N --item-id X --quantity Q
+    [--charges C]`** extends the PC's LAST chain by one item:
+    1. Allocates a fresh `rdff_header.index` (= max existing
+       + 1)
+    2. Patches the previous tail's `next` from 9999 to the
+       new index
+    3. Inserts a new chain-continuation item with `next =
+       9999` (becoming the new tail)
+    4. Bumps `combat.blocknum` and `terminator.blocknum`
+    5. Validates chain invariants (no duplicate indexes,
+       every `next` resolves, heads == tails) BEFORE writing
+  - **Refuses to apply** when:
+    - The PC has no items (no template to copy)
+    - The last item's chain isn't terminated at 9999 (chain
+      already broken; refuse to make it worse)
+    - The index space is exhausted (max = 0xFFFF)
+    - Chain validation fails post-edit (invariant-violating
+      edit never lands on disk)
+  - **`--dry-run`** previews the planned edit + validation.
+  - **Smoke**: factory DS2 CHARSAVE → give Anathea
+    (PC 1, 27 items) a `--item-id -99 --quantity 5` →
+    chain validates, file written, round-trip
+    `all_chunks_ok=True, file_bytes_equal=True`, list-items
+    shows 28 items with the new one at slot 27.
+  - **Bootstrap loop now has two paths**: `edit-item` for
+    safe in-place edits (preferred when an empty slot exists)
+    and `give-item` for chunk-growth append (when a PC
+    genuinely runs out of slots, or for testing the chain-
+    append path).
+
 - **`tools/save-inspect/` v0.9.2** ships **`find-empty-slots`**
   + the bootstrap-items cookbook entry. Closes the modder-
   altitude loop for items without needing the riskier
