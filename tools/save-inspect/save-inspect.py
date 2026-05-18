@@ -2391,6 +2391,67 @@ def cmd_edit_item(args: argparse.Namespace) -> int:
     return 0
 
 
+def _build_find_empty_slots_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="save-inspect find-empty-slots",
+        description=(
+            "Scan every PC's inventory and report empty / unwanted "
+            "slots. Slots with `quantity = 0` are the safest swap "
+            "targets for the `edit-item` bootstrap loop -- changing "
+            "their item id doesn't displace anything the player is "
+            "carrying. Pair with `edit-item --pc N --slot K "
+            "--item-id X` to fill the loop."
+        ),
+    )
+    p.add_argument("file", type=Path, help="path to CHARSAVE.GFF")
+    p.add_argument("--json", action="store_true",
+                   help="emit a JSON array instead of the human table")
+    return p
+
+
+def cmd_find_empty_slots(args: argparse.Namespace) -> int:
+    try:
+        parsed = parse_gff(args.file)
+    except (FileNotFoundError, ValueError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+    summary = summarise(parsed)
+    pcs = _enumerate_pcs(summary)
+    empties: list[dict[str, Any]] = []
+    for pc in pcs:
+        name = (pc.get("body", {}).get("sub_blocks", [{}])[0]
+                 .get("decoded", {}).get("name", "?") or "?").strip()
+        blocks = pc.get("body", {}).get("sub_blocks", [])
+        items = [b for b in blocks if b.get("role") == "item"]
+        for slot_idx, b in enumerate(items):
+            d = b.get("decoded", {})
+            if int(d.get("quantity", 0)) == 0:
+                empties.append({
+                    "pc_index": pc["pc_index"],
+                    "pc_name": name,
+                    "slot": slot_idx,
+                    "current_id": d.get("id"),
+                    "slot_kind": (d.get("slot") or {}).get("name", "?"),
+                })
+    if args.json:
+        sys.stdout.write(json.dumps(empties, indent=2) + "\n")
+        return 0
+    if not empties:
+        print(f"no quantity-0 slots in {args.file}", file=sys.stderr)
+        return 1
+    print(f"{len(empties)} empty slot(s) in {args.file} "
+          f"(quantity = 0; safe `edit-item` swap targets):\n")
+    print(f"  {'PC':3} {'Slot':>4} {'Current-ID':>10} {'SlotKind':10} PC name")
+    print("  " + "-" * 60)
+    for e in empties:
+        print(f"  {e['pc_index']:3} {e['slot']:>4} {e['current_id']:>10} "
+              f"{e['slot_kind']:10} {e['pc_name']}")
+    print()
+    print("Use `edit-item --pc N --slot K --item-id X --quantity 1` to")
+    print("repurpose any of these for the items.toml bootstrap loop.")
+    return 0
+
+
 # ---------- end v0.9.0 ----------
 
 
@@ -2575,6 +2636,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_edit_pc(_build_edit_pc_parser().parse_args(argv[1:]))
     if argv and argv[0] == "edit-item":
         return cmd_edit_item(_build_edit_item_parser().parse_args(argv[1:]))
+    if argv and argv[0] == "find-empty-slots":
+        return cmd_find_empty_slots(_build_find_empty_slots_parser().parse_args(argv[1:]))
     if argv and argv[0] == "save-diff":
         sd_args = _build_save_diff_parser().parse_args(argv[1:])
         try:

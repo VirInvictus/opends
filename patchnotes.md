@@ -4,6 +4,50 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/save-inspect/` v0.9.2** ships **`find-empty-slots`**
+  + the bootstrap-items cookbook entry. Closes the modder-
+  altitude loop for items without needing the riskier
+  `give-item` (chunk-growth) path.
+  - **`find-empty-slots <save>`**: scans every PC's inventory,
+    reports slots with `quantity = 0`. Those are safe `edit-
+    item` swap targets — modifying them doesn't displace any
+    item the player is actually carrying. Brandon's DS2 played
+    save: 87 empty slots across the 19 records, plenty for the
+    bootstrap loop.
+  - **`docs/cookbook/bootstrap-items.md`** is the second
+    cookbook entry. Walks through the full loop: find empty
+    slot → set candidate id → load DOSBox → observe → record
+    in `items.toml`. Real DS2 commands; real id (`-746`); real
+    rollback via the `.bak.<mtime>` snapshot.
+  - **Brief on `give-item`'s deferral**: empirically inspecting
+    Anathea's 27-item inventory in factory vs played (turns out
+    identical; she's a starter NPC) shows items are a
+    **linked list** via `rdff_header.index ↔ decoded.next`:
+
+    ```
+    Slot 0: header.index=331, next=33
+    Slot 1: header.index=33,  next=281    ← chain step
+    Slot 2: header.index=281, next=54     ← chain step
+    ...
+    Slot 7: ..., next=9999                ← terminator
+    Slot 8: header.index=313, next=...    ← NEW chain head
+    ```
+
+    Multiple chains per PC, probably per slot-kind or per-pack
+    (`pack_index` field, mostly `9999` but one Anathea slot
+    has `518`). Safe `give-item` requires:
+    1. Identify which chain to extend
+    2. Allocate a fresh `rdff_header.index` (currently unused)
+    3. Patch the chain's previous tail's `next` from 9999 to
+       our new index
+    4. Insert the new item with `next = 9999`
+
+    Doable but more RE than I want without a corruption
+    canary. `find-empty-slots + edit-item` covers the
+    bootstrap loop without it. Promoting `give-item` when a
+    PC genuinely runs out of empty slots becomes the forcing
+    function.
+
 - **`tools/save-inspect/` v0.9.1** adds the **edit half** of the
   modder-altitude surface: `edit-pc` and `edit-item`. Pairs
   with v0.9.0's `list-pcs` / `list-items` discovery commands.
