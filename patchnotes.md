@@ -4,6 +4,47 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/dialog-extract/` v0.7.0** ships **`--format
+  transcript`** (per-NPC plain-text dialog listing) and
+  **`--format html`** (single-file static HTML browser).
+  Item #6 of the human-friendliness sprint. v0.1.0 - v0.6.0
+  shipped the structured JSON dialog tree; v0.7.0 closes the
+  loop with human-readable surfaces a player or writer-curious
+  modder can actually read.
+  - **`--format transcript`** emits a markdown-style per-chunk
+    listing: header naming the chunk + speaker, indented body
+    of every dialog string in source order. DS1 GPLDATA
+    produces an 18349-line transcript covering 215 chunks /
+    17699 strings.
+
+    ```
+    ## GPL-1: Iniya
+      (DS1 starting cell-block; the imprisoned mage NPC.)
+
+      Iniya: Free! Finally free! I will destroy you all! Ha ha ha!
+      Iniya: Please help me. I was betrayed and locked in my own dungeon.
+      ...
+    ```
+
+  - **`--format html`** emits a single static HTML page with
+    embedded CSS, collapsible `<details>` per chunk, colour-
+    coded unresolved strings. Works opened directly via
+    `file://`; no JavaScript, no external assets. The on-ramp
+    to the `atlas` tool's dialog browser. DS1 GPLDATA full
+    output: 1.9 MB.
+  - **`syms/speakers.toml`** curated catalogue: maps GPL
+    chunk id to NPC name. Loaded by the transcript / HTML
+    emitters; missing rows fall back to `"GPL chunk N"`.
+    v0.7.0 ships with one verified entry (Iniya, DS1 GPL
+    chunk 1; sourced from gpl-disasm's curated function entry)
+    and grows organically.
+  - **`--format json`** (default) stays unchanged for back-
+    compat with v0.6.0 consumers (`opends find`,
+    `opcode-fuzz`).
+  - **Bug fix**: render_transcript previously crashed on a
+    null `value` from unresolved strings (`'NoneType' has no
+    attribute 'strip'`). Handled gracefully.
+
 - **`tools/save-inspect/` v0.8.0** ships the **write path**:
   `save-edit` takes a JSON edit, re-encodes every chunk, and
   writes a patched GFF. Item #5 of the human-friendliness

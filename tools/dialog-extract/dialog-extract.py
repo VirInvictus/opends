@@ -1378,6 +1378,168 @@ def build_summary(
     }
 
 
+def load_speakers(path: Path) -> dict[int, dict[str, Any]]:
+    """Load `syms/speakers.toml`: a curated chunk-id → NPC name
+    catalogue. Stdlib-only via `tomllib`.
+
+    Schema:
+
+        [[speaker]]
+        chunk_id = 1
+        name     = "Iniya"
+        notes    = "..."
+
+    Missing file is OK (returns empty dict). The transcript and
+    HTML emitters fall back to `"GPL chunk N"` when no row
+    matches.
+    """
+    if not path.is_file():
+        return {}
+    import tomllib  # stdlib in 3.11+
+    data = tomllib.loads(path.read_text(encoding="utf-8"))
+    rows = data.get("speaker", [])
+    out: dict[int, dict[str, Any]] = {}
+    for row in rows:
+        if "chunk_id" in row and "name" in row:
+            out[int(row["chunk_id"])] = row
+    return out
+
+
+def render_transcript(summary: dict[str, Any], speakers: dict[int, dict[str, Any]]) -> str:
+    """Per-NPC plain-text dialog transcript.
+
+    One section per GPL chunk that has at least one string. Each
+    section header pairs the chunk id with the curated speaker
+    name (or `"GPL chunk N"` if no curation row). Lines are
+    emitted in source-byte order with the speaker label and the
+    decoded string.
+
+    Branch annotations from `dialog_tree` aren't expanded in
+    v0.7.0; the flat string list reads well enough for most
+    modder use, and the JSON output remains the right shape for
+    structured consumption.
+    """
+    out: list[str] = []
+    out.append(f"# dialog-extract transcript — {summary['source']}")
+    out.append("")
+    out.append(f"chunks: {summary.get('chunk_count', 0)}; "
+               f"strings: {summary.get('string_count', 0)}; "
+               f"unresolved: {summary.get('unresolved_count', 0)}")
+    out.append("")
+    for c in summary.get("chunks", []):
+        strings = c.get("strings", [])
+        if not strings:
+            continue
+        cid = c["id"]
+        speaker = speakers.get(cid, {}).get("name") if isinstance(cid, int) else None
+        header = f"## {c['chunk']}: {speaker}" if speaker else f"## {c['chunk']}"
+        out.append(header)
+        if speaker and (notes := speakers.get(cid, {}).get("notes")):
+            out.append(f"  ({notes})")
+        out.append("")
+        for s in strings:
+            label = speaker or f"GPL chunk {cid}"
+            value = (s.get("value") or "").strip()
+            if s.get("unresolved"):
+                out.append(f"  [unresolved] {label}: ?")
+            elif value:
+                # Multi-line strings: indent continuation lines.
+                lines = value.split("\n")
+                out.append(f"  {label}: {lines[0]}")
+                for line in lines[1:]:
+                    out.append(f"    {line}")
+            else:
+                out.append(f"  {label}: (empty)")
+        out.append("")
+    return "\n".join(out)
+
+
+def _html_escape(s: str) -> str:
+    """Minimal HTML escaping (no external deps)."""
+    return (
+        s.replace("&", "&amp;")
+         .replace("<", "&lt;")
+         .replace(">", "&gt;")
+         .replace('"', "&quot;")
+    )
+
+
+HTML_CSS = """
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+       max-width: 900px; margin: 2em auto; padding: 0 1em; line-height: 1.5;
+       color: #1a1a1a; background: #fafafa; }
+h1 { border-bottom: 2px solid #333; padding-bottom: 0.3em; }
+h2 { margin-top: 2em; }
+details { margin: 0.5em 0; border-left: 3px solid #ccc; padding-left: 0.8em; }
+details > summary { cursor: pointer; font-weight: 600; }
+.stat { display: inline-block; margin-right: 1.2em; color: #555; }
+.stat strong { color: #1a1a1a; }
+.line { margin: 0.3em 0; padding: 0.4em 0.6em;
+        background: #f0f0f0; border-radius: 3px; }
+.speaker { color: #2a4d6e; font-weight: 600; margin-right: 0.4em; }
+.unresolved .speaker { color: #a04040; }
+.unresolved { background: #fbe7e7; }
+.notes { font-style: italic; color: #666; margin: 0 0 0.6em 0; }
+.empty { color: #aaa; font-style: italic; }
+"""
+
+
+def render_html(summary: dict[str, Any], speakers: dict[int, dict[str, Any]]) -> str:
+    """Single-file static HTML browser for the dialog tree.
+
+    Embedded CSS, no JavaScript, no external assets. Opens
+    directly via `file://` on any browser. Each chunk is a
+    collapsible `<details>` section; speaker label highlighted;
+    unresolved strings (LSTR / GSTR references without a
+    matching writer) colour-coded.
+    """
+    parts: list[str] = []
+    parts.append("<!doctype html>")
+    parts.append('<html lang="en">')
+    parts.append('<head>')
+    parts.append('<meta charset="utf-8">')
+    title = _html_escape(str(summary.get("source", "dialog-extract")))
+    parts.append(f"<title>dialog-extract: {title}</title>")
+    parts.append(f"<style>{HTML_CSS}</style>")
+    parts.append("</head>")
+    parts.append("<body>")
+    parts.append(f"<h1>dialog-extract: {title}</h1>")
+    parts.append("<p>")
+    parts.append(f'<span class="stat">chunks: <strong>{summary.get("chunk_count", 0)}</strong></span>')
+    parts.append(f'<span class="stat">strings: <strong>{summary.get("string_count", 0)}</strong></span>')
+    parts.append(f'<span class="stat">unresolved: <strong>{summary.get("unresolved_count", 0)}</strong></span>')
+    parts.append("</p>")
+
+    for c in summary.get("chunks", []):
+        strings = c.get("strings", [])
+        if not strings:
+            continue
+        cid = c["id"]
+        speaker_row = speakers.get(cid, {}) if isinstance(cid, int) else {}
+        speaker = speaker_row.get("name")
+        chunk_label = _html_escape(c["chunk"])
+        header = f"{chunk_label}: {_html_escape(speaker)}" if speaker else chunk_label
+        parts.append(f'<details><summary>{header} ({len(strings)} lines)</summary>')
+        if (notes := speaker_row.get("notes")):
+            parts.append(f'<p class="notes">{_html_escape(notes)}</p>')
+        speaker_label = _html_escape(speaker) if speaker else f"GPL chunk {_html_escape(str(cid))}"
+        for s in strings:
+            unresolved = bool(s.get("unresolved"))
+            cls = "line unresolved" if unresolved else "line"
+            value = s.get("value", "") or ""
+            if unresolved and not value:
+                value_html = '<span class="empty">(unresolved reference)</span>'
+            else:
+                value_html = _html_escape(value)
+            parts.append(
+                f'<div class="{cls}"><span class="speaker">{speaker_label}:</span> {value_html}</div>'
+            )
+        parts.append("</details>")
+
+    parts.append("</body></html>")
+    return "\n".join(parts)
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         prog="dialog-extract",
@@ -1426,6 +1588,23 @@ def main(argv: list[str] | None = None) -> int:
         "(same-chunk + direct callers). Useful for the common "
         "case where the LSTR is set by the immediate caller and "
         "the longer ancestor tail is noise.",
+    )
+    p.add_argument(
+        "--format",
+        choices=["json", "transcript", "html"],
+        default="json",
+        help="output format. json (default): full structured "
+        "dialog tree for tools. transcript: per-NPC plain-text "
+        "listing for humans. html: single-file static page with "
+        "embedded CSS, collapsible per-chunk sections.",
+    )
+    p.add_argument(
+        "--speakers",
+        type=Path,
+        default=HERE / "syms" / "speakers.toml",
+        help="curated chunk-id → NPC name TOML (default: "
+        "tools/dialog-extract/syms/speakers.toml). Transcript / "
+        "HTML emitters use it to label speakers.",
     )
     args = p.parse_args(argv)
 
@@ -1486,8 +1665,17 @@ def main(argv: list[str] | None = None) -> int:
         grep_re,
         quick_resolve=args.quick_resolve,
     )
-    indent = 2 if args.pretty else None
-    text = json.dumps(summary, indent=indent, ensure_ascii=False)
+
+    if args.format == "json":
+        indent = 2 if args.pretty else None
+        text = json.dumps(summary, indent=indent, ensure_ascii=False)
+    else:
+        speakers = load_speakers(args.speakers)
+        if args.format == "transcript":
+            text = render_transcript(summary, speakers)
+        else:
+            text = render_html(summary, speakers)
+
     if args.output is None:
         sys.stdout.write(text + "\n")
     else:

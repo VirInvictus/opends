@@ -277,6 +277,15 @@ look at the maps directly.
       top-level field + stderr stats line. Path-aware caller
       picking (CFG-distance ordering or symbolic trace) is
       queued for v0.6.0+.
+- [x] **Human-readable output** (dialog-extract v0.7.0):
+      `--format transcript` (per-NPC plain-text listing; DS1
+      GPLDATA emits 18349 lines covering 215 chunks / 17699
+      strings) and `--format html` (single-file static page
+      with embedded CSS, collapsible `<details>` per chunk,
+      colour-coded unresolved strings). New
+      `syms/speakers.toml` curated chunk-id → NPC name
+      catalogue; missing rows fall back to "GPL chunk N".
+      `--format json` (default) unchanged for back-compat.
 - [x] Tagged: `dialog-extract-v0.1.0`. (this release)
 
 ### `tools/save-inspect/` (Python)

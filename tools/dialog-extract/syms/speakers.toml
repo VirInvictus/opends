@@ -1,0 +1,28 @@
+# dialog-extract speakers catalogue — chunk-id → NPC name.
+#
+# Loaded by the `--format transcript` and `--format html`
+# emitters (dialog-extract v0.7.0+). Each row pairs a GPL chunk
+# id with the speaker the chunk's dialog represents. When no row
+# matches, the renderer falls back to `"GPL chunk N"`.
+#
+# Schema:
+#
+#   [[speaker]]
+#   chunk_id = 1
+#   name     = "Iniya"
+#   notes    = "..."        # optional, rendered as a subtitle
+#
+# Curation rule: only commit a row once the speaker is confirmed
+# by the chunk's dialog content (the strings inside the chunk
+# should match the named NPC's voice / role). A wrong attribution
+# is worse than no attribution.
+#
+# v0.7.0 ships with one verified entry seeded from
+# `tools/gpl-disasm/syms/functions.toml`'s curated function-entry
+# row (iniya_first_meeting in DS1 GPL chunk 1). The catalogue
+# grows organically as RE / dialog-reading surfaces more speakers.
+
+[[speaker]]
+chunk_id = 1
+name = "Iniya"
+notes = "DS1 starting cell-block; the imprisoned mage NPC. Sourced from gpl-disasm/syms/functions.toml."

@@ -12,6 +12,77 @@ that appear in `GPL ` and `MAS ` bytecode chunks.
 - **Version**: see [`VERSION`](VERSION).
 - **License**: MIT.
 
+## What v0.7.0 ships
+
+**Human-readable output: `--format transcript` and `--format
+html`.** v0.1.0 - v0.6.0 emitted JSON for tools; v0.7.0 adds
+two surfaces a player or writer-curious modder can actually
+read.
+
+### `--format transcript`
+
+Per-NPC plain-text listing of every dialog string in source
+order. Speaker labels resolved from
+`syms/speakers.toml` (curated chunk-id → NPC name; v0.7.0
+ships with one verified entry, grows organically).
+
+```sh
+python3 dialog-extract.py GPLDATA.GFF --text-source RESOURCE.GFF \
+    --format transcript -o ds1-dialog.txt
+```
+
+Output:
+
+```
+## GPL-1: Iniya
+  (DS1 starting cell-block; the imprisoned mage NPC.)
+
+  Iniya: Free! Finally free! I will destroy you all! Ha ha ha!
+  Iniya: Please help me. I was betrayed and locked in my own dungeon.
+  ...
+```
+
+DS1 GPLDATA full transcript: 18349 lines covering 215 chunks /
+17699 strings.
+
+### `--format html`
+
+Single-file static HTML browser. Embedded CSS, collapsible
+`<details>` per chunk, colour-coded unresolved strings. Drops
+on disk; opens directly via `file://` on any browser; no
+JavaScript, no external assets.
+
+```sh
+python3 dialog-extract.py GPLDATA.GFF --text-source RESOURCE.GFF \
+    --format html -o ds1-dialog.html
+```
+
+DS1 GPLDATA full output: ~1.9 MB single file. The on-ramp to
+the `atlas` tool's dialog browser.
+
+### `syms/speakers.toml`
+
+```toml
+[[speaker]]
+chunk_id = 1
+name = "Iniya"
+notes = "DS1 starting cell-block; the imprisoned mage NPC."
+```
+
+Curated. Missing rows fall back to `"GPL chunk N"` as the
+speaker label; the renderer doesn't invent attribution. Add
+rows only after confirming the speaker from the chunk's
+dialog content.
+
+### `--format json` (default)
+
+Stays exactly as v0.6.0 for back-compat with downstream
+consumers (`opends find`, `opcode-fuzz`). The transcript and
+HTML formats are pure read-only derivations of the same
+summary tree.
+
+---
+
 ## What v0.6.0 ships
 
 **CFG-distance-ordered `possible_writers`.** v0.5.0 attached
