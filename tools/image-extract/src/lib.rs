@@ -434,6 +434,250 @@ fn decode_ds1_rle(bytes: &[u8], start: usize, width: u16, height: u16) -> Result
     Ok(img)
 }
 
+// ---------- DS1 RLE encoder (v0.4.0) ----------
+
+/// Maximum run length per RLE code, in pixels.
+///
+/// The DS1 RLE per-pixel-run code is one byte: `code / 2 + 1` is the
+/// run length, in `0..=127 → 1..=128`. So both the direct and
+/// repeated forms cap at 128 pixels per code byte.
+const RLE_MAX_RUN: usize = 128;
+
+/// Maximum span payload, in bytes (one-byte `compressed_length`
+/// field caps it). Wide rows are emitted as multiple spans.
+const RLE_MAX_SPAN_PAYLOAD: usize = 0xFF;
+
+/// One RLE code with metadata about how many input pixels it covers.
+/// Used during multi-span emission so the encoder can compute each
+/// span's `startx` precisely.
+struct RleCode {
+    bytes: Vec<u8>,
+    pixels: usize,
+}
+
+/// Encode `pixels` into a sequence of RLE codes. Greedy strategy:
+/// when the next pixel matches the current one, emit a repeated run
+/// (one byte saved over the direct form); otherwise extend a direct
+/// run until the next repeated pair or the 128-pixel cap.
+fn rle_codes_for(pixels: &[u8]) -> Vec<RleCode> {
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < pixels.len() {
+        // Probe for a repeated run starting at i.
+        let mut run_len = 1;
+        while i + run_len < pixels.len()
+            && pixels[i + run_len] == pixels[i]
+            && run_len < RLE_MAX_RUN
+        {
+            run_len += 1;
+        }
+
+        if run_len >= 2 {
+            // Repeated form: odd code byte + one data byte.
+            let code = ((run_len - 1) as u8) * 2 + 1;
+            out.push(RleCode {
+                bytes: vec![code, pixels[i]],
+                pixels: run_len,
+            });
+            i += run_len;
+        } else {
+            // Direct form: scan forward until the next repeated pair
+            // or the 128-pixel cap. Stop before a repeated pair so
+            // the next iteration emits it as a repeated run.
+            let mut direct_len = 1;
+            while i + direct_len < pixels.len() && direct_len < RLE_MAX_RUN {
+                let next = i + direct_len;
+                if next + 1 < pixels.len() && pixels[next] == pixels[next + 1] {
+                    break;
+                }
+                direct_len += 1;
+            }
+            let mut code_bytes = Vec::with_capacity(1 + direct_len);
+            code_bytes.push(((direct_len - 1) as u8) * 2);
+            code_bytes.extend_from_slice(&pixels[i..i + direct_len]);
+            out.push(RleCode {
+                bytes: code_bytes,
+                pixels: direct_len,
+            });
+            i += direct_len;
+        }
+    }
+    out
+}
+
+/// Convenience: concatenate the bytes of a code sequence. Used in
+/// unit tests that inspect a single-span row's payload directly.
+#[cfg(test)]
+fn encode_ds1_rle_payload(pixels: &[u8]) -> Vec<u8> {
+    let mut out = Vec::new();
+    for c in rle_codes_for(pixels) {
+        out.extend_from_slice(&c.bytes);
+    }
+    out
+}
+
+/// Encode one row of pixels as one or more spans
+/// `(startx, flags, unknown, length, payload...)`. Returns `None`
+/// when every pixel is palette index 0 (the caller skips emitting
+/// the row; the decoder default-fills uninitialised pixels with 0).
+///
+/// Wide rows (e.g. 320-pixel DS sprite rows whose RLE payload
+/// exceeds 255 bytes) emit as multiple back-to-back spans with
+/// distinct `startx` values; only the final span has the
+/// `0x80` last-span flag set. The `flags & 0x01` bit handles
+/// `startx >= 256` (the engine stores startx as 9 bits split
+/// across the two bytes).
+fn encode_ds1_rle_row(row_pixels: &[u8]) -> Option<Vec<u8>> {
+    if row_pixels.iter().all(|&p| p == 0) {
+        return None;
+    }
+    let codes = rle_codes_for(row_pixels);
+
+    // Group codes into spans. A new span starts whenever adding the
+    // next code would push the current span's payload past 255
+    // bytes. Each span gets its own startx (cumulative pixel
+    // count of all preceding spans on this row).
+    let mut spans: Vec<(usize, Vec<u8>)> = Vec::new();
+    let mut current_startx: usize = 0;
+    let mut current_payload: Vec<u8> = Vec::new();
+    let mut current_pixels: usize = 0;
+    for c in codes {
+        if !current_payload.is_empty()
+            && current_payload.len() + c.bytes.len() > RLE_MAX_SPAN_PAYLOAD
+        {
+            spans.push((current_startx, std::mem::take(&mut current_payload)));
+            current_startx += current_pixels;
+            current_pixels = 0;
+        }
+        current_payload.extend_from_slice(&c.bytes);
+        current_pixels += c.pixels;
+    }
+    if !current_payload.is_empty() {
+        spans.push((current_startx, current_payload));
+    }
+
+    // Serialise: each span gets a 4-byte header. Only the final
+    // span's flags include the `last-span` bit.
+    let mut out = Vec::new();
+    let last_idx = spans.len() - 1;
+    for (i, (startx, payload)) in spans.iter().enumerate() {
+        let mut flags: u8 = 0;
+        if *startx >= 256 {
+            flags |= 0x01;
+        }
+        if i == last_idx {
+            flags |= 0x80;
+        }
+        out.push((*startx & 0xFF) as u8);
+        out.push(flags);
+        out.push(0u8); // unknown (libgff doesn't read)
+        out.push(payload.len() as u8);
+        out.extend_from_slice(payload);
+    }
+    Some(out)
+}
+
+/// Encode a [`Frame`] as a DS1 RLE frame body: `width (u16) + height
+/// (u16) + RLE bytes (terminated by 0xFF row marker)`. Rows that are
+/// entirely palette index 0 are skipped (the decoder default-fills
+/// uninitialised pixels with 0, so skipping is lossless).
+///
+/// Row order: the original engine stores rows bottom-up. We re-flip
+/// from PNG top-down here so that decoded output matches the input
+/// pixel-for-pixel.
+fn encode_ds1_rle_frame(frame: &Frame) -> Vec<u8> {
+    let w = frame.width as usize;
+    let h = frame.height as usize;
+    debug_assert_eq!(frame.indices.len(), w * h);
+
+    let mut body = Vec::with_capacity(4 + w * h / 4);
+    body.extend_from_slice(&frame.width.to_le_bytes());
+    body.extend_from_slice(&frame.height.to_le_bytes());
+
+    // For each stored row (bottom-up), check if the corresponding
+    // PNG row (top-down) has any non-zero pixel and emit. row_num
+    // here is the storage-side row number; the decoder maps it back
+    // via `img_row_idx = h - row_num - 1`.
+    for row_num in 0..h {
+        let png_row = h - row_num - 1;
+        let row_start = png_row * w;
+        let row_slice = &frame.indices[row_start..row_start + w];
+        if let Some(span) = encode_ds1_rle_row(row_slice) {
+            body.push(row_num as u8);
+            body.extend_from_slice(&span);
+        }
+    }
+    body.push(0xFF); // frame terminator
+
+    // The decoder requires at least 9 bytes from frame_offset
+    // (4 for w/h + 5 for the type-tag check area that overlaps
+    // the start of the RLE stream). For a near-empty body (e.g.
+    // an all-zero frame: 4 header bytes + 0xFF terminator = 5
+    // bytes), pad with zeros after the terminator. The decoder's
+    // RLE loop exits at the 0xFF row marker before reading them.
+    while body.len() < 9 {
+        body.push(0);
+    }
+    body
+}
+
+/// Encode a sequence of [`Frame`]s as a complete bitmap chunk
+/// (BMP / PORT / ICON shape): `u32 chunk_size + u16 frame_count +
+/// u32 × frame_count frame_offsets + per-frame DS1 RLE bodies`.
+///
+/// Every frame is encoded as DS1 RLE regardless of the input
+/// `frame_type`; v0.4.0 doesn't ship a PLNR or PLAN encoder, and the
+/// game engine reads all three transparently from chunks of any kind.
+/// Frames whose `frame_type` is the composited `STRP` marker are
+/// rejected (those aren't real game frames; the caller asked for the
+/// wrong thing).
+pub fn encode_bitmap_rle(frames: &[Frame]) -> Result<Vec<u8>> {
+    if frames.is_empty() {
+        return Err(ImageError::UnsupportedFrameType {
+            frame: 0,
+            kind: "empty frame list".to_string(),
+        });
+    }
+    for (i, f) in frames.iter().enumerate() {
+        if matches!(f.frame_type, FrameType::Unknown(t) if &t == b"STRP") {
+            return Err(ImageError::UnsupportedFrameType {
+                frame: i,
+                kind: "STRP".to_string(),
+            });
+        }
+    }
+
+    let frame_count = frames.len() as u16;
+    let header_size = 4 + 2 + 4 * frames.len(); // chunk_size + frame_count + offsets
+    let mut bodies: Vec<Vec<u8>> = Vec::with_capacity(frames.len());
+    for f in frames {
+        bodies.push(encode_ds1_rle_frame(f));
+    }
+
+    // Compute per-frame offset into the chunk.
+    let mut offsets: Vec<u32> = Vec::with_capacity(frames.len());
+    let mut cursor = header_size;
+    for body in &bodies {
+        offsets.push(cursor as u32);
+        cursor += body.len();
+    }
+    let chunk_size = cursor;
+
+    let mut out = Vec::with_capacity(chunk_size);
+    out.extend_from_slice(&(chunk_size as u32).to_le_bytes());
+    out.extend_from_slice(&frame_count.to_le_bytes());
+    for o in &offsets {
+        out.extend_from_slice(&o.to_le_bytes());
+    }
+    for body in &bodies {
+        out.extend_from_slice(body);
+    }
+    debug_assert_eq!(out.len(), chunk_size);
+    Ok(out)
+}
+
+// ---------- end DS1 RLE encoder ----------
+
 /// Decode a PLNR-encoded frame body into palette indices.
 ///
 /// Ported from `dsoageofheroes/libgff` `src/gpl/image.c`
@@ -725,5 +969,140 @@ mod tests {
         ];
         let indices = decode_ds1_rle(&body, 0, 4, 1).unwrap();
         assert_eq!(indices, vec![7, 7, 7, 7]);
+    }
+
+    // ---------- encoder tests (v0.4.0) ----------
+
+    fn frame(width: u16, height: u16, indices: Vec<u8>) -> Frame {
+        assert_eq!(indices.len(), width as usize * height as usize);
+        Frame {
+            width,
+            height,
+            frame_type: FrameType::Ds1Rle,
+            indices,
+        }
+    }
+
+    fn pack_unpack_frame(f: &Frame) -> Frame {
+        let chunk = encode_bitmap_rle(std::slice::from_ref(f)).expect("encode");
+        let bmp = Bitmap::from_bytes(&chunk).expect("re-parse chunk");
+        assert_eq!(bmp.frame_count, 1);
+        bmp.decode_frame(0).expect("decode")
+    }
+
+    #[test]
+    fn rle_payload_single_pixel_emits_direct_code_zero() {
+        // 1 byte → direct run of 1 → code = 0, payload byte = value.
+        assert_eq!(encode_ds1_rle_payload(&[42]), vec![0, 42]);
+    }
+
+    #[test]
+    fn rle_payload_pair_of_identical_emits_repeated_code_three() {
+        // Two equal bytes → repeated run of 2 → code = 3, value = byte.
+        assert_eq!(encode_ds1_rle_payload(&[7, 7]), vec![3, 7]);
+    }
+
+    #[test]
+    fn rle_payload_mixed_run() {
+        // [1, 2, 3, 5, 5, 5, 9]:
+        //   direct(1,2,3) → code = 4, then 1, 2, 3
+        //   repeated(5)*3 → code = 5, then 5
+        //   direct(9) → code = 0, then 9
+        assert_eq!(
+            encode_ds1_rle_payload(&[1, 2, 3, 5, 5, 5, 9]),
+            vec![4, 1, 2, 3, 5, 5, 0, 9],
+        );
+    }
+
+    #[test]
+    fn rle_payload_long_repeated_run_caps_at_128() {
+        let pixels: Vec<u8> = vec![3; 200];
+        let encoded = encode_ds1_rle_payload(&pixels);
+        // First run: max 128 → code = 127*2 + 1 = 255, value = 3
+        // Then run of 72: code = 71*2 + 1 = 143, value = 3
+        assert_eq!(encoded, vec![255, 3, 143, 3]);
+    }
+
+    #[test]
+    fn rle_payload_long_direct_run_caps_at_128() {
+        // 130 distinct alternating bytes; can't form a repeated run
+        // (the encoder breaks direct runs before a repeated pair, but
+        // here no two consecutive pixels match).
+        let pixels: Vec<u8> = (0..130).map(|i| (i % 250) as u8).collect();
+        let encoded = encode_ds1_rle_payload(&pixels);
+        // First direct run: 128 pixels → code = 254, then 128 data bytes.
+        // Then second direct run: 2 pixels → code = 2, then 2 data bytes.
+        assert_eq!(encoded[0], 254);
+        assert_eq!(&encoded[1..129], &pixels[..128]);
+        assert_eq!(encoded[129], 2);
+        assert_eq!(&encoded[130..132], &pixels[128..130]);
+    }
+
+    #[test]
+    fn encode_decode_roundtrip_single_pixel() {
+        let f = frame(1, 1, vec![42]);
+        assert_eq!(pack_unpack_frame(&f).indices, f.indices);
+    }
+
+    #[test]
+    fn encode_decode_roundtrip_single_row() {
+        // Mixed: direct + repeated + direct.
+        let f = frame(8, 1, vec![1, 2, 3, 5, 5, 5, 9, 7]);
+        assert_eq!(pack_unpack_frame(&f).indices, f.indices);
+    }
+
+    #[test]
+    fn encode_decode_roundtrip_multi_row_with_empty_rows() {
+        // 4x4: top row non-zero, middle two rows zero (skipped by
+        // encoder), bottom row non-zero. Decoder fills zeros.
+        #[rustfmt::skip]
+        let pixels = vec![
+            10, 11, 12, 13,
+            0,  0,  0,  0,
+            0,  0,  0,  0,
+            20, 21, 22, 23,
+        ];
+        let f = frame(4, 4, pixels.clone());
+        let decoded = pack_unpack_frame(&f);
+        assert_eq!(decoded.indices, pixels);
+    }
+
+    #[test]
+    fn encode_decode_roundtrip_all_zero_frame() {
+        let f = frame(4, 4, vec![0; 16]);
+        assert_eq!(pack_unpack_frame(&f).indices, vec![0; 16]);
+    }
+
+    #[test]
+    fn encode_decode_roundtrip_multi_frame() {
+        let f0 = frame(2, 2, vec![1, 2, 3, 4]);
+        let f1 = frame(3, 1, vec![7, 7, 8]);
+        let chunk = encode_bitmap_rle(&[f0.clone(), f1.clone()]).unwrap();
+        let bmp = Bitmap::from_bytes(&chunk).unwrap();
+        assert_eq!(bmp.frame_count, 2);
+        let d0 = bmp.decode_frame(0).unwrap();
+        let d1 = bmp.decode_frame(1).unwrap();
+        assert_eq!(d0.indices, f0.indices);
+        assert_eq!(d0.width, 2);
+        assert_eq!(d0.height, 2);
+        assert_eq!(d1.indices, f1.indices);
+        assert_eq!(d1.width, 3);
+        assert_eq!(d1.height, 1);
+    }
+
+    #[test]
+    fn encode_rejects_empty_frame_list() {
+        assert!(encode_bitmap_rle(&[]).is_err());
+    }
+
+    #[test]
+    fn encode_rejects_strp_composite() {
+        let f = Frame {
+            width: 2,
+            height: 1,
+            frame_type: FrameType::Unknown(*b"STRP"),
+            indices: vec![1, 2],
+        };
+        assert!(encode_bitmap_rle(&[f]).is_err());
     }
 }

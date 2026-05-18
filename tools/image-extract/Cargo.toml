@@ -1,7 +1,7 @@
 [package]
 name = "image-extract"
-version = "0.3.0"
-description = "Extract Dark Sun bitmap chunks (BMP / PORT / ICON) as PNG."
+version = "0.4.0"
+description = "Extract and pack Dark Sun bitmap chunks (BMP / PORT / ICON) as PNG."
 readme = "README.md"
 edition.workspace = true
 license.workspace = true
@@ -15,6 +15,10 @@ path = "src/lib.rs"
 [[bin]]
 name = "image-extract"
 path = "src/bin/image-extract.rs"
+
+[[bin]]
+name = "image-pack"
+path = "src/bin/image-pack.rs"
 
 [dependencies]
 gff-edit = { path = "../gff-edit" }

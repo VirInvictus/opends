@@ -1,15 +1,87 @@
 # image-extract
 
-Extract Dark Sun bitmap chunks (`BMP `, `PORT`, `ICON`, `BMAP`,
-`OMAP`, `TILE`) as palette-indexed PNG. The first visual modder
-tool in the OpenDS toolkit: see what's inside the game's image
-chunks without firing up the engine.
+Extract and pack Dark Sun bitmap chunks (`BMP `, `PORT`, `ICON`,
+`BMAP`, `OMAP`, `TILE`). v0.1.0 - v0.3.0 ship the decoder
+(`image-extract` binary: chunk → palette-indexed PNG). **v0.4.0
+adds `image-pack`**: the inverse encoder that takes a PNG and
+emits a DS1 RLE chunk you can replace into a real game file.
+The toolkit's first true sprite-modding workflow.
 
 - **Language**: Rust (edition 2024).
 - **Version**: see [`VERSION`](VERSION).
 - **License**: MIT.
 
-Depends on `gff-edit` for GFF I/O and `png` for PNG encoding.
+Depends on `gff-edit` for GFF I/O and `png` for PNG decoding /
+encoding.
+
+## What `image-extract v0.4.0` ships
+
+**`image-pack` companion binary.** Reads a palette-indexed
+8-bit PNG, writes a DS1 RLE-encoded bitmap chunk. The chunk
+format is universal across `BMP `, `PORT`, `ICON`, `BMAP`,
+`OMAP`, `TILE`; the engine reads PLNR and PLAN too, so DS1 RLE
+output works for any of them.
+
+```sh
+# Extract a sprite for editing.
+image-extract RESOURCE.GFF --kind ICON --id 2000 --frame 0 \
+    -o sprite.png
+
+# Open sprite.png in your editor of choice. Save as palette-
+# indexed 8-bit PNG using the *same palette* as the chunk's
+# PAL / CPAL source. For example, with ImageMagick:
+#   convert sprite.png -dither None -map original-palette.png \
+#       PNG8:sprite-edited.png
+
+# Pack the edited PNG and pipe straight into gff-cat replace.
+image-pack sprite-edited.png \
+    | gff-cat replace RESOURCE.GFF ICON 2000 - -o patched.gff
+```
+
+`--frames-dir <dir>` packs every `*.png` in sorted-filename
+order as a multi-frame chunk. Round-trips the v0.3.0
+`image-extract --frames-all` output.
+
+The encoder cap test: 883 / 883 DS1 RLE frames across the
+DS1 + DS2 corpus pack → re-parse → decode pixel-identical to
+the original. PLNR (855) and PLAN (237) frames are skipped at
+the encoder; v0.4.0 doesn't ship encoders for those formats
+(and doesn't need to: the engine reads all three).
+
+### Library API
+
+```rust
+use image_extract::{encode_bitmap_rle, Frame, FrameType};
+
+let frame = Frame {
+    width: 32,
+    height: 32,
+    frame_type: FrameType::Ds1Rle,
+    indices: my_palette_indices, // 32 * 32 bytes
+};
+let chunk_bytes: Vec<u8> = encode_bitmap_rle(&[frame])?;
+```
+
+### Caveats
+
+- **Palette responsibility is the modder's.** The chunk
+  doesn't store palette information; it stores indices into a
+  separate `PAL ` / `CPAL` chunk. An edited PNG with the wrong
+  palette will render in-game with wrong colours even when the
+  indices are correct. Use ImageMagick's `-map` or your
+  editor's "remap to palette X" to align before packing.
+- **Composited spritesheets are rejected**. A frame with
+  `frame_type == FrameType::Unknown(b"STRP")` is the
+  v0.3.0 `composite_horizontal_strip` output; that's a
+  rendered artefact, not a real game frame, and packing it
+  would silently corrupt animation timing. Slice the
+  spritesheet back into per-frame PNGs first, then use
+  `--frames-dir`.
+- **Wide rows split into multiple spans.** Rows whose RLE
+  payload exceeds 255 bytes (the single-span
+  `compressed_length` cap) are split on code boundaries; the
+  engine's decoder reads them transparently. Mentioned only
+  for completeness; not something a modder ever sees.
 
 ## What `image-extract v0.3.0` ships
 

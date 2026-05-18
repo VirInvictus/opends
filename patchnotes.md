@@ -4,6 +4,60 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/image-extract/` v0.4.0** ships the inverse of the
+  v0.1.0 decoder: a companion `image-pack` binary that encodes
+  palette-indexed PNGs back into DS1 RLE bitmap chunks. Item
+  #2 of the human-friendliness sprint; the single feature that
+  takes sprite modding from "look at the sprite" to "ship a
+  sprite mod." Also catches up the lapsed `VERSION` file (it
+  was stuck at `0.2.1` after the v0.3.0 ship; v0.4.0 corrects
+  it).
+  - **Library**: new public `encode_bitmap_rle(frames: &[Frame])
+    -> Result<Vec<u8>>`. Emits the full chunk shape (u32
+    chunk_size + u16 frame_count + u32 × N frame_offsets +
+    per-frame DS1 RLE bodies). Every frame encodes as DS1 RLE
+    regardless of the input `frame_type`; the engine reads
+    PLNR and PLAN transparently from chunks of any kind, so
+    RLE output is universally compatible. Frames whose
+    `frame_type` is the composited `STRP` marker are rejected
+    (those aren't real game frames).
+  - **Greedy RLE encoder**: a repeated run of N >= 2 identical
+    pixels emits as one byte saved over the direct form;
+    otherwise extends a direct run until the next repeated
+    pair or the 128-pixel cap. Multi-span row emission handles
+    wide rows (e.g. 320-pixel DS sprite rows whose RLE payload
+    exceeds the 255-byte single-span `compressed_length`
+    field): the encoder splits cleanly on code boundaries and
+    tracks per-span `startx` precisely, including the 9-bit
+    extended startx flag for `startx >= 256`.
+  - **Binary**: new `image-pack` CLI. Reads a palette-indexed
+    8-bit PNG and writes the encoded chunk to `-o <file>` or
+    stdout (default). `--frames-dir <dir>` packs every `*.png`
+    in sorted-filename order as a multi-frame chunk (round-
+    trips the v0.3.0 `image-extract --frames-all` output).
+    Pipe the stdout into `gff-cat replace <gff> <kind> <id> -`
+    to slot the new bitmap into a real game file.
+  - **Round-trip property test**: 883 / 883 DS1 RLE frames
+    across the DS1 + DS2 corpus (GPLDATA + RESOURCE in both
+    games) pack → re-parse → decode pixel-identical to the
+    original. 855 PLNR + 237 PLAN frames are skipped per
+    design (no encoder for those formats; the engine reads
+    all three so it's fine). The one known malformed frame
+    from v0.2.1 (DS1 `RESOURCE.GFF:ICON/0x7f9` frame 2) stays
+    known-broken; it errored at decode and never reached the
+    encoder.
+  - **End-to-end smoke**: extract ICON 2000 from DS1
+    `RESOURCE.GFF` as a PNG, run `image-pack` on it, replace
+    the chunk via `gff-cat replace`, re-extract: the two PNGs
+    are byte-identical. The full modder workflow works on a
+    real chunk.
+  - **Tests**: 9 new lib tests covering the RLE encoder
+    (single-pixel, repeated-pair, mixed runs, 128-pixel cap
+    on both forms, multi-row with zero rows, all-zero frame,
+    multi-frame chunk, empty / STRP rejection) plus the
+    `pack_corpus.rs` property test above. 17 / 17 lib tests
+    pass; corpus test passes with 883 frames round-tripped.
+
 - **`tools/gpl-disasm/` v0.6.0** is the first ship of the
   human-friendliness sprint (see
   [`docs/next-versions.md`](docs/next-versions.md)). Two

@@ -348,7 +348,12 @@ look at the maps directly.
 - [ ] Sprite-frame animation export (multi-frame BMPs as GIF /
       animated PNG / spritesheet).
 - [x] Tagged: `image-extract-v0.1.0` (initial); `image-extract-v0.2.0`
-      (PLAN + PLNR fix).
+      (PLAN + PLNR fix); `image-extract-v0.3.0` (multi-frame
+      export); `image-extract-v0.4.0` (`image-pack` companion
+      binary: palette-indexed PNG → DS1 RLE BMP chunk; 883 / 883
+      corpus DS1 RLE frames round-trip pixel-identical;
+      multi-span row emission handles 320-pixel sprite rows
+      that exceed the single-span 255-byte cap).
 
 ### `tools/region-render/` (Rust)
 
