@@ -395,7 +395,161 @@ Practical implication for `opends-region` and `opends-rules`: load the
 source game's variant explicitly and treat the schemas as separate
 data types with a common interface.
 
-## 3. External (non-GFF) files
+## 3. Save files (DS1 specifics)
+
+Save state in DS1 is split across multiple files; the structure
+isn't intuitive from the filenames. RE'd 2026-05-18 while
+shipping `tools/save-inspect/scripts/ds1-party-edit.py`. The DS2
+story is different and largely lives in `CHARSAVE.GFF`; see
+§3.5 for the DS2/DS1 contrast.
+
+### 3.1 File roles in DS1
+
+| File                | What it holds                                          |
+|---------------------|--------------------------------------------------------|
+| `CHARSAVE.GFF`      | **NOT the active party in DS1.** Holds 8 CHAR records that appear to be unrelated character templates (e.g., starter NPCs or pre-generated characters); the names there do not overlap with the player's actual party. (In DS2 by contrast, `CHARSAVE.GFF` *does* hold the active party. The two games diverge here.) |
+| `DARKRUN.GFF`       | Live world state during play. Contains the active party PC records (as detailed below), plus per-region state in other SAVE chunks. Engine writes this continuously while playing. |
+| `SAVE0N.SAV`        | Snapshot of `DARKRUN.GFF` at save time. Engine reads this on load. **Byte-identical to `DARKRUN.GFF` when both come from the same save.** |
+| `DARKSAVE.GFF`      | Factory default for `DARKRUN.GFF`. Small (1 KB) and contains the `ETME` template descriptor only. |
+| `BACKSAVE.GFF`      | Engine's auto-backup pointer (very small; not investigated). |
+
+The `SAVE0N.SAV == DARKRUN.GFF` relationship was found in
+save-inspect v0.6.0; the DARKRUN-side party records were found
+in the v0.7.0 SAVE-chunk decode work and validated by
+end-to-end editing.
+
+### 3.2 DARKRUN.GFF `SAVE` chunks
+
+The DS1 `DARKRUN.GFF` carries ~60 `SAVE` chunks. Each is an
+opaque byte blob in the GFF; the chunk id assigns its
+semantics. Known assignments (DS1 GOG 1.10):
+
+| Chunk     | Size     | Contents                                        |
+|-----------|---------:|-------------------------------------------------|
+| `SAVE/1`  | ~10 KB   | Largest; structure not yet RE'd                 |
+| `SAVE/5`  | ~2.4 KB  | **Party combat sub-blocks** (see §3.3)          |
+| `SAVE/6`  | ~1.2 KB  | **Party character sub-blocks** (see §3.4)       |
+| `SAVE/10..17` | 2 B each | u16 LE values; counters / region pointers (semantic TBD) |
+| `SAVE/18` | ~51 B    | Boolean array (all `0x01` in a played save)     |
+| `SAVE/2..4, 7..9, 19+` | varies | Various per-region state; not yet RE'd |
+
+### 3.3 `SAVE/5` — party combat sub-blocks
+
+`SAVE/5` is an array of **DS1 combat sub-blocks**, 58 bytes
+each, one per active party PC in display order. The layout
+matches libgff's `ds1_combat_t` byte-for-byte (sourced from
+`dsoageofheroes/libgff` `include/gff/object.h`).
+
+| Offset | Type    | Field                |
+|-------:|---------|----------------------|
+| 0..1   | i16     | hp                   |
+| 2..3   | i16     | psp                  |
+| 4..5   | i16     | char_index           |
+| 6..7   | i16     | id                   |
+| 8..9   | i16     | ready_item_index     |
+| 10..11 | i16     | weapon_index         |
+| 12..13 | i16     | pack_index           |
+| 14..21 | u8[8]   | data_block (opaque)  |
+| 22     | u8      | special_attack       |
+| 23     | u8      | special_defense      |
+| 24..25 | i16     | icon                 |
+| 26     | i8      | ac                   |
+| 27     | u8      | move                 |
+| 28     | u8      | status               |
+| 29     | u8      | allegiance           |
+| 30     | u8      | data                 |
+| 31     | i8      | thac0                |
+| 32     | u8      | priority             |
+| 33     | u8      | flags                |
+| 34..39 | u8[6]   | **stats** (STR DEX CON INT WIS CHR) |
+| 40..57 | char[18]| **name** (NUL-padded; variable-length string in fixed 18-byte field) |
+
+The name being at offset 40 (not 0) is the **non-obvious
+gotcha** that bit us: searching the chunk for "Gerakis" finds
+it at SAVE-5 offset 40, which is the **end** of record 0, not
+the start. Record stride is 58 bytes, so subsequent names
+appear at offsets 40, 98, 156, 214 (each + 58).
+
+Brandon's DS1 played save (`SAVE/5`, 4 party PCs):
+
+```
+record 0 (offset 0..57):   Gerakis      stats 24 15 22 13 15 14
+record 1 (offset 58..115): K'ratchek    stats 19 21 19 16 19 15
+record 2 (offset 116..173): Cermak      stats 19 21 17 18 18 16
+record 3 (offset 174..231): Cilla       stats 19 21 17 18 18 16
+```
+
+### 3.4 `SAVE/6` — party character sub-blocks
+
+`SAVE/6` is an array of **DS1 character sub-blocks**, 71-72
+bytes each (the trailing palette byte is sometimes absent),
+same order as SAVE/5. Layout matches libgff's `ds1_character_t`:
+
+| Offset | Type    | Field                |
+|-------:|---------|----------------------|
+| 0..3   | u32     | current_xp           |
+| 4..7   | u32     | high_xp              |
+| 8..9   | u16     | base_hp              |
+| 10..11 | u16     | high_hp              |
+| 12..13 | u16     | base_psp             |
+| 14..15 | u16     | id                   |
+| 16..17 | u8[2]   | _data1 (opaque)      |
+| 18..19 | u16     | legal_class          |
+| 20..23 | u8[4]   | _data2 (opaque)      |
+| 24     | u8      | race                 |
+| 25     | u8      | gender               |
+| 26     | u8      | alignment            |
+| 27..32 | u8[6]   | **stats** (STR DEX CON INT WIS CHR) |
+| 33..35 | i8[3]   | real_class           |
+| 36..38 | u8[3]   | level                |
+| 39     | i8      | base_ac              |
+| 40     | u8      | base_move            |
+| 41     | u8      | magic_resistance     |
+| 42     | u8      | num_blows            |
+| 43..45 | u8[3]   | num_attacks          |
+| 46..48 | u8[3]   | **num_dice** (weapon dmg dice) |
+| 49..51 | u8[3]   | **num_sides** (die size) |
+| 52..54 | u8[3]   | **num_bonuses** (flat dmg bonus) |
+| 55..59 | u8[5]   | saving_throw         |
+| 60     | u8      | allegiance           |
+| 61     | u8      | size                 |
+| 62     | u8      | spell_group          |
+| 63..65 | u8[3]   | high_level           |
+| 66..67 | u16     | sound_fx             |
+| 68..69 | u16     | attack_sound         |
+| 70     | u8      | psi_group            |
+| 71     | u8      | palette (optional)   |
+
+**SAVE/6 is the engine-authoritative copy of stats** for
+combat math. SAVE/5's stats are read for display; SAVE/6's are
+read for calculations. Editing only SAVE/5 updates the
+character sheet but doesn't change combat behaviour. Editing
+both keeps display + engine in sync.
+
+The `num_dice` / `num_sides` / `num_bonuses` arrays carry
+**cached weapon damage**: `damage = num_dice[0] × dN_sides[0]
++ num_bonuses[0] + (STR table bonus)`. The "STR table bonus"
+is computed at attack time from the current STR byte against
+the 2e exceptional-strength table; if STR is out of the
+table's range (>25-ish) the bonus is 0.
+
+### 3.5 DS2 contrast
+
+DS2's `CHARSAVE.GFF` *is* the active party file (records 29+
+were Brandon's played PCs in his DS2 testing). DS2's
+`DARKRUN.GFF` carries SAVE chunks that haven't been RE'd to
+the same depth as DS1's. We don't yet know whether DS2 stores
+a redundant party copy in DARKRUN-side SAVE chunks the way
+DS1 does, or whether DS2 keeps everything in CHARSAVE.
+
+Practical tooling implication: `save-inspect edit-pc /
+list-pcs / list-items / edit-item / give-item` (CHARSAVE-based)
+work for **DS2 active party**, and for **DS1 inactive
+templates**, but **not** for the DS1 active party.
+`ds1-party-edit.py` (DARKRUN-based) is the DS1 active-party
+tool.
+
+## 4. External (non-GFF) files
 
 | File                  | Format                                          |
 |-----------------------|-------------------------------------------------|
@@ -413,7 +567,7 @@ data types with a common interface.
 `*.FLI` is well-documented (Autodesk Animator FLIC); existing Rust crates
 like `flic` may suffice. `*.VOC` is Creative's spec, also well-known.
 
-## 4. XMI specifics
+## 5. XMI specifics
 
 XMI ("eXtended MIDI") is John Miles' own MIDI dialect. Notable points:
 
@@ -433,7 +587,7 @@ GSEQ) at content-build time — i.e., the driver-specific re-renders are
 authored, not synthesized live. Each chunk contains the same musical
 content adapted to the target hardware's timbre map.
 
-## 5. Open questions
+## 6. Open questions
 
 Resolved questions are documented inline. These remain.
 

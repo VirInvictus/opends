@@ -369,6 +369,26 @@ look at the maps directly.
       Field-by-field RE continues as more played saves
       surface; the v0.7.0 deliverable is the harness the RE
       runs through, not the full schema.
+- [~] **SAVE chunk decode for DS1 party records**
+      (`tools/save-inspect/scripts/ds1-party-edit.py`,
+      2026-05-18): SAVE/5 RE'd as an array of DS1 combat
+      sub-blocks (58 bytes each, libgff `ds1_combat_t`
+      layout); SAVE/6 RE'd as DS1 character sub-blocks
+      (71-72 bytes, libgff `ds1_character_t`). One per
+      active party PC in display order. End-to-end edit
+      tested against Brandon's played save (stats, HP,
+      weapon damage). Full layout documented in
+      `docs/file-formats.md` §3. The other ~58 SAVE chunks
+      remain opaque; this opens the modder-facing path for
+      DS1 active-party edits without requiring full
+      per-chunk RE.
+- [x] **Modder-altitude PC edit surface** (save-inspect
+      v0.9.0 - v0.9.4): `list-pcs`, `list-items`, `edit-pc`,
+      `edit-item`, `give-item`, `find-empty-slots` for
+      CHARSAVE-based edits (works for DS2 active party + DS1
+      inactive char templates). Plus `scripts/ds1-party-
+      edit.py` for DS1 active-party edits via DARKRUN.
+      Cookbook entries at `docs/cookbook/`.
 - [x] Tagged: `save-inspect-v0.1.0`. (this release)
 
 ### `tools/image-extract/` (Rust)

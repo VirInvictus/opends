@@ -19,6 +19,52 @@ python3 save-inspect.py /path/to/CHARSAVE.GFF -o save.json
 JSON is emitted to stdout by default; `-o <file>` writes to a
 file instead.
 
+## What v0.9.x ships
+
+The **modder-altitude surface** layered on top of the v0.8.0
+write path. v0.9.0 - v0.9.4 added subcommands that target the
+high-leverage common cases without requiring hand-edits to the
+v0.8.0 JSON tree:
+
+| Subcommand                                | Purpose                                         |
+|-------------------------------------------|-------------------------------------------------|
+| `list-pcs <save>`                         | Enumerate PCs with HP/PSP/XP/item count         |
+| `list-items <save> --pc N`                | One PC's inventory with `syms/items.toml` names |
+| `find-empty-slots <save>`                 | Safe `edit-item` targets (qty=0 slots)          |
+| `edit-pc <save> --pc N ...`               | HP/PSP/stats/XP edits with combat ↔ character sync |
+| `edit-item <save> --pc N --slot K ...`    | One slot's id/qty/charges (no chunk growth)     |
+| `give-item <save> --pc N ...`             | Append a new item to a PC's chain (chain-invariant validated) |
+
+These work for **DS2 active party** (CHARSAVE-based) and for
+**DS1 inactive char templates**. They do **not** work for the
+DS1 active party, which lives in `DARKRUN.GFF` (see next).
+
+### `scripts/ds1-party-edit.py` — the DS1 active-party tool
+
+DS1's active party (the PCs Brandon plays as) is stored in
+`DARKRUN.GFF` SAVE/5 (combat sub-blocks) and SAVE/6 (character
+sub-blocks), not in `CHARSAVE.GFF`. The
+`scripts/ds1-party-edit.py` script edits party PCs directly
+in those chunks, writing both `DARKRUN.GFF` and `SAVE01.SAV`
+together so edits survive a reload.
+
+```sh
+ds1-party-edit.py list                                      # 4 party PCs
+ds1-party-edit.py show Gerakis                              # full record
+ds1-party-edit.py edit Gerakis --hp 999 --max-hp 999        # stat-bypass damage
+ds1-party-edit.py edit Gerakis --weapon-dice 5 --weapon-sides 20 --weapon-bonus 50
+ds1-party-edit.py restore                                   # roll back
+```
+
+Full walkthrough: [`docs/cookbook/edit-ds1-party.md`](
+../../docs/cookbook/edit-ds1-party.md). The save-file layout
+this rests on: [`docs/file-formats.md`](
+../../docs/file-formats.md) §3. Engine quirks bystanders
+should know about: [`docs/engine-quirks.md`](
+../../docs/engine-quirks.md).
+
+---
+
 ## What v0.8.0 ships
 
 **The write path: `save-edit` plus a `roundtrip` regression
