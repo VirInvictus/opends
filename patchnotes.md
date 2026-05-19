@@ -4,6 +4,44 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/save-inspect/scripts/ds1-party-edit.py`** (new
+  helper script). Modder-driven experimentation surface for
+  DS1 party edits. Operates directly on
+  `~/.wine/.../Dark Sun/DARKRUN.GFF` AND `SAVE01.SAV` together
+  (engine loads from SAVE01; both need the same edits to
+  survive a reload). Subcommands: `list`, `show <pc>`,
+  `edit <pc> --hp / --max-hp / --psp / --max-psp / --xp /
+  --str / --dex / --con / --int / --wis / --cha /
+  --weapon-dice / --weapon-sides / --weapon-bonus`,
+  `restore`. PC resolution by index (0..3) or name substring
+  ("Gerakis"). Auto-backup to
+  `<file>.bak.ds1-party-edit.<unix_ts>` on every edit.
+  `--dry-run` to preview.
+
+- **SAVE-chunk decode discoveries** (v0.7.0 follow-on):
+  - **DARKRUN.GFF SAVE-5** = array of DS1 combat sub-blocks
+    (58 bytes each), one per party PC in display order.
+    Format matches libgff's `ds1_combat_t` exactly: stats at
+    record offset 34..39, name at 40..57.
+  - **DARKRUN.GFF SAVE-6** = array of DS1 character sub-blocks
+    (71-72 bytes each), same order as SAVE-5. Holds the
+    engine-authoritative copy of stats, plus the weapon
+    damage fields (`num_dice` / `num_sides` / `num_bonuses`)
+    the engine uses for combat. Editing stats in SAVE-5 only
+    updates the display; the engine's combat math reads
+    SAVE-6.
+  - **SAVE01.SAV** is byte-identical to DARKRUN.GFF at save
+    time. Engine reads SAVE01 on load; DARKRUN tracks live
+    state during play. Edits must hit both files to survive
+    a reload (the `ds1-party-edit.py` script does this
+    automatically).
+  - **Stats above the 2e exceptional-strength table**
+    (anything > 25 roughly) hit out-of-range in the engine's
+    damage-bonus lookup → returns +0 damage bonus. Setting
+    STR 99 with cached weapon `1d1` = 1 damage per hit.
+    Better godmode path: bump `num_dice` / `num_sides` /
+    `num_bonuses` in the character sub-block instead.
+
 - **`tools/save-inspect/` v0.9.4** fixes a DS1 bug in
   `give-item`: chain-continuation items use `from = 1` in DS1
   but `from = 2` in DS2. v0.9.3 hardcoded `from = 2`. Caught
