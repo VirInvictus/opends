@@ -33,6 +33,7 @@ Strings appear in two forms:
 Output per chunk: chunk metadata, the flat `strings` list, and
 a `dialog_tree` list (one subtree per entry point).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -43,6 +44,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import Any
 
 HERE = Path(__file__).resolve().parent
 VERSION = (HERE / "VERSION").read_text().strip()
@@ -50,12 +52,12 @@ VERSION = (HERE / "VERSION").read_text().strip()
 # Opcodes that consume one or more parameters likely to be a
 # string (literal or text-id). From docs/gpl-opcodes.md.
 STRING_OPCODES = {
-    0x2C: "gpl log",            # one packed string (no param)
-    0x42: "gpl input string",   # 1 param (the prompt)
-    0x48: "gpl menu",           # menu name + entry text on each entry
-    0x4F: "gpl print string",   # 2 params (style, text)
-    0x5A: "gpl string compare", # 2 params (one is a string)
-    0x0A: "gpl string copy",    # 2 params (src, dst)
+    0x2C: "gpl log",  # one packed string (no param)
+    0x42: "gpl input string",  # 1 param (the prompt)
+    0x48: "gpl menu",  # menu name + entry text on each entry
+    0x4F: "gpl print string",  # 2 params (style, text)
+    0x5A: "gpl string compare",  # 2 params (one is a string)
+    0x0A: "gpl string copy",  # 2 params (src, dst)
 }
 
 # var_kind values that refer to a text-id (resolvable against
@@ -93,8 +95,8 @@ MIN_STRING_LEN = 3
 # the runtime carries forward. Expand this map as more speaker-
 # mutating opcodes are identified.
 SPEAKER_OPCODES = {
-    0x41: "other",     # gpl setother
-    0x49: "thing",     # gpl setthing
+    0x41: "other",  # gpl setother
+    0x49: "thing",  # gpl setthing
 }
 
 # Max depth of nested branches in a single dialog tree. Practical
@@ -216,7 +218,10 @@ def extract_strings_from_instruction(
             kind = tok.get("kind")
             if kind == "immediate_string":
                 value = tok.get("value", "")
-                if len(value.strip()) < MIN_STRING_LEN and tok.get("sub_type") == "compressed":
+                if (
+                    len(value.strip()) < MIN_STRING_LEN
+                    and tok.get("sub_type") == "compressed"
+                ):
                     continue
                 out.append(
                     {
@@ -357,7 +362,9 @@ def _update_lstr_state(instr: dict, lstr_state: dict[int, dict]) -> None:
     lstr_state[lstr_id] = record
 
 
-def _last_instruction_in_block(block: dict, instr_by_offset: dict[int, dict]) -> dict | None:
+def _last_instruction_in_block(
+    block: dict, instr_by_offset: dict[int, dict]
+) -> dict | None:
     """Return the highest-offset instruction inside `block`'s
     [start_offset, end_offset) range, or None if the block is empty."""
     best: dict | None = None
@@ -560,9 +567,7 @@ def _walk_tree(
             instr = instr_by_offset.get(off)
             if instr is None:
                 continue
-            for s in extract_strings_from_instruction(
-                instr, text_chunks, lstr_state
-            ):
+            for s in extract_strings_from_instruction(instr, text_chunks, lstr_state):
                 s["speaker_state"] = dict(speaker_state)
                 block_node["lines"].append(s)
             ref = _extract_gpl_ref(instr, labels)
@@ -751,7 +756,9 @@ def _walk_tree(
                         "kind": "goto",
                         "at": last_at,
                         "target": target,
-                        "target_label": labels.get(str(target)) if target is not None else None,
+                        "target_label": labels.get(str(target))
+                        if target is not None
+                        else None,
                     }
                 )
                 cur = target
@@ -852,9 +859,7 @@ def _expand_cross_chunk_call(
         i["offset"]: i for i in callee_disasm.get("instructions", [])
     }
     callee_labels_raw = callee_cfg.get("labels", {})
-    callee_labels: dict[str, str] = {
-        str(k): v for k, v in callee_labels_raw.items()
-    }
+    callee_labels: dict[str, str] = {str(k): v for k, v in callee_labels_raw.items()}
     if target_offset not in callee_blocks:
         return {
             "kind": "cross_chunk_call",
@@ -932,7 +937,11 @@ def build_dialog_tree(
     # self-call (`gpl global sub` into our own kind+id) is treated
     # as a cycle marker rather than recursive expansion.
     initial_cross_visited: set[tuple[str, int]] | None = None
-    if chunks_by_kind_id is not None and chunk_kind is not None and chunk_id is not None:
+    if (
+        chunks_by_kind_id is not None
+        and chunk_kind is not None
+        and chunk_id is not None
+    ):
         initial_cross_visited = {(chunk_kind, chunk_id)}
     # Walk declared entry points first (chunk start + every offset
     # observed as a `local sub` target).
@@ -1141,9 +1150,7 @@ def build_reachable_callers(
         forward[node] = callees
 
     # Build reverse map by inverting edges.
-    reverse: dict[tuple[str, int], set[tuple[str, int]]] = {
-        n: set() for n in all_nodes
-    }
+    reverse: dict[tuple[str, int], set[tuple[str, int]]] = {n: set() for n in all_nodes}
     for caller, callees in forward.items():
         for callee in callees:
             reverse.setdefault(callee, set()).add(caller)
@@ -1276,8 +1283,7 @@ def build_summary(
     # Index every chunk's disasm by (kind, id) so the inter-chunk
     # walker can resolve `gpl global sub` targets.
     chunks_by_kind_id: dict[tuple[str, int], dict] = {
-        (e["chunk_kind"], int(e["chunk_id"])): e["disasm"]
-        for e in disasm_results
+        (e["chunk_kind"], int(e["chunk_id"])): e["disasm"] for e in disasm_results
     }
     # v0.5.0: global LSTR-writer index + reverse callgraph.
     # Unresolved text:lstring reads in the flat-list path
@@ -1296,9 +1302,7 @@ def build_summary(
         strings: list[dict] = []
         for instr in disasm.get("instructions", []):
             strings.extend(
-                extract_strings_from_instruction(
-                    instr, text_chunks, flat_lstr_state
-                )
+                extract_strings_from_instruction(instr, text_chunks, flat_lstr_state)
             )
         if not strings:
             continue
@@ -1396,6 +1400,7 @@ def load_speakers(path: Path) -> dict[int, dict[str, Any]]:
     if not path.is_file():
         return {}
     import tomllib  # stdlib in 3.11+
+
     data = tomllib.loads(path.read_text(encoding="utf-8"))
     rows = data.get("speaker", [])
     out: dict[int, dict[str, Any]] = {}
@@ -1405,7 +1410,9 @@ def load_speakers(path: Path) -> dict[int, dict[str, Any]]:
     return out
 
 
-def render_transcript(summary: dict[str, Any], speakers: dict[int, dict[str, Any]]) -> str:
+def render_transcript(
+    summary: dict[str, Any], speakers: dict[int, dict[str, Any]]
+) -> str:
     """Per-NPC plain-text dialog transcript.
 
     One section per GPL chunk that has at least one string. Each
@@ -1422,9 +1429,11 @@ def render_transcript(summary: dict[str, Any], speakers: dict[int, dict[str, Any
     out: list[str] = []
     out.append(f"# dialog-extract transcript — {summary['source']}")
     out.append("")
-    out.append(f"chunks: {summary.get('chunk_count', 0)}; "
-               f"strings: {summary.get('string_count', 0)}; "
-               f"unresolved: {summary.get('unresolved_count', 0)}")
+    out.append(
+        f"chunks: {summary.get('chunk_count', 0)}; "
+        f"strings: {summary.get('string_count', 0)}; "
+        f"unresolved: {summary.get('unresolved_count', 0)}"
+    )
     out.append("")
     for c in summary.get("chunks", []):
         strings = c.get("strings", [])
@@ -1458,9 +1467,9 @@ def _html_escape(s: str) -> str:
     """Minimal HTML escaping (no external deps)."""
     return (
         s.replace("&", "&amp;")
-         .replace("<", "&lt;")
-         .replace(">", "&gt;")
-         .replace('"', "&quot;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
     )
 
 
@@ -1496,7 +1505,7 @@ def render_html(summary: dict[str, Any], speakers: dict[int, dict[str, Any]]) ->
     parts: list[str] = []
     parts.append("<!doctype html>")
     parts.append('<html lang="en">')
-    parts.append('<head>')
+    parts.append("<head>")
     parts.append('<meta charset="utf-8">')
     title = _html_escape(str(summary.get("source", "dialog-extract")))
     parts.append(f"<title>dialog-extract: {title}</title>")
@@ -1505,9 +1514,15 @@ def render_html(summary: dict[str, Any], speakers: dict[int, dict[str, Any]]) ->
     parts.append("<body>")
     parts.append(f"<h1>dialog-extract: {title}</h1>")
     parts.append("<p>")
-    parts.append(f'<span class="stat">chunks: <strong>{summary.get("chunk_count", 0)}</strong></span>')
-    parts.append(f'<span class="stat">strings: <strong>{summary.get("string_count", 0)}</strong></span>')
-    parts.append(f'<span class="stat">unresolved: <strong>{summary.get("unresolved_count", 0)}</strong></span>')
+    parts.append(
+        f'<span class="stat">chunks: <strong>{summary.get("chunk_count", 0)}</strong></span>'
+    )
+    parts.append(
+        f'<span class="stat">strings: <strong>{summary.get("string_count", 0)}</strong></span>'
+    )
+    parts.append(
+        f'<span class="stat">unresolved: <strong>{summary.get("unresolved_count", 0)}</strong></span>'
+    )
     parts.append("</p>")
 
     for c in summary.get("chunks", []):
@@ -1519,10 +1534,12 @@ def render_html(summary: dict[str, Any], speakers: dict[int, dict[str, Any]]) ->
         speaker = speaker_row.get("name")
         chunk_label = _html_escape(c["chunk"])
         header = f"{chunk_label}: {_html_escape(speaker)}" if speaker else chunk_label
-        parts.append(f'<details><summary>{header} ({len(strings)} lines)</summary>')
-        if (notes := speaker_row.get("notes")):
+        parts.append(f"<details><summary>{header} ({len(strings)} lines)</summary>")
+        if notes := speaker_row.get("notes"):
             parts.append(f'<p class="notes">{_html_escape(notes)}</p>')
-        speaker_label = _html_escape(speaker) if speaker else f"GPL chunk {_html_escape(str(cid))}"
+        speaker_label = (
+            _html_escape(speaker) if speaker else f"GPL chunk {_html_escape(str(cid))}"
+        )
         for s in strings:
             unresolved = bool(s.get("unresolved"))
             cls = "line unresolved" if unresolved else "line"
@@ -1545,12 +1562,14 @@ def main(argv: list[str] | None = None) -> int:
         prog="dialog-extract",
         description=__doc__.strip().splitlines()[0],
     )
-    p.add_argument(
-        "--version", action="version", version=f"dialog-extract {VERSION}"
-    )
+    p.add_argument("--version", action="version", version=f"dialog-extract {VERSION}")
     p.add_argument("file", type=Path, help="GFF file (typically GPLDATA.GFF)")
     p.add_argument(
-        "-o", "--output", type=Path, default=None, help="write JSON to file (default stdout)"
+        "-o",
+        "--output",
+        type=Path,
+        default=None,
+        help="write JSON to file (default stdout)",
     )
     p.add_argument(
         "--pretty",
@@ -1625,7 +1644,9 @@ def main(argv: list[str] | None = None) -> int:
     text_chunks: dict[int, str] | None = None
     if args.text_source is not None:
         if not args.text_source.is_file():
-            print(f"error: --text-source not found: {args.text_source}", file=sys.stderr)
+            print(
+                f"error: --text-source not found: {args.text_source}", file=sys.stderr
+            )
             return 2
         gff_cat = locate_binary("gff-cat", args.gff_cat)
         if gff_cat is None:

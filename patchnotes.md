@@ -4,6 +4,12 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/dialog-extract/` v0.7.1** adds the missing
+  `from typing import Any` (six annotation sites used `Any`
+  unimported; harmless under deferred annotation evaluation
+  until something introspects those annotations at runtime,
+  then a `NameError`).
+
 - **`tools/gpl-asm/` v0.8.1** fixes the text parser's byte-length
   accounting, which made `cargo test` fail in debug builds (the
   "known-flaky debug_assert_eq in lib.rs:91" caveat; it was a real
