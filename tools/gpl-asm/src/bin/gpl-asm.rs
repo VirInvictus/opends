@@ -95,7 +95,7 @@ fn parse_hex_bytes(s: &str, ctx: &str) -> Result<Vec<u8>> {
         .chars()
         .filter(|c| !c.is_whitespace())
         .collect();
-    if cleaned.len() % 2 != 0 {
+    if !cleaned.len().is_multiple_of(2) {
         return Err(anyhow!(
             "{ctx}: hex string has odd nibble count ({})",
             cleaned.len(),
@@ -319,12 +319,12 @@ fn main() -> Result<()> {
                 .and_then(|s| s.to_str())
                 .ok_or_else(|| anyhow!("bad stem on {}", path.display()))?;
             let out_path = out_dir.join(format!("{stem}.bin"));
-            if !cli.no_validate {
-                if let Err(e) = report_validation(&result, &path.display().to_string()) {
-                    eprintln!("skip {}: {e}", path.display());
-                    skipped_count += 1;
-                    continue;
-                }
+            if !cli.no_validate
+                && let Err(e) = report_validation(&result, &path.display().to_string())
+            {
+                eprintln!("skip {}: {e}", path.display());
+                skipped_count += 1;
+                continue;
             }
             match encode(&result) {
                 Ok(bytes) => {

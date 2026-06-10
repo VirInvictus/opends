@@ -182,7 +182,7 @@ impl Editor {
         // Also retarget the inserted instruction's own branch
         // target if it's >= before_offset (e.g., a forward jump
         // around the newly inserted code).
-        retarget_in(&mut std::slice::from_mut(&mut instr), before_offset, delta)?;
+        retarget_in(std::slice::from_mut(&mut instr), before_offset, delta)?;
         self.instructions.insert(idx, instr);
         shift_labels(&mut self.labels, before_offset, delta);
         self.total_bytes = (self.total_bytes as isize + delta) as usize;

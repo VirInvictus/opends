@@ -337,7 +337,7 @@ pub fn encode_expression(out: &mut Vec<u8>, instr_offset: usize, expr: &Expressi
             // and lo = ((bytes[2] << 8) | bytes[3]) as u16.
             // Inverse: split value into hi (top 16 bits, signed) and
             // lo (bottom 16 bits, unsigned).
-            let hi = ((*value as i32 >> 16) as u16).to_be_bytes();
+            let hi = ((*value >> 16) as u16).to_be_bytes();
             let lo = (*value as u32 & 0xFFFF) as u16;
             let lo = lo.to_be_bytes();
             out.extend_from_slice(&hi);

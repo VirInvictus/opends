@@ -4,7 +4,29 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
-- **`tools/save-inspect/scripts/ds1-party-edit.py`** (new
+- **`tools/gpl-asm/` v0.8.1** fixes the text parser's byte-length
+  accounting, which made `cargo test` fail in debug builds (the
+  "known-flaky debug_assert_eq in lib.rs:91" caveat; it was a real
+  bug, not flakiness). Three estimate-vs-encoder mismatches in
+  `parse.rs`, none of which affected encoded bytes (the corpus
+  round-trip was byte-identical throughout), only the
+  reconstructed `DisasmResult.total_bytes`:
+  - **RetVal + nested `gpl_search`**: `expression_byte_len`
+    dropped `inner_raw_tail` and counted params past `[0]` that
+    the encoder never writes.
+  - **Top-level `gpl_search`**: `instruction_length` counted
+    params past `[0]` whose bytes already live inside `raw_tail`
+    (double-count).
+  - **`gpl_setrecord`**: the encoder writes the access_complex
+    body with no leading dispatch byte, but the estimate charged
+    one per `ComplexAccess` token.
+  - **Test hardening**: `text_roundtrip` now asserts
+    `parsed.total_bytes == src.len()` per chunk, so estimate
+    drift fails in release builds too (encoded-bytes equality
+    cannot catch it, and the `encode()` check is debug-only).
+  - Also collapses a nested `if` in `bin/gpl-asm.rs` (clippy).
+
+
   helper script). Modder-driven experimentation surface for
   DS1 party edits. Operates directly on
   `~/.wine/.../Dark Sun/DARKRUN.GFF` AND `SAVE01.SAV` together

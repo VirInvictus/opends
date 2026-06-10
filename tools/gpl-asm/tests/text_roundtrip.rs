@@ -66,6 +66,17 @@ fn every_aligned_chunk_roundtrips_through_text() {
                     continue;
                 }
             };
+            // The parser's per-instruction length estimates must sum
+            // to the true chunk size. Encoded-bytes equality below
+            // can't catch estimate drift (encoding ignores the
+            // estimates), and the debug_assert in encode() only
+            // fires in debug builds; assert it here so release CI
+            // catches it too.
+            assert_eq!(
+                parsed.total_bytes,
+                src.len(),
+                "parsed total_bytes disagrees with source length for {chunk_id}"
+            );
             match encode(&parsed) {
                 Ok(encoded) => {
                     if encoded == src {

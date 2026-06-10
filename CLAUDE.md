@@ -30,8 +30,9 @@ cargo build -p gff-edit                           # one tool
 cargo test                                        # all
 cargo test -p gpl-disasm                          # one tool
 cargo test -p gpl-disasm corpus_alignment         # one test (substring match)
-cargo test --release                              # gpl-asm has a known-flaky debug_assert_eq in lib.rs:91; release passes
 ```
+
+The full suite passes in debug mode. (The old "known-flaky debug_assert_eq in gpl-asm lib.rs:91" was a real length-accounting bug, fixed in gpl-asm v0.8.1; do not switch to `--release` to dodge failures.)
 
 Many Rust tools have **corpus tests** that walk every shipped GFF in `.games/ds1/` and `.games/ds2/` and assert a round-trip / parse / decode invariant (e.g. `gff-edit/tests/corpus_roundtrip.rs`). These need the games extracted under `.games/` (see below); without them the corpus tests skip.
 

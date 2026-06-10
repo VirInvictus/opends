@@ -9,7 +9,7 @@ use std::fs;
 use std::path::Path;
 
 use gff_edit::{FourCC, Gff};
-use gpl_asm::{EncodeError, encode};
+use gpl_asm::{encode, EncodeError};
 use gpl_disasm::disassemble;
 
 const CORPUS: &[&str] = &[
@@ -62,9 +62,10 @@ fn every_aligned_gpl_chunk_roundtrips_byte_identical() {
                                 .position(|(a, b)| a != b)
                                 .unwrap_or(src.len().min(encoded.len()));
                             mismatch_samples.push(format!(
-                                "{}{}: src_len={} enc_len={} first_diff@{:#x}",
+                                "{}:{}{}: src_len={} enc_len={} first_diff@{:#x}",
                                 path,
-                                format!(":{}{}", String::from_utf8_lossy(c.kind.as_bytes()).trim_end(), c.id),
+                                String::from_utf8_lossy(c.kind.as_bytes()).trim_end(),
+                                c.id,
                                 src.len(),
                                 encoded.len(),
                                 first_diff,
@@ -72,21 +73,16 @@ fn every_aligned_gpl_chunk_roundtrips_byte_identical() {
                         }
                     }
                 }
-                Err(EncodeError::UnsupportedOpcode { reason, .. })
-                    if reason.contains("Custom") =>
-                {
+                Err(EncodeError::UnsupportedOpcode { reason, .. }) if reason.contains("Custom") => {
                     skipped_custom += 1;
                 }
                 Err(e) => {
                     encode_failures.push((
                         format!(
-                            "{}{}",
+                            "{}:{}{}",
                             path,
-                            format!(
-                                ":{}{}",
-                                String::from_utf8_lossy(c.kind.as_bytes()).trim_end(),
-                                c.id
-                            )
+                            String::from_utf8_lossy(c.kind.as_bytes()).trim_end(),
+                            c.id
                         ),
                         e,
                     ));

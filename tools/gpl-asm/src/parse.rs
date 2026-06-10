@@ -21,10 +21,10 @@
 //! reassemble.
 
 use gpl_disasm::{
-    DisasmResult, EXTENDED_VAR, Expression, GPL_GBIGNUM, GPL_GBYTE, GPL_GFLAG, GPL_GNAME,
-    GPL_GNUM, GPL_GSTRING, GPL_LBIGNUM, GPL_LBYTE, GPL_LFLAG, GPL_LNAME, GPL_LNUM, GPL_LSTRING,
-    Instruction, MAX_KNOWN_OPCODE, Op, OPCODES, PARAM_COUNTS, ParamSpec, StringSubType, VarKind,
-    opcode_name,
+    opcode_name, DisasmResult, Expression, Instruction, Op, ParamSpec, StringSubType, VarKind,
+    EXTENDED_VAR, GPL_GBIGNUM, GPL_GBYTE, GPL_GFLAG, GPL_GNAME, GPL_GNUM, GPL_GSTRING, GPL_LBIGNUM,
+    GPL_LBYTE, GPL_LFLAG, GPL_LNAME, GPL_LNUM, GPL_LSTRING, MAX_KNOWN_OPCODE, OPCODES,
+    PARAM_COUNTS,
 };
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -75,7 +75,11 @@ pub enum ParseError {
     #[error("line {line}: parameterised %define needs `<name>(<args>) <body>`")]
     BadParamMacroSyntax { line: usize },
     #[error("line {line}: parameterised %define {name:?}: parameter {param:?} appears twice")]
-    DuplicateMacroParam { line: usize, name: String, param: String },
+    DuplicateMacroParam {
+        line: usize,
+        name: String,
+        param: String,
+    },
     #[error("line {line}: macro {name:?} call needs {expected} arguments, found {found}")]
     MacroParamCount {
         line: usize,
@@ -86,11 +90,19 @@ pub enum ParseError {
     #[error("line {line}: @include directive needs `\"path/file.asm\"`")]
     BadIncludeSyntax { line: usize },
     #[error("line {line}: @include {path:?}: {detail}")]
-    IncludeIo { line: usize, path: String, detail: String },
+    IncludeIo {
+        line: usize,
+        path: String,
+        detail: String,
+    },
     #[error("line {line}: @include {path:?}: would cause a cycle")]
     CircularInclude { line: usize, path: String },
     #[error("line {line}: @include {path:?}: include depth exceeds limit ({limit})")]
-    IncludeDepthExceeded { line: usize, path: String, limit: usize },
+    IncludeDepthExceeded {
+        line: usize,
+        path: String,
+        limit: usize,
+    },
 }
 
 /// Maximum nested-`@include` depth before the preprocessor
@@ -195,10 +207,7 @@ pub fn error_span(err: &ParseError, source: &str) -> (usize, usize) {
 /// ```
 pub fn format_with_caret(err: &ParseError, source: &str) -> String {
     let line_no = error_line(err);
-    let line_text = source
-        .lines()
-        .nth(line_no.saturating_sub(1))
-        .unwrap_or("");
+    let line_text = source.lines().nth(line_no.saturating_sub(1)).unwrap_or("");
     let (col, span) = error_span(err, source);
     let line_label = line_no.to_string();
     let gutter = " ".repeat(line_label.len());
@@ -346,28 +355,25 @@ fn apply_defines(
         // Identifier start?
         if b.is_ascii_alphabetic() || b == b'_' {
             let start = i;
-            while i < bytes.len()
-                && (bytes[i].is_ascii_alphanumeric() || bytes[i] == b'_')
-            {
+            while i < bytes.len() && (bytes[i].is_ascii_alphanumeric() || bytes[i] == b'_') {
                 i += 1;
             }
             let token = &line[start..i];
             // Parameterised macro call? `name(...)` where
             // `name` is in the macro table. The opening paren
             // must immediately follow the identifier.
-            if let Some(macro_def) = macros.get(token) {
-                if i < bytes.len() && bytes[i] == b'(' {
-                    let (args, args_consumed) =
-                        match split_macro_call_args(&line[i..]) {
-                            Some(v) => v,
-                            None => {
-                                // Unterminated `(`: leave the
-                                // token untouched and let the
-                                // downstream parser complain.
-                                out.push_str(token);
-                                continue;
-                            }
-                        };
+            if let Some(macro_def) = macros.get(token)
+                && i < bytes.len() && bytes[i] == b'(' {
+                    let (args, args_consumed) = match split_macro_call_args(&line[i..]) {
+                        Some(v) => v,
+                        None => {
+                            // Unterminated `(`: leave the
+                            // token untouched and let the
+                            // downstream parser complain.
+                            out.push_str(token);
+                            continue;
+                        }
+                    };
                     if args.len() != macro_def.params.len() {
                         return Err(ParseError::MacroParamCount {
                             line: line_no,
@@ -385,8 +391,7 @@ fn apply_defines(
                         // param binding (avoids the recursive
                         // body never re-scanning the substituted
                         // text).
-                        let expanded_arg =
-                            apply_defines(a.trim(), defines, macros, line_no)?;
+                        let expanded_arg = apply_defines(a.trim(), defines, macros, line_no)?;
                         local_defines.insert(p.clone(), expanded_arg);
                     }
                     // Expand the body with arg substitutions
@@ -395,17 +400,12 @@ fn apply_defines(
                     // recursion since the body cannot re-invoke
                     // itself by name without an explicit
                     // re-definition).
-                    let expanded = apply_defines(
-                        &macro_def.body,
-                        &local_defines,
-                        &HashMap::new(),
-                        line_no,
-                    )?;
+                    let expanded =
+                        apply_defines(&macro_def.body, &local_defines, &HashMap::new(), line_no)?;
                     out.push_str(&expanded);
                     i += args_consumed;
                     continue;
                 }
-            }
             if let Some(replacement) = defines.get(token) {
                 out.push_str(replacement);
             } else {
@@ -520,10 +520,7 @@ fn preprocess(input: &str) -> Result<Preprocessed> {
     preprocess_with_root(input, std::path::Path::new("."))
 }
 
-fn preprocess_with_root(
-    input: &str,
-    include_root: &std::path::Path,
-) -> Result<Preprocessed> {
+fn preprocess_with_root(input: &str, include_root: &std::path::Path) -> Result<Preprocessed> {
     let mut defines: HashMap<String, String> = HashMap::new();
     let mut macros: HashMap<String, ParamMacro> = HashMap::new();
     let mut search_tail_attachments: HashMap<usize, Vec<u8>> = HashMap::new();
@@ -570,16 +567,12 @@ fn preprocess_recursive(
             // Parameterised form? `name(args...) body`.
             if let Some(paren_idx) = body.find('(') {
                 let name = body[..paren_idx].trim();
-                if !name.is_empty()
-                    && body[..paren_idx].find(char::is_whitespace).is_none()
-                {
+                if !name.is_empty() && body[..paren_idx].find(char::is_whitespace).is_none() {
                     let after_open = &body[paren_idx + 1..];
                     let close_idx = match after_open.find(')') {
                         Some(c) => c,
                         None => {
-                            return Err(ParseError::BadParamMacroSyntax {
-                                line: line_no,
-                            });
+                            return Err(ParseError::BadParamMacroSyntax { line: line_no });
                         }
                     };
                     let params_str = &after_open[..close_idx];
@@ -597,9 +590,7 @@ fn preprocess_recursive(
                         });
                     }
                     if macro_body.is_empty() {
-                        return Err(ParseError::BadParamMacroSyntax {
-                            line: line_no,
-                        });
+                        return Err(ParseError::BadParamMacroSyntax { line: line_no });
                     }
                     let params: Vec<String> = if params_str.trim().is_empty() {
                         Vec::new()
@@ -667,9 +658,7 @@ fn preprocess_recursive(
                 match parse_hex_byte(tok) {
                     Some(b) => bytes.push(b),
                     None => {
-                        return Err(ParseError::BadSearchTailSyntax {
-                            line: line_no,
-                        });
+                        return Err(ParseError::BadSearchTailSyntax { line: line_no });
                     }
                 }
             }
@@ -681,9 +670,8 @@ fn preprocess_recursive(
             continue;
         }
         if let Some(rest) = trimmed.strip_prefix("@include") {
-            let path_str = parse_quoted_include_path(rest).ok_or(
-                ParseError::BadIncludeSyntax { line: line_no },
-            )?;
+            let path_str = parse_quoted_include_path(rest)
+                .ok_or(ParseError::BadIncludeSyntax { line: line_no })?;
             if depth >= INCLUDE_DEPTH_LIMIT {
                 return Err(ParseError::IncludeDepthExceeded {
                     line: line_no,
@@ -708,12 +696,10 @@ fn preprocess_recursive(
                     path: path_str,
                 });
             }
-            let body = std::fs::read_to_string(&canon).map_err(|e| {
-                ParseError::IncludeIo {
-                    line: line_no,
-                    path: path_str.clone(),
-                    detail: e.to_string(),
-                }
+            let body = std::fs::read_to_string(&canon).map_err(|e| ParseError::IncludeIo {
+                line: line_no,
+                path: path_str.clone(),
+                detail: e.to_string(),
             })?;
             let nested_root = canon.parent().unwrap_or(include_root).to_path_buf();
             out_lines.push(String::new());
@@ -742,11 +728,10 @@ fn preprocess_recursive(
             && !stripped.ends_with(':')
             && stripped.len() >= 4
             && usize::from_str_radix(&stripped[0..4.min(stripped.len())], 16).is_ok();
-        if is_instruction {
-            if let Some(bytes) = pending_tail.take() {
+        if is_instruction
+            && let Some(bytes) = pending_tail.take() {
                 search_tail_attachments.insert(line_no, bytes);
             }
-        }
         out_lines.push(substituted);
     }
     Ok(())
@@ -822,11 +807,8 @@ pub fn parse(input: &str) -> Result<DisasmResult> {
             }
             instr.raw_tail = Some(tail.clone());
             // Recompute length now that the tail is attached.
-            instr.length = instruction_length(
-                instr.opcode,
-                &instr.params,
-                instr.raw_tail.as_deref(),
-            );
+            instr.length =
+                instruction_length(instr.opcode, &instr.params, instr.raw_tail.as_deref());
         }
         total_bytes += instr.length;
         instructions.push(instr);
@@ -865,23 +847,17 @@ fn collect_labels(input: &str) -> HashMap<String, usize> {
 
         if let Some(stripped) = line.strip_suffix(':') {
             // Bare name: take everything up to the first space.
-            let bare = stripped
-                .split_once(' ')
-                .map(|(l, _)| l)
-                .unwrap_or(stripped);
+            let bare = stripped.split_once(' ').map(|(l, _)| l).unwrap_or(stripped);
             if !is_valid_label_ident(bare) {
                 continue;
             }
             if bare.starts_with("label_0x") || bare.starts_with("entry_0x") {
                 // Self-encoding offset; trust the hex.
                 let hex_len = bare.len() - "label_0x".len();
-                if hex_len > 0 && hex_len <= 4 {
-                    if let Ok(offset) =
-                        usize::from_str_radix(&bare[bare.len() - hex_len..], 16)
-                    {
+                if hex_len > 0 && hex_len <= 4
+                    && let Ok(offset) = usize::from_str_radix(&bare[bare.len() - hex_len..], 16) {
                         out.insert(bare.to_string(), offset);
                     }
-                }
             } else {
                 // User-chosen label; will be bound to the
                 // offset of the next instruction line.
@@ -898,11 +874,10 @@ fn collect_labels(input: &str) -> HashMap<String, usize> {
                 pending_label = Some(name);
                 continue;
             }
-            if line.len() >= 4 {
-                if let Ok(offset) = usize::from_str_radix(&line[0..4], 16) {
+            if line.len() >= 4
+                && let Ok(offset) = usize::from_str_radix(&line[0..4], 16) {
                     out.insert(name, offset);
                 }
-            }
         }
     }
     out
@@ -1048,7 +1023,9 @@ fn parse_raw_tail_trailer(trailer: &str) -> Option<Vec<u8>> {
     let body = trailer.trim_start();
     let hex = body.strip_prefix("raw_tail=")?;
     // Hex digits only, up to whitespace / end.
-    let end = hex.find(|c: char| !c.is_ascii_hexdigit()).unwrap_or(hex.len());
+    let end = hex
+        .find(|c: char| !c.is_ascii_hexdigit())
+        .unwrap_or(hex.len());
     let hex = &hex[..end];
     if hex.is_empty() || hex.len() % 2 != 0 {
         return None;
@@ -1078,11 +1055,7 @@ fn split_trailer(rest: &str) -> (&str, Option<&str>) {
         }
         if b == b'"' {
             in_string = !in_string;
-        } else if !in_string
-            && b == b';'
-            && i >= 2
-            && bytes[i - 2] == b' '
-            && bytes[i - 1] == b' '
+        } else if !in_string && b == b';' && i >= 2 && bytes[i - 2] == b' ' && bytes[i - 1] == b' '
         {
             return (&rest[..i - 2], Some(&rest[i + 1..]));
         }
@@ -1102,27 +1075,44 @@ fn instruction_length(opcode: u8, params: &[Vec<Expression>], raw_tail: Option<&
     } else {
         ParamSpec::None
     };
-    for (i, p) in params.iter().enumerate() {
-        for tok in p {
-            len += expression_byte_len(tok);
-        }
-        match spec {
-            ParamSpec::LoadVar if i == 1 => {
-                // The datatype byte; encoder writes it but the
-                // Variable/ComplexAccess token's bytes don't
-                // include it directly. Subtract because we'd
-                // double-count.
-                // Actually, we add 1 byte for the dispatch byte;
-                // for Variable that's the typed-byte (already
-                // counted in expression_byte_len). For
-                // ComplexAccess that's also the dispatch byte
-                // (already counted). So no adjustment.
+    match spec {
+        // gpl_search: the encoder writes params[0] then raw_tail
+        // verbatim; any params beyond [0] (conditional trailing
+        // expressions) are byte-for-byte inside raw_tail already,
+        // so counting them here double-counts.
+        ParamSpec::Search => {
+            if let Some(p) = params.first() {
+                for tok in p {
+                    len += expression_byte_len(tok);
+                }
             }
-            _ => {}
+        }
+        // For LoadVar no adjustment is needed: the datatype /
+        // dispatch byte the encoder writes is the same byte
+        // expression_byte_len already counts on the
+        // Variable/ComplexAccess token.
+        _ => {
+            for p in params {
+                for tok in p {
+                    len += expression_byte_len(tok);
+                }
+            }
         }
     }
     if let ParamSpec::Menu = spec {
         len += 1; // 0x4A terminator
+    }
+    // gpl_setrecord: the access_complex body is read raw after the
+    // opcode with NO leading dispatch byte (encoder lib.rs,
+    // SetRecord arm), but expression_byte_len charges one for the
+    // ComplexAccess token. Uncount it.
+    if let ParamSpec::SetRecord = spec
+        && matches!(
+            params.first().and_then(|p| p.first()),
+            Some(Expression::ComplexAccess { .. })
+        )
+    {
+        len -= 1;
     }
     if let Some(tail) = raw_tail {
         len += tail.len();
@@ -1150,11 +1140,38 @@ fn expression_byte_len(expr: &Expression) -> usize {
         Expression::Variable { extended, .. } => 1 + if *extended { 2 } else { 1 },
         Expression::BinaryOp { .. } => 1,
         Expression::OpenParen | Expression::CloseParen => 1,
-        Expression::RetVal { inner_params, .. } => {
+        Expression::RetVal {
+            inner_opcode,
+            inner_params,
+            inner_raw_tail,
+            ..
+        } => {
             let mut n = 2; // 0x8C + inner_opcode
-            for p in inner_params {
-                for tok in p {
-                    n += expression_byte_len(tok);
+                           // Mirror the encoder's RetVal dispatch (lib.rs): a
+                           // Search inner opcode encodes only inner_params[0] then
+                           // appends inner_raw_tail verbatim; every other spec
+                           // encodes all inner_params and never writes a tail.
+                           // Counting all params + tail unconditionally miscounts
+                           // total_bytes on chunks with nested gpl_search.
+            let spec = if (*inner_opcode as usize) <= MAX_KNOWN_OPCODE as usize {
+                PARAM_COUNTS[*inner_opcode as usize]
+            } else {
+                ParamSpec::Custom
+            };
+            if let ParamSpec::Search = spec {
+                if let Some(p) = inner_params.first() {
+                    for tok in p {
+                        n += expression_byte_len(tok);
+                    }
+                }
+                if let Some(tail) = inner_raw_tail {
+                    n += tail.len();
+                }
+            } else {
+                for p in inner_params {
+                    for tok in p {
+                        n += expression_byte_len(tok);
+                    }
                 }
             }
             n
@@ -1425,7 +1442,10 @@ fn parse_one_expression(
             position: hex.clone(),
             detail: format!("Unknown byte: {e}"),
         })?;
-        return Ok((Expression::Unknown { byte }, s.len() - rest.len() + hex.len()));
+        return Ok((
+            Expression::Unknown { byte },
+            s.len() - rest.len() + hex.len(),
+        ));
     }
 
     // Integer immediates: try BigNum (i32), then Byte (i8), then 14-bit.
@@ -1456,12 +1476,11 @@ fn parse_compressed_string(s: &str, line_no: usize) -> Result<(Expression, usize
                 b't' => '\t',
                 b'x' if i + 3 < bytes.len() => {
                     let hex = &s[i + 2..i + 4];
-                    let v =
-                        u8::from_str_radix(hex, 16).map_err(|e| ParseError::BadExpression {
-                            line: line_no,
-                            position: hex.to_string(),
-                            detail: format!("string \\x escape: {e}"),
-                        })?;
+                    let v = u8::from_str_radix(hex, 16).map_err(|e| ParseError::BadExpression {
+                        line: line_no,
+                        position: hex.to_string(),
+                        detail: format!("string \\x escape: {e}"),
+                    })?;
                     value.push(v as char);
                     i += 4;
                     continue;
@@ -1635,9 +1654,11 @@ fn split_retval_raw_tail(after_mn: &str) -> (&str, Option<Vec<u8>>) {
         return (after_mn, None);
     };
     let hex = &after_mn[marker_idx + " raw_tail=".len()..];
-    let end = hex.find(|c: char| !c.is_ascii_hexdigit()).unwrap_or(hex.len());
+    let end = hex
+        .find(|c: char| !c.is_ascii_hexdigit())
+        .unwrap_or(hex.len());
     let hex = &hex[..end];
-    if hex.is_empty() || hex.len() % 2 != 0 {
+    if hex.is_empty() || !hex.len().is_multiple_of(2) {
         return (after_mn, None);
     }
     let mut bytes = Vec::with_capacity(hex.len() / 2);
@@ -1693,7 +1714,11 @@ fn parse_complex(s: &str, body: &str, line_no: usize) -> Result<(Expression, usi
     })
 }
 
-fn parse_complex_inner(inner: &str, consumed: usize, line_no: usize) -> Result<(Expression, usize)> {
+fn parse_complex_inner(
+    inner: &str,
+    consumed: usize,
+    line_no: usize,
+) -> Result<(Expression, usize)> {
     // Split on top-level commas.
     let parts: Vec<&str> = split_top_level_commas(inner)
         .into_iter()
@@ -1730,11 +1755,13 @@ fn parse_complex_inner(inner: &str, consumed: usize, line_no: usize) -> Result<(
         "OTHER1" => 0x802C_u32 as i32,
         "?" => 0x8000_u32 as i32, // best-effort; we don't know the original tag value
         other => {
-            let body = other.strip_prefix("id=").ok_or_else(|| ParseError::BadExpression {
-                line: line_no,
-                position: other.to_string(),
-                detail: "COMPLEX ctx unknown".to_string(),
-            })?;
+            let body = other
+                .strip_prefix("id=")
+                .ok_or_else(|| ParseError::BadExpression {
+                    line: line_no,
+                    position: other.to_string(),
+                    detail: "COMPLEX ctx unknown".to_string(),
+                })?;
             body.parse::<i32>().map_err(|e| ParseError::BadExpression {
                 line: line_no,
                 position: body.to_string(),
@@ -1862,16 +1889,14 @@ fn try_parse_binary_op(s: &str, prev_was_value: bool) -> Option<(Op, usize)> {
             // (` - 10i8`) is handled implicitly because trimming
             // doesn't change the prev_was_value state.
             let next_is_digit = !rest.is_empty() && rest.as_bytes()[0].is_ascii_digit();
-            let sign_ambiguous =
-                matches!(*op, Op::Minus) && next_is_digit && !prev_was_value;
+            let sign_ambiguous = matches!(*op, Op::Minus) && next_is_digit && !prev_was_value;
             // `and` / `or` need a word boundary after.
             let word_op = matches!(*op, Op::And | Op::Or);
             let next_ok = if sign_ambiguous {
                 rest.is_empty() || rest.as_bytes()[0] == b' '
             } else if word_op {
                 rest.is_empty()
-                    || !(rest.as_bytes()[0].is_ascii_alphanumeric()
-                        || rest.as_bytes()[0] == b'_')
+                    || !(rest.as_bytes()[0].is_ascii_alphanumeric() || rest.as_bytes()[0] == b'_')
             } else {
                 true
             };
@@ -1925,8 +1950,8 @@ fn try_parse_variable(s: &str) -> Option<(VarKind, bool, u16, usize)> {
         if let Some(rest) = s.strip_prefix(prefix) {
             let extended = rest.starts_with('+');
             let after_plus = if extended { &rest[1..] } else { rest };
-            if let Some(after_open) = after_plus.strip_prefix('[') {
-                if let Some(close_idx) = after_open.find(']') {
+            if let Some(after_open) = after_plus.strip_prefix('[')
+                && let Some(close_idx) = after_open.find(']') {
                     let inner = &after_open[..close_idx];
                     // Accept both the plain form `[id]` and the
                     // decorated form `[id (NAME)]` emitted by
@@ -1942,15 +1967,11 @@ fn try_parse_variable(s: &str) -> Option<(VarKind, bool, u16, usize)> {
                     if let Ok(id) = id_part.parse::<u16>() {
                         // Bytes consumed: prefix + optional `+` +
                         // `[` + entire inner content + `]`.
-                        let consumed = prefix.len()
-                            + (if extended { 1 } else { 0 })
-                            + 1
-                            + inner.len()
-                            + 1;
+                        let consumed =
+                            prefix.len() + (if extended { 1 } else { 0 }) + 1 + inner.len() + 1;
                         return Some((*vk, extended, id, consumed));
                     }
                 }
-            }
         }
     }
     None
@@ -2247,7 +2268,11 @@ mod tests {
         assert!(
             matches!(
                 var,
-                Expression::Variable { var_kind: VarKind::Gbyte, id: 42, .. }
+                Expression::Variable {
+                    var_kind: VarKind::Gbyte,
+                    id: 42,
+                    ..
+                }
             ),
             "got {var:?}"
         );
@@ -2288,7 +2313,11 @@ mod tests {
         assert!(
             matches!(
                 var,
-                Expression::Variable { var_kind: VarKind::Gbyte, id: 9, .. }
+                Expression::Variable {
+                    var_kind: VarKind::Gbyte,
+                    id: 9,
+                    ..
+                }
             ),
             "got {var:?}"
         );
@@ -2304,14 +2333,9 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("gpl-asm-include-{nanos}"));
         std::fs::create_dir_all(&dir).expect("create");
         let inc_path = dir.join("inc.asm");
-        std::fs::write(
-            &inc_path,
-            "%define MY_SLOT 17\n",
-        )
-        .expect("write");
-        let main_src = format!(
-            "@include \"inc.asm\"\n0000  03  gpl_load              GBYTE[MY_SLOT]\n"
-        );
+        std::fs::write(&inc_path, "%define MY_SLOT 17\n").expect("write");
+        let main_src =
+            "@include \"inc.asm\"\n0000  03  gpl_load              GBYTE[MY_SLOT]\n".to_string();
         let parsed = preprocess_with_root(&main_src, &dir).expect("preprocess");
         assert!(
             parsed.text.contains("GBYTE[17]"),
@@ -2344,9 +2368,7 @@ mod tests {
     fn include_missing_file_is_flagged() {
         let dir = std::env::temp_dir().join("gpl-asm-missing-include-test");
         std::fs::create_dir_all(&dir).expect("create");
-        let err =
-            preprocess_with_root("@include \"does-not-exist.asm\"\n", &dir)
-                .unwrap_err();
+        let err = preprocess_with_root("@include \"does-not-exist.asm\"\n", &dir).unwrap_err();
         assert!(matches!(err, ParseError::IncludeIo { .. }), "got {err:?}");
     }
 }
