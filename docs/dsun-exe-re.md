@@ -5,7 +5,9 @@ Lands*, 611 KB) and DS2 (*Wake of the Ravager*, 634 KB) ship one
 under that name; they descend from the same Watcom C/C++ codebase
 but were compiled separately. This page is the maintainer's index
 into the engine binary: where to look, what's known, and what
-each finding unlocks for the rest of the toolkit.
+each finding unlocks for the rest of the toolkit. If you're new
+to the engine, read [`research.md`](research.md) first; this page
+assumes that context and a hex editor.
 
 The companion symbol catalogue lives at
 [`dso-symbols.md`](dso-symbols.md). That page is the

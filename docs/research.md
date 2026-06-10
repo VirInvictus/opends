@@ -6,9 +6,12 @@ Source for the high-level facts: open web reverse-engineering work
 Sands Gamasutra postmortem, and the SSI 1.02 README distributed with the
 GOG copy of *Wake of the Ravager*.
 
-This document is the elevator-pitch version. Format details live in
-[`file-formats.md`](file-formats.md); known bugs live in
-[`known-bugs.md`](known-bugs.md); upstream code is catalogued in
+This document is the elevator-pitch version: read it first, then
+go deeper where you need to. The disassembly-level notes on
+`DSUN.EXE` itself live in [`dsun-exe-re.md`](dsun-exe-re.md);
+format details live in [`file-formats.md`](file-formats.md);
+known bugs live in [`known-bugs.md`](known-bugs.md); upstream
+code is catalogued in
 [`upstream-projects.md`](upstream-projects.md).
 
 ## 1. The engine, briefly
@@ -42,6 +45,11 @@ What it **is**:
   Language").
 
 ## 2. Implementation guess
+
+*(Written before we opened the binary. Since confirmed by direct
+EXE work: Watcom C/C++ codebase under a DOS/4GW DPMI 32-bit
+overlay; see [`dsun-exe-re.md`](dsun-exe-re.md) §1. Kept here as
+the public-evidence trail.)*
 
 No published statement of the language or DOS extender is available, but
 the available evidence converges:

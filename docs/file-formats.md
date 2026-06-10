@@ -1,5 +1,10 @@
 # File Formats
 
+*Reference, not a tutorial. Read this when a cookbook entry or a
+tool's output names a chunk type and you need its exact layout.
+For a guided first look at a GFF, `opends inspect <file>` and
+`gff-cat what <kind> <id>` will route you here with context.*
+
 The Dark Sun engine packs nearly everything into a single container
 format, **GFF** (Game/Generic File Format), and uses a small number of
 external file types alongside it.

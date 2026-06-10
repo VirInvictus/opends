@@ -16,18 +16,21 @@ years). The risk is bounded; the practice is mature.
 - 611 KB
 - DOS executable (likely DOS/4GW or similar; needs confirmation
   via `r2 -A`)
-- `extracted/ds1/DSUN.EXE`
+- `.games/ds1/DSUN.EXE`
 
 ### DS2 `DSUN.EXE`
 
 - 634 KB
 - Same engine generation, larger codebase
-- `extracted/ds2/DSUN.EXE`
+- `.games/ds2/DSUN.EXE`
 
-Hashes (to be added once `tools/verify-install.py` lands):
+Canonical hashes (from [`source-hashes/`](source-hashes/), which
+[`verify-install`](../tools/verify-install/) checks against):
 
-- DS1 GOG 1.10 `DSUN.EXE` SHA256: `<TBD>`
-- DS2 GOG 1.10 `DSUN.EXE` SHA256: `<TBD>`
+- DS1 GOG 1.10 `DSUN.EXE` SHA256:
+  `7bbd84f105b1ebe538a4abdfccdb2bacbf5b4fa763b45fa3a84499780f1d8c96`
+- DS2 GOG 1.10 `DSUN.EXE` SHA256:
+  `ce02ee1f31c2339fc3e16926e370639af782a5ecd6c8a6081140fa23445fc92c`
 
 The patch manifest will refuse to apply if the source hash
 doesn't match the canonical 1.10 GOG build.
@@ -61,7 +64,7 @@ discernible quest trigger — it's likely engine-side.
 In `r2`:
 
 ```
-r2 -A extracted/ds2/DSUN.EXE
+r2 -A .games/ds2/DSUN.EXE
 afll               # list functions
 fs strings; fs *   # list strings
 /r <symptom-string>

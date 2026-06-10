@@ -57,22 +57,20 @@ installers are the easiest:
 - *Dark Sun: Wake of the Ravager*: GOG product ID 1432903719.
 
 Place the GOG installer EXEs in `.games/` (gitignored). Then
-extract:
+extract by hand (a wrapper script stays deferred; `innoextract`
+is one command per game, and
+[`verify-install --repair`](../tools/verify-install/) already
+shells to it for single-file restores):
 
 ```sh
-cd ~/.gitrepos/opends
-tools/extract.sh    # forthcoming
-```
-
-Until that script lands, do it by hand:
-
-```sh
-mkdir -p extracted
-innoextract -d extracted/ds1 \
+innoextract -d .games/ds1 \
     .games/setup_dark_sun_shattered_lands_1.1_cs_*.exe
-innoextract -d extracted/ds2 \
+innoextract -d .games/ds2 \
     .games/setup_dark_sun_2_wake_of_the_ravager_1.1_*.exe
 ```
+
+`.games/ds1/` and `.games/ds2/` are the paths the Rust corpus
+tests read; without them those tests skip.
 
 If you also have the GOG installers wrapped in `.rar`
 (like the GOG-Games.to redistribution), unpack the rars first
@@ -85,17 +83,18 @@ unrar x .games/game-dark.sun.wake.of.the.ravager*.rar .games/
 
 ## 5. Verifying your install
 
-Once `tools/verify-install.py` lands:
-
 ```sh
-tools/verify-install.py extracted/ds1
-# → "GOG 1.10 / Linux / OK"
+python3 tools/verify-install/verify-install.py --game ds1 --summary
 ```
 
-The script computes SHA256 of every key file and matches
-against an embedded manifest of known-good hashes. Any
-mismatch means your install isn't the canonical 1.10; the
-patch may not apply cleanly.
+The tool computes SHA256 of every manifested file and matches
+against the canonical manifests in
+[`source-hashes/`](source-hashes/). Any mismatch means the
+install isn't the canonical GOG 1.10; a darkfix patch may not
+apply cleanly. `--repair <installer.exe>` restores damaged
+files from the GOG installer (backs up first), `--rollback`
+undoes a repair. See the
+[tool README](../tools/verify-install/) for the full surface.
 
 ## 6. Editor setup
 
@@ -116,11 +115,11 @@ that doesn't need an IDE.
 After setup, run:
 
 ```sh
-ls extracted/ds1/DSUN.EXE   # exists, ~611KB
-ls extracted/ds2/DSUN.EXE   # exists, ~634KB
-ls extracted/ds2/MUSIC/Track02.ogg  # exists
-file extracted/ds1/RESOURCE.GFF     # → "data" (binary)
-head -c 4 extracted/ds1/RESOURCE.GFF  # → "GFFI"
+ls .games/ds1/DSUN.EXE   # exists, ~611KB
+ls .games/ds2/DSUN.EXE   # exists, ~634KB
+ls .games/ds2/MUSIC/Track02.ogg  # exists
+file .games/ds1/RESOURCE.GFF     # → "data" (binary)
+head -c 4 .games/ds1/RESOURCE.GFF  # → "GFFI"
 ```
 
 If all of the above pass, you're ready to start fixing bugs.
@@ -129,19 +128,19 @@ If all of the above pass, you're ready to start fixing bugs.
 
 ```sh
 flatpak run io.github.dosbox_staging \
-    -conf extracted/ds1/DOSBOX/dosbox_darksun_single.conf
+    -conf .games/ds1/DOSBOX/dosbox_darksun_single.conf
 flatpak run io.github.dosbox_staging \
-    -conf extracted/ds2/DOSBOX/dosbox_darksun_2_single.conf
+    -conf .games/ds2/DOSBOX/dosbox_darksun_2_single.conf
 ```
 
-(Confirm the .conf paths in `extracted/{ds1,ds2}/DOSBOX/` after
+(Confirm the .conf paths in `.games/{ds1,ds2}/DOSBOX/` after
 extraction; GOG ships the configurations there.)
 
 For debugging, use `--debug`:
 
 ```sh
 flatpak run io.github.dosbox_staging --debug \
-    -conf extracted/ds2/DOSBOX/...
+    -conf .games/ds2/DOSBOX/...
 ```
 
 DOSBox's debugger lets you set breakpoints in DOS memory,

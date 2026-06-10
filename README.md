@@ -15,11 +15,26 @@ written down. Every utility we build gets published.
 In build order — **tools first, patches second**:
 
 - **Tools** — every utility built to make the digging easier.
-  GFF reader/writer, GPL bytecode disassembler, dialog
-  extractor, save inspector, region viewer, install verifier,
-  extractors. Each ships independently with its own README and
-  tagged release. MIT-licensed. → [`tools/`](tools/)
-  *(forthcoming)*
+  Twelve ship today, each independently with its own README,
+  `VERSION`, and tagged release. MIT-licensed. → [`tools/`](tools/)
+
+  | Tool | What it does |
+  |---|---|
+  | [`opends`](tools/opends/) | Umbrella CLI: "I have this file, what is it?" Dispatches by magic to the right tool. |
+  | [`gff-edit`](tools/gff-edit/) | GFF container read/write library + `gff-cat` CLI. The foundation everything else builds on. |
+  | [`gpl-disasm`](tools/gpl-disasm/) | GPL bytecode disassembler: text or JSON, CFG labels, curated symbol names. |
+  | [`gpl-asm`](tools/gpl-asm/) | GPL reassembler and patch authoring: 600/600 corpus chunks round-trip byte-identical. |
+  | [`save-inspect`](tools/save-inspect/) | Save-file inspector and editor: dump, diff, edit PCs and items, write back safely. |
+  | [`dialog-extract`](tools/dialog-extract/) | Pull NPC dialog out of GPL chunks as JSON, transcript, or browsable HTML. |
+  | [`image-extract`](tools/image-extract/) | Decode bitmap chunks to PNG and pack edited PNGs back (sprite modding). |
+  | [`region-render`](tools/region-render/) | Composite a region's tiles, walls, and entities into a map PNG or animated GIF. |
+  | [`atlas`](tools/atlas/) | Static-HTML site generator: browse a whole install's sprites, maps, and dialog offline. |
+  | [`verify-install`](tools/verify-install/) | Check an install against canonical hashes; repair from the GOG installer; roll back. |
+  | [`repro`](tools/repro/) | DOSBox repro harness with overlay mounts (the install is never written), input automation, video capture. |
+  | [`opcode-fuzz`](tools/opcode-fuzz/) | GPL opcode-discovery harness: swap a chunk, run the game, diff the world state. |
+
+  The [`tools/README.md`](tools/README.md) table carries current
+  versions and per-tool detail.
 - **darkfix patches** — community bugfix patches for both
   games. Distributed as zips you apply to your GOG install. The
   game still launches via DOSBox; the bugs you used to hit, you
@@ -65,20 +80,28 @@ there. The toolkit and patches matter even if we don't.
 
 ## Status
 
-Day zero. Documentation phase.
+The toolkit is read-complete and write-capable: every shipped
+file format can be inspected, and GFF chunks, GPL bytecode,
+sprites, and saves can all be edited and written back with
+round-trip verification. Roadmap Phases 0-5 (documentation,
+GFF foundation, repro harness, disassembler, exploration tools,
+assembler) have substantially shipped. The current front is
+Phase 6: author, package, and ship the first darkfix patch.
 
 - [`spec.md`](spec.md) — design spec and invariants
-- [`roadmap.md`](roadmap.md) — phased plan
-- [`docs/`](docs/) — research, formats, bugs, build setup, GPL
-  notes, binary patching, patch workflow
+- [`roadmap.md`](roadmap.md) — phased plan and current status
+- [`docs/README.md`](docs/README.md) — documentation index with
+  reading paths (modder, engine researcher, patch author,
+  contributor)
 
 ## Quick start (developer)
 
 You need a legitimate copy of one or both games (GOG installers
 recommended). Place the GOG `.exe` installers under `.games/`
-(gitignored). Extraction script forthcoming; see
+(gitignored) and extract with `innoextract`; see
 [`docs/build-environment.md`](docs/build-environment.md) for the
-manual `innoextract` route.
+walkthrough. `verify-install --repair` can also extract single
+files from the installer to heal a damaged install.
 
 ## License
 

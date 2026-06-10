@@ -52,7 +52,7 @@ are extractable on Fedora.
       Captured from the pristine innoextract of the GOG
       installers under `.games/`.
 - [ ] **Tool (deferred)**: `tools/extract.sh` — GOG installer
-      (.exe or .rar + .exe) → `extracted/ds1/` or `extracted/ds2/`.
+      (.exe or .rar + .exe) → `.games/ds1/` or `.games/ds2/`.
       Not blocking: developers who run the GOG installer (under
       Wine, on Windows, or natively) already have the same file
       tree. Reinstated if a contributor needs from-installer
@@ -75,7 +75,7 @@ library plus `gff-cat` binary. Tagged release:
 
 - [x] Parse the 28-byte file header and the TOC per the layout
       documented in
-      [`docs/file-formats.md`](../docs/file-formats.md) §1.
+      [`docs/file-formats.md`](docs/file-formats.md) §1.
       (gff-edit v0.1.0; both indexed and segmented TOC types are
       parsed at the type level.)
 - [x] Iterator API on the library: `gff.chunks()` returns a slice
@@ -236,7 +236,7 @@ runs through it.
       `gpl default` rows). Script is the review surface; no
       automatic commits.
 
-**Done when**: `gpl-disasm extracted/ds1/GPLDATA.GFF` produces
+**Done when**: `gpl-disasm .games/ds1/GPLDATA.GFF` produces
 output that lets a reader locate a quest-script function by
 name (or by nearby string reference) and read its control
 flow. v0.1.0 shipped the byte-annotation foundation; v0.2.0
@@ -382,6 +382,19 @@ look at the maps directly.
       remain opaque; this opens the modder-facing path for
       DS1 active-party edits without requiring full
       per-chunk RE.
+- [ ] RE the remaining `DARKRUN.GFF` SAVE chunks: SAVE/1 (the
+      largest at ~10 KB; probably the master per-region state
+      table), SAVE/2-/4 and /7-/9, the u16 scalar family at ids
+      10..17 (identify what each counter / pointer represents),
+      and the 51-byte SAVE/18 boolean array (all 0x01 in the
+      reference played save; region-visited flags?). Bootstrap
+      empirically with the v0.7.0 `save-diff` harness: snapshot,
+      do one in-game action, snapshot, diff. Document each
+      locked layout in `docs/file-formats.md` §3 and extend
+      `ds1-party-edit.py` (or a sibling `ds1-world-edit.py`)
+      with editable accessors. Quest and world-state fixes
+      need this; without it they're raw byte edits with no
+      schema safety.
 - [x] **Modder-altitude PC edit surface** (save-inspect
       v0.9.0 - v0.9.4): `list-pcs`, `list-items`, `edit-pc`,
       `edit-item`, `give-item`, `find-empty-slots` for
@@ -542,7 +555,16 @@ just read it. Be able to discover unknown opcodes systematically.
       `--dry-run` previews. The authoring surface darkfix
       patches will use for 1-3 byte tweaks once Phase 6
       starts. Label-relative addressing
-      (`at = "label_0x42 + 3"`) deferred to v0.8.1.
+      (`at = "label_0x42 + 3"`) deferred (see below).
+- [ ] Label-relative patch addressing for `--patch` scripts:
+      `at = "label_0x42 + 3"` and `at = "<name> + N"` with
+      names resolved from `syms/functions.toml`, so darkfix
+      authoring doesn't require hand-counted byte offsets.
+      Resolver disassembles the target chunk, resolves the
+      label, computes the absolute offset; the `bytes_old`
+      fingerprint check stays mandatory. Was pencilled in as
+      v0.8.1; lands as v0.9.0 (v0.8.1 shipped as the
+      text-parser length-accounting bugfix instead).
 - [x] Tagged: `gpl-asm-v0.1.0`. (this release)
 
 ### `tools/opcode-fuzz/` (Python; drives DOSBox debugger over IPC)
@@ -598,13 +620,27 @@ authoring should feel like routine work.
 
 **Ships**: `darkfix-ds1-v0.1.0`.
 
+- [ ] Darkfix distribution format per `spec.md` §4:
+      `manifest.toml` schema (target hashes, fix list, on/off
+      state), `apply.py` applier (verify install hashes against
+      the manifest, back up to `darkfix-backup/`, apply each
+      enabled fix, write `darkfix-applied.json`), and `apply.py
+      --unapply` restore. Prove the package shape with a no-op
+      fix that applies and unapplies cleanly before any real
+      fix ships.
 - [ ] Pick one trivial DS1 bug (identified during Phase 2 repro
       work).
+- [ ] Repro fixture for the chosen bug
+      (`tools/repro/bugs/<id>/bug.toml`) so the fix is
+      verifiable. Requires ydotool installed locally; repro
+      v0.4.0 already integrates the input automation.
 - [ ] Author the fix using `gpl-disasm` + `gff-edit`.
 - [ ] Author the test (hash before/after, in-game repro via
       `tools/repro/`).
 - [ ] Tag `darkfix-ds1-v0.1.0`, push GitHub release.
 - [ ] Player-facing README explaining install.
+- [ ] Cookbook entry: `docs/cookbook/author-first-darkfix.md`,
+      the workflow written down while it's fresh.
 
 **Done when**: a stranger could download the v0.1 zip, run
 `apply.py`, launch DS1 in DOSBox, and the bug is gone.
@@ -616,6 +652,16 @@ late game in 1994 and has never been fixed.
 
 **Ships**: `darkfix-ds2-v0.1.0`.
 
+- [ ] DS2 active-party edit surface, verified end-to-end:
+      confirm in a loaded game that CHARSAVE edits via
+      `save-inspect` cover the DS2 active party (the v0.6.0
+      finding says DS2 CHARSAVE *is* the active party, but
+      this has only been exercised via `repro.py --play`
+      session saves, never a live install). If DS2 turns out
+      to have a DARKRUN-side layout like DS1's SAVE/5-/6,
+      RE it and build the sibling tooling. Cookbook entry
+      mirroring `edit-ds1-party.md` either way; darkfix-ds2
+      authoring needs this fluency.
 - [ ] Reproduce in DOSBox via `tools/repro/`.
 - [ ] Locate the GPL function or DSUN.EXE routine controlling
       the elevator transition (use `dialog-extract` and

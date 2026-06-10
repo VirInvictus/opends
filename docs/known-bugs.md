@@ -12,7 +12,7 @@ A catalog of the engine bugs we are committing to fix. Three sources:
 
 ## 1. SSI's official 1.02 fix list (Wake of the Ravager)
 
-Reproduced from `extracted/ds2/README.TXT` shipped in the GOG installer.
+Reproduced from `.games/ds2/README.TXT` shipped in the GOG installer.
 The README is dated 1994-12-14 and accompanies the 1.10 build. Each
 item below was a 1.02-era fix; they are all expected to remain fixed
 in OpenDS:
@@ -166,7 +166,7 @@ are **off by default**, on by toggle. See [`../spec.md`](../spec.md) §5.
 
 ## 6. Sources
 
-- `extracted/ds2/README.TXT` — SSI's verbatim 1.02 patchnotes.
+- `.games/ds2/README.TXT` — SSI's verbatim 1.02 patchnotes.
 - Wikipedia — https://en.wikipedia.org/wiki/Dark_Sun:_Wake_of_the_Ravager
 - VOGONS thread — https://www.vogons.org/viewtopic.php?t=10893
 - DOSBox compat list — https://www.dosbox.com/comp_list.php?showID=148&letter=D

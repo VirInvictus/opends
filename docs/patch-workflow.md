@@ -10,7 +10,7 @@ bug. Skim once. Refer back as needed.
 
 - Fedora dev environment set up — see
   [`build-environment.md`](build-environment.md).
-- Both games extracted to `extracted/ds1/` and `extracted/ds2/`.
+- Both games extracted to `.games/ds1/` and `.games/ds2/`.
 - DOSBox-Staging configured to run them.
 - A clean save before the bug-trigger point (build a save library
   per game; reuse across fixes).
@@ -53,7 +53,7 @@ surfaces and try again.
 Workflow detail in [`gpl-bytecode.md`](gpl-bytecode.md).
 Quick version:
 
-1. `gpl-disasm extracted/dsN/GPLDATA.GFF > scratch/<bug-id>/dump.gpl.s`
+1. `gpl-disasm .games/dsN/GPLDATA.GFF > scratch/<bug-id>/dump.gpl.s`
 2. Locate the chunk responsible (search for dialog strings,
    item names, NPC names — they tend to be embedded in or
    adjacent to the relevant chunk).
@@ -67,7 +67,7 @@ Quick version:
 Workflow detail in [`binary-patching.md`](binary-patching.md).
 Quick version:
 
-1. `r2 -A extracted/dsN/DSUN.EXE`
+1. `r2 -A .games/dsN/DSUN.EXE`
 2. `/r <symptom-string>` to find the function.
 3. Read the function with `pdf` or `VV`.
 4. Set a DOSBox-debugger breakpoint, trigger the bug, watch state.
@@ -142,7 +142,7 @@ Three layers:
 ### 5.1. Hash test
 
 ```sh
-python3 dsN-patch/fixes/NNN-<short-id>.py extracted/dsN/<file> /tmp/patched
+python3 dsN-patch/fixes/NNN-<short-id>.py .games/dsN/<file> /tmp/patched
 sha256sum /tmp/patched
 ```
 

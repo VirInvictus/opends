@@ -1,5 +1,12 @@
 # GPL Bytecode
 
+*Reference. Read [`research.md`](research.md) first if you're new
+to the engine. This page explains the language and its encoding;
+the per-opcode table lives in [`gpl-opcodes.md`](gpl-opcodes.md);
+the tools that operate on all of this are
+[`gpl-disasm`](../tools/gpl-disasm/) and
+[`gpl-asm`](../tools/gpl-asm/).*
+
 GPL — "Game Programming Language" — is the engine's embedded
 scripting language. Quest logic, dialogue trees, NPC AI hooks,
 event triggers, item-use callbacks, and most of what makes the
@@ -318,7 +325,7 @@ We grow the catalogue by:
 End-to-end, once `gpl-disasm` exists:
 
 1. Reproduce the bug in DOSBox (saved-game library helps).
-2. Run `gpl-disasm extracted/dsN/GPLDATA.GFF > /tmp/dump.gpl.s`.
+2. Run `gpl-disasm .games/dsN/GPLDATA.GFF > /tmp/dump.gpl.s`.
 3. Locate the chunk responsible — usually by the dialog
    text the buggy NPC speaks (search for the string in the
    disassembly).

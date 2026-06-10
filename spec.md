@@ -291,7 +291,7 @@ opends/
 ├── roadmap.md
 ├── patchnotes.md
 ├── logo.svg
-├── .gitignore              # .games/, extracted/, scratch/
+├── .gitignore              # .games/, scratch/
 ├── docs/
 │   ├── research.md         # engine research
 │   ├── file-formats.md     # GFF and chunks
@@ -312,13 +312,12 @@ opends/
 │   ├── fixes/
 │   └── scripts/
 ├── tools/                  # the public toolkit
-│   ├── extract.sh          # GOG installer → extracted/
-│   ├── verify-install.py   # hash a player's install
+│   ├── verify-install/     # hash a player's install
 │   ├── gpl-disasm/         # GPL bytecode disassembler
-│   ├── gff-edit/           # GFF chunk editor (Python)
+│   ├── gff-edit/           # GFF chunk editor (Rust)
 │   └── ...                 # one folder per tool
-├── extracted/  (gitignored) # unpacked game files for dev
-└── .games/     (gitignored) # raw GOG installers
+└── .games/     (gitignored) # GOG installers + unpacked
+                             # game files (.games/ds1, ds2)
 ```
 
 The repo name `opends` is the umbrella project. The patches

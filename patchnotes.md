@@ -841,8 +841,8 @@ Released versions appear here, newest first.
     pass; corpus test passes with 883 frames round-tripped.
 
 - **`tools/gpl-disasm/` v0.6.0** is the first ship of the
-  human-friendliness sprint (see
-  [`docs/next-versions.md`](docs/next-versions.md)). Two
+  human-friendliness sprint (planned in `docs/next-versions.md`,
+  retired 2026-06-10 once the sprint shipped; in git history). Two
   modder-facing wins, plus the latent variables-bug fix the
   v0.5.0 ship missed.
   - **Per-chunk local-variable overlays**. New

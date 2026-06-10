@@ -17,8 +17,9 @@ Depends on `gff-edit` for GFF I/O.
 ## What `gpl-disasm v0.6.0` ships
 
 **Per-chunk local-variable overlays + a DSO-symbol importer
-script.** The first ship of the human-friendliness sprint
-(see [`docs/next-versions.md`](../../docs/next-versions.md)).
+script.** The first ship of the 2026-05 human-friendliness
+sprint (the sprint plan is retired; its ships are recorded in
+the repo [`patchnotes.md`](../../patchnotes.md)).
 Two modder-facing wins:
 
 **Locals naming.** New `syms/locals.toml` extends the

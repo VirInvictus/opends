@@ -120,7 +120,7 @@ verify each candidate against `DSUN.EXE`.
 ## Process for adding a row
 
 1. Find the candidate in `.dso-online/tools/symbols.txt`.
-2. Open DS2's `DSUN.EXE` in radare2: `r2 -A extracted/ds2/DSUN.EXE`.
+2. Open DS2's `DSUN.EXE` in radare2: `r2 -A .games/ds2/DSUN.EXE`.
 3. Locate the function by:
    - **String x-refs** (most reliable): the DSO symbol's purpose
      suggests a string it would emit; grep DSUN.EXE for that

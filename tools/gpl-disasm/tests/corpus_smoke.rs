@@ -7,7 +7,8 @@
 //!    bounded by best-effort skipping.
 //! 2. **Aligned percentage**: fraction of chunks where
 //!    `aligned == true` (no `best_effort` instruction encountered,
-//!    full byte coverage). pick-it-up.md targets `>= 95%`.
+//!    full byte coverage). The 2026-05 handoff notes
+//!    (pick-it-up.md, since retired) targeted `>= 95%`.
 //!
 //! Paths are hardcoded to Brandon's pristine innoextract trees.
 
@@ -72,7 +73,10 @@ fn every_gpl_and_mas_chunk_disassembles() {
         }
     }
 
-    assert!(total_chunks > 0, "no GPL/MAS chunks found; check CORPUS paths");
+    assert!(
+        total_chunks > 0,
+        "no GPL/MAS chunks found; check CORPUS paths"
+    );
     let aligned_pct = (aligned_chunks as f64 / total_chunks as f64) * 100.0;
     eprintln!(
         "disassembled {total_chunks} GPL/MAS chunks ({aligned_chunks} aligned, {aligned_pct:.1}%); \
@@ -146,7 +150,10 @@ fn every_cfg_successor_resolves_to_instruction_boundary() {
         }
     }
 
-    assert!(total_chunks > 0, "no aligned GPL/MAS chunks; check CORPUS paths");
+    assert!(
+        total_chunks > 0,
+        "no aligned GPL/MAS chunks; check CORPUS paths"
+    );
     eprintln!(
         "CFG soundness: {total_chunks} aligned chunks, {total_edges} edges resolved, \
          {cross_chunk_calls} global-sub call sites recorded, {unresolved_count} computed-target edges"

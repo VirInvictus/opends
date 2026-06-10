@@ -3144,7 +3144,8 @@ mod tests {
 
     #[test]
     fn param_counts_match_known_handlers() {
-        // Spot-checks against pick-it-up's worked counts.
+        // Spot-checks against worked counts from the 2026-05
+        // session-handoff notes (pick-it-up.md, since retired).
         assert_eq!(PARAM_COUNTS[0x4F], ParamSpec::Fixed(2)); // print string
         assert_eq!(PARAM_COUNTS[0x25], ParamSpec::Fixed(6)); // clone
         assert_eq!(PARAM_COUNTS[0x6A], ParamSpec::Fixed(7)); // move boxtrigger
