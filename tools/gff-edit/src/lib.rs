@@ -170,13 +170,12 @@ impl Gff {
             .find(kind, id)
             .ok_or(GffError::ChunkNotFound { kind, id })?;
 
-        let new_length_u32 = u32::try_from(new_bytes.len()).map_err(|_| {
-            GffError::ChunkTooLarge {
+        let new_length_u32 =
+            u32::try_from(new_bytes.len()).map_err(|_| GffError::ChunkTooLarge {
                 kind,
                 id,
                 length: new_bytes.len(),
-            }
-        })?;
+            })?;
 
         let mut out = self.bytes.clone();
 
@@ -189,12 +188,10 @@ impl Gff {
             chunk.location
         } else {
             // Append: write at end-of-file.
-            let new_loc = u32::try_from(out.len()).map_err(|_| {
-                GffError::ChunkTooLarge {
-                    kind,
-                    id,
-                    length: out.len() + new_bytes.len(),
-                }
+            let new_loc = u32::try_from(out.len()).map_err(|_| GffError::ChunkTooLarge {
+                kind,
+                id,
+                length: out.len() + new_bytes.len(),
             })?;
             out.extend_from_slice(new_bytes);
             new_loc
@@ -337,6 +334,10 @@ impl FourCC {
     /// Parse a 4-character ASCII string into a FOURCC. Accepts
     /// strings of exactly four bytes; trailing spaces are common
     /// in the format ("GPL ", "ADV ").
+    // Inherent rather than `impl FromStr` so call sites don't
+    // need the trait in scope; renaming would break every
+    // downstream tool in the workspace for zero behavior gain.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Result<Self, GffError> {
         let bytes = s.as_bytes();
         if bytes.len() != 4 {
@@ -501,7 +502,10 @@ fn parse_toc(
 
     for _ in 0..num_types {
         if cursor + 8 > toc.len() {
-            return Err(GffError::TocTypesTruncated { num_types, offset: cursor });
+            return Err(GffError::TocTypesTruncated {
+                num_types,
+                offset: cursor,
+            });
         }
         let kind = FourCC([
             toc[cursor],
@@ -517,7 +521,10 @@ fn parse_toc(
 
         if segmented {
             if cursor + 12 > toc.len() {
-                return Err(GffError::TocTypesTruncated { num_types, offset: cursor });
+                return Err(GffError::TocTypesTruncated {
+                    num_types,
+                    offset: cursor,
+                });
             }
             let seg_count = i32_le(&toc[cursor..cursor + 4]);
             let seg_loc_id = i32_le(&toc[cursor + 4..cursor + 8]);
@@ -526,16 +533,25 @@ fn parse_toc(
 
             let entries_size = num_entries
                 .checked_mul(8)
-                .ok_or(GffError::TocTypesTruncated { num_types, offset: cursor })?;
+                .ok_or(GffError::TocTypesTruncated {
+                    num_types,
+                    offset: cursor,
+                })?;
             if cursor + entries_size > toc.len() {
-                return Err(GffError::TocTypesTruncated { num_types, offset: cursor });
+                return Err(GffError::TocTypesTruncated {
+                    num_types,
+                    offset: cursor,
+                });
             }
             let mut seg_entries = Vec::with_capacity(num_entries);
             for _ in 0..num_entries {
                 let first_id = i32_le(&toc[cursor..cursor + 4]);
                 let num_chunks = i32_le(&toc[cursor + 4..cursor + 8]);
                 cursor += 8;
-                seg_entries.push(SegEntry { first_id, num_chunks });
+                seg_entries.push(SegEntry {
+                    first_id,
+                    num_chunks,
+                });
             }
             builds.push(TypeBuild {
                 info: TypeInfo {
@@ -552,9 +568,15 @@ fn parse_toc(
         } else {
             let entries_size = chunk_count
                 .checked_mul(12)
-                .ok_or(GffError::TocTypesTruncated { num_types, offset: cursor })?;
+                .ok_or(GffError::TocTypesTruncated {
+                    num_types,
+                    offset: cursor,
+                })?;
             if cursor + entries_size > toc.len() {
-                return Err(GffError::TocTypesTruncated { num_types, offset: cursor });
+                return Err(GffError::TocTypesTruncated {
+                    num_types,
+                    offset: cursor,
+                });
             }
             let mut indexed = Vec::with_capacity(chunk_count);
             for _ in 0..chunk_count {
@@ -658,7 +680,11 @@ fn resolve_segmented_type(
     let gffi_chunk = &gffi_chunks[seg.seg_loc_id as usize];
 
     let table_start = gffi_chunk.location as usize;
-    if table_start.checked_add(4).filter(|e| *e <= bytes.len()).is_none() {
+    if table_start
+        .checked_add(4)
+        .filter(|e| *e <= bytes.len())
+        .is_none()
+    {
         return Err(GffError::SecondaryTableOutOfBounds {
             kind,
             offset: table_start,
@@ -670,7 +696,12 @@ fn resolve_segmented_type(
     let entries_start = table_start + 4;
     let entries_size = entry_count
         .checked_mul(8)
-        .filter(|sz| entries_start.checked_add(*sz).filter(|e| *e <= bytes.len()).is_some())
+        .filter(|sz| {
+            entries_start
+                .checked_add(*sz)
+                .filter(|e| *e <= bytes.len())
+                .is_some()
+        })
         .ok_or(GffError::SecondaryTableOutOfBounds {
             kind,
             offset: table_start,
@@ -762,7 +793,7 @@ mod tests {
         v.extend_from_slice(&0u32.to_le_bytes()); // file_flags
         v.extend_from_slice(&1u32.to_le_bytes()); // data0
         v.extend_from_slice(b"hi!\0"); // 4 bytes chunk data
-        // TOC (32 bytes total)
+                                       // TOC (32 bytes total)
         v.extend_from_slice(&8u32.to_le_bytes()); // types_offset
         v.extend_from_slice(&30u32.to_le_bytes()); // free_list_offset
         v.extend_from_slice(&1u16.to_le_bytes()); // num_types
@@ -788,11 +819,11 @@ mod tests {
         v.extend_from_slice(&0u32.to_le_bytes()); // file_flags
         v.extend_from_slice(&2u32.to_le_bytes()); // data0
         v.extend_from_slice(b"hi!\0"); // 4 bytes ETME data
-        // TOC
+                                       // TOC
         v.extend_from_slice(&8u32.to_le_bytes()); // types_offset
         v.extend_from_slice(&58u32.to_le_bytes()); // free_list_offset
         v.extend_from_slice(&2u16.to_le_bytes()); // num_types
-        // Type 1: ETME indexed, 1 chunk
+                                                  // Type 1: ETME indexed, 1 chunk
         v.extend_from_slice(b"ETME");
         v.extend_from_slice(&1u32.to_le_bytes());
         v.extend_from_slice(&3i32.to_le_bytes());
@@ -836,27 +867,27 @@ mod tests {
         v.extend_from_slice(&80u32.to_le_bytes()); // toc_length
         v.extend_from_slice(&0u32.to_le_bytes()); // file_flags
         v.extend_from_slice(&3u32.to_le_bytes()); // data0
-        // Chunk data area (32 bytes).
+                                                  // Chunk data area (32 bytes).
         v.extend_from_slice(b"hi!\0"); // ETME-3
         v.extend_from_slice(b"til0"); // TILE-100
         v.extend_from_slice(b"til1"); // TILE-101
-        // GFFI-0 (secondary table for TILE) at offset 40.
+                                      // GFFI-0 (secondary table for TILE) at offset 40.
         v.extend_from_slice(&2u32.to_le_bytes()); // entryCount = 2
         v.extend_from_slice(&32u32.to_le_bytes()); // entry 0 offset
         v.extend_from_slice(&4u32.to_le_bytes()); //  entry 0 size
         v.extend_from_slice(&36u32.to_le_bytes()); // entry 1 offset
         v.extend_from_slice(&4u32.to_le_bytes()); //  entry 1 size
-        // TOC at offset 60 (80 bytes).
+                                                  // TOC at offset 60 (80 bytes).
         v.extend_from_slice(&8u32.to_le_bytes()); // types_offset
         v.extend_from_slice(&78u32.to_le_bytes()); // free_list_offset
         v.extend_from_slice(&3u16.to_le_bytes()); // num_types
-        // Type 1: ETME indexed (20 bytes: 4 + 4 + 12).
+                                                  // Type 1: ETME indexed (20 bytes: 4 + 4 + 12).
         v.extend_from_slice(b"ETME");
         v.extend_from_slice(&1u32.to_le_bytes()); // chunk_count
         v.extend_from_slice(&3i32.to_le_bytes()); // id
         v.extend_from_slice(&28u32.to_le_bytes()); // location
         v.extend_from_slice(&4u32.to_le_bytes()); // length
-        // Type 2: GFFI indexed (20 bytes).
+                                                  // Type 2: GFFI indexed (20 bytes).
         v.extend_from_slice(b"GFFI");
         v.extend_from_slice(&1u32.to_le_bytes());
         v.extend_from_slice(&0i32.to_le_bytes());
@@ -894,15 +925,18 @@ mod tests {
         v.extend_from_slice(b"t900");
         // GFFI-0 at offset 44, 28 bytes: 4 + 3*(4+4).
         v.extend_from_slice(&3u32.to_le_bytes()); // entryCount = 3
-        v.extend_from_slice(&32u32.to_le_bytes()); v.extend_from_slice(&4u32.to_le_bytes());
-        v.extend_from_slice(&36u32.to_le_bytes()); v.extend_from_slice(&4u32.to_le_bytes());
-        v.extend_from_slice(&40u32.to_le_bytes()); v.extend_from_slice(&4u32.to_le_bytes());
+        v.extend_from_slice(&32u32.to_le_bytes());
+        v.extend_from_slice(&4u32.to_le_bytes());
+        v.extend_from_slice(&36u32.to_le_bytes());
+        v.extend_from_slice(&4u32.to_le_bytes());
+        v.extend_from_slice(&40u32.to_le_bytes());
+        v.extend_from_slice(&4u32.to_le_bytes());
         // TOC at offset 72 (28 bytes data + 16 bytes secondary table = 44; 44+28=72 — wait recompute).
         // 28 header + 4 ETME + 4*3 TILE data + 4 entryCount + 3*8 entries = 28+4+12+4+24 = 72. ✓
         v.extend_from_slice(&8u32.to_le_bytes()); // types_offset
         v.extend_from_slice(&86u32.to_le_bytes()); // free_list_offset
         v.extend_from_slice(&3u16.to_le_bytes()); // num_types
-        // ETME (20 bytes)
+                                                  // ETME (20 bytes)
         v.extend_from_slice(b"ETME");
         v.extend_from_slice(&1u32.to_le_bytes());
         v.extend_from_slice(&3i32.to_le_bytes());
@@ -920,8 +954,10 @@ mod tests {
         v.extend_from_slice(&3i32.to_le_bytes());
         v.extend_from_slice(&0i32.to_le_bytes());
         v.extend_from_slice(&2u32.to_le_bytes()); // num_entries = 2 runs
-        v.extend_from_slice(&200i32.to_le_bytes()); v.extend_from_slice(&2i32.to_le_bytes());
-        v.extend_from_slice(&900i32.to_le_bytes()); v.extend_from_slice(&1i32.to_le_bytes());
+        v.extend_from_slice(&200i32.to_le_bytes());
+        v.extend_from_slice(&2i32.to_le_bytes());
+        v.extend_from_slice(&900i32.to_le_bytes());
+        v.extend_from_slice(&1i32.to_le_bytes());
         v.extend_from_slice(&0u16.to_le_bytes()); // free list
         v
     }
@@ -1082,15 +1118,9 @@ mod tests {
             .replace_chunk(FourCC(*b"TILE"), 101, b"XXXX")
             .expect("replace");
         let reparsed = Gff::from_bytes(new).unwrap();
-        assert_eq!(
-            reparsed.read(FourCC(*b"TILE"), 101),
-            Some(b"XXXX".as_ref())
-        );
+        assert_eq!(reparsed.read(FourCC(*b"TILE"), 101), Some(b"XXXX".as_ref()));
         // TILE 100 untouched.
-        assert_eq!(
-            reparsed.read(FourCC(*b"TILE"), 100),
-            Some(b"til0".as_ref())
-        );
+        assert_eq!(reparsed.read(FourCC(*b"TILE"), 100), Some(b"til0".as_ref()));
     }
 
     #[test]

@@ -829,7 +829,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  dosbox      : {' '.join(cmdline)}")
         print(f"  dosbox.log  : {dosbox_log}")
         if args.play:
-            print(f"  mode        : --play (no budget; quit the game to close)")
+            print("  mode        : --play (no budget; quit the game to close)")
         else:
             print(f"  budget      : {fixture.timeout_seconds:.0f}s")
         print()
@@ -871,7 +871,7 @@ def main(argv: list[str] | None = None) -> int:
         elif exit_code == 0:
             end_marker = "DOSBox quit on its own (game exited or never launched)"
         else:
-            end_marker = f"DOSBox quit on its own with non-zero rc"
+            end_marker = "DOSBox quit on its own with non-zero rc"
         print(
             f"DOSBox finished after {elapsed:.2f}s "
             f"(rc={exit_code}, {end_marker})"

@@ -12,6 +12,7 @@ The embedded GFF parser only handles indexed chunks. CHARSAVE.GFF
 never uses segmented chunks; if that changes we'd shell out to
 gff-cat or bind to the gff-edit Rust crate.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -297,9 +298,8 @@ def _decode_combat(body: bytes) -> dict[str, Any]:
     # pack_index; u8[8] data_block; u8 special_attack,
     # special_defense; i16 icon; i8 ac; u8 move, status, allegiance,
     # data; i8 thac0; u8 priority, flags; ds_stats_t stats (6 bytes);
-    # char name[18].
-    fmt = "<7h8B2BhB5BB1B1B6BHHB"
-    # That's hard to read; do it field by field for honesty.
+    # char name[18]. (As a struct fmt: "<7h8B2BhB5BB1B1B6BHHB",
+    # but that's hard to read; do it field by field for honesty.)
     pos = 0
 
     def take(t: str, size: int) -> Any | None:
@@ -318,8 +318,15 @@ def _decode_combat(body: bytes) -> dict[str, Any]:
         pos += size
         return v
 
-    for fname in ("hp", "psp", "char_index", "id", "ready_item_index",
-                  "weapon_index", "pack_index"):
+    for fname in (
+        "hp",
+        "psp",
+        "char_index",
+        "id",
+        "ready_item_index",
+        "weapon_index",
+        "pack_index",
+    ):
         v = take("<h", 2)
         if v is None:
             out["_truncated_at"] = fname
@@ -381,7 +388,9 @@ def _decode_combat(body: bytes) -> dict[str, Any]:
         # Leave name unset; trailing_hex captures any leftover.
         pass
     else:
-        out["name"] = name_bytes.split(b"\x00", 1)[0].decode("latin-1", errors="replace")
+        out["name"] = name_bytes.split(b"\x00", 1)[0].decode(
+            "latin-1", errors="replace"
+        )
         # Preserve trailing-garbage bytes for round-trip fidelity
         # (the engine doesn't always zero the name buffer).
         out["_name_raw_hex"] = name_bytes.hex()
@@ -455,9 +464,7 @@ def _decode_character_ds2(body: bytes) -> dict[str, Any]:
         "wis": body[25],
         "cha": body[26],
     }
-    out["real_class"] = [
-        struct.unpack_from("<b", body, 27 + i)[0] for i in range(3)
-    ]
+    out["real_class"] = [struct.unpack_from("<b", body, 27 + i)[0] for i in range(3)]
     out["level"] = list(body[30:33])
     out["base_ac"] = struct.unpack_from("<b", body, 33)[0]
     out["base_move"] = body[34]
@@ -577,9 +584,7 @@ def _decode_character(body: bytes) -> dict[str, Any]:
     if pos + 3 > n:
         out["_truncated_at"] = "real_class"
         return out
-    out["real_class"] = [
-        struct.unpack_from("<b", body, pos + i)[0] for i in range(3)
-    ]
+    out["real_class"] = [struct.unpack_from("<b", body, pos + i)[0] for i in range(3)]
     pos += 3
     if pos + 3 > n:
         out["_truncated_at"] = "level"
@@ -767,7 +772,12 @@ def decode_char_body(payload: bytes) -> dict[str, Any]:
         if header.get("load_action") == -1:
             # RDFF_END terminator.
             result["sub_blocks"].append(
-                {"index": sub_idx, "offset": pos, "rdff_header": header, "terminator": True}
+                {
+                    "index": sub_idx,
+                    "offset": pos,
+                    "rdff_header": header,
+                    "terminator": True,
+                }
             )
             pos = body_end
             sub_idx += 1
@@ -1023,9 +1033,7 @@ def _pack_name(name: str, length: int, ctx: str) -> bytes:
     """Pack a name string into a fixed-length NUL-padded buffer."""
     raw = name.encode("latin-1", errors="replace")
     if len(raw) > length:
-        raise EncodeError(
-            f"{ctx}: name {name!r} is {len(raw)} bytes, max {length}"
-        )
+        raise EncodeError(f"{ctx}: name {name!r} is {len(raw)} bytes, max {length}")
     return raw.ljust(length, b"\x00")
 
 
@@ -1047,7 +1055,7 @@ def _encode_stats(stats: dict[str, Any], ctx: str) -> bytes:
     for i, key in enumerate(("str", "dex", "con", "intel", "wis", "cha")):
         if key not in stats:
             raise EncodeError(f"{ctx}: stats.{key} missing")
-        out[i:i+1] = _pack_u8(int(stats[key]), f"{ctx}/stats.{key}")
+        out[i : i + 1] = _pack_u8(int(stats[key]), f"{ctx}/stats.{key}")
     return bytes(out)
 
 
@@ -1056,7 +1064,7 @@ def _encode_saving_throw(st: dict[str, Any], ctx: str) -> bytes:
     for i, key in enumerate(("paralysis", "wand", "petrify", "breath", "spell")):
         if key not in st:
             raise EncodeError(f"{ctx}: saving_throw.{key} missing")
-        out[i:i+1] = _pack_u8(int(st[key]), f"{ctx}/saving_throw.{key}")
+        out[i : i + 1] = _pack_u8(int(st[key]), f"{ctx}/saving_throw.{key}")
     return bytes(out)
 
 
@@ -1064,9 +1072,13 @@ def _encode_combat_ds2(d: dict[str, Any], ctx: str) -> bytes:
     out = bytearray(49)
     out[0:14] = struct.pack(
         "<7h",
-        int(d["hp"]), int(d["psp"]), int(d["char_index"]),
-        int(d["id"]), int(d["ready_item_index"]),
-        int(d["weapon_index"]), int(d["pack_index"]),
+        int(d["hp"]),
+        int(d["psp"]),
+        int(d["char_index"]),
+        int(d["id"]),
+        int(d["ready_item_index"]),
+        int(d["weapon_index"]),
+        int(d["pack_index"]),
     )
     out[14:22] = _pack_hex(d["data_block_hex"], 8, f"{ctx}/data_block_hex")
     out[22:23] = _pack_u8(int(d["special_attack"]), f"{ctx}/special_attack")
@@ -1097,12 +1109,18 @@ def _encode_combat(d: dict[str, Any], ctx: str) -> bytes:
         return _pack_hex(d["_raw_hex"], None, f"{ctx}/_raw_hex")
     # DS1: 58 bytes.
     out = bytearray()
-    out.extend(struct.pack(
-        "<7h",
-        int(d["hp"]), int(d["psp"]), int(d["char_index"]),
-        int(d["id"]), int(d["ready_item_index"]),
-        int(d["weapon_index"]), int(d["pack_index"]),
-    ))
+    out.extend(
+        struct.pack(
+            "<7h",
+            int(d["hp"]),
+            int(d["psp"]),
+            int(d["char_index"]),
+            int(d["id"]),
+            int(d["ready_item_index"]),
+            int(d["weapon_index"]),
+            int(d["pack_index"]),
+        )
+    )
     out.extend(_pack_hex(d["data_block_hex"], 8, f"{ctx}/data_block_hex"))
     out.extend(_pack_u8(int(d["special_attack"]), f"{ctx}/special_attack"))
     out.extend(_pack_u8(int(d["special_defense"]), f"{ctx}/special_defense"))
@@ -1128,16 +1146,22 @@ def _encode_character_ds2(d: dict[str, Any], ctx: str) -> bytes:
     out = bytearray(66)
     struct.pack_into("<II", out, 0, int(d["current_xp"]), int(d["high_xp"]))
     struct.pack_into(
-        "<HHHH", out, 8,
-        int(d["base_hp"]), int(d["high_hp"]),
-        int(d["base_psp"]), int(d["id"]),
+        "<HHHH",
+        out,
+        8,
+        int(d["base_hp"]),
+        int(d["high_hp"]),
+        int(d["base_psp"]),
+        int(d["id"]),
     )
     out[16:18] = _pack_hex(d["_data1"], 2, f"{ctx}/_data1")
     out[18:20] = _pack_u16(int(d["legal_class"]), f"{ctx}/legal_class")
     out[20:21] = _pack_u8(_enum_value(d["alignment"]), f"{ctx}/alignment")
     out[21:27] = _encode_stats(d["stats"], ctx)
     for i in range(3):
-        out[27 + i : 28 + i] = _pack_i8(int(d["real_class"][i]), f"{ctx}/real_class[{i}]")
+        out[27 + i : 28 + i] = _pack_i8(
+            int(d["real_class"][i]), f"{ctx}/real_class[{i}]"
+        )
     for i in range(3):
         out[30 + i : 31 + i] = _pack_u8(int(d["level"][i]), f"{ctx}/level[{i}]")
     out[33:34] = _pack_i8(int(d["base_ac"]), f"{ctx}/base_ac")
@@ -1145,19 +1169,25 @@ def _encode_character_ds2(d: dict[str, Any], ctx: str) -> bytes:
     out[35:36] = _pack_u8(int(d["magic_resistance"]), f"{ctx}/magic_resistance")
     out[36:37] = _pack_u8(int(d["num_blows"]), f"{ctx}/num_blows")
     for i in range(3):
-        out[37 + i : 38 + i] = _pack_u8(int(d["num_attacks"][i]), f"{ctx}/num_attacks[{i}]")
+        out[37 + i : 38 + i] = _pack_u8(
+            int(d["num_attacks"][i]), f"{ctx}/num_attacks[{i}]"
+        )
     for i in range(3):
         out[40 + i : 41 + i] = _pack_u8(int(d["num_dice"][i]), f"{ctx}/num_dice[{i}]")
     for i in range(3):
         out[43 + i : 44 + i] = _pack_u8(int(d["num_sides"][i]), f"{ctx}/num_sides[{i}]")
     for i in range(3):
-        out[46 + i : 47 + i] = _pack_u8(int(d["num_bonuses"][i]), f"{ctx}/num_bonuses[{i}]")
+        out[46 + i : 47 + i] = _pack_u8(
+            int(d["num_bonuses"][i]), f"{ctx}/num_bonuses[{i}]"
+        )
     out[49:54] = _encode_saving_throw(d["saving_throw"], ctx)
     out[54:55] = _pack_u8(int(d["allegiance"]), f"{ctx}/allegiance")
     out[55:56] = _pack_u8(int(d["size"]), f"{ctx}/size")
     out[56:57] = _pack_u8(int(d["spell_group"]), f"{ctx}/spell_group")
     for i in range(3):
-        out[57 + i : 58 + i] = _pack_u8(int(d["high_level"][i]), f"{ctx}/high_level[{i}]")
+        out[57 + i : 58 + i] = _pack_u8(
+            int(d["high_level"][i]), f"{ctx}/high_level[{i}]"
+        )
     out[60:62] = _pack_u16(int(d["sound_fx"]), f"{ctx}/sound_fx")
     out[62:64] = _pack_u16(int(d["attack_sound"]), f"{ctx}/attack_sound")
     out[64:65] = _pack_u8(int(d["psi_group"]), f"{ctx}/psi_group")
@@ -1270,7 +1300,9 @@ def encode_char_body(body: dict[str, Any], ctx: str) -> bytes:
     for sb in body.get("sub_blocks", []):
         header = sb.get("rdff_header")
         if header is None:
-            raise EncodeError(f"{ctx}/sub_blocks[{sb.get('index','?')}]: missing rdff_header")
+            raise EncodeError(
+                f"{ctx}/sub_blocks[{sb.get('index', '?')}]: missing rdff_header"
+            )
         out.extend(encode_rdff_header(header, ctx))
         if sb.get("terminator"):
             # RDFF_END: 10-byte header, no body.
@@ -1332,7 +1364,9 @@ def encode_chunk(chunk: dict[str, Any]) -> bytes:
             for i, v in enumerate(chunk["types"]):
                 out.append(int(v) & 0xFF)
             if "trailing_hex" in chunk:
-                out.extend(_pack_hex(chunk["trailing_hex"], None, f"{ctx}/trailing_hex"))
+                out.extend(
+                    _pack_hex(chunk["trailing_hex"], None, f"{ctx}/trailing_hex")
+                )
             return bytes(out)
         return _pack_hex(chunk.get("raw_hex", ""), None, f"{ctx}/raw_hex")
     if kind == "PSST":
@@ -1341,7 +1375,9 @@ def encode_chunk(chunk: dict[str, Any]) -> bytes:
                 raise EncodeError(f"{ctx}/psionics: expected 34 entries")
             out = bytearray(int(v) & 0xFF for v in chunk["psionics"])
             if "trailing_hex" in chunk:
-                out.extend(_pack_hex(chunk["trailing_hex"], None, f"{ctx}/trailing_hex"))
+                out.extend(
+                    _pack_hex(chunk["trailing_hex"], None, f"{ctx}/trailing_hex")
+                )
             return bytes(out)
         return _pack_hex(chunk.get("raw_hex", ""), None, f"{ctx}/raw_hex")
     if kind == "TEXT":
@@ -1355,7 +1391,7 @@ def encode_chunk(chunk: dict[str, Any]) -> bytes:
         name = chunk["name"].encode("ascii", errors="replace")
         if len(name) + 1 > total:
             raise EncodeError(
-                f"{ctx}: STXT name + null exceeds length_total ({len(name)+1} > {total})"
+                f"{ctx}: STXT name + null exceeds length_total ({len(name) + 1} > {total})"
             )
         return name + b"\x00" * (total - len(name))
     if kind == "SAVE":
@@ -1388,7 +1424,9 @@ def encode_chunk(chunk: dict[str, Any]) -> bytes:
     return _pack_hex(chunk["raw_hex"], None, f"{ctx}/raw_hex")
 
 
-def write_gff(parsed: dict[str, Any], chunk_bytes: list[tuple[str, int, bytes]]) -> bytes:
+def write_gff(
+    parsed: dict[str, Any], chunk_bytes: list[tuple[str, int, bytes]]
+) -> bytes:
     """Re-pack a GFF file from a header + per-chunk (kind, id, body)
     list. Inverse of `parse_gff` for indexed-only files.
 
@@ -1448,15 +1486,17 @@ def write_gff(parsed: dict[str, Any], chunk_bytes: list[tuple[str, int, bytes]])
     # Build the 28-byte header.
     out = bytearray()
     out.extend(b"GFFI")
-    out.extend(struct.pack(
-        "<IIIIII",
-        int(header["version"]),
-        data_location,
-        toc_location,
-        toc_length,
-        int(header["file_flags"]),
-        int(header["data0"]),
-    ))
+    out.extend(
+        struct.pack(
+            "<IIIIII",
+            int(header["version"]),
+            data_location,
+            toc_location,
+            toc_length,
+            int(header["file_flags"]),
+            int(header["data0"]),
+        )
+    )
     # Pad to data_location (it's always 28 = HEADER_SIZE, no pad
     # needed, but be defensive).
     while len(out) < data_location:
@@ -1571,32 +1611,47 @@ def _diff_dict(a: Any, b: Any, path: list[Any]) -> list[dict[str, Any]]:
     `path` (a list of keys / indices) plus the two values."""
     changes: list[dict[str, Any]] = []
     if type(a) is not type(b):
-        changes.append({"path": list(path), "kind": "type_changed", "from": _short(a), "to": _short(b)})
+        changes.append(
+            {
+                "path": list(path),
+                "kind": "type_changed",
+                "from": _short(a),
+                "to": _short(b),
+            }
+        )
         return changes
     if isinstance(a, dict):
         keys = sorted(set(a.keys()) | set(b.keys()))
         for k in keys:
             if k not in a:
-                changes.append({"path": list(path) + [k], "kind": "added", "to": _short(b[k])})
+                changes.append(
+                    {"path": list(path) + [k], "kind": "added", "to": _short(b[k])}
+                )
             elif k not in b:
-                changes.append({"path": list(path) + [k], "kind": "removed", "from": _short(a[k])})
+                changes.append(
+                    {"path": list(path) + [k], "kind": "removed", "from": _short(a[k])}
+                )
             else:
                 changes.extend(_diff_dict(a[k], b[k], path + [k]))
         return changes
     if isinstance(a, list):
         # Align by index. Length-mismatch surfaces explicitly.
         if len(a) != len(b):
-            changes.append({
-                "path": list(path),
-                "kind": "list_length_changed",
-                "from": len(a),
-                "to": len(b),
-            })
+            changes.append(
+                {
+                    "path": list(path),
+                    "kind": "list_length_changed",
+                    "from": len(a),
+                    "to": len(b),
+                }
+            )
         for i in range(min(len(a), len(b))):
             changes.extend(_diff_dict(a[i], b[i], path + [i]))
         return changes
     if a != b:
-        changes.append({"path": list(path), "kind": "value_changed", "from": a, "to": b})
+        changes.append(
+            {"path": list(path), "kind": "value_changed", "from": a, "to": b}
+        )
     return changes
 
 
@@ -1633,6 +1688,7 @@ def diff_summaries(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
     }
     ```
     """
+
     # Compare chunks by (kind, id). Map each side into a keyed dict.
     def keyed(s: dict[str, Any]) -> dict[tuple[str, int], dict[str, Any]]:
         out: dict[tuple[str, int], dict[str, Any]] = {}
@@ -1650,19 +1706,23 @@ def diff_summaries(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
     for k in keys:
         if k not in a_keyed:
             added += 1
-            changes.append({
-                "path": [f"chunks[{k[0]}-{k[1]}]"],
-                "kind": "chunk_added",
-                "to": _short(b_keyed[k]),
-            })
+            changes.append(
+                {
+                    "path": [f"chunks[{k[0]}-{k[1]}]"],
+                    "kind": "chunk_added",
+                    "to": _short(b_keyed[k]),
+                }
+            )
             continue
         if k not in b_keyed:
             removed += 1
-            changes.append({
-                "path": [f"chunks[{k[0]}-{k[1]}]"],
-                "kind": "chunk_removed",
-                "from": _short(a_keyed[k]),
-            })
+            changes.append(
+                {
+                    "path": [f"chunks[{k[0]}-{k[1]}]"],
+                    "kind": "chunk_removed",
+                    "from": _short(a_keyed[k]),
+                }
+            )
             continue
         sub = _diff_dict(a_keyed[k], b_keyed[k], [f"chunks[{k[0]}-{k[1]}]"])
         if sub:
@@ -1688,11 +1748,15 @@ def _build_inspect_parser() -> argparse.ArgumentParser:
     p.add_argument("--version", action="version", version=f"save-inspect {VERSION}")
     p.add_argument("file", type=Path, help="path to CHARSAVE.GFF")
     p.add_argument(
-        "-o", "--output", type=Path, default=None,
+        "-o",
+        "--output",
+        type=Path,
+        default=None,
         help="write JSON to file (default stdout)",
     )
     p.add_argument(
-        "--pretty", action="store_true",
+        "--pretty",
+        action="store_true",
         help="pretty-print JSON with 2-space indent",
     )
     return p
@@ -1706,11 +1770,15 @@ def _build_diff_parser() -> argparse.ArgumentParser:
     p.add_argument("a", type=Path, help="first CHARSAVE.GFF")
     p.add_argument("b", type=Path, help="second CHARSAVE.GFF")
     p.add_argument(
-        "-o", "--output", type=Path, default=None,
+        "-o",
+        "--output",
+        type=Path,
+        default=None,
         help="write diff JSON to file (default stdout)",
     )
     p.add_argument(
-        "--pretty", action="store_true",
+        "--pretty",
+        action="store_true",
         help="pretty-print JSON with 2-space indent",
     )
     return p
@@ -1728,7 +1796,8 @@ def _build_roundtrip_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("file", type=Path, help="path to the GFF to round-trip")
     p.add_argument(
-        "--pretty", action="store_true",
+        "--pretty",
+        action="store_true",
         help="pretty-print JSON report",
     )
     return p
@@ -1759,21 +1828,25 @@ def roundtrip_gff(path: Path) -> dict[str, Any]:
             encode_errors.append(err)
             ok = False
         if re_body is None:
-            per_chunk.append({
-                "chunk": f"{c['kind']}-{c['id']}",
-                "original_len": len(c["bytes"]),
-                "encoded_ok": False,
-                "encode_error": err,
-            })
+            per_chunk.append(
+                {
+                    "chunk": f"{c['kind']}-{c['id']}",
+                    "original_len": len(c["bytes"]),
+                    "encoded_ok": False,
+                    "encode_error": err,
+                }
+            )
             chunk_rebuilds.append((c["kind"], c["id"], c["bytes"]))
             continue
         match = re_body == c["bytes"]
-        per_chunk.append({
-            "chunk": f"{c['kind']}-{c['id']}",
-            "original_len": len(c["bytes"]),
-            "encoded_len": len(re_body),
-            "bytes_equal": match,
-        })
+        per_chunk.append(
+            {
+                "chunk": f"{c['kind']}-{c['id']}",
+                "original_len": len(c["bytes"]),
+                "encoded_len": len(re_body),
+                "bytes_equal": match,
+            }
+        )
         if not match:
             ok = False
         chunk_rebuilds.append((c["kind"], c["id"], re_body))
@@ -1814,17 +1887,24 @@ def _build_save_edit_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument("json_path", type=Path, help="edited JSON input")
-    p.add_argument("original", type=Path, help="original GFF (used for header sanity-check)")
     p.add_argument(
-        "-o", "--output", type=Path, default=None,
+        "original", type=Path, help="original GFF (used for header sanity-check)"
+    )
+    p.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        default=None,
         help="output GFF path. Default: write back to `original` after backup.",
     )
     p.add_argument(
-        "--no-backup", action="store_true",
+        "--no-backup",
+        action="store_true",
         help="skip the .bak.<timestamp> snapshot (default: take one)",
     )
     p.add_argument(
-        "--dry-run", action="store_true",
+        "--dry-run",
+        action="store_true",
         help="print what would be written; don't touch disk",
     )
     return p
@@ -1865,13 +1945,17 @@ def save_edit(
             )
         body = encode_chunk(edited)
         rebuilds.append((orig["kind"], orig["id"], body))
-        per_chunk.append({
-            "chunk": f"{orig['kind']}-{orig['id']}",
-            "original_len": orig["length"],
-            "encoded_len": len(body),
-            "changed": body != parse_gff(original)["chunks"][len(per_chunk)]["bytes"]
-                       if not dry_run else None,
-        })
+        per_chunk.append(
+            {
+                "chunk": f"{orig['kind']}-{orig['id']}",
+                "original_len": orig["length"],
+                "encoded_len": len(body),
+                "changed": body
+                != parse_gff(original)["chunks"][len(per_chunk)]["bytes"]
+                if not dry_run
+                else None,
+            }
+        )
 
     parsed_for_header = parse_gff(original)
     new_bytes = write_gff(parsed_for_header, rebuilds)
@@ -1929,8 +2013,12 @@ def _pc_overview(pc: dict[str, Any]) -> dict[str, Any]:
     but the field names are the same).
     """
     blocks = pc.get("body", {}).get("sub_blocks", [])
-    combat = next((b.get("decoded", {}) for b in blocks if b.get("role") == "combat"), {})
-    character = next((b.get("decoded", {}) for b in blocks if b.get("role") == "character"), {})
+    combat = next(
+        (b.get("decoded", {}) for b in blocks if b.get("role") == "combat"), {}
+    )
+    character = next(
+        (b.get("decoded", {}) for b in blocks if b.get("role") == "character"), {}
+    )
     items = [b for b in blocks if b.get("role") == "item"]
     return {
         "pc_index": pc.get("pc_index"),
@@ -1959,8 +2047,11 @@ def _build_list_pcs_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument("file", type=Path, help="path to CHARSAVE.GFF")
-    p.add_argument("--json", action="store_true",
-                   help="emit a JSON array instead of the human table")
+    p.add_argument(
+        "--json",
+        action="store_true",
+        help="emit a JSON array instead of the human table",
+    )
     return p
 
 
@@ -1980,8 +2071,10 @@ def cmd_list_pcs(args: argparse.Namespace) -> int:
         print(f"no CHAR records in {args.file}", file=sys.stderr)
         return 1
     print(f"{len(overviews)} PC(s) in {args.file}:\n")
-    print(f"  {'PC':3} {'CHAR':5} {'Name':16} {'HP':>4}/{'Max':>4}  "
-          f"{'PSP':>4}/{'Max':>4}  {'XP':>8}  Items")
+    print(
+        f"  {'PC':3} {'CHAR':5} {'Name':16} {'HP':>4}/{'Max':>4}  "
+        f"{'PSP':>4}/{'Max':>4}  {'XP':>8}  Items"
+    )
     print("  " + "-" * 70)
     for o in overviews:
         name = (o["name"] or "?")[:16]
@@ -1990,9 +2083,11 @@ def cmd_list_pcs(args: argparse.Namespace) -> int:
         psp = o["psp"] if o["psp"] is not None else "?"
         mpsp = o["max_psp"] if o["max_psp"] is not None else "?"
         xp = o["current_xp"] if o["current_xp"] is not None else "?"
-        print(f"  {o['pc_index']:3} {o['chunk_id']:5} {name:16} "
-              f"{hp:>4}/{mhp:>4}  {psp:>4}/{mpsp:>4}  {xp:>8}  "
-              f"{o['item_count']}")
+        print(
+            f"  {o['pc_index']:3} {o['chunk_id']:5} {name:16} "
+            f"{hp:>4}/{mhp:>4}  {psp:>4}/{mpsp:>4}  {xp:>8}  "
+            f"{o['item_count']}"
+        )
     return 0
 
 
@@ -2009,6 +2104,7 @@ def _load_items_catalogue() -> dict[int, dict[str, Any]]:
     if not ITEMS_CATALOGUE_PATH.is_file():
         return {}
     import tomllib
+
     data = tomllib.loads(ITEMS_CATALOGUE_PATH.read_text(encoding="utf-8"))
     out: dict[int, dict[str, Any]] = {}
     for row in data.get("item", []):
@@ -2028,10 +2124,14 @@ def _build_list_items_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument("file", type=Path, help="path to CHARSAVE.GFF")
-    p.add_argument("--pc", type=int, required=True,
-                   help="PC index (0-based; see `list-pcs`)")
-    p.add_argument("--json", action="store_true",
-                   help="emit a JSON array instead of the human table")
+    p.add_argument(
+        "--pc", type=int, required=True, help="PC index (0-based; see `list-pcs`)"
+    )
+    p.add_argument(
+        "--json",
+        action="store_true",
+        help="emit a JSON array instead of the human table",
+    )
     return p
 
 
@@ -2044,8 +2144,11 @@ def cmd_list_items(args: argparse.Namespace) -> int:
     summary = summarise(parsed)
     pcs = _enumerate_pcs(summary)
     if args.pc < 0 or args.pc >= len(pcs):
-        print(f"error: --pc {args.pc} out of range (have {len(pcs)} PC(s)). "
-              f"Run `list-pcs` to see indices.", file=sys.stderr)
+        print(
+            f"error: --pc {args.pc} out of range (have {len(pcs)} PC(s)). "
+            f"Run `list-pcs` to see indices.",
+            file=sys.stderr,
+        )
         return 2
     pc = pcs[args.pc]
     overview = _pc_overview(pc)
@@ -2059,27 +2162,33 @@ def cmd_list_items(args: argparse.Namespace) -> int:
             d = b.get("decoded", {})
             iid = d.get("id")
             cat = catalogue.get(iid, {})
-            rows.append({
-                "slot_index": slot_idx,
-                "item_id": iid,
-                "name": cat.get("name"),
-                "notes": cat.get("notes"),
-                "quantity": d.get("quantity"),
-                "charges": d.get("charges"),
-                "value": d.get("value"),
-                "slot": d.get("slot"),
-                "icon": d.get("icon"),
-            })
+            rows.append(
+                {
+                    "slot_index": slot_idx,
+                    "item_id": iid,
+                    "name": cat.get("name"),
+                    "notes": cat.get("notes"),
+                    "quantity": d.get("quantity"),
+                    "charges": d.get("charges"),
+                    "value": d.get("value"),
+                    "slot": d.get("slot"),
+                    "icon": d.get("icon"),
+                }
+            )
         sys.stdout.write(json.dumps(rows, indent=2) + "\n")
         return 0
 
     name = (overview["name"] or "?")[:24]
-    print(f"PC {args.pc} '{name}' (CHAR {pc['id']}) inventory ({len(items)} item(s)):\n")
+    print(
+        f"PC {args.pc} '{name}' (CHAR {pc['id']}) inventory ({len(items)} item(s)):\n"
+    )
     if not items:
         print("  (no items)")
         return 0
-    print(f"  {'Slot':4} {'ID':>6} {'Qty':>4} {'Chg':>4} {'SlotKind':10} "
-          f"Name (from syms/items.toml)")
+    print(
+        f"  {'Slot':4} {'ID':>6} {'Qty':>4} {'Chg':>4} {'SlotKind':10} "
+        f"Name (from syms/items.toml)"
+    )
     print("  " + "-" * 70)
     unknown_ids: set[int] = set()
     for slot_idx, b in enumerate(items):
@@ -2090,12 +2199,16 @@ def cmd_list_items(args: argparse.Namespace) -> int:
         name = cat.get("name", "?")
         if iid is not None and iid not in catalogue:
             unknown_ids.add(iid)
-        print(f"  {slot_idx:>4} {iid:>6} {d.get('quantity', 0):>4} "
-              f"{d.get('charges', 0):>4} {slot_kind:10} {name}")
+        print(
+            f"  {slot_idx:>4} {iid:>6} {d.get('quantity', 0):>4} "
+            f"{d.get('charges', 0):>4} {slot_kind:10} {name}"
+        )
     if unknown_ids:
         print()
         print(f"  {len(unknown_ids)} unknown item id(s). Add rows to")
-        print(f"  {ITEMS_CATALOGUE_PATH.relative_to(HERE_DIR.parent.parent)} as you identify them in-game.")
+        print(
+            f"  {ITEMS_CATALOGUE_PATH.relative_to(HERE_DIR.parent.parent)} as you identify them in-game."
+        )
     return 0
 
 
@@ -2116,7 +2229,9 @@ def _apply_pc_edits(
     """
     blocks = pc.get("body", {}).get("sub_blocks", [])
     combat = next((b.get("decoded") for b in blocks if b.get("role") == "combat"), None)
-    character = next((b.get("decoded") for b in blocks if b.get("role") == "character"), None)
+    character = next(
+        (b.get("decoded") for b in blocks if b.get("role") == "character"), None
+    )
     if combat is None or character is None:
         raise EncodeError(
             f"PC {pc.get('pc_index')} (CHAR {pc.get('id')}): missing combat "
@@ -2130,24 +2245,38 @@ def _apply_pc_edits(
         log.append(f"psp: {combat.get('psp')} -> {edits['psp']}")
         combat["psp"] = int(edits["psp"])
     if "max_hp" in edits:
-        log.append(f"max_hp (character.base_hp): {character.get('base_hp')} -> {edits['max_hp']}")
+        log.append(
+            f"max_hp (character.base_hp): {character.get('base_hp')} -> {edits['max_hp']}"
+        )
         character["base_hp"] = int(edits["max_hp"])
     if "max_psp" in edits:
-        log.append(f"max_psp (character.base_psp): {character.get('base_psp')} -> {edits['max_psp']}")
+        log.append(
+            f"max_psp (character.base_psp): {character.get('base_psp')} -> {edits['max_psp']}"
+        )
         character["base_psp"] = int(edits["max_psp"])
     if "current_xp" in edits:
-        log.append(f"current_xp: {character.get('current_xp')} -> {edits['current_xp']}")
+        log.append(
+            f"current_xp: {character.get('current_xp')} -> {edits['current_xp']}"
+        )
         character["current_xp"] = int(edits["current_xp"])
     for stat_key, edit_key in (
-        ("str", "str"), ("dex", "dex"), ("con", "con"),
-        ("intel", "int"), ("wis", "wis"), ("cha", "cha"),
+        ("str", "str"),
+        ("dex", "dex"),
+        ("con", "con"),
+        ("intel", "int"),
+        ("wis", "wis"),
+        ("cha", "cha"),
     ):
         if edit_key in edits:
             new = int(edits[edit_key])
-            for owner_name, owner in (("combat.stats", combat.get("stats")),
-                                       ("character.stats", character.get("stats"))):
+            for owner_name, owner in (
+                ("combat.stats", combat.get("stats")),
+                ("character.stats", character.get("stats")),
+            ):
                 if owner is not None:
-                    log.append(f"{owner_name}.{stat_key}: {owner.get(stat_key)} -> {new}")
+                    log.append(
+                        f"{owner_name}.{stat_key}: {owner.get(stat_key)} -> {new}"
+                    )
                     owner[stat_key] = new
     return log
 
@@ -2184,29 +2313,43 @@ def _build_edit_pc_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument("file", type=Path, help="path to CHARSAVE.GFF")
-    p.add_argument("--pc", type=int, required=True,
-                   help="PC index (0-based; see `list-pcs`)")
+    p.add_argument(
+        "--pc", type=int, required=True, help="PC index (0-based; see `list-pcs`)"
+    )
     p.add_argument("--hp", type=int, default=None, help="set current HP")
     p.add_argument("--psp", type=int, default=None, help="set current PSP")
-    p.add_argument("--max-hp", type=int, default=None,
-                   help="set max HP (character.base_hp)")
-    p.add_argument("--max-psp", type=int, default=None,
-                   help="set max PSP (character.base_psp)")
-    p.add_argument("--xp", dest="current_xp", type=int, default=None,
-                   help="set current XP (character.current_xp)")
-    for stat in ("str", "dex", "con", "int", "wis", "cha"):
-        p.add_argument(f"--{stat}", type=int, default=None,
-                       help=f"set {stat} (1..25 D&D 2e range)")
     p.add_argument(
-        "-o", "--output", type=Path, default=None,
+        "--max-hp", type=int, default=None, help="set max HP (character.base_hp)"
+    )
+    p.add_argument(
+        "--max-psp", type=int, default=None, help="set max PSP (character.base_psp)"
+    )
+    p.add_argument(
+        "--xp",
+        dest="current_xp",
+        type=int,
+        default=None,
+        help="set current XP (character.current_xp)",
+    )
+    for stat in ("str", "dex", "con", "int", "wis", "cha"):
+        p.add_argument(
+            f"--{stat}", type=int, default=None, help=f"set {stat} (1..25 D&D 2e range)"
+        )
+    p.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        default=None,
         help="output GFF path (default: rewrite the input in place after backup)",
     )
     p.add_argument(
-        "--no-backup", action="store_true",
+        "--no-backup",
+        action="store_true",
         help="skip the .bak.<mtime> snapshot (default: take one)",
     )
     p.add_argument(
-        "--dry-run", action="store_true",
+        "--dry-run",
+        action="store_true",
         help="report what would change; don't touch disk",
     )
     return p
@@ -2214,14 +2357,27 @@ def _build_edit_pc_parser() -> argparse.ArgumentParser:
 
 def cmd_edit_pc(args: argparse.Namespace) -> int:
     edits: dict[str, Any] = {}
-    for k in ("hp", "psp", "max_hp", "max_psp", "current_xp",
-              "str", "dex", "con", "int", "wis", "cha"):
+    for k in (
+        "hp",
+        "psp",
+        "max_hp",
+        "max_psp",
+        "current_xp",
+        "str",
+        "dex",
+        "con",
+        "int",
+        "wis",
+        "cha",
+    ):
         val = getattr(args, k, None)
         if val is not None:
             edits[k] = val
     if not edits:
-        print("error: pass at least one field flag (--hp, --psp, --str, etc.)",
-              file=sys.stderr)
+        print(
+            "error: pass at least one field flag (--hp, --psp, --str, etc.)",
+            file=sys.stderr,
+        )
         return 2
 
     try:
@@ -2232,12 +2388,20 @@ def cmd_edit_pc(args: argparse.Namespace) -> int:
     summary = summarise(parsed)
     pcs = _enumerate_pcs(summary)
     if args.pc < 0 or args.pc >= len(pcs):
-        print(f"error: --pc {args.pc} out of range (have {len(pcs)} PC(s)). "
-              f"Run `list-pcs` to see indices.", file=sys.stderr)
+        print(
+            f"error: --pc {args.pc} out of range (have {len(pcs)} PC(s)). "
+            f"Run `list-pcs` to see indices.",
+            file=sys.stderr,
+        )
         return 2
     pc = pcs[args.pc]
-    name = (pc.get("body", {}).get("sub_blocks", [{}])[0]
-             .get("decoded", {}).get("name", "?") or "?").strip()
+    name = (
+        pc.get("body", {})
+        .get("sub_blocks", [{}])[0]
+        .get("decoded", {})
+        .get("name", "?")
+        or "?"
+    ).strip()
     try:
         log = _apply_pc_edits(pc, edits)
     except EncodeError as e:
@@ -2288,28 +2452,39 @@ def _build_edit_item_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument("file", type=Path, help="path to CHARSAVE.GFF")
-    p.add_argument("--pc", type=int, required=True,
-                   help="PC index (0-based; see `list-pcs`)")
-    p.add_argument("--slot", type=int, required=True,
-                   help="item-slot index within the PC (0-based; see `list-items`)")
-    p.add_argument("--item-id", type=int, default=None,
-                   help="set the item id (i16; the value `list-items` shows in the ID column)")
-    p.add_argument("--quantity", type=int, default=None,
-                   help="set quantity (u16)")
-    p.add_argument("--charges", type=int, default=None,
-                   help="set charges (u16)")
-    p.add_argument("--value", type=int, default=None,
-                   help="set sale value (u16)")
     p.add_argument(
-        "-o", "--output", type=Path, default=None,
+        "--pc", type=int, required=True, help="PC index (0-based; see `list-pcs`)"
+    )
+    p.add_argument(
+        "--slot",
+        type=int,
+        required=True,
+        help="item-slot index within the PC (0-based; see `list-items`)",
+    )
+    p.add_argument(
+        "--item-id",
+        type=int,
+        default=None,
+        help="set the item id (i16; the value `list-items` shows in the ID column)",
+    )
+    p.add_argument("--quantity", type=int, default=None, help="set quantity (u16)")
+    p.add_argument("--charges", type=int, default=None, help="set charges (u16)")
+    p.add_argument("--value", type=int, default=None, help="set sale value (u16)")
+    p.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        default=None,
         help="output GFF path (default: rewrite the input in place after backup)",
     )
     p.add_argument(
-        "--no-backup", action="store_true",
+        "--no-backup",
+        action="store_true",
         help="skip the .bak.<mtime> snapshot (default: take one)",
     )
     p.add_argument(
-        "--dry-run", action="store_true",
+        "--dry-run",
+        action="store_true",
         help="report what would change; don't touch disk",
     )
     return p
@@ -2322,8 +2497,10 @@ def cmd_edit_item(args: argparse.Namespace) -> int:
         if val is not None:
             edits[k] = val
     if not edits:
-        print("error: pass at least one field (--item-id, --quantity, --charges, --value)",
-              file=sys.stderr)
+        print(
+            "error: pass at least one field (--item-id, --quantity, --charges, --value)",
+            file=sys.stderr,
+        )
         return 2
 
     try:
@@ -2334,15 +2511,20 @@ def cmd_edit_item(args: argparse.Namespace) -> int:
     summary = summarise(parsed)
     pcs = _enumerate_pcs(summary)
     if args.pc < 0 or args.pc >= len(pcs):
-        print(f"error: --pc {args.pc} out of range (have {len(pcs)} PC(s))",
-              file=sys.stderr)
+        print(
+            f"error: --pc {args.pc} out of range (have {len(pcs)} PC(s))",
+            file=sys.stderr,
+        )
         return 2
     pc = pcs[args.pc]
     blocks = pc.get("body", {}).get("sub_blocks", [])
     items = [b for b in blocks if b.get("role") == "item"]
     if args.slot < 0 or args.slot >= len(items):
-        print(f"error: --slot {args.slot} out of range "
-              f"(PC {args.pc} has {len(items)} item slot(s))", file=sys.stderr)
+        print(
+            f"error: --slot {args.slot} out of range "
+            f"(PC {args.pc} has {len(items)} item slot(s))",
+            file=sys.stderr,
+        )
         return 2
     item = items[args.slot]
     decoded = item.setdefault("decoded", {})
@@ -2454,24 +2636,29 @@ def _build_give_item_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument("file", type=Path, help="path to CHARSAVE.GFF")
-    p.add_argument("--pc", type=int, required=True,
-                   help="PC index (0-based; see `list-pcs`)")
-    p.add_argument("--item-id", type=int, required=True,
-                   help="item id to append (i16 range)")
-    p.add_argument("--quantity", type=int, default=1,
-                   help="quantity (u16; default 1)")
-    p.add_argument("--charges", type=int, default=0,
-                   help="charges (u16; default 0)")
     p.add_argument(
-        "-o", "--output", type=Path, default=None,
+        "--pc", type=int, required=True, help="PC index (0-based; see `list-pcs`)"
+    )
+    p.add_argument(
+        "--item-id", type=int, required=True, help="item id to append (i16 range)"
+    )
+    p.add_argument("--quantity", type=int, default=1, help="quantity (u16; default 1)")
+    p.add_argument("--charges", type=int, default=0, help="charges (u16; default 0)")
+    p.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        default=None,
         help="output GFF path (default: rewrite in place after backup)",
     )
     p.add_argument(
-        "--no-backup", action="store_true",
+        "--no-backup",
+        action="store_true",
         help="skip the .bak.<mtime> snapshot",
     )
     p.add_argument(
-        "--dry-run", action="store_true",
+        "--dry-run",
+        action="store_true",
         help="show the planned edit + validation result; don't touch disk",
     )
     return p
@@ -2486,8 +2673,10 @@ def cmd_give_item(args: argparse.Namespace) -> int:
     summary = summarise(parsed)
     pcs = _enumerate_pcs(summary)
     if args.pc < 0 or args.pc >= len(pcs):
-        print(f"error: --pc {args.pc} out of range (have {len(pcs)} PC(s))",
-              file=sys.stderr)
+        print(
+            f"error: --pc {args.pc} out of range (have {len(pcs)} PC(s))",
+            file=sys.stderr,
+        )
         return 2
     pc = pcs[args.pc]
     blocks = pc.get("body", {}).get("sub_blocks", [])
@@ -2496,9 +2685,11 @@ def cmd_give_item(args: argparse.Namespace) -> int:
         return 2
     items = [b for b in blocks if b.get("role") == "item"]
     if not items:
-        print(f"error: PC {args.pc} has no items; can't infer chain "
-              "structure to extend. Use a PC that has at least one item.",
-              file=sys.stderr)
+        print(
+            f"error: PC {args.pc} has no items; can't infer chain "
+            "structure to extend. Use a PC that has at least one item.",
+            file=sys.stderr,
+        )
         return 2
     # Find terminator + verify last item's chain is in valid shape.
     term_idx = next(
@@ -2506,16 +2697,21 @@ def cmd_give_item(args: argparse.Namespace) -> int:
         None,
     )
     if term_idx is None:
-        print(f"error: PC {args.pc} has no RDFF_END terminator; "
-              "can't safely append. Run --dry-run on the unedited "
-              "file to inspect the structure.", file=sys.stderr)
+        print(
+            f"error: PC {args.pc} has no RDFF_END terminator; "
+            "can't safely append. Run --dry-run on the unedited "
+            "file to inspect the structure.",
+            file=sys.stderr,
+        )
         return 2
     last_item = items[-1]
     if int(last_item["decoded"]["next"]) != 9999:
-        print(f"error: last item (slot {len(items)-1}) has next="
-              f"{last_item['decoded']['next']} (not 9999); the last "
-              "block isn't a chain tail. Refusing to extend.",
-              file=sys.stderr)
+        print(
+            f"error: last item (slot {len(items) - 1}) has next="
+            f"{last_item['decoded']['next']} (not 9999); the last "
+            "block isn't a chain tail. Refusing to extend.",
+            file=sys.stderr,
+        )
         return 2
 
     name = (blocks[0].get("decoded", {}).get("name", "?") or "?").strip()
@@ -2527,9 +2723,11 @@ def cmd_give_item(args: argparse.Namespace) -> int:
     existing_indexes = [int(b["rdff_header"]["index"]) for b in items]
     new_index = max(existing_indexes) + 1
     if new_index > 0xFFFF:
-        print(f"error: index space exhausted (max existing = "
-              f"{max(existing_indexes)}); can't allocate a new id",
-              file=sys.stderr)
+        print(
+            f"error: index space exhausted (max existing = "
+            f"{max(existing_indexes)}); can't allocate a new id",
+            file=sys.stderr,
+        )
         return 2
 
     # Determine item body length from the template (DS1 = 21, DS2 = 23).
@@ -2546,11 +2744,13 @@ def cmd_give_item(args: argparse.Namespace) -> int:
         None,
     )
     if continuation_template is None:
-        print(f"error: PC {args.pc} has no chain-continuation items "
-              "(every chain is a single head); can't infer the `from` "
-              "field for a continuation. Use a PC whose inventory "
-              "spans multiple items in at least one chain.",
-              file=sys.stderr)
+        print(
+            f"error: PC {args.pc} has no chain-continuation items "
+            "(every chain is a single head); can't infer the `from` "
+            "field for a continuation. Use a PC whose inventory "
+            "spans multiple items in at least one chain.",
+            file=sys.stderr,
+        )
         return 2
     continuation_from = int(continuation_template["rdff_header"]["from"])
 
@@ -2596,11 +2796,15 @@ def cmd_give_item(args: argparse.Namespace) -> int:
         return 2
 
     print(f"PC {args.pc} '{name}' (CHAR {pc['id']}):")
-    print(f"  appending item: id={args.item_id} quantity={args.quantity} "
-          f"charges={args.charges} (new slot {len(items)})")
+    print(
+        f"  appending item: id={args.item_id} quantity={args.quantity} "
+        f"charges={args.charges} (new slot {len(items)})"
+    )
     print(f"  allocated rdff_header.index = {new_index}")
-    print(f"  patched previous chain tail (slot {len(items)-1}): "
-          f"next 9999 -> {new_index}")
+    print(
+        f"  patched previous chain tail (slot {len(items) - 1}): "
+        f"next 9999 -> {new_index}"
+    )
     print(f"  combat.blocknum: {old_combat_bn} -> {old_combat_bn + 1}")
 
     if args.dry_run:
@@ -2625,8 +2829,10 @@ def cmd_give_item(args: argparse.Namespace) -> int:
     print(f"\nwrote {len(new_bytes)} bytes to {out_path}")
     if backup_path is not None:
         print(f"backup at {backup_path}")
-    print("\nload the save in DOSBox; the new item should appear in "
-          f"PC {args.pc}'s inventory at the bottom of the slot list.")
+    print(
+        "\nload the save in DOSBox; the new item should appear in "
+        f"PC {args.pc}'s inventory at the bottom of the slot list."
+    )
     return 0
 
 
@@ -2643,8 +2849,11 @@ def _build_find_empty_slots_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument("file", type=Path, help="path to CHARSAVE.GFF")
-    p.add_argument("--json", action="store_true",
-                   help="emit a JSON array instead of the human table")
+    p.add_argument(
+        "--json",
+        action="store_true",
+        help="emit a JSON array instead of the human table",
+    )
     return p
 
 
@@ -2658,33 +2867,44 @@ def cmd_find_empty_slots(args: argparse.Namespace) -> int:
     pcs = _enumerate_pcs(summary)
     empties: list[dict[str, Any]] = []
     for pc in pcs:
-        name = (pc.get("body", {}).get("sub_blocks", [{}])[0]
-                 .get("decoded", {}).get("name", "?") or "?").strip()
+        name = (
+            pc.get("body", {})
+            .get("sub_blocks", [{}])[0]
+            .get("decoded", {})
+            .get("name", "?")
+            or "?"
+        ).strip()
         blocks = pc.get("body", {}).get("sub_blocks", [])
         items = [b for b in blocks if b.get("role") == "item"]
         for slot_idx, b in enumerate(items):
             d = b.get("decoded", {})
             if int(d.get("quantity", 0)) == 0:
-                empties.append({
-                    "pc_index": pc["pc_index"],
-                    "pc_name": name,
-                    "slot": slot_idx,
-                    "current_id": d.get("id"),
-                    "slot_kind": (d.get("slot") or {}).get("name", "?"),
-                })
+                empties.append(
+                    {
+                        "pc_index": pc["pc_index"],
+                        "pc_name": name,
+                        "slot": slot_idx,
+                        "current_id": d.get("id"),
+                        "slot_kind": (d.get("slot") or {}).get("name", "?"),
+                    }
+                )
     if args.json:
         sys.stdout.write(json.dumps(empties, indent=2) + "\n")
         return 0
     if not empties:
         print(f"no quantity-0 slots in {args.file}", file=sys.stderr)
         return 1
-    print(f"{len(empties)} empty slot(s) in {args.file} "
-          f"(quantity = 0; safe `edit-item` swap targets):\n")
+    print(
+        f"{len(empties)} empty slot(s) in {args.file} "
+        f"(quantity = 0; safe `edit-item` swap targets):\n"
+    )
     print(f"  {'PC':3} {'Slot':>4} {'Current-ID':>10} {'SlotKind':10} PC name")
     print("  " + "-" * 60)
     for e in empties:
-        print(f"  {e['pc_index']:3} {e['slot']:>4} {e['current_id']:>10} "
-              f"{e['slot_kind']:10} {e['pc_name']}")
+        print(
+            f"  {e['pc_index']:3} {e['slot']:>4} {e['current_id']:>10} "
+            f"{e['slot_kind']:10} {e['pc_name']}"
+        )
     print()
     print("Use `edit-item --pc N --slot K --item-id X --quantity 1` to")
     print("repurpose any of these for the items.toml bootstrap loop.")
@@ -2706,15 +2926,20 @@ def _build_save_diff_parser() -> argparse.ArgumentParser:
     p.add_argument("a", type=Path, help="first DARKRUN.GFF (factory or earlier)")
     p.add_argument("b", type=Path, help="second DARKRUN.GFF (played or later)")
     p.add_argument(
-        "-o", "--output", type=Path, default=None,
+        "-o",
+        "--output",
+        type=Path,
+        default=None,
         help="write diff JSON to file (default stdout)",
     )
     p.add_argument(
-        "--pretty", action="store_true",
+        "--pretty",
+        action="store_true",
         help="pretty-print JSON with 2-space indent",
     )
     p.add_argument(
-        "--all-chunks", action="store_true",
+        "--all-chunks",
+        action="store_true",
         help="include non-SAVE chunk differences too (default: SAVE only)",
     )
     return p
@@ -2738,6 +2963,7 @@ def save_chunk_diff(
     By default the report only covers SAVE chunks; `only_save=False`
     includes ETAB / STXT / ETME / etc. as well.
     """
+
     def keyed_bytes(parsed: dict[str, Any]) -> dict[tuple[str, int], bytes]:
         out: dict[tuple[str, int], bytes] = {}
         for c in parsed.get("chunks", []):
@@ -2756,22 +2982,26 @@ def save_chunk_diff(
     unchanged_count = 0
     for k in keys:
         if k not in a_chunks:
-            added.append({
-                "chunk": f"{k[0]}-{k[1]}",
-                "kind": k[0],
-                "id": k[1],
-                "byte_length": len(b_chunks[k]),
-                "raw_hex_preview": hex_preview(b_chunks[k], limit=64),
-            })
+            added.append(
+                {
+                    "chunk": f"{k[0]}-{k[1]}",
+                    "kind": k[0],
+                    "id": k[1],
+                    "byte_length": len(b_chunks[k]),
+                    "raw_hex_preview": hex_preview(b_chunks[k], limit=64),
+                }
+            )
             continue
         if k not in b_chunks:
-            removed.append({
-                "chunk": f"{k[0]}-{k[1]}",
-                "kind": k[0],
-                "id": k[1],
-                "byte_length": len(a_chunks[k]),
-                "raw_hex_preview": hex_preview(a_chunks[k], limit=64),
-            })
+            removed.append(
+                {
+                    "chunk": f"{k[0]}-{k[1]}",
+                    "kind": k[0],
+                    "id": k[1],
+                    "byte_length": len(a_chunks[k]),
+                    "raw_hex_preview": hex_preview(a_chunks[k], limit=64),
+                }
+            )
             continue
         ab = a_chunks[k]
         bb = b_chunks[k]
@@ -2789,17 +3019,19 @@ def save_chunk_diff(
                 diff_bytes += 1
                 if first_diff is None:
                     first_diff = i
-        changed.append({
-            "chunk": f"{k[0]}-{k[1]}",
-            "kind": k[0],
-            "id": k[1],
-            "a_byte_length": len(ab),
-            "b_byte_length": len(bb),
-            "byte_diff_count": diff_bytes,
-            "first_diff_offset": first_diff,
-            "a_hex_preview": hex_preview(ab, limit=64),
-            "b_hex_preview": hex_preview(bb, limit=64),
-        })
+        changed.append(
+            {
+                "chunk": f"{k[0]}-{k[1]}",
+                "kind": k[0],
+                "id": k[1],
+                "a_byte_length": len(ab),
+                "b_byte_length": len(bb),
+                "byte_diff_count": diff_bytes,
+                "first_diff_offset": first_diff,
+                "a_hex_preview": hex_preview(ab, limit=64),
+                "b_hex_preview": hex_preview(bb, limit=64),
+            }
+        )
 
     return {
         "tool": "save-inspect",
@@ -2851,7 +3083,12 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         indent = 2 if rt_args.pretty else None
         sys.stdout.write(json.dumps(report, indent=indent, ensure_ascii=False) + "\n")
-        return 0 if report["summary"]["all_chunks_ok"] and report["summary"]["file_bytes_equal"] else 1
+        return (
+            0
+            if report["summary"]["all_chunks_ok"]
+            and report["summary"]["file_bytes_equal"]
+            else 1
+        )
     if argv and argv[0] == "save-edit":
         se_args = _build_save_edit_parser().parse_args(argv[1:])
         try:
@@ -2876,7 +3113,9 @@ def main(argv: list[str] | None = None) -> int:
     if argv and argv[0] == "edit-item":
         return cmd_edit_item(_build_edit_item_parser().parse_args(argv[1:]))
     if argv and argv[0] == "find-empty-slots":
-        return cmd_find_empty_slots(_build_find_empty_slots_parser().parse_args(argv[1:]))
+        return cmd_find_empty_slots(
+            _build_find_empty_slots_parser().parse_args(argv[1:])
+        )
     if argv and argv[0] == "give-item":
         return cmd_give_item(_build_give_item_parser().parse_args(argv[1:]))
     if argv and argv[0] == "save-diff":

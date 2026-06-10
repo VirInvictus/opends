@@ -197,7 +197,7 @@ fn cmd_tools() -> Result<()> {
     let root = workspace_root();
     println!("OpenDS toolkit (umbrella v{})", env!("CARGO_PKG_VERSION"));
     println!();
-    println!("{:<22} {:<10} {}", "Tool", "Version", "Where");
+    println!("{:<22} {:<10} Where", "Tool", "Version");
     println!("{:-<22} {:-<10} {:-<40}", "", "", "");
     for (binary, crate_dir) in WRAPPED_TOOLS {
         let version_path = root

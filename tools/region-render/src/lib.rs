@@ -349,8 +349,7 @@ impl RegionMap {
             };
             needed.insert(id);
         }
-        let mut missing: std::collections::BTreeSet<i32> =
-            std::collections::BTreeSet::new();
+        let mut missing: std::collections::BTreeSet<i32> = std::collections::BTreeSet::new();
         for ojff_id in needed {
             let Some(ojff_chunk) = entities_gff.find(OJFF_KIND, ojff_id) else {
                 missing.insert(ojff_id);
@@ -365,8 +364,7 @@ impl RegionMap {
                 missing.insert(ojff_id);
                 continue;
             };
-            let Some(bmp_chunk) = entities_gff.find(BMP_KIND, bmp_number as i32)
-            else {
+            let Some(bmp_chunk) = entities_gff.find(BMP_KIND, bmp_number as i32) else {
                 self.entity_decode_failures.push(TileDecodeFailure {
                     tile_id: ojff_id,
                     reason: format!("BMP id {bmp_number} not in entities GFF"),
@@ -614,8 +612,7 @@ impl RegionMap {
         if let Some(ref gmap) = self.gmap {
             for map_y in 0..REGION_TILE_HEIGHT {
                 for map_x in 0..REGION_TILE_WIDTH {
-                    let wall_index = gmap[map_y * REGION_TILE_WIDTH + map_x]
-                        & GMAP_WALL_INDEX_MASK;
+                    let wall_index = gmap[map_y * REGION_TILE_WIDTH + map_x] & GMAP_WALL_INDEX_MASK;
                     if wall_index == 0 {
                         continue;
                     }
@@ -627,11 +624,8 @@ impl RegionMap {
                     // tile, bottom-aligned (the sprite's bottom
                     // edge sits at the tile's bottom edge).
                     // Per RegionTool.java:289-290.
-                    let sprite_x = (map_x * TILE_PIXEL_SIZE) as i32
-                        + 8
-                        - (sprite.width as i32 / 2);
-                    let sprite_y = (map_y * TILE_PIXEL_SIZE) as i32 + 16
-                        - sprite.height as i32;
+                    let sprite_x = (map_x * TILE_PIXEL_SIZE) as i32 + 8 - (sprite.width as i32 / 2);
+                    let sprite_y = (map_y * TILE_PIXEL_SIZE) as i32 + 16 - sprite.height as i32;
                     overlay_sprite(&mut out, sprite, sprite_x, sprite_y);
                 }
             }
@@ -717,7 +711,7 @@ pub fn inline_palette(gff: &Gff) -> Result<Option<Palette>> {
     Ok(Some(palette))
 }
 
-fn lowest_id_chunk<'a>(gff: &'a Gff, kind: FourCC) -> Option<&'a [u8]> {
+fn lowest_id_chunk(gff: &Gff, kind: FourCC) -> Option<&[u8]> {
     gff.chunks()
         .iter()
         .filter(|c| c.kind == kind)
@@ -725,14 +719,14 @@ fn lowest_id_chunk<'a>(gff: &'a Gff, kind: FourCC) -> Option<&'a [u8]> {
         .map(|c| gff.read_chunk(c))
 }
 
-fn read_first<'a>(gff: &'a Gff, kind: FourCC) -> Option<&'a [u8]> {
+fn read_first(gff: &Gff, kind: FourCC) -> Option<&[u8]> {
     gff.chunks()
         .iter()
         .find(|c| c.kind == kind)
         .map(|c| gff.read_chunk(c))
 }
 
-fn read_first_with_id<'a>(gff: &'a Gff, kind: FourCC) -> Option<(&'a [u8], i32)> {
+fn read_first_with_id(gff: &Gff, kind: FourCC) -> Option<(&[u8], i32)> {
     gff.chunks()
         .iter()
         .find(|c| c.kind == kind)
@@ -935,8 +929,8 @@ mod tests {
         // palette indices unambiguously. Channels are 8-bit here
         // since Palette stores post-multiplier values.
         let mut colors = [Color { r: 0, g: 0, b: 0 }; image_extract::PALETTE_SIZE];
-        for i in 0..image_extract::PALETTE_SIZE {
-            colors[i] = Color {
+        for (i, color) in colors.iter_mut().enumerate() {
+            *color = Color {
                 r: i as u8,
                 g: i as u8,
                 b: i as u8,

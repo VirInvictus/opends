@@ -209,8 +209,8 @@ fn main() -> Result<()> {
             let path = out_dir.join(&name);
             std::fs::write(&path, body)
                 .with_context(|| format!("writing {}", path.display()))?;
-            if let Some(ref cfg_dir) = cli.cfg {
-                if let Some(ref cfg) = result.cfg {
+            if let Some(ref cfg_dir) = cli.cfg
+                && let Some(ref cfg) = result.cfg {
                     let dot_name = format!("{}-{}.dot", kind_str, c.id);
                     let dot_path = cfg_dir.join(&dot_name);
                     let mut f = std::fs::File::create(&dot_path)
@@ -218,7 +218,6 @@ fn main() -> Result<()> {
                     write_dot(cfg, &result.instructions, &mut f)
                         .with_context(|| format!("writing {}", dot_path.display()))?;
                 }
-            }
             if cli.entries {
                 let entries_name = format!("{}-{}.entries", kind_str, c.id);
                 let entries_path = out_dir.join(&entries_name);

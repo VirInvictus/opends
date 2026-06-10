@@ -50,11 +50,11 @@ struct Cli {
     #[arg(long = "no-walls", conflicts_with = "walls_from")]
     no_walls: bool,
     /// GFF to read `OJFF` + `BMP ` chunks from for the entity
-    /// layer. DS1 stores entities in `SEGOBJEX.GFF` (2,775 OJFF
-    /// + 2,419 BMP). DS2 stores them in `OBJEX.GFF` (4,479
-    /// OJFF + 3,727 BMP). Default: auto-detect sibling
-    /// `SEGOBJEX.GFF` or `OBJEX.GFF` next to the region GFF.
-    /// Pass `--no-entities` to disable the entity pass.
+    /// layer. DS1 stores entities in `SEGOBJEX.GFF` (2,775 OJFF +
+    /// 2,419 BMP). DS2 stores them in `OBJEX.GFF` (4,479 OJFF +
+    /// 3,727 BMP). Default: auto-detect sibling `SEGOBJEX.GFF`
+    /// or `OBJEX.GFF` next to the region GFF. Pass
+    /// `--no-entities` to disable the entity pass.
     #[arg(long = "entities-from")]
     entities_from: Option<PathBuf>,
     /// Skip the entity layer.
@@ -205,17 +205,16 @@ fn main() -> Result<()> {
 
     let mut region = RegionMap::from_gff(&gff, palette)
         .with_context(|| format!("building RegionMap from {}", cli.file.display()))?;
-    if !cli.no_walls {
-        if let Some(walls_path) = resolve_walls_gff_path(cli.walls_from.as_deref(), cli.file.as_path()) {
+    if !cli.no_walls
+        && let Some(walls_path) = resolve_walls_gff_path(cli.walls_from.as_deref(), cli.file.as_path()) {
             let walls_gff = Gff::open(&walls_path)
                 .with_context(|| format!("opening walls source {}", walls_path.display()))?;
             region
                 .with_walls_from(&walls_gff)
                 .with_context(|| format!("indexing WALL chunks from {}", walls_path.display()))?;
         }
-    }
-    if !cli.no_entities {
-        if let Some(entities_path) = resolve_entities_gff_path(
+    if !cli.no_entities
+        && let Some(entities_path) = resolve_entities_gff_path(
             cli.entities_from.as_deref(),
             cli.file.as_path(),
         ) {
@@ -231,7 +230,6 @@ fn main() -> Result<()> {
                     .with_context(|| format!("indexing OJFF/BMP from {}", entities_path.display()))?;
             }
         }
-    }
 
     if cli.animate_entities {
         let n_frames = cli.frame_count.unwrap_or_else(|| region.max_entity_frame_count());

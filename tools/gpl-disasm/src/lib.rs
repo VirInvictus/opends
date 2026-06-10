@@ -1400,11 +1400,10 @@ impl Symbols {
                 name,
                 ..
             } => {
-                if name.is_none() {
-                    if let Some(n) = self.variable_name(*var_kind, *id) {
+                if name.is_none()
+                    && let Some(n) = self.variable_name(*var_kind, *id) {
                         *name = Some(Cow::Owned(n.to_string()));
                     }
-                }
             }
             Expression::RetVal { inner_params, .. } => {
                 for inner in inner_params {
@@ -1482,13 +1481,12 @@ impl Symbols {
                 name,
                 ..
             } => {
-                if name.is_none() {
-                    if let Some(n) =
+                if name.is_none()
+                    && let Some(n) =
                         self.local_name(file_basename, kind, chunk_id, *var_kind, *id)
                     {
                         *name = Some(Cow::Owned(n.to_string()));
                     }
-                }
             }
             Expression::RetVal { inner_params, .. } => {
                 for inner in inner_params {
@@ -1875,8 +1873,7 @@ fn read_expression_with_depth(bytes: &[u8], cursor: usize, retval_depth: u8) -> 
                     }
                     // GPL_COMPLEX_* range (and the 0xb3 special case,
                     // which lives inside this same range).
-                    b if (b >= (GPL_COMPLEX_LOW | 0x80))
-                        && (b <= (GPL_COMPLEX_HIGH | 0x80)) =>
+                    b if ((GPL_COMPLEX_LOW | 0x80)..=(GPL_COMPLEX_HIGH | 0x80)).contains(&b) =>
                     {
                         let tag = b & 0x7F;
                         match read_complex_access(bytes, pos) {
@@ -2486,13 +2483,12 @@ pub fn build_cfg(
                 leaders.insert(next_offset);
             }
             BranchClass::LocalSub => {
-                if let Some(v) = instr.params.first().and_then(|p| literal_target(p)) {
-                    if v >= 0 && (v as usize) <= chunk_len {
+                if let Some(v) = instr.params.first().and_then(|p| literal_target(p))
+                    && v >= 0 && (v as usize) <= chunk_len {
                         let t = redirect_past_else(v as usize, instructions, &offset_to_idx);
                         leaders.insert(t);
                         entry_points.insert(t);
                     }
-                }
             }
             BranchClass::GlobalSub => {
                 let target = instr
@@ -2809,17 +2805,15 @@ fn inline_string_run(slice: &[u8]) -> Option<String> {
     for (i, &b) in slice.iter().enumerate() {
         if is_printable(b) {
             start.get_or_insert(i);
-        } else if let Some(s) = start.take() {
-            if i - s >= MIN_STRING_LEN && best.is_none() {
+        } else if let Some(s) = start.take()
+            && i - s >= MIN_STRING_LEN && best.is_none() {
                 best = Some((s, i));
             }
-        }
     }
-    if let Some(s) = start {
-        if slice.len() - s >= MIN_STRING_LEN && best.is_none() {
+    if let Some(s) = start
+        && slice.len() - s >= MIN_STRING_LEN && best.is_none() {
             best = Some((s, slice.len()));
         }
-    }
     best.map(|(s, e)| String::from_utf8_lossy(&slice[s..e]).into_owned())
 }
 
@@ -2876,8 +2870,8 @@ impl fmt::Display for Expression {
                 // side bytes inside the RETVAL syntax. `gpl-asm`
                 // v0.2.1+ parses this sentinel to recover
                 // `inner_raw_tail` for round-trip encoding.
-                if let Some(tail) = inner_raw_tail {
-                    if !tail.is_empty() {
+                if let Some(tail) = inner_raw_tail
+                    && !tail.is_empty() {
                         if inner_params.is_empty() {
                             write!(f, " ")?;
                         }
@@ -2886,7 +2880,6 @@ impl fmt::Display for Expression {
                             write!(f, "{:02x}", b)?;
                         }
                     }
-                }
                 let _ = inner_opcode;
                 write!(f, ")")
             }
@@ -2996,12 +2989,11 @@ pub fn render_text(result: &DisasmResult, labels_on: bool) -> String {
     let cfg = if labels_on { result.cfg.as_ref() } else { None };
     let labels: Option<&BTreeMap<usize, String>> = cfg.map(|c| &c.labels);
     for instr in &result.instructions {
-        if let Some(map) = labels {
-            if let Some(name) = map.get(&instr.offset) {
+        if let Some(map) = labels
+            && let Some(name) = map.get(&instr.offset) {
                 out.push_str(name);
                 out.push_str(":\n");
             }
-        }
         render_instruction_into(&mut out, instr, labels);
         out.push('\n');
     }
@@ -3028,9 +3020,9 @@ fn render_instruction_into(
     instr: &Instruction,
     labels: Option<&BTreeMap<usize, String>>,
 ) {
-    if let Some(map) = labels {
-        if let Some((target_param_idx, target_offset)) = branch_target_param(instr) {
-            if let Some(label) = map.get(&target_offset) {
+    if let Some(map) = labels
+        && let Some((target_param_idx, target_offset)) = branch_target_param(instr)
+            && let Some(label) = map.get(&target_offset) {
                 let label_param = label.split_once(" (").map(|(l, _)| l).unwrap_or(label);
                 let m = instr.mnemonic.as_deref().unwrap_or("db");
                 out.push_str(&format!(
@@ -3063,8 +3055,6 @@ fn render_instruction_into(
                 }
                 return;
             }
-        }
-    }
     // No-label / non-branch path: use Display directly.
     out.push_str(&format!("{}", instr));
 }
@@ -3510,7 +3500,7 @@ mod tests {
         for i in (0..7).rev() {
             bits.push((STRING_TERMINATOR >> i) & 1);
         }
-        while bits.len() % 8 != 0 {
+        while !bits.len().is_multiple_of(8) {
             bits.push(0);
         }
         bits.chunks(8)

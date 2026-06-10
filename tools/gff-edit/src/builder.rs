@@ -35,9 +35,7 @@
 //! Chunks within each type appear in insertion order; ids are
 //! preserved verbatim (no sort, no dedup).
 
-use crate::{
-    ChunkRef, FileHeader, FourCC, Gff, GffError, SegmentedInfo, SEGMENTED_FLAG,
-};
+use crate::{ChunkRef, FileHeader, FourCC, Gff, GffError, SegmentedInfo, SEGMENTED_FLAG};
 
 /// In-progress construction of a GFF.
 ///
@@ -90,12 +88,7 @@ impl GffBuilder {
     /// Append one indexed chunk to the builder. Order is
     /// preserved; the first occurrence of a given kind
     /// determines its position in the TOC types list.
-    pub fn add_chunk(
-        &mut self,
-        kind: FourCC,
-        id: i32,
-        payload: impl Into<Vec<u8>>,
-    ) -> &mut Self {
+    pub fn add_chunk(&mut self, kind: FourCC, id: i32, payload: impl Into<Vec<u8>>) -> &mut Self {
         self.chunks.push((kind, id, payload.into()));
         self
     }
@@ -120,8 +113,9 @@ impl GffBuilder {
         // Group chunks by kind in first-seen order so the TOC
         // types list reflects insertion order. Within each kind,
         // chunks stay in the order they were added.
+        type ChunkEntry = (FourCC, i32, Vec<u8>);
         let mut kind_order: Vec<FourCC> = Vec::new();
-        let mut by_kind: Vec<(FourCC, Vec<&(FourCC, i32, Vec<u8>)>)> = Vec::new();
+        let mut by_kind: Vec<(FourCC, Vec<&ChunkEntry>)> = Vec::new();
         for entry in &self.chunks {
             let kind = entry.0;
             if let Some(pos) = kind_order.iter().position(|k| *k == kind) {
@@ -188,11 +182,12 @@ impl GffBuilder {
 
         // 3. Emit the TOC.
         out.extend_from_slice(&8u32.to_le_bytes()); // types_offset
-        let free_list_offset = u32::try_from(toc_length - 2).map_err(|_| GffError::ChunkTooLarge {
-            kind: FourCC([0; 4]),
-            id: 0,
-            length: toc_length,
-        })?;
+        let free_list_offset =
+            u32::try_from(toc_length - 2).map_err(|_| GffError::ChunkTooLarge {
+                kind: FourCC([0; 4]),
+                id: 0,
+                length: toc_length,
+            })?;
         out.extend_from_slice(&free_list_offset.to_le_bytes()); // free_list_offset
         let num_types_u16 = u16::try_from(by_kind.len()).map_err(|_| GffError::ChunkTooLarge {
             kind: FourCC([0; 4]),
@@ -213,11 +208,12 @@ impl GffBuilder {
 
         for (type_idx, (kind, entries)) in by_kind.iter().enumerate() {
             out.extend_from_slice(kind.as_bytes());
-            let chunk_count = u32::try_from(entries.len()).map_err(|_| GffError::ChunkTooLarge {
-                kind: *kind,
-                id: 0,
-                length: entries.len(),
-            })?;
+            let chunk_count =
+                u32::try_from(entries.len()).map_err(|_| GffError::ChunkTooLarge {
+                    kind: *kind,
+                    id: 0,
+                    length: entries.len(),
+                })?;
             // raw_count: high bit clear means indexed.
             out.extend_from_slice(&chunk_count.to_le_bytes());
 
@@ -280,7 +276,11 @@ mod tests {
     fn build_minimal_two_chunk_gff() {
         let mut b = GffBuilder::new();
         b.add_chunk(FourCC::from_str("ETME").unwrap(), 7, b"hi!\0".to_vec())
-            .add_chunk(FourCC::from_str("GPL ").unwrap(), 0, b"\x00\x00\x00\x00".to_vec());
+            .add_chunk(
+                FourCC::from_str("GPL ").unwrap(),
+                0,
+                b"\x00\x00\x00\x00".to_vec(),
+            );
         let bytes = b.build().expect("build ok");
 
         let gff = Gff::from_bytes(bytes).expect("parses");
@@ -307,7 +307,13 @@ mod tests {
         let bytes = b.build().expect("build ok");
         let gff = Gff::from_bytes(bytes).expect("parses");
         let kinds: Vec<_> = gff.types().iter().map(|t| t.kind).collect();
-        assert_eq!(kinds, vec![FourCC::from_str("AAAA").unwrap(), FourCC::from_str("BBBB").unwrap()]);
+        assert_eq!(
+            kinds,
+            vec![
+                FourCC::from_str("AAAA").unwrap(),
+                FourCC::from_str("BBBB").unwrap()
+            ]
+        );
         assert_eq!(gff.types()[0].chunk_count, 2);
         assert_eq!(gff.types()[1].chunk_count, 1);
     }

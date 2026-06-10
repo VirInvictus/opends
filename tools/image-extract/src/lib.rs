@@ -393,7 +393,7 @@ fn decode_ds1_rle(bytes: &[u8], start: usize, width: u16, height: u16) -> Result
                 let code = bytes[cpos + i] as usize;
                 i += 1;
                 let run_len = code / 2 + 1;
-                if code % 2 == 0 {
+                if code.is_multiple_of(2) {
                     // Even: run_len direct palette indices.
                     for _ in 0..run_len {
                         if cpos + i >= bytes.len() {

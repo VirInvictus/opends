@@ -517,7 +517,7 @@ def cmd_run(args: argparse.Namespace) -> int:
             "--bugs-dir",
             str(bugs_root),
         ]
-        print(f"opcode-fuzz: launching repro with synthesised fixture")
+        print("opcode-fuzz: launching repro with synthesised fixture")
         print(f"  work-dir       : {args.work_dir}")
         print(f"  source GFF     : {source_gff}")
         print(f"  patched chunk  : {meta['kind']!r}/{meta['id']}")
@@ -526,7 +526,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         if pre_source is not None:
             print(f"  pre-snapshot   : {pre_source} ({len(pre_bytes)} bytes)")
         else:
-            print(f"  pre-snapshot   : (no factory or session DARKRUN.GFF)")
+            print("  pre-snapshot   : (no factory or session DARKRUN.GFF)")
         print()
         rc = subprocess.run(repro_argv).returncode
         print()
@@ -539,7 +539,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         diff["chunk"] = {"kind": meta["kind"], "id": int(meta["id"])}
         diff["repro_rc"] = rc
 
-        print(f"opcode-fuzz: DARKRUN.GFF diff:")
+        print("opcode-fuzz: DARKRUN.GFF diff:")
         print(json.dumps(diff, indent=2))
         return EXIT_OK if rc == 0 else EXIT_FAIL
 

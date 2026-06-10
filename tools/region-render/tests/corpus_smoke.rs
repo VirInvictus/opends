@@ -97,13 +97,12 @@ fn every_region_renders_clean() {
             // in the corpus, so the call is a no-op there).
             let mut walls_path = region_path.clone();
             walls_path.set_file_name("GPLDATA.GFF");
-            if walls_path.is_file() {
-                if let Ok(walls_gff) = Gff::open(&walls_path) {
+            if walls_path.is_file()
+                && let Ok(walls_gff) = Gff::open(&walls_path) {
                     region.with_walls_from(&walls_gff).unwrap_or_else(|e| {
                         panic!("with_walls_from({}): {e}", walls_path.display())
                     });
                 }
-            }
             // Entities: DS1 = SEGOBJEX.GFF, DS2 = OBJEX.GFF.
             for name in ["SEGOBJEX.GFF", "OBJEX.GFF"] {
                 let mut p = region_path.clone();
