@@ -91,7 +91,10 @@ documented (sprites, sounds), but the engines are different.
 ## 4. What the GOG installers ship
 
 Verified locally (extracted to `/home/bdkl/.gitrepos/opends/.games/...`
-via `innoextract`):
+via `innoextract`). For the release-lineage story behind these
+trees (floppy vs CD product lines, what GOG's DS2 actually is,
+and the darkfix patch-base rationale), see
+[`install-variants.md`](install-variants.md).
 
 ### Shattered Lands
 

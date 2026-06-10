@@ -146,11 +146,22 @@ them as we find them during reimplementation.
 | Game | Patch | Distribution                                  |
 |------|-------|-----------------------------------------------|
 | DS1  | 1.10  | Bundled in GOG release (the only DS1 patch)   |
-| DS2  | 1.02  | Floppy and CD versions; Patches Scrolls       |
-| DS2  | 1.10  | Floppy and CD; Internet Archive (WAKEDK11_ZIP, WAKECD11_ZIP); GOG ships this |
+| DS2  | 1.01  | Silent revision; referenced in SSI's 1.1 README ("ver 1.0 or 1.01"), no archived artifact known |
+| DS2  | 1.10  | Three official builds: `WAKEC110` (CD; IA `WAKECD11_ZIP`; this is what GOG applied), `WAKE3110` (3.5" disk; IA `WAKEDK11_ZIP`), and a jewel-case build (Patches Scrolls `wake11jc.zip`) |
 
-GOG ships the 1.10 binary inside DOSBox, with the 1.02 README preserved.
-There is **no public unofficial community patch** for either game.
+An earlier revision of this table listed a DS2 "1.02"; no such
+patch surfaced in the 2026-06-10 sweep of Patches Scrolls, the
+Internet Archive, and SSI's mirrored update pages, and SSI's own
+1.1 README names only 1.0 and 1.01. See
+[`install-variants.md`](install-variants.md) for the full
+lineage evidence, including proof that GOG's DS2 tree is exactly
+retail CD 1.0 plus `WAKEC110`, and that **no public path to a
+floppy 1.10 install currently exists** (every archived disk
+patch rejects the one public floppy 1.0 dump).
+
+GOG ships the 1.10 binary inside DOSBox, with the 1.1 patch
+README preserved as `README.TXT`. There is **no public
+unofficial community patch** for either game.
 
 ## 5. Patch policy in darkfix
 

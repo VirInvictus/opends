@@ -50,6 +50,7 @@ python3 tools/repro/repro.py ds1-smoke --play --session main
 - **`.games/ds1/`**, **`.games/ds2/`**: dev-side innoextract output. The Rust corpus tests read from here. Gitignored.
 - **`~/.wine/drive_c/GOG Games/Dark Sun/`** and **`Dark Sun 2/`**: Brandon's pristine recovery installs and the source of in-game saves used by `save-inspect` and `repro --play`.
 - **`.games/setup_*.exe`**: GOG installer EXEs used by `verify-install --repair` (shells to `innoextract`).
+- **`.games/archive-org/`**: Internet Archive / Patches Scrolls comparison artifacts for the DS2 release-lineage work (floppy 1.0 trees, official 1.10 RTPatch packages). Evidence and conclusions live in `docs/install-variants.md`; don't re-download these.
 
 The canonical SHA256 manifest for each game ships at `docs/source-hashes/{ds1,ds2}-gog-1.10.toml`. `verify-install` checks against these; future patch `manifest.toml` files cite them.
 

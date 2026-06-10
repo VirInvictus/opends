@@ -34,7 +34,10 @@ authoring guide (GPL edit or binary patch, and how to choose).
 [`binary-patching.md`](binary-patching.md) covers the
 EXE-patching path in detail. [`known-bugs.md`](known-bugs.md) is
 the target list. [`source-hashes/`](source-hashes/) holds the
-canonical SHA256 manifests every patch verifies against.
+canonical SHA256 manifests every patch verifies against, and
+[`install-variants.md`](install-variants.md) explains why those
+manifests target the GOG CD 1.10 base (and what the floppy
+variant changes).
 
 **"I want to contribute tooling."**
 [`build-environment.md`](build-environment.md) gets a Fedora dev
@@ -62,6 +65,7 @@ attribute-everything policy; see also the repo-root
 | [`binary-patching.md`](binary-patching.md) | walkthrough | The `DSUN.EXE` binary-patch path: TOML patch format, r2 workflow, risks. |
 | [`build-environment.md`](build-environment.md) | walkthrough | Dev setup on Fedora: deps, game extraction, corpus layout. |
 | [`source-hashes/`](source-hashes/) | reference | Canonical SHA256 manifests for the GOG 1.10 installs (`verify-install` checks against these). |
+| [`install-variants.md`](install-variants.md) | reference | DS1/DS2 release lineages (floppy vs CD), proof of what GOG ships, and the patch-base rationale. |
 | [`upstream-projects.md`](upstream-projects.md) | reference | Catalog of prior Dark Sun RE projects and exactly what we use from each. |
 | [`versioning.md`](versioning.md) | reference | Per-tool semver policy, `VERSION` files, tag format. |
 
