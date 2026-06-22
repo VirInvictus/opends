@@ -15,8 +15,8 @@ written down. Every utility we build gets published.
 In build order — **tools first, patches second**:
 
 - **Tools** — every utility built to make the digging easier.
-  Twelve ship today, each independently with its own README,
-  `VERSION`, and tagged release. MIT-licensed. → [`tools/`](tools/)
+  Twelve ship today, each independently with its own README
+  and `VERSION`. MIT-licensed. → [`tools/`](tools/)
 
   | Tool | What it does |
   |---|---|
@@ -105,10 +105,10 @@ files from the installer to heal a damaged install.
 
 ## License
 
-TBD — likely MIT for tools and patch tooling. Game data files
-are not redistributed; they remain the property of Wizards of
-the Coast / the original copyright holders. The player provides
-their own.
+The tools and patch tooling are MIT-licensed; see [`LICENSE`](LICENSE).
+Game data files are not redistributed; they remain the property of
+Wizards of the Coast / the original copyright holders. The player
+provides their own.
 
 ## Credits
 
