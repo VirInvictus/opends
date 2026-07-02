@@ -120,8 +120,8 @@ fn cmd_patch(
         .with_context(|| format!("reading {}", patch_path.display()))?;
     let script: PatchScript = toml::from_str(&patch_text)
         .with_context(|| format!("parsing TOML patch {}", patch_path.display()))?;
-    let mut chunk = std::fs::read(chunk_path)
-        .with_context(|| format!("reading {}", chunk_path.display()))?;
+    let mut chunk =
+        std::fs::read(chunk_path).with_context(|| format!("reading {}", chunk_path.display()))?;
 
     if script.edits.is_empty() {
         return Err(anyhow!(
@@ -144,8 +144,10 @@ fn cmd_patch(
             ));
         }
         let offset = if edit.at_offset < 0 {
-            return Err(anyhow!("{label}: at_offset must be >= 0, got {}",
-                edit.at_offset));
+            return Err(anyhow!(
+                "{label}: at_offset must be >= 0, got {}",
+                edit.at_offset
+            ));
         } else {
             edit.at_offset as usize
         };
@@ -158,8 +160,16 @@ fn cmd_patch(
         }
         let actual = &chunk[offset..offset + old_bytes.len()];
         if actual != old_bytes.as_slice() {
-            let actual_hex: String = actual.iter().map(|b| format!("{b:02x}")).collect::<Vec<_>>().join(" ");
-            let expected_hex: String = old_bytes.iter().map(|b| format!("{b:02x}")).collect::<Vec<_>>().join(" ");
+            let actual_hex: String = actual
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect::<Vec<_>>()
+                .join(" ");
+            let expected_hex: String = old_bytes
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect::<Vec<_>>()
+                .join(" ");
             return Err(anyhow!(
                 "{label}: bytes_old fingerprint mismatch at offset 0x{offset:x}\n  \
                  expected: {expected_hex}\n  \
@@ -168,14 +178,22 @@ fn cmd_patch(
             ));
         }
         let reason = edit.reason.as_deref().unwrap_or("(no reason given)");
-        let new_hex: String = new_bytes.iter().map(|b| format!("{b:02x}")).collect::<Vec<_>>().join(" ");
+        let new_hex: String = new_bytes
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<Vec<_>>()
+            .join(" ");
         if dry_run {
-            eprintln!("would apply {label} at 0x{offset:x}: {} bytes -> {new_hex}  ({reason})",
-                old_bytes.len());
+            eprintln!(
+                "would apply {label} at 0x{offset:x}: {} bytes -> {new_hex}  ({reason})",
+                old_bytes.len()
+            );
         } else {
             chunk[offset..offset + old_bytes.len()].copy_from_slice(&new_bytes);
-            eprintln!("applied {label} at 0x{offset:x}: {} bytes -> {new_hex}  ({reason})",
-                old_bytes.len());
+            eprintln!(
+                "applied {label} at 0x{offset:x}: {} bytes -> {new_hex}  ({reason})",
+                old_bytes.len()
+            );
         }
         applied += 1;
     }
@@ -189,8 +207,7 @@ fn cmd_patch(
     // (matches the `save-edit` pattern; backups are the user's
     // responsibility for now).
     let out = output.unwrap_or(chunk_path);
-    std::fs::write(out, &chunk)
-        .with_context(|| format!("writing {}", out.display()))?;
+    std::fs::write(out, &chunk).with_context(|| format!("writing {}", out.display()))?;
     eprintln!("wrote {} bytes to {}", chunk.len(), out.display());
     Ok(())
 }
@@ -214,11 +231,12 @@ fn detect_mode(cli: &Cli, path: &Path) -> InputMode {
 }
 
 fn load_disasm_result(path: &Path, mode: &InputMode) -> Result<DisasmResult> {
-    let body = std::fs::read_to_string(path)
-        .with_context(|| format!("reading {}", path.display()))?;
+    let body =
+        std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
     match mode {
-        InputMode::Json => serde_json::from_str(&body)
-            .with_context(|| format!("parsing JSON {}", path.display())),
+        InputMode::Json => {
+            serde_json::from_str(&body).with_context(|| format!("parsing JSON {}", path.display()))
+        }
         InputMode::Text => parse_text(&body).map_err(|e| {
             // Render the parse error with the same caret-style
             // pointer the v0.5.0 helpers produce. Far more useful
@@ -268,14 +286,14 @@ fn main() -> Result<()> {
         let result = load_disasm_result(&input, &mode)?;
         let report = validate(&result);
         if report.is_ok() {
-            println!("{}: clean ({} instruction(s))", input.display(), result.instructions.len());
+            println!(
+                "{}: clean ({} instruction(s))",
+                input.display(),
+                result.instructions.len()
+            );
             return Ok(());
         }
-        eprintln!(
-            "{}: {} validation error(s):",
-            input.display(),
-            report.len()
-        );
+        eprintln!("{}: {} validation error(s):", input.display(), report.len());
         for err in &report.errors {
             eprintln!("  {err}");
         }

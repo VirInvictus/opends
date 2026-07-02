@@ -12,9 +12,7 @@ use std::path::{Path, PathBuf};
 
 use gff_edit::{FourCC, Gff};
 use image_extract::Palette;
-use region_render::{
-    REGION_PIXEL_HEIGHT, REGION_PIXEL_WIDTH, RegionMap, inline_palette,
-};
+use region_render::{REGION_PIXEL_HEIGHT, REGION_PIXEL_WIDTH, RegionMap, inline_palette};
 
 const CORPUS_ROOTS: &[&str] = &[
     "/home/bdkl/.gitrepos/opends/.games/ds1",
@@ -89,20 +87,20 @@ fn every_region_renders_clean() {
                 Err(e) => panic!("scanning palette in {}: {e}", region_path.display()),
             };
 
-            let mut region = RegionMap::from_gff(&gff, palette).unwrap_or_else(|e| {
-                panic!("RegionMap::from_gff({}): {e}", region_path.display())
-            });
+            let mut region = RegionMap::from_gff(&gff, palette)
+                .unwrap_or_else(|e| panic!("RegionMap::from_gff({}): {e}", region_path.display()));
             // Walls: load from sibling GPLDATA.GFF when present
             // (DS1 convention; DS2 has no WALL chunks anywhere
             // in the corpus, so the call is a no-op there).
             let mut walls_path = region_path.clone();
             walls_path.set_file_name("GPLDATA.GFF");
             if walls_path.is_file()
-                && let Ok(walls_gff) = Gff::open(&walls_path) {
-                    region.with_walls_from(&walls_gff).unwrap_or_else(|e| {
-                        panic!("with_walls_from({}): {e}", walls_path.display())
-                    });
-                }
+                && let Ok(walls_gff) = Gff::open(&walls_path)
+            {
+                region
+                    .with_walls_from(&walls_gff)
+                    .unwrap_or_else(|e| panic!("with_walls_from({}): {e}", walls_path.display()));
+            }
             // Entities: DS1 = SEGOBJEX.GFF, DS2 = OBJEX.GFF.
             for name in ["SEGOBJEX.GFF", "OBJEX.GFF"] {
                 let mut p = region_path.clone();
@@ -111,9 +109,7 @@ fn every_region_renders_clean() {
                     if let Ok(ent_gff) = Gff::open(&p) {
                         region
                             .with_entities_from(&ent_gff)
-                            .unwrap_or_else(|e| {
-                                panic!("with_entities_from({}): {e}", p.display())
-                            });
+                            .unwrap_or_else(|e| panic!("with_entities_from({}): {e}", p.display()));
                     }
                     break;
                 }

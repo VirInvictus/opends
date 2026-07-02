@@ -40,7 +40,7 @@ use serde::{Serialize, Serializer};
 use thiserror::Error;
 
 mod builder;
-pub use builder::{builder_from_gff, GffBuilder};
+pub use builder::{GffBuilder, builder_from_gff};
 
 /// Bit mask for the segmented-list flag stored in the high bit of
 /// a TOC type entry's `chunk_count` field.
@@ -409,7 +409,9 @@ pub enum GffError {
         file_size: usize,
     },
 
-    #[error("chunk {kind} id={id} out of bounds: location={location} length={length} file_size={file_size}")]
+    #[error(
+        "chunk {kind} id={id} out of bounds: location={location} length={length} file_size={file_size}"
+    )]
     ChunkOutOfBounds {
         kind: FourCC,
         id: i32,
@@ -427,14 +429,18 @@ pub enum GffError {
     #[error("segmented type {kind} requires a GFFI type but none is present in the TOC")]
     MissingGffiType { kind: FourCC },
 
-    #[error("segmented type {kind}: seg_loc_id {seg_loc_id} out of range (GFFI has {gffi_count} chunks)")]
+    #[error(
+        "segmented type {kind}: seg_loc_id {seg_loc_id} out of range (GFFI has {gffi_count} chunks)"
+    )]
     SegLocIdOutOfRange {
         kind: FourCC,
         seg_loc_id: i32,
         gffi_count: usize,
     },
 
-    #[error("secondary table for {kind} out of bounds: offset={offset} entry_count={entry_count} file_size={file_size}")]
+    #[error(
+        "secondary table for {kind} out of bounds: offset={offset} entry_count={entry_count} file_size={file_size}"
+    )]
     SecondaryTableOutOfBounds {
         kind: FourCC,
         offset: usize,
@@ -442,7 +448,9 @@ pub enum GffError {
         file_size: usize,
     },
 
-    #[error("secondary table for {kind} declares {table_count} entries but segment runs sum to {runs_total}")]
+    #[error(
+        "secondary table for {kind} declares {table_count} entries but segment runs sum to {runs_total}"
+    )]
     SecondaryTableMismatch {
         kind: FourCC,
         table_count: usize,
@@ -793,7 +801,7 @@ mod tests {
         v.extend_from_slice(&0u32.to_le_bytes()); // file_flags
         v.extend_from_slice(&1u32.to_le_bytes()); // data0
         v.extend_from_slice(b"hi!\0"); // 4 bytes chunk data
-                                       // TOC (32 bytes total)
+        // TOC (32 bytes total)
         v.extend_from_slice(&8u32.to_le_bytes()); // types_offset
         v.extend_from_slice(&30u32.to_le_bytes()); // free_list_offset
         v.extend_from_slice(&1u16.to_le_bytes()); // num_types
@@ -819,11 +827,11 @@ mod tests {
         v.extend_from_slice(&0u32.to_le_bytes()); // file_flags
         v.extend_from_slice(&2u32.to_le_bytes()); // data0
         v.extend_from_slice(b"hi!\0"); // 4 bytes ETME data
-                                       // TOC
+        // TOC
         v.extend_from_slice(&8u32.to_le_bytes()); // types_offset
         v.extend_from_slice(&58u32.to_le_bytes()); // free_list_offset
         v.extend_from_slice(&2u16.to_le_bytes()); // num_types
-                                                  // Type 1: ETME indexed, 1 chunk
+        // Type 1: ETME indexed, 1 chunk
         v.extend_from_slice(b"ETME");
         v.extend_from_slice(&1u32.to_le_bytes());
         v.extend_from_slice(&3i32.to_le_bytes());
@@ -867,27 +875,27 @@ mod tests {
         v.extend_from_slice(&80u32.to_le_bytes()); // toc_length
         v.extend_from_slice(&0u32.to_le_bytes()); // file_flags
         v.extend_from_slice(&3u32.to_le_bytes()); // data0
-                                                  // Chunk data area (32 bytes).
+        // Chunk data area (32 bytes).
         v.extend_from_slice(b"hi!\0"); // ETME-3
         v.extend_from_slice(b"til0"); // TILE-100
         v.extend_from_slice(b"til1"); // TILE-101
-                                      // GFFI-0 (secondary table for TILE) at offset 40.
+        // GFFI-0 (secondary table for TILE) at offset 40.
         v.extend_from_slice(&2u32.to_le_bytes()); // entryCount = 2
         v.extend_from_slice(&32u32.to_le_bytes()); // entry 0 offset
         v.extend_from_slice(&4u32.to_le_bytes()); //  entry 0 size
         v.extend_from_slice(&36u32.to_le_bytes()); // entry 1 offset
         v.extend_from_slice(&4u32.to_le_bytes()); //  entry 1 size
-                                                  // TOC at offset 60 (80 bytes).
+        // TOC at offset 60 (80 bytes).
         v.extend_from_slice(&8u32.to_le_bytes()); // types_offset
         v.extend_from_slice(&78u32.to_le_bytes()); // free_list_offset
         v.extend_from_slice(&3u16.to_le_bytes()); // num_types
-                                                  // Type 1: ETME indexed (20 bytes: 4 + 4 + 12).
+        // Type 1: ETME indexed (20 bytes: 4 + 4 + 12).
         v.extend_from_slice(b"ETME");
         v.extend_from_slice(&1u32.to_le_bytes()); // chunk_count
         v.extend_from_slice(&3i32.to_le_bytes()); // id
         v.extend_from_slice(&28u32.to_le_bytes()); // location
         v.extend_from_slice(&4u32.to_le_bytes()); // length
-                                                  // Type 2: GFFI indexed (20 bytes).
+        // Type 2: GFFI indexed (20 bytes).
         v.extend_from_slice(b"GFFI");
         v.extend_from_slice(&1u32.to_le_bytes());
         v.extend_from_slice(&0i32.to_le_bytes());
@@ -936,7 +944,7 @@ mod tests {
         v.extend_from_slice(&8u32.to_le_bytes()); // types_offset
         v.extend_from_slice(&86u32.to_le_bytes()); // free_list_offset
         v.extend_from_slice(&3u16.to_le_bytes()); // num_types
-                                                  // ETME (20 bytes)
+        // ETME (20 bytes)
         v.extend_from_slice(b"ETME");
         v.extend_from_slice(&1u32.to_le_bytes());
         v.extend_from_slice(&3i32.to_le_bytes());

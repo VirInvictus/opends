@@ -26,10 +26,7 @@ fn gff_files(dir: &Path) -> Vec<PathBuf> {
     let mut out = Vec::new();
     for entry in entries.flatten() {
         let p = entry.path();
-        if p.is_file()
-            && p.extension()
-                .is_some_and(|e| e.eq_ignore_ascii_case("gff"))
-        {
+        if p.is_file() && p.extension().is_some_and(|e| e.eq_ignore_ascii_case("gff")) {
             out.push(p);
         }
     }

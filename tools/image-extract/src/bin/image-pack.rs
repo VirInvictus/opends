@@ -67,8 +67,7 @@ fn main() -> Result<()> {
 /// is to use a PNG whose indices match the chunk's intended PAL /
 /// CPAL chunk in the GFF.
 fn read_png_indexed(path: &Path) -> Result<Frame> {
-    let file = File::open(path)
-        .with_context(|| format!("opening {}", path.display()))?;
+    let file = File::open(path).with_context(|| format!("opening {}", path.display()))?;
     let decoder = png::Decoder::new(file);
     let mut reader = decoder
         .read_info()
@@ -126,10 +125,7 @@ fn read_png_indexed(path: &Path) -> Result<Frame> {
 /// less obvious message).
 fn read_frames_dir(dir: &Path) -> Result<Vec<Frame>> {
     if !dir.is_dir() {
-        return Err(anyhow!(
-            "--frames-dir {} is not a directory",
-            dir.display()
-        ));
+        return Err(anyhow!("--frames-dir {} is not a directory", dir.display()));
     }
     let mut png_paths: Vec<PathBuf> = std::fs::read_dir(dir)
         .with_context(|| format!("reading {}", dir.display()))?
@@ -159,9 +155,7 @@ fn write_output(path: &Path, bytes: &[u8]) -> Result<()> {
             .write_all(bytes)
             .context("writing chunk to stdout")?;
     } else {
-        std::fs::write(path, bytes)
-            .with_context(|| format!("writing {}", path.display()))?;
+        std::fs::write(path, bytes).with_context(|| format!("writing {}", path.display()))?;
     }
     Ok(())
 }
-

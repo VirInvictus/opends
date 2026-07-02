@@ -122,7 +122,10 @@ fn cmd_inspect(path: &Path) -> Result<()> {
     let kind = detect(path)?;
     match kind {
         FileKind::Gff => {
-            eprintln!("opends: {} looks like a GFF container; dispatching to gff-cat info", path.display());
+            eprintln!(
+                "opends: {} looks like a GFF container; dispatching to gff-cat info",
+                path.display()
+            );
             run_tool("gff-cat", &["info".as_ref(), path.as_os_str()])
         }
         FileKind::Save { name } => {
@@ -133,14 +136,31 @@ fn cmd_inspect(path: &Path) -> Result<()> {
             );
             run_python_tool("save-inspect", "save-inspect.py", &[path.as_os_str()])
         }
-        FileKind::Png { width, height, indexed } => {
-            println!("PNG: {}x{}, ColorType::{}", width, height, if indexed { "Indexed" } else { "Other" });
+        FileKind::Png {
+            width,
+            height,
+            indexed,
+        } => {
+            println!(
+                "PNG: {}x{}, ColorType::{}",
+                width,
+                height,
+                if indexed { "Indexed" } else { "Other" }
+            );
             if indexed {
-                println!("To pack this back into a chunk: image-pack {} -o new-chunk.bin", path.display());
-                println!("Then replace via: gff-cat replace <gff> <KIND> <id> new-chunk.bin -o patched.gff");
+                println!(
+                    "To pack this back into a chunk: image-pack {} -o new-chunk.bin",
+                    path.display()
+                );
+                println!(
+                    "Then replace via: gff-cat replace <gff> <KIND> <id> new-chunk.bin -o patched.gff"
+                );
             } else {
                 println!("Not palette-indexed; image-pack requires palette-indexed input.");
-                println!("Re-save with e.g. `convert {} PNG8:indexed.png`.", path.display());
+                println!(
+                    "Re-save with e.g. `convert {} PNG8:indexed.png`.",
+                    path.display()
+                );
             }
             Ok(())
         }
@@ -148,7 +168,10 @@ fn cmd_inspect(path: &Path) -> Result<()> {
             println!(
                 "{}: unrecognised magic bytes: {:02x} {:02x} {:02x} {:02x}",
                 path.display(),
-                magic[0], magic[1], magic[2], magic[3]
+                magic[0],
+                magic[1],
+                magic[2],
+                magic[3]
             );
             println!("opends doesn't recognise this file type.");
             Ok(())
@@ -176,7 +199,10 @@ fn cmd_extract(file: &Path, output: Option<&Path>) -> Result<()> {
     let out_path = match output {
         Some(p) => p,
         None => {
-            let stem = file.file_stem().and_then(|s| s.to_str()).unwrap_or("chunks");
+            let stem = file
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("chunks");
             let parent = file.parent().unwrap_or_else(|| Path::new("."));
             default_out = parent.join(format!("{stem}-extracted"));
             &default_out
@@ -218,9 +244,17 @@ fn cmd_tools() -> Result<()> {
 
 enum FileKind {
     Gff,
-    Save { name: String },
-    Png { width: u32, height: u32, indexed: bool },
-    Other { magic: [u8; 4] },
+    Save {
+        name: String,
+    },
+    Png {
+        width: u32,
+        height: u32,
+        indexed: bool,
+    },
+    Other {
+        magic: [u8; 4],
+    },
 }
 
 fn detect(path: &Path) -> Result<FileKind> {
@@ -234,12 +268,14 @@ fn detect(path: &Path) -> Result<FileKind> {
             || upper == "DARKSAVE.GFF"
             || (upper.starts_with("SAVE") && upper.ends_with(".SAV"))
         {
-            return Ok(FileKind::Save { name: name.to_string() });
+            return Ok(FileKind::Save {
+                name: name.to_string(),
+            });
         }
     }
 
-    let bytes = fs::read(path)
-        .with_context(|| format!("reading first bytes of {}", path.display()))?;
+    let bytes =
+        fs::read(path).with_context(|| format!("reading first bytes of {}", path.display()))?;
     if bytes.len() < 4 {
         return Ok(FileKind::Other {
             magic: [0, 0, 0, 0],
@@ -292,26 +328,20 @@ fn run_tool(binary: &str, args: &[&std::ffi::OsStr]) -> Result<()> {
         return Err(anyhow!(
             "{} exited with status {}",
             path.display(),
-            status.code().map(|c| c.to_string()).unwrap_or_else(|| "?".into())
+            status
+                .code()
+                .map(|c| c.to_string())
+                .unwrap_or_else(|| "?".into())
         ));
     }
     Ok(())
 }
 
-fn run_python_tool(
-    crate_dir: &str,
-    script_name: &str,
-    args: &[&std::ffi::OsStr],
-) -> Result<()> {
-    let root = workspace_root()
-        .ok_or_else(|| anyhow!("can't locate the opends workspace root"))?;
+fn run_python_tool(crate_dir: &str, script_name: &str, args: &[&std::ffi::OsStr]) -> Result<()> {
+    let root = workspace_root().ok_or_else(|| anyhow!("can't locate the opends workspace root"))?;
     let script = root.join("tools").join(crate_dir).join(script_name);
     if !script.is_file() {
-        return Err(anyhow!(
-            "{} not found at {}",
-            script_name,
-            script.display()
-        ));
+        return Err(anyhow!("{} not found at {}", script_name, script.display()));
     }
     let status = Command::new("python3")
         .arg(&script)
@@ -325,7 +355,10 @@ fn run_python_tool(
         return Err(anyhow!(
             "python3 {} exited with status {}",
             script.display(),
-            status.code().map(|c| c.to_string()).unwrap_or_else(|| "?".into())
+            status
+                .code()
+                .map(|c| c.to_string())
+                .unwrap_or_else(|| "?".into())
         ));
     }
     Ok(())
@@ -340,8 +373,7 @@ fn run_python_tool(
 /// `tools/<crate>/<name>` directly.
 fn resolve_tool(binary: &str) -> Result<PathBuf> {
     if binary.ends_with(".py") {
-        let root = workspace_root()
-            .ok_or_else(|| anyhow!("can't locate workspace root"))?;
+        let root = workspace_root().ok_or_else(|| anyhow!("can't locate workspace root"))?;
         for (script, crate_dir) in WRAPPED_TOOLS {
             if *script == binary {
                 let path = root.join("tools").join(crate_dir).join(script);
@@ -350,7 +382,10 @@ fn resolve_tool(binary: &str) -> Result<PathBuf> {
                 }
             }
         }
-        return Err(anyhow!("python script {} not found in any tools/ dir", binary));
+        return Err(anyhow!(
+            "python script {} not found in any tools/ dir",
+            binary
+        ));
     }
 
     let root = workspace_root();
@@ -397,7 +432,6 @@ fn workspace_root() -> Option<PathBuf> {
 }
 
 fn read_version(path: &Path) -> Result<String> {
-    let text = fs::read_to_string(path)
-        .with_context(|| format!("reading {}", path.display()))?;
+    let text = fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
     Ok(text.trim().to_string())
 }

@@ -35,7 +35,7 @@
 //! Chunks within each type appear in insertion order; ids are
 //! preserved verbatim (no sort, no dedup).
 
-use crate::{ChunkRef, FileHeader, FourCC, Gff, GffError, SegmentedInfo, SEGMENTED_FLAG};
+use crate::{ChunkRef, FileHeader, FourCC, Gff, GffError, SEGMENTED_FLAG, SegmentedInfo};
 
 /// In-progress construction of a GFF.
 ///

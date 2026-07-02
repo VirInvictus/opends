@@ -9,7 +9,7 @@ use std::fs;
 use std::path::Path;
 
 use gff_edit::{FourCC, Gff};
-use gpl_asm::{encode, EncodeError};
+use gpl_asm::{EncodeError, encode};
 use gpl_disasm::disassemble;
 
 const CORPUS: &[&str] = &[

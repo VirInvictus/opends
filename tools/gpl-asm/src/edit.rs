@@ -193,9 +193,9 @@ impl Editor {
     /// instruction by label name. The label must currently
     /// resolve to an instruction offset.
     pub fn insert_before_label(&mut self, name: &str, instr: Instruction) -> Result<()> {
-        let offset = self
-            .label_offset(name)
-            .ok_or_else(|| EditError::NoLabel { name: name.to_string() })?;
+        let offset = self.label_offset(name).ok_or_else(|| EditError::NoLabel {
+            name: name.to_string(),
+        })?;
         self.insert_instruction(offset, instr)
     }
 
@@ -206,9 +206,9 @@ impl Editor {
     /// surface that downstream). Labels at the deleted offset
     /// are removed; labels at higher offsets shift down.
     pub fn delete_instruction(&mut self, at_offset: usize) -> Result<Instruction> {
-        let idx = self.find_index(at_offset).ok_or(EditError::NoInstructionAt {
-            offset: at_offset,
-        })?;
+        let idx = self
+            .find_index(at_offset)
+            .ok_or(EditError::NoInstructionAt { offset: at_offset })?;
         let removed = self.instructions.remove(idx);
         let delta = -(removed.length as isize);
         for later in &mut self.instructions[idx..] {
@@ -225,9 +225,9 @@ impl Editor {
 
     /// Like [`Self::delete_instruction`] but addresses by label.
     pub fn delete_at_label(&mut self, name: &str) -> Result<Instruction> {
-        let offset = self
-            .label_offset(name)
-            .ok_or_else(|| EditError::NoLabel { name: name.to_string() })?;
+        let offset = self.label_offset(name).ok_or_else(|| EditError::NoLabel {
+            name: name.to_string(),
+        })?;
         self.delete_instruction(offset)
     }
 
@@ -240,9 +240,9 @@ impl Editor {
         at_offset: usize,
         mut new: Instruction,
     ) -> Result<Instruction> {
-        let idx = self.find_index(at_offset).ok_or(EditError::NoInstructionAt {
-            offset: at_offset,
-        })?;
+        let idx = self
+            .find_index(at_offset)
+            .ok_or(EditError::NoInstructionAt { offset: at_offset })?;
         let old_len = self.instructions[idx].length;
         new.offset = at_offset;
         if new.length == 0 {
@@ -267,9 +267,9 @@ impl Editor {
 
     /// Like [`Self::replace_instruction`] but addresses by label.
     pub fn replace_at_label(&mut self, name: &str, with: Instruction) -> Result<Instruction> {
-        let offset = self
-            .label_offset(name)
-            .ok_or_else(|| EditError::NoLabel { name: name.to_string() })?;
+        let offset = self.label_offset(name).ok_or_else(|| EditError::NoLabel {
+            name: name.to_string(),
+        })?;
         self.replace_instruction(offset, with)
     }
 

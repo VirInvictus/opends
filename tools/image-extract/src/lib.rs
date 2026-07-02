@@ -146,11 +146,7 @@ impl fmt::Display for FrameType {
             FrameType::Plnr => write!(f, "PLNR"),
             FrameType::Plan => write!(f, "PLAN"),
             FrameType::Unknown(bytes) => {
-                write!(
-                    f,
-                    "UNKNOWN({})",
-                    String::from_utf8_lossy(bytes).trim_end()
-                )
+                write!(f, "UNKNOWN({})", String::from_utf8_lossy(bytes).trim_end())
             }
         }
     }
@@ -215,14 +211,9 @@ impl<'a> Bitmap<'a> {
                 offset: frame_offset,
             });
         }
-        let width = u16::from_le_bytes([
-            self.bytes[frame_offset],
-            self.bytes[frame_offset + 1],
-        ]);
-        let height = u16::from_le_bytes([
-            self.bytes[frame_offset + 2],
-            self.bytes[frame_offset + 3],
-        ]);
+        let width = u16::from_le_bytes([self.bytes[frame_offset], self.bytes[frame_offset + 1]]);
+        let height =
+            u16::from_le_bytes([self.bytes[frame_offset + 2], self.bytes[frame_offset + 3]]);
         // Type tag is at frame_offset + 5..+9. Byte at +4 is a
         // flag/unknown that libgff doesn't read into a field;
         // pixel data for DS1_RLE starts at frame_offset + 4 (NOT
@@ -388,7 +379,9 @@ fn decode_ds1_rle(bytes: &[u8], start: usize, width: u16, height: u16) -> Result
             let mut i = 0;
             while i < compressed_length {
                 if cpos + i >= bytes.len() {
-                    return Err(ImageError::Ds1RleError { row_offset: cpos + i });
+                    return Err(ImageError::Ds1RleError {
+                        row_offset: cpos + i,
+                    });
                 }
                 let code = bytes[cpos + i] as usize;
                 i += 1;
@@ -716,12 +709,11 @@ fn decode_plnr(bytes: &[u8], frame_offset: usize, width: u16, height: u16) -> Re
     let mut out = vec![0u8; width as usize * height as usize];
     for y in 0..height as usize {
         for x in 0..width as usize {
-            let pal_dict_index =
-                plnr_get_next(&mut state, &mut chomper, bits_per_symbol).ok_or(
-                    ImageError::FrameOutOfBounds {
-                        offset: frame_offset,
-                    },
-                )?;
+            let pal_dict_index = plnr_get_next(&mut state, &mut chomper, bits_per_symbol).ok_or(
+                ImageError::FrameOutOfBounds {
+                    offset: frame_offset,
+                },
+            )?;
             let pal_index = dictionary.get(pal_dict_index).copied().unwrap_or(0);
             out[y * width as usize + x] = pal_index;
         }
@@ -950,7 +942,7 @@ mod tests {
         let body = vec![
             0, // row_num = 0
             0, 0x80, 0, 2, // startx, flags=last_run, unknown, compressed_length
-            0, 42, // RLE: code=0 (run_len=1, direct), palette index 42
+            0, 42,   // RLE: code=0 (run_len=1, direct), palette index 42
             0xFF, // row terminator
         ];
         let indices = decode_ds1_rle(&body, 0, 1, 1).unwrap();

@@ -185,8 +185,7 @@ fn main() -> Result<()> {
             let bytes = gff.read_chunk(c);
             let mut result = disassemble(bytes);
             if let Some(syms) = symbols.as_ref() {
-                let kind_str_padded =
-                    String::from_utf8_lossy(c.kind.as_bytes()).into_owned();
+                let kind_str_padded = String::from_utf8_lossy(c.kind.as_bytes()).into_owned();
                 if let Some(cfg) = result.cfg.as_mut() {
                     syms.apply_to_labels(cfg, &file_basename, &kind_str_padded, c.id);
                 }
@@ -207,17 +206,17 @@ fn main() -> Result<()> {
                 .to_string();
             let name = format!("{}-{}.{}", kind_str, c.id, ext);
             let path = out_dir.join(&name);
-            std::fs::write(&path, body)
-                .with_context(|| format!("writing {}", path.display()))?;
+            std::fs::write(&path, body).with_context(|| format!("writing {}", path.display()))?;
             if let Some(ref cfg_dir) = cli.cfg
-                && let Some(ref cfg) = result.cfg {
-                    let dot_name = format!("{}-{}.dot", kind_str, c.id);
-                    let dot_path = cfg_dir.join(&dot_name);
-                    let mut f = std::fs::File::create(&dot_path)
-                        .with_context(|| format!("creating {}", dot_path.display()))?;
-                    write_dot(cfg, &result.instructions, &mut f)
-                        .with_context(|| format!("writing {}", dot_path.display()))?;
-                }
+                && let Some(ref cfg) = result.cfg
+            {
+                let dot_name = format!("{}-{}.dot", kind_str, c.id);
+                let dot_path = cfg_dir.join(&dot_name);
+                let mut f = std::fs::File::create(&dot_path)
+                    .with_context(|| format!("creating {}", dot_path.display()))?;
+                write_dot(cfg, &result.instructions, &mut f)
+                    .with_context(|| format!("writing {}", dot_path.display()))?;
+            }
             if cli.entries {
                 let entries_name = format!("{}-{}.entries", kind_str, c.id);
                 let entries_path = out_dir.join(&entries_name);
@@ -303,16 +302,10 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn write_or_stdout(
-    target: Option<&std::path::Path>,
-    body: &[u8],
-    label: &str,
-) -> Result<()> {
+fn write_or_stdout(target: Option<&std::path::Path>, body: &[u8], label: &str) -> Result<()> {
     match target {
-        Some(path) if path.as_os_str() != "-" => {
-            std::fs::write(path, body)
-                .with_context(|| format!("writing {label} to {}", path.display()))
-        }
+        Some(path) if path.as_os_str() != "-" => std::fs::write(path, body)
+            .with_context(|| format!("writing {label} to {}", path.display())),
         _ => std::io::stdout()
             .write_all(body)
             .with_context(|| format!("writing {label} to stdout")),
@@ -332,19 +325,13 @@ fn _ensure_imports(_c: &Cfg, _e: EdgeKind) {}
 /// 2. `--syms <path>`: required to exist; loads from there.
 /// 3. Default: `tools/gpl-disasm/syms/` next to the running binary
 ///    (one workspace level up from `target/release/`), if present.
-fn load_symbols(
-    explicit: Option<&std::path::Path>,
-    no_syms: bool,
-) -> Result<Option<Symbols>> {
+fn load_symbols(explicit: Option<&std::path::Path>, no_syms: bool) -> Result<Option<Symbols>> {
     if no_syms {
         return Ok(None);
     }
     let dir = if let Some(p) = explicit {
         if !p.is_dir() {
-            return Err(anyhow!(
-                "--syms directory does not exist: {}",
-                p.display()
-            ));
+            return Err(anyhow!("--syms directory does not exist: {}", p.display()));
         }
         Some(p.to_path_buf())
     } else {

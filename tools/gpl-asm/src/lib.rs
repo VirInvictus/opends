@@ -45,7 +45,9 @@ pub use validate::{ValidationError, ValidationReport, validate};
 
 #[derive(Debug, Error)]
 pub enum EncodeError {
-    #[error("instruction at offset {offset} (opcode 0x{opcode:02x}) is best-effort; encoder cannot reproduce its bytes faithfully")]
+    #[error(
+        "instruction at offset {offset} (opcode 0x{opcode:02x}) is best-effort; encoder cannot reproduce its bytes faithfully"
+    )]
     BestEffortInstruction { offset: usize, opcode: u8 },
     #[error("instruction at offset {offset} uses unsupported opcode 0x{opcode:02x} ({reason})")]
     UnsupportedOpcode {
@@ -53,14 +55,18 @@ pub enum EncodeError {
         opcode: u8,
         reason: &'static str,
     },
-    #[error("instruction at offset {offset} (opcode 0x{opcode:02x}): param[{param_index}] shape doesn't match opcode's expected layout: {detail}")]
+    #[error(
+        "instruction at offset {offset} (opcode 0x{opcode:02x}): param[{param_index}] shape doesn't match opcode's expected layout: {detail}"
+    )]
     BadParamShape {
         offset: usize,
         opcode: u8,
         param_index: usize,
         detail: &'static str,
     },
-    #[error("Unknown token encountered in instruction at offset {offset}; the source disassembly bailed mid-parse")]
+    #[error(
+        "Unknown token encountered in instruction at offset {offset}; the source disassembly bailed mid-parse"
+    )]
     UnknownToken { offset: usize },
     #[error("encoded output is {actual} bytes but DisasmResult reported {expected}")]
     LengthMismatch { expected: usize, actual: usize },

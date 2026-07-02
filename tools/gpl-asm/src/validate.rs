@@ -98,22 +98,18 @@ pub fn validate(disasm: &DisasmResult) -> ValidationReport {
 /// this chunk (`gpl global sub` only).
 fn branch_slot(opcode: u8) -> Option<(usize, bool)> {
     match opcode {
-        0x12 => Some((0, false)),       // gpl jump
-        0x13 => Some((0, false)),       // gpl local sub
-        0x14 => Some((0, true)),        // gpl global sub (cross-chunk)
-        0x27 => Some((1, false)),       // gpl ifcompare
-        0x3E | 0x63 => Some((0, false)),// gpl if, gpl while
-        0x3F => Some((0, false)),       // gpl else
-        0x64 => Some((0, false)),       // gpl wend
+        0x12 => Some((0, false)),        // gpl jump
+        0x13 => Some((0, false)),        // gpl local sub
+        0x14 => Some((0, true)),         // gpl global sub (cross-chunk)
+        0x27 => Some((1, false)),        // gpl ifcompare
+        0x3E | 0x63 => Some((0, false)), // gpl if, gpl while
+        0x3F => Some((0, false)),        // gpl else
+        0x64 => Some((0, false)),        // gpl wend
         _ => None,
     }
 }
 
-fn check_branch_target(
-    instr: &Instruction,
-    total: usize,
-    errors: &mut Vec<ValidationError>,
-) {
+fn check_branch_target(instr: &Instruction, total: usize, errors: &mut Vec<ValidationError>) {
     let Some((slot, allow_oob)) = branch_slot(instr.opcode) else {
         return;
     };
@@ -369,9 +365,6 @@ mod tests {
         };
         let r = validate(&dr(vec![too_deep], 0x100));
         assert_eq!(r.len(), 1);
-        assert!(matches!(
-            r.errors[0],
-            ValidationError::RetValTooDeep { .. }
-        ));
+        assert!(matches!(r.errors[0], ValidationError::RetValTooDeep { .. }));
     }
 }

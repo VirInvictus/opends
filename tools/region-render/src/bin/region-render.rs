@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result, anyhow};
 use clap::Parser;
 use gff_edit::{FourCC, Gff};
-use image_extract::{Palette, PALETTE_CHUNK_LEN};
+use image_extract::{PALETTE_CHUNK_LEN, Palette};
 use region_render::{RegionMap, inline_palette};
 
 #[derive(Parser)]
@@ -103,10 +103,9 @@ fn assemble_gif(
     output: &std::path::Path,
     fps: u32,
 ) -> Result<()> {
-    let ffmpeg = which::find("ffmpeg")
-        .ok_or_else(|| anyhow!(
-            "--gif requires `ffmpeg` on $PATH. Install via `dnf install ffmpeg`."
-        ))?;
+    let ffmpeg = which::find("ffmpeg").ok_or_else(|| {
+        anyhow!("--gif requires `ffmpeg` on $PATH. Install via `dnf install ffmpeg`.")
+    })?;
     let frame_pattern = frames_dir.join(format!("{stem}-frame-%d.png"));
     // Park the palette in $TMPDIR so ffmpeg's image2 demuxer
     // doesn't try to read it as part of the frame sequence
@@ -149,10 +148,7 @@ fn assemble_gif(
         .arg(&frame_pattern)
         .args(["-i"])
         .arg(&palette_path)
-        .args([
-            "-filter_complex",
-            "[0:v][1:v]paletteuse=dither=none",
-        ])
+        .args(["-filter_complex", "[0:v][1:v]paletteuse=dither=none"])
         .arg(output)
         .output()
         .with_context(|| format!("running {}", ffmpeg.display()))?;
@@ -167,8 +163,11 @@ fn assemble_gif(
     // Tidy up the intermediate palette.
     let _ = std::fs::remove_file(&palette_path);
     let size = std::fs::metadata(output).map(|m| m.len()).unwrap_or(0);
-    eprintln!("wrote animated GIF to {} ({} bytes, {fps} fps)",
-        output.display(), size);
+    eprintln!(
+        "wrote animated GIF to {} ({} bytes, {fps} fps)",
+        output.display(),
+        size
+    );
     Ok(())
 }
 
@@ -190,11 +189,9 @@ mod which {
     }
 }
 
-
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    let gff = Gff::open(&cli.file)
-        .with_context(|| format!("opening {}", cli.file.display()))?;
+    let gff = Gff::open(&cli.file).with_context(|| format!("opening {}", cli.file.display()))?;
     let palette = resolve_palette(
         &gff,
         cli.file.as_path(),
@@ -206,33 +203,41 @@ fn main() -> Result<()> {
     let mut region = RegionMap::from_gff(&gff, palette)
         .with_context(|| format!("building RegionMap from {}", cli.file.display()))?;
     if !cli.no_walls
-        && let Some(walls_path) = resolve_walls_gff_path(cli.walls_from.as_deref(), cli.file.as_path()) {
-            let walls_gff = Gff::open(&walls_path)
-                .with_context(|| format!("opening walls source {}", walls_path.display()))?;
-            region
-                .with_walls_from(&walls_gff)
-                .with_context(|| format!("indexing WALL chunks from {}", walls_path.display()))?;
-        }
+        && let Some(walls_path) =
+            resolve_walls_gff_path(cli.walls_from.as_deref(), cli.file.as_path())
+    {
+        let walls_gff = Gff::open(&walls_path)
+            .with_context(|| format!("opening walls source {}", walls_path.display()))?;
+        region
+            .with_walls_from(&walls_gff)
+            .with_context(|| format!("indexing WALL chunks from {}", walls_path.display()))?;
+    }
     if !cli.no_entities
-        && let Some(entities_path) = resolve_entities_gff_path(
-            cli.entities_from.as_deref(),
-            cli.file.as_path(),
-        ) {
-            let entities_gff = Gff::open(&entities_path)
-                .with_context(|| format!("opening entities source {}", entities_path.display()))?;
-            if cli.animate_entities {
-                region
-                    .with_animated_entities_from(&entities_gff)
-                    .with_context(|| format!("indexing OJFF/BMP (animated) from {}", entities_path.display()))?;
-            } else {
-                region
-                    .with_entities_from(&entities_gff)
-                    .with_context(|| format!("indexing OJFF/BMP from {}", entities_path.display()))?;
-            }
+        && let Some(entities_path) =
+            resolve_entities_gff_path(cli.entities_from.as_deref(), cli.file.as_path())
+    {
+        let entities_gff = Gff::open(&entities_path)
+            .with_context(|| format!("opening entities source {}", entities_path.display()))?;
+        if cli.animate_entities {
+            region
+                .with_animated_entities_from(&entities_gff)
+                .with_context(|| {
+                    format!(
+                        "indexing OJFF/BMP (animated) from {}",
+                        entities_path.display()
+                    )
+                })?;
+        } else {
+            region
+                .with_entities_from(&entities_gff)
+                .with_context(|| format!("indexing OJFF/BMP from {}", entities_path.display()))?;
         }
+    }
 
     if cli.animate_entities {
-        let n_frames = cli.frame_count.unwrap_or_else(|| region.max_entity_frame_count());
+        let n_frames = cli
+            .frame_count
+            .unwrap_or_else(|| region.max_entity_frame_count());
         if n_frames == 0 {
             return Err(anyhow!("--frame-count must be at least 1"));
         }
@@ -264,7 +269,9 @@ fn main() -> Result<()> {
             let frame_path = frames_dir.join(format!("{stem}-frame-{frame_idx}.png"));
             region
                 .write_png_frame(&frame_path, frame_idx)
-                .with_context(|| format!("writing frame {} to {}", frame_idx, frame_path.display()))?;
+                .with_context(|| {
+                    format!("writing frame {} to {}", frame_idx, frame_path.display())
+                })?;
         }
         eprintln!(
             "wrote {n_frames} frame(s) ({}x{}, source map: {}) into {}",
@@ -349,10 +356,7 @@ fn main() -> Result<()> {
             eprintln!("    id {}: {}", f.tile_id, f.reason);
         }
         if region.tile_decode_failures.len() > 5 {
-            eprintln!(
-                "    ... and {} more",
-                region.tile_decode_failures.len() - 5
-            );
+            eprintln!("    ... and {} more", region.tile_decode_failures.len() - 5);
         }
     }
     Ok(())
@@ -410,8 +414,8 @@ fn resolve_palette(
     }
     // 1. --palette-file
     if let Some(p) = palette_file {
-        let bytes = std::fs::read(p)
-            .with_context(|| format!("reading palette file {}", p.display()))?;
+        let bytes =
+            std::fs::read(p).with_context(|| format!("reading palette file {}", p.display()))?;
         if bytes.len() != PALETTE_CHUNK_LEN {
             return Err(anyhow!(
                 "{}: expected {} bytes, got {}",
@@ -429,8 +433,8 @@ fn resolve_palette(
     }
 
     // 3. Inline.
-    if let Some(p) = inline_palette(region_gff)
-        .context("scanning region GFF for inline PAL/CPAL")?
+    if let Some(p) =
+        inline_palette(region_gff).context("scanning region GFF for inline PAL/CPAL")?
     {
         return Ok(p);
     }
@@ -480,8 +484,8 @@ fn load_palette_spec(spec: &str) -> Result<Palette> {
         .with_context(|| format!("parsing palette id in {spec:?}"))?;
     let kind = parse_kind_padded(kind_str)?;
     let path = PathBuf::from(path_str);
-    let gff = Gff::open(&path)
-        .with_context(|| format!("opening palette GFF {}", path.display()))?;
+    let gff =
+        Gff::open(&path).with_context(|| format!("opening palette GFF {}", path.display()))?;
     let bytes = gff
         .read(kind, id)
         .ok_or_else(|| anyhow!("no chunk '{}' id={} in {}", kind, id, path.display()))?;
@@ -489,9 +493,7 @@ fn load_palette_spec(spec: &str) -> Result<Palette> {
 }
 
 fn spec_error(spec: &str) -> anyhow::Error {
-    anyhow!(
-        "--palette must be '<gff>:<kind>:<id>' (e.g. RESOURCE.GFF:PAL:1000); got {spec:?}"
-    )
+    anyhow!("--palette must be '<gff>:<kind>:<id>' (e.g. RESOURCE.GFF:PAL:1000); got {spec:?}")
 }
 
 /// Resolve where to read WALL chunks from. Precedence:

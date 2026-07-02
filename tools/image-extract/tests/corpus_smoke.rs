@@ -85,17 +85,13 @@ fn every_bitmap_chunk_decodes_or_reports_cleanly() {
                             image_extract::ImageError::FrameOutOfBounds { .. } => {
                                 "FrameOutOfBounds".to_string()
                             }
-                            image_extract::ImageError::Ds1RleError { .. } => "Ds1RleError".to_string(),
+                            image_extract::ImageError::Ds1RleError { .. } => {
+                                "Ds1RleError".to_string()
+                            }
                             other => format!("other:{other}"),
                         };
                         *err_kinds.entry(kind.clone()).or_insert(0) += 1;
-                        failures.push((
-                            path.to_string(),
-                            c.kind.to_string(),
-                            c.id,
-                            frame_id,
-                            kind,
-                        ));
+                        failures.push((path.to_string(), c.kind.to_string(), c.id, frame_id, kind));
                     }
                 }
             }
@@ -128,15 +124,17 @@ fn every_bitmap_chunk_decodes_or_reports_cleanly() {
             eprintln!("  {game}/{leaf} {kind}/{id:#x} frame {frame_id}: {err}");
         }
     }
-    assert!(total_chunks > 0, "no bitmap chunks found; check CORPUS paths");
+    assert!(
+        total_chunks > 0,
+        "no bitmap chunks found; check CORPUS paths"
+    );
     assert!(decoded_frames > 0, "no frames decoded");
 
     // Known-bad chunks. Each entry is (game, file, kind, id,
     // frame_id, error_kind). See image-extract/README.md
     // "Known limitations" for the per-entry root cause.
-    const EXPECTED_FAILURES: &[(&str, &str, &str, i32, usize, &str)] = &[
-        ("ds1", "RESOURCE.GFF", "ICON", 0x7f9, 2, "FrameOutOfBounds"),
-    ];
+    const EXPECTED_FAILURES: &[(&str, &str, &str, i32, usize, &str)] =
+        &[("ds1", "RESOURCE.GFF", "ICON", 0x7f9, 2, "FrameOutOfBounds")];
     let expected: std::collections::BTreeSet<(&str, &str, &str, i32, usize, &str)> =
         EXPECTED_FAILURES.iter().copied().collect();
     let observed: std::collections::BTreeSet<(String, String, String, i32, usize, String)> =
@@ -148,14 +146,27 @@ fn every_bitmap_chunk_decodes_or_reports_cleanly() {
                     .and_then(|n| n.to_str())
                     .unwrap_or(path.as_str())
                     .to_string();
-                let game = if path.contains("/ds1/") { "ds1".to_string() } else { "ds2".to_string() };
+                let game = if path.contains("/ds1/") {
+                    "ds1".to_string()
+                } else {
+                    "ds2".to_string()
+                };
                 (game, leaf, kind.clone(), *id, *frame_id, err.clone())
             })
             .collect();
 
     let expected_str: std::collections::BTreeSet<_> = expected
         .iter()
-        .map(|(g, f, k, i, fr, e)| (g.to_string(), f.to_string(), k.to_string(), *i, *fr, e.to_string()))
+        .map(|(g, f, k, i, fr, e)| {
+            (
+                g.to_string(),
+                f.to_string(),
+                k.to_string(),
+                *i,
+                *fr,
+                e.to_string(),
+            )
+        })
         .collect();
 
     let unexpected: Vec<_> = observed.difference(&expected_str).cloned().collect();

@@ -21,10 +21,9 @@
 //! reassemble.
 
 use gpl_disasm::{
-    opcode_name, DisasmResult, Expression, Instruction, Op, ParamSpec, StringSubType, VarKind,
-    EXTENDED_VAR, GPL_GBIGNUM, GPL_GBYTE, GPL_GFLAG, GPL_GNAME, GPL_GNUM, GPL_GSTRING, GPL_LBIGNUM,
-    GPL_LBYTE, GPL_LFLAG, GPL_LNAME, GPL_LNUM, GPL_LSTRING, MAX_KNOWN_OPCODE, OPCODES,
-    PARAM_COUNTS,
+    DisasmResult, EXTENDED_VAR, Expression, GPL_GBIGNUM, GPL_GBYTE, GPL_GFLAG, GPL_GNAME, GPL_GNUM,
+    GPL_GSTRING, GPL_LBIGNUM, GPL_LBYTE, GPL_LFLAG, GPL_LNAME, GPL_LNUM, GPL_LSTRING, Instruction,
+    MAX_KNOWN_OPCODE, OPCODES, Op, PARAM_COUNTS, ParamSpec, StringSubType, VarKind, opcode_name,
 };
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -55,7 +54,9 @@ pub enum ParseError {
         position: String,
         detail: String,
     },
-    #[error("line {line}: opcode 0x{opcode:02x} ({mnemonic}) is not supported by the v0.2.0 text parser ({reason})")]
+    #[error(
+        "line {line}: opcode 0x{opcode:02x} ({mnemonic}) is not supported by the v0.2.0 text parser ({reason})"
+    )]
     UnsupportedOpcode {
         line: usize,
         opcode: u8,
@@ -70,7 +71,9 @@ pub enum ParseError {
     DuplicateDefine { line: usize, name: String },
     #[error("line {line}: %search-tail needs whitespace-separated hex bytes")]
     BadSearchTailSyntax { line: usize },
-    #[error("line {line}: %search-tail conflicts with a `; raw_tail=...` trailer on the same instruction")]
+    #[error(
+        "line {line}: %search-tail conflicts with a `; raw_tail=...` trailer on the same instruction"
+    )]
     DuplicateSearchTail { line: usize },
     #[error("line {line}: parameterised %define needs `<name>(<args>) <body>`")]
     BadParamMacroSyntax { line: usize },
@@ -363,49 +366,51 @@ fn apply_defines(
             // `name` is in the macro table. The opening paren
             // must immediately follow the identifier.
             if let Some(macro_def) = macros.get(token)
-                && i < bytes.len() && bytes[i] == b'(' {
-                    let (args, args_consumed) = match split_macro_call_args(&line[i..]) {
-                        Some(v) => v,
-                        None => {
-                            // Unterminated `(`: leave the
-                            // token untouched and let the
-                            // downstream parser complain.
-                            out.push_str(token);
-                            continue;
-                        }
-                    };
-                    if args.len() != macro_def.params.len() {
-                        return Err(ParseError::MacroParamCount {
-                            line: line_no,
-                            name: token.to_string(),
-                            expected: macro_def.params.len(),
-                            found: args.len(),
-                        });
+                && i < bytes.len()
+                && bytes[i] == b'('
+            {
+                let (args, args_consumed) = match split_macro_call_args(&line[i..]) {
+                    Some(v) => v,
+                    None => {
+                        // Unterminated `(`: leave the
+                        // token untouched and let the
+                        // downstream parser complain.
+                        out.push_str(token);
+                        continue;
                     }
-                    let mut local_defines = defines.clone();
-                    for (p, a) in macro_def.params.iter().zip(args.iter()) {
-                        // Pre-expand the argument text against
-                        // the outer defines/macros table so a
-                        // `wrap(SLOT)` call where `SLOT` is a
-                        // plain `%define` resolves before the
-                        // param binding (avoids the recursive
-                        // body never re-scanning the substituted
-                        // text).
-                        let expanded_arg = apply_defines(a.trim(), defines, macros, line_no)?;
-                        local_defines.insert(p.clone(), expanded_arg);
-                    }
-                    // Expand the body with arg substitutions
-                    // applied via apply_defines (recursive call;
-                    // the empty macros table prevents infinite
-                    // recursion since the body cannot re-invoke
-                    // itself by name without an explicit
-                    // re-definition).
-                    let expanded =
-                        apply_defines(&macro_def.body, &local_defines, &HashMap::new(), line_no)?;
-                    out.push_str(&expanded);
-                    i += args_consumed;
-                    continue;
+                };
+                if args.len() != macro_def.params.len() {
+                    return Err(ParseError::MacroParamCount {
+                        line: line_no,
+                        name: token.to_string(),
+                        expected: macro_def.params.len(),
+                        found: args.len(),
+                    });
                 }
+                let mut local_defines = defines.clone();
+                for (p, a) in macro_def.params.iter().zip(args.iter()) {
+                    // Pre-expand the argument text against
+                    // the outer defines/macros table so a
+                    // `wrap(SLOT)` call where `SLOT` is a
+                    // plain `%define` resolves before the
+                    // param binding (avoids the recursive
+                    // body never re-scanning the substituted
+                    // text).
+                    let expanded_arg = apply_defines(a.trim(), defines, macros, line_no)?;
+                    local_defines.insert(p.clone(), expanded_arg);
+                }
+                // Expand the body with arg substitutions
+                // applied via apply_defines (recursive call;
+                // the empty macros table prevents infinite
+                // recursion since the body cannot re-invoke
+                // itself by name without an explicit
+                // re-definition).
+                let expanded =
+                    apply_defines(&macro_def.body, &local_defines, &HashMap::new(), line_no)?;
+                out.push_str(&expanded);
+                i += args_consumed;
+                continue;
+            }
             if let Some(replacement) = defines.get(token) {
                 out.push_str(replacement);
             } else {
@@ -728,10 +733,9 @@ fn preprocess_recursive(
             && !stripped.ends_with(':')
             && stripped.len() >= 4
             && usize::from_str_radix(&stripped[0..4.min(stripped.len())], 16).is_ok();
-        if is_instruction
-            && let Some(bytes) = pending_tail.take() {
-                search_tail_attachments.insert(line_no, bytes);
-            }
+        if is_instruction && let Some(bytes) = pending_tail.take() {
+            search_tail_attachments.insert(line_no, bytes);
+        }
         out_lines.push(substituted);
     }
     Ok(())
@@ -854,10 +858,12 @@ fn collect_labels(input: &str) -> HashMap<String, usize> {
             if bare.starts_with("label_0x") || bare.starts_with("entry_0x") {
                 // Self-encoding offset; trust the hex.
                 let hex_len = bare.len() - "label_0x".len();
-                if hex_len > 0 && hex_len <= 4
-                    && let Ok(offset) = usize::from_str_radix(&bare[bare.len() - hex_len..], 16) {
-                        out.insert(bare.to_string(), offset);
-                    }
+                if hex_len > 0
+                    && hex_len <= 4
+                    && let Ok(offset) = usize::from_str_radix(&bare[bare.len() - hex_len..], 16)
+                {
+                    out.insert(bare.to_string(), offset);
+                }
             } else {
                 // User-chosen label; will be bound to the
                 // offset of the next instruction line.
@@ -875,9 +881,10 @@ fn collect_labels(input: &str) -> HashMap<String, usize> {
                 continue;
             }
             if line.len() >= 4
-                && let Ok(offset) = usize::from_str_radix(&line[0..4], 16) {
-                    out.insert(name, offset);
-                }
+                && let Ok(offset) = usize::from_str_radix(&line[0..4], 16)
+            {
+                out.insert(name, offset);
+            }
         }
     }
     out
@@ -1147,12 +1154,12 @@ fn expression_byte_len(expr: &Expression) -> usize {
             ..
         } => {
             let mut n = 2; // 0x8C + inner_opcode
-                           // Mirror the encoder's RetVal dispatch (lib.rs): a
-                           // Search inner opcode encodes only inner_params[0] then
-                           // appends inner_raw_tail verbatim; every other spec
-                           // encodes all inner_params and never writes a tail.
-                           // Counting all params + tail unconditionally miscounts
-                           // total_bytes on chunks with nested gpl_search.
+            // Mirror the encoder's RetVal dispatch (lib.rs): a
+            // Search inner opcode encodes only inner_params[0] then
+            // appends inner_raw_tail verbatim; every other spec
+            // encodes all inner_params and never writes a tail.
+            // Counting all params + tail unconditionally miscounts
+            // total_bytes on chunks with nested gpl_search.
             let spec = if (*inner_opcode as usize) <= MAX_KNOWN_OPCODE as usize {
                 PARAM_COUNTS[*inner_opcode as usize]
             } else {
@@ -1951,27 +1958,28 @@ fn try_parse_variable(s: &str) -> Option<(VarKind, bool, u16, usize)> {
             let extended = rest.starts_with('+');
             let after_plus = if extended { &rest[1..] } else { rest };
             if let Some(after_open) = after_plus.strip_prefix('[')
-                && let Some(close_idx) = after_open.find(']') {
-                    let inner = &after_open[..close_idx];
-                    // Accept both the plain form `[id]` and the
-                    // decorated form `[id (NAME)]` emitted by
-                    // gpl-disasm v0.5.0+ when a syms/variables.toml
-                    // entry is loaded. The name is documentation
-                    // only and is discarded during parse; the
-                    // dispatch byte is reconstructed from
-                    // var_kind + id + extended on encode.
-                    let id_part = match inner.find(" (") {
-                        Some(i) if inner.ends_with(')') => &inner[..i],
-                        _ => inner,
-                    };
-                    if let Ok(id) = id_part.parse::<u16>() {
-                        // Bytes consumed: prefix + optional `+` +
-                        // `[` + entire inner content + `]`.
-                        let consumed =
-                            prefix.len() + (if extended { 1 } else { 0 }) + 1 + inner.len() + 1;
-                        return Some((*vk, extended, id, consumed));
-                    }
+                && let Some(close_idx) = after_open.find(']')
+            {
+                let inner = &after_open[..close_idx];
+                // Accept both the plain form `[id]` and the
+                // decorated form `[id (NAME)]` emitted by
+                // gpl-disasm v0.5.0+ when a syms/variables.toml
+                // entry is loaded. The name is documentation
+                // only and is discarded during parse; the
+                // dispatch byte is reconstructed from
+                // var_kind + id + extended on encode.
+                let id_part = match inner.find(" (") {
+                    Some(i) if inner.ends_with(')') => &inner[..i],
+                    _ => inner,
+                };
+                if let Ok(id) = id_part.parse::<u16>() {
+                    // Bytes consumed: prefix + optional `+` +
+                    // `[` + entire inner content + `]`.
+                    let consumed =
+                        prefix.len() + (if extended { 1 } else { 0 }) + 1 + inner.len() + 1;
+                    return Some((*vk, extended, id, consumed));
                 }
+            }
         }
     }
     None

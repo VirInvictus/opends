@@ -92,10 +92,7 @@ fn every_ds1_rle_frame_packs_unpacks_pixel_identical() {
                     Err(e) => {
                         failures.push(format!(
                             "{path}:{:?}/{} frame {}: encode failed: {}",
-                            c.kind,
-                            c.id,
-                            frame_id,
-                            e
+                            c.kind, c.id, frame_id, e
                         ));
                         continue;
                     }
@@ -105,10 +102,7 @@ fn every_ds1_rle_frame_packs_unpacks_pixel_identical() {
                     Err(e) => {
                         failures.push(format!(
                             "{path}:{:?}/{} frame {}: re-parse failed: {}",
-                            c.kind,
-                            c.id,
-                            frame_id,
-                            e
+                            c.kind, c.id, frame_id, e
                         ));
                         continue;
                     }
@@ -118,10 +112,7 @@ fn every_ds1_rle_frame_packs_unpacks_pixel_identical() {
                     Err(e) => {
                         failures.push(format!(
                             "{path}:{:?}/{} frame {}: re-decode failed: {}",
-                            c.kind,
-                            c.id,
-                            frame_id,
-                            e
+                            c.kind, c.id, frame_id, e
                         ));
                         continue;
                     }

@@ -116,9 +116,8 @@ pub const MAX_RETVAL_DEPTH: u8 = 4;
 /// "safe in RETVAL context" per the row notes in
 /// [`docs/gpl-opcodes.md`](../docs/gpl-opcodes.md).
 pub const RETVAL_SAFE_OPCODES: &[u8] = &[
-    0x0F, 0x10, 0x1A, 0x1E, 0x1F, 0x20, 0x22, 0x25, 0x2F, 0x33,
-    0x34, 0x38, 0x39, 0x3D, 0x41, 0x49, 0x52, 0x59, 0x5A, 0x5C,
-    0x80,
+    0x0F, 0x10, 0x1A, 0x1E, 0x1F, 0x20, 0x22, 0x25, 0x2F, 0x33, 0x34, 0x38, 0x39, 0x3D, 0x41, 0x49,
+    0x52, 0x59, 0x5A, 0x5C, 0x80,
 ];
 
 #[inline]
@@ -136,135 +135,135 @@ fn is_retval_safe(opcode: u8) -> bool {
 /// Bytes 0x81..=0xFF are not part of libgff's table; we treat them
 /// as unknown.
 pub const OPCODES: &[&str] = &[
-    "gpl zero",              // 0x00
-    "gpl long divide equal", // 0x01
-    "gpl byte dec",          // 0x02
-    "gpl word dec",          // 0x03
-    "gpl long dec",          // 0x04
-    "gpl byte inc",          // 0x05
-    "gpl word inc",          // 0x06
-    "gpl long inc",          // 0x07
-    "gpl hunt",              // 0x08
-    "gpl getxy",             // 0x09
-    "gpl string copy",       // 0x0A
-    "gpl p damage",          // 0x0B
-    "gpl changemoney",       // 0x0C
-    "gpl setvar",            // 0x0D
-    "gpl toggle accum",      // 0x0E
-    "gpl getstatus",         // 0x0F
-    "gpl getlos",            // 0x10
-    "gpl long times equal",  // 0x11
-    "gpl jump",              // 0x12
-    "gpl local sub",         // 0x13
-    "gpl global sub",        // 0x14
-    "gpl local ret",         // 0x15
-    "gpl load variable",     // 0x16
-    "gpl compare",           // 0x17
-    "gpl load accum",        // 0x18
-    "gpl global ret",        // 0x19
-    "gpl nextto",            // 0x1A
-    "gpl inlostrigger",      // 0x1B
-    "gpl notinlostrigger",   // 0x1C
-    "gpl clear los",         // 0x1D
-    "gpl nametonum",         // 0x1E
-    "gpl numtoname",         // 0x1F
-    "gpl bitsnoop",          // 0x20
-    "gpl award",             // 0x21
-    "gpl request",           // 0x22
-    "gpl source trace",      // 0x23
-    "gpl shop",              // 0x24
-    "gpl clone",             // 0x25
-    "gpl default",           // 0x26
-    "gpl ifcompare",         // 0x27
-    "gpl trace var",         // 0x28
-    "gpl orelse",            // 0x29
-    "gpl clearpic",          // 0x2A
-    "gpl continue",          // 0x2B
-    "gpl log",               // 0x2C
-    "gpl damage",            // 0x2D
-    "gpl source line num",   // 0x2E
-    "gpl drop",              // 0x2F
-    "gpl passtime",          // 0x30
-    "gpl exit gpl",          // 0x31
-    "gpl fetch",             // 0x32
-    "gpl search",            // 0x33
-    "gpl getparty",          // 0x34
-    "gpl fight",             // 0x35
-    "gpl flee",              // 0x36
-    "gpl follow",            // 0x37
-    "gpl getyn",             // 0x38
-    "gpl give",              // 0x39
-    "gpl go",                // 0x3A
-    "gpl input bignum",      // 0x3B
-    "gpl goxy",              // 0x3C
-    "gpl readorders",        // 0x3D
-    "gpl if",                // 0x3E
-    "gpl else",              // 0x3F
-    "gpl setrecord",         // 0x40
-    "gpl setother",          // 0x41
-    "gpl input string",      // 0x42
-    "gpl input number",      // 0x43
-    "gpl input money",       // 0x44
-    "gpl joinparty",         // 0x45
-    "gpl leaveparty",        // 0x46
-    "gpl lockdoor",          // 0x47
-    "gpl menu",              // 0x48
-    "gpl setthing",          // 0x49
-    "gpl default",           // 0x4A
-    "gpl local sub trace",   // 0x4B
-    "gpl default",           // 0x4C
-    "gpl default",           // 0x4D
-    "gpl default",           // 0x4E
-    "gpl print string",      // 0x4F
-    "gpl print number",      // 0x50
-    "gpl printnl",           // 0x51
-    "gpl rand",              // 0x52
-    "gpl default",           // 0x53
-    "gpl showpic",           // 0x54
-    "gpl default",           // 0x55
-    "gpl default",           // 0x56
-    "gpl default",           // 0x57
-    "gpl skillroll",         // 0x58
-    "gpl statroll",          // 0x59
-    "gpl string compare",    // 0x5A
-    "gpl match string",      // 0x5B
-    "gpl take",              // 0x5C
-    "gpl sound",             // 0x5D
-    "gpl tport",             // 0x5E
-    "gpl music",             // 0x5F
-    "gpl default",           // 0x60
-    "gpl cmpend",            // 0x61
-    "gpl wait",              // 0x62
-    "gpl while",             // 0x63
-    "gpl wend",              // 0x64
-    "gpl attacktrigger",     // 0x65
-    "gpl looktrigger",       // 0x66
-    "gpl endif",             // 0x67
-    "gpl move tiletrigger",  // 0x68
-    "gpl door tiletrigger",  // 0x69
-    "gpl move boxtrigger",   // 0x6A
-    "gpl door boxtrigger",   // 0x6B
+    "gpl zero",               // 0x00
+    "gpl long divide equal",  // 0x01
+    "gpl byte dec",           // 0x02
+    "gpl word dec",           // 0x03
+    "gpl long dec",           // 0x04
+    "gpl byte inc",           // 0x05
+    "gpl word inc",           // 0x06
+    "gpl long inc",           // 0x07
+    "gpl hunt",               // 0x08
+    "gpl getxy",              // 0x09
+    "gpl string copy",        // 0x0A
+    "gpl p damage",           // 0x0B
+    "gpl changemoney",        // 0x0C
+    "gpl setvar",             // 0x0D
+    "gpl toggle accum",       // 0x0E
+    "gpl getstatus",          // 0x0F
+    "gpl getlos",             // 0x10
+    "gpl long times equal",   // 0x11
+    "gpl jump",               // 0x12
+    "gpl local sub",          // 0x13
+    "gpl global sub",         // 0x14
+    "gpl local ret",          // 0x15
+    "gpl load variable",      // 0x16
+    "gpl compare",            // 0x17
+    "gpl load accum",         // 0x18
+    "gpl global ret",         // 0x19
+    "gpl nextto",             // 0x1A
+    "gpl inlostrigger",       // 0x1B
+    "gpl notinlostrigger",    // 0x1C
+    "gpl clear los",          // 0x1D
+    "gpl nametonum",          // 0x1E
+    "gpl numtoname",          // 0x1F
+    "gpl bitsnoop",           // 0x20
+    "gpl award",              // 0x21
+    "gpl request",            // 0x22
+    "gpl source trace",       // 0x23
+    "gpl shop",               // 0x24
+    "gpl clone",              // 0x25
+    "gpl default",            // 0x26
+    "gpl ifcompare",          // 0x27
+    "gpl trace var",          // 0x28
+    "gpl orelse",             // 0x29
+    "gpl clearpic",           // 0x2A
+    "gpl continue",           // 0x2B
+    "gpl log",                // 0x2C
+    "gpl damage",             // 0x2D
+    "gpl source line num",    // 0x2E
+    "gpl drop",               // 0x2F
+    "gpl passtime",           // 0x30
+    "gpl exit gpl",           // 0x31
+    "gpl fetch",              // 0x32
+    "gpl search",             // 0x33
+    "gpl getparty",           // 0x34
+    "gpl fight",              // 0x35
+    "gpl flee",               // 0x36
+    "gpl follow",             // 0x37
+    "gpl getyn",              // 0x38
+    "gpl give",               // 0x39
+    "gpl go",                 // 0x3A
+    "gpl input bignum",       // 0x3B
+    "gpl goxy",               // 0x3C
+    "gpl readorders",         // 0x3D
+    "gpl if",                 // 0x3E
+    "gpl else",               // 0x3F
+    "gpl setrecord",          // 0x40
+    "gpl setother",           // 0x41
+    "gpl input string",       // 0x42
+    "gpl input number",       // 0x43
+    "gpl input money",        // 0x44
+    "gpl joinparty",          // 0x45
+    "gpl leaveparty",         // 0x46
+    "gpl lockdoor",           // 0x47
+    "gpl menu",               // 0x48
+    "gpl setthing",           // 0x49
+    "gpl default",            // 0x4A
+    "gpl local sub trace",    // 0x4B
+    "gpl default",            // 0x4C
+    "gpl default",            // 0x4D
+    "gpl default",            // 0x4E
+    "gpl print string",       // 0x4F
+    "gpl print number",       // 0x50
+    "gpl printnl",            // 0x51
+    "gpl rand",               // 0x52
+    "gpl default",            // 0x53
+    "gpl showpic",            // 0x54
+    "gpl default",            // 0x55
+    "gpl default",            // 0x56
+    "gpl default",            // 0x57
+    "gpl skillroll",          // 0x58
+    "gpl statroll",           // 0x59
+    "gpl string compare",     // 0x5A
+    "gpl match string",       // 0x5B
+    "gpl take",               // 0x5C
+    "gpl sound",              // 0x5D
+    "gpl tport",              // 0x5E
+    "gpl music",              // 0x5F
+    "gpl default",            // 0x60
+    "gpl cmpend",             // 0x61
+    "gpl wait",               // 0x62
+    "gpl while",              // 0x63
+    "gpl wend",               // 0x64
+    "gpl attacktrigger",      // 0x65
+    "gpl looktrigger",        // 0x66
+    "gpl endif",              // 0x67
+    "gpl move tiletrigger",   // 0x68
+    "gpl door tiletrigger",   // 0x69
+    "gpl move boxtrigger",    // 0x6A
+    "gpl door boxtrigger",    // 0x6B
     "gpl pickup itemtrigger", // 0x6C
-    "gpl usetrigger",        // 0x6D
-    "gpl talktotrigger",     // 0x6E
-    "gpl noorderstrigger",   // 0x6F
-    "gpl usewithtrigger",    // 0x70
-    "gpl default",           // 0x71
-    "gpl default",           // 0x72
-    "gpl default",           // 0x73
-    "gpl default",           // 0x74
-    "gpl default",           // 0x75
-    "gpl byte plus equal",   // 0x76
-    "gpl byte minus equal",  // 0x77
-    "gpl byte times equal",  // 0x78
-    "gpl byte divide equal", // 0x79
-    "gpl word plus equal",   // 0x7A
-    "gpl word minus equal",  // 0x7B
-    "gpl word times equal",  // 0x7C
-    "gpl word divide equal", // 0x7D
-    "gpl long plus equal",   // 0x7E
-    "gpl long minus equal",  // 0x7F
-    "gpl get range",         // 0x80
+    "gpl usetrigger",         // 0x6D
+    "gpl talktotrigger",      // 0x6E
+    "gpl noorderstrigger",    // 0x6F
+    "gpl usewithtrigger",     // 0x70
+    "gpl default",            // 0x71
+    "gpl default",            // 0x72
+    "gpl default",            // 0x73
+    "gpl default",            // 0x74
+    "gpl default",            // 0x75
+    "gpl byte plus equal",    // 0x76
+    "gpl byte minus equal",   // 0x77
+    "gpl byte times equal",   // 0x78
+    "gpl byte divide equal",  // 0x79
+    "gpl word plus equal",    // 0x7A
+    "gpl word minus equal",   // 0x7B
+    "gpl word times equal",   // 0x7C
+    "gpl word divide equal",  // 0x7D
+    "gpl long plus equal",    // 0x7E
+    "gpl long minus equal",   // 0x7F
+    "gpl get range",          // 0x80
 ];
 
 /// Highest opcode byte known to libgff (`0x80`).
@@ -327,135 +326,135 @@ pub enum ParamSpec {
 /// where libgff returns `gpl_unknown` (sets `0x5F music` to 1
 /// param; the rest stay 0/unimplemented).
 pub const PARAM_COUNTS: [ParamSpec; 0x81] = [
-    ParamSpec::None,     // 0x00 gpl zero (EXIT_GPL)
-    ParamSpec::Fixed(2), // 0x01 gpl long divide equal
-    ParamSpec::Fixed(1), // 0x02 gpl byte dec
-    ParamSpec::Fixed(1), // 0x03 gpl word dec
-    ParamSpec::Fixed(1), // 0x04 gpl long dec
-    ParamSpec::Fixed(1), // 0x05 gpl byte inc
-    ParamSpec::Fixed(1), // 0x06 gpl word inc
-    ParamSpec::Fixed(1), // 0x07 gpl long inc
-    ParamSpec::Fixed(1), // 0x08 gpl hunt
-    ParamSpec::Fixed(1), // 0x09 gpl getxy
-    ParamSpec::Fixed(2), // 0x0A gpl string copy
-    ParamSpec::Fixed(2), // 0x0B gpl p damage
-    ParamSpec::Fixed(1), // 0x0C gpl changemoney
-    ParamSpec::Custom,   // 0x0D gpl setvar (libgff unknown / soloscuro lua_exit)
-    ParamSpec::None,     // 0x0E gpl toggle accum
-    ParamSpec::Fixed(1), // 0x0F gpl getstatus
-    ParamSpec::Fixed(3), // 0x10 gpl getlos
-    ParamSpec::Fixed(2), // 0x11 gpl long times equal
-    ParamSpec::Fixed(1), // 0x12 gpl jump
-    ParamSpec::Fixed(1), // 0x13 gpl local sub (call_local)
-    ParamSpec::Fixed(2), // 0x14 gpl global sub (call_global)
-    ParamSpec::None,     // 0x15 gpl local ret
-    ParamSpec::LoadVar,  // 0x16 gpl load variable (load_accum + datatype + varnum or complex)
-    ParamSpec::Fixed(1), // 0x17 gpl compare (load_accum reads 1 number)
-    ParamSpec::Fixed(1), // 0x18 gpl load accum
-    ParamSpec::None,     // 0x19 gpl global ret
-    ParamSpec::Fixed(2), // 0x1A gpl nextto
-    ParamSpec::Fixed(4), // 0x1B gpl inlostrigger (template, 4)
-    ParamSpec::Fixed(4), // 0x1C gpl notinlostrigger (template, 4)
-    ParamSpec::Fixed(1), // 0x1D gpl clear los
-    ParamSpec::Fixed(1), // 0x1E gpl nametonum
-    ParamSpec::Fixed(1), // 0x1F gpl numtoname
-    ParamSpec::Fixed(2), // 0x20 gpl bitsnoop
-    ParamSpec::Fixed(2), // 0x21 gpl award
-    ParamSpec::Fixed(4), // 0x22 gpl request
-    ParamSpec::Custom,   // 0x23 gpl source trace (libgff unknown)
-    ParamSpec::Fixed(1), // 0x24 gpl shop
-    ParamSpec::Fixed(6), // 0x25 gpl clone
-    ParamSpec::Custom,   // 0x26 gpl default (libgff unknown)
-    ParamSpec::Fixed(2), // 0x27 gpl ifcompare
-    ParamSpec::Custom,   // 0x28 gpl trace var (libgff unknown)
-    ParamSpec::Fixed(1), // 0x29 gpl orelse
-    ParamSpec::None,     // 0x2A gpl clearpic
-    ParamSpec::None,     // 0x2B gpl continue
-    ParamSpec::Log,      // 0x2C gpl log (reads one packed string)
-    ParamSpec::Fixed(2), // 0x2D gpl damage
-    ParamSpec::Custom,   // 0x2E gpl source line num (libgff unknown)
-    ParamSpec::Fixed(3), // 0x2F gpl drop
-    ParamSpec::Fixed(1), // 0x30 gpl passtime
-    ParamSpec::None,     // 0x31 gpl exit gpl
-    ParamSpec::Fixed(2), // 0x32 gpl fetch
-    ParamSpec::Search,   // 0x33 gpl search (read_number + bytes + loop)
-    ParamSpec::Fixed(1), // 0x34 gpl getparty
-    ParamSpec::None,     // 0x35 gpl fight
-    ParamSpec::Fixed(1), // 0x36 gpl flee
-    ParamSpec::Fixed(2), // 0x37 gpl follow
-    ParamSpec::None,     // 0x38 gpl getyn
-    ParamSpec::Fixed(4), // 0x39 gpl give
-    ParamSpec::Fixed(2), // 0x3A gpl go
-    ParamSpec::Custom,   // 0x3B gpl input bignum (libgff unknown)
-    ParamSpec::Fixed(3), // 0x3C gpl goxy
-    ParamSpec::Fixed(1), // 0x3D gpl readorders
-    ParamSpec::Fixed(1), // 0x3E gpl if
-    ParamSpec::Fixed(1), // 0x3F gpl else
+    ParamSpec::None,      // 0x00 gpl zero (EXIT_GPL)
+    ParamSpec::Fixed(2),  // 0x01 gpl long divide equal
+    ParamSpec::Fixed(1),  // 0x02 gpl byte dec
+    ParamSpec::Fixed(1),  // 0x03 gpl word dec
+    ParamSpec::Fixed(1),  // 0x04 gpl long dec
+    ParamSpec::Fixed(1),  // 0x05 gpl byte inc
+    ParamSpec::Fixed(1),  // 0x06 gpl word inc
+    ParamSpec::Fixed(1),  // 0x07 gpl long inc
+    ParamSpec::Fixed(1),  // 0x08 gpl hunt
+    ParamSpec::Fixed(1),  // 0x09 gpl getxy
+    ParamSpec::Fixed(2),  // 0x0A gpl string copy
+    ParamSpec::Fixed(2),  // 0x0B gpl p damage
+    ParamSpec::Fixed(1),  // 0x0C gpl changemoney
+    ParamSpec::Custom,    // 0x0D gpl setvar (libgff unknown / soloscuro lua_exit)
+    ParamSpec::None,      // 0x0E gpl toggle accum
+    ParamSpec::Fixed(1),  // 0x0F gpl getstatus
+    ParamSpec::Fixed(3),  // 0x10 gpl getlos
+    ParamSpec::Fixed(2),  // 0x11 gpl long times equal
+    ParamSpec::Fixed(1),  // 0x12 gpl jump
+    ParamSpec::Fixed(1),  // 0x13 gpl local sub (call_local)
+    ParamSpec::Fixed(2),  // 0x14 gpl global sub (call_global)
+    ParamSpec::None,      // 0x15 gpl local ret
+    ParamSpec::LoadVar,   // 0x16 gpl load variable (load_accum + datatype + varnum or complex)
+    ParamSpec::Fixed(1),  // 0x17 gpl compare (load_accum reads 1 number)
+    ParamSpec::Fixed(1),  // 0x18 gpl load accum
+    ParamSpec::None,      // 0x19 gpl global ret
+    ParamSpec::Fixed(2),  // 0x1A gpl nextto
+    ParamSpec::Fixed(4),  // 0x1B gpl inlostrigger (template, 4)
+    ParamSpec::Fixed(4),  // 0x1C gpl notinlostrigger (template, 4)
+    ParamSpec::Fixed(1),  // 0x1D gpl clear los
+    ParamSpec::Fixed(1),  // 0x1E gpl nametonum
+    ParamSpec::Fixed(1),  // 0x1F gpl numtoname
+    ParamSpec::Fixed(2),  // 0x20 gpl bitsnoop
+    ParamSpec::Fixed(2),  // 0x21 gpl award
+    ParamSpec::Fixed(4),  // 0x22 gpl request
+    ParamSpec::Custom,    // 0x23 gpl source trace (libgff unknown)
+    ParamSpec::Fixed(1),  // 0x24 gpl shop
+    ParamSpec::Fixed(6),  // 0x25 gpl clone
+    ParamSpec::Custom,    // 0x26 gpl default (libgff unknown)
+    ParamSpec::Fixed(2),  // 0x27 gpl ifcompare
+    ParamSpec::Custom,    // 0x28 gpl trace var (libgff unknown)
+    ParamSpec::Fixed(1),  // 0x29 gpl orelse
+    ParamSpec::None,      // 0x2A gpl clearpic
+    ParamSpec::None,      // 0x2B gpl continue
+    ParamSpec::Log,       // 0x2C gpl log (reads one packed string)
+    ParamSpec::Fixed(2),  // 0x2D gpl damage
+    ParamSpec::Custom,    // 0x2E gpl source line num (libgff unknown)
+    ParamSpec::Fixed(3),  // 0x2F gpl drop
+    ParamSpec::Fixed(1),  // 0x30 gpl passtime
+    ParamSpec::None,      // 0x31 gpl exit gpl
+    ParamSpec::Fixed(2),  // 0x32 gpl fetch
+    ParamSpec::Search,    // 0x33 gpl search (read_number + bytes + loop)
+    ParamSpec::Fixed(1),  // 0x34 gpl getparty
+    ParamSpec::None,      // 0x35 gpl fight
+    ParamSpec::Fixed(1),  // 0x36 gpl flee
+    ParamSpec::Fixed(2),  // 0x37 gpl follow
+    ParamSpec::None,      // 0x38 gpl getyn
+    ParamSpec::Fixed(4),  // 0x39 gpl give
+    ParamSpec::Fixed(2),  // 0x3A gpl go
+    ParamSpec::Custom,    // 0x3B gpl input bignum (libgff unknown)
+    ParamSpec::Fixed(3),  // 0x3C gpl goxy
+    ParamSpec::Fixed(1),  // 0x3D gpl readorders
+    ParamSpec::Fixed(1),  // 0x3E gpl if
+    ParamSpec::Fixed(1),  // 0x3F gpl else
     ParamSpec::SetRecord, // 0x40 gpl setrecord (access_complex + read_number)
-    ParamSpec::Fixed(1), // 0x41 gpl setother
-    ParamSpec::Fixed(1), // 0x42 gpl input string
-    ParamSpec::Fixed(1), // 0x43 gpl input number
-    ParamSpec::Fixed(1), // 0x44 gpl input money
-    ParamSpec::Custom,   // 0x45 gpl joinparty (libgff unknown)
-    ParamSpec::Custom,   // 0x46 gpl leaveparty (libgff unknown)
-    ParamSpec::Custom,   // 0x47 gpl lockdoor (libgff unknown)
-    ParamSpec::Menu,     // 0x48 gpl menu (loop until next byte == 0x4A)
-    ParamSpec::Fixed(2), // 0x49 gpl setthing
-    ParamSpec::Custom,   // 0x4A gpl default (also menu terminator)
-    ParamSpec::Custom,   // 0x4B gpl local sub trace (libgff unknown)
-    ParamSpec::Custom,   // 0x4C gpl default
-    ParamSpec::Custom,   // 0x4D gpl default
-    ParamSpec::Custom,   // 0x4E gpl default
-    ParamSpec::Fixed(2), // 0x4F gpl print string
-    ParamSpec::Fixed(2), // 0x50 gpl print number
-    ParamSpec::None,     // 0x51 gpl printnl (libgff's get_params call is commented out)
-    ParamSpec::Fixed(1), // 0x52 gpl rand
-    ParamSpec::Custom,   // 0x53 gpl default
-    ParamSpec::Fixed(1), // 0x54 gpl showpic
-    ParamSpec::Custom,   // 0x55 gpl default
-    ParamSpec::Custom,   // 0x56 gpl default
-    ParamSpec::Custom,   // 0x57 gpl default
-    ParamSpec::Custom,   // 0x58 gpl skillroll (soloscuro lua_exit, libgff unknown)
-    ParamSpec::Fixed(3), // 0x59 gpl statroll
-    ParamSpec::Fixed(2), // 0x5A gpl string compare
-    ParamSpec::Custom,   // 0x5B gpl match string (libgff unknown)
-    ParamSpec::Fixed(4), // 0x5C gpl take
-    ParamSpec::Fixed(1), // 0x5D gpl sound
-    ParamSpec::Fixed(5), // 0x5E gpl tport
-    ParamSpec::Fixed(1), // 0x5F gpl music (libgff unknown; soloscuro reads 1 number)
-    ParamSpec::Custom,   // 0x60 gpl default
-    ParamSpec::None,     // 0x61 gpl cmpend
-    ParamSpec::Fixed(1), // 0x62 gpl wait
-    ParamSpec::Fixed(1), // 0x63 gpl while
-    ParamSpec::Fixed(1), // 0x64 gpl wend
-    ParamSpec::Fixed(3), // 0x65 gpl attacktrigger (template, 3)
-    ParamSpec::Fixed(3), // 0x66 gpl looktrigger (template, 3)
-    ParamSpec::None,     // 0x67 gpl endif
-    ParamSpec::Fixed(5), // 0x68 gpl move tiletrigger (template, 5)
-    ParamSpec::Fixed(5), // 0x69 gpl door tiletrigger (template, 5)
-    ParamSpec::Fixed(7), // 0x6A gpl move boxtrigger (template, 7)
-    ParamSpec::Fixed(7), // 0x6B gpl door boxtrigger (template, 7)
-    ParamSpec::Fixed(3), // 0x6C gpl pickup itemtrigger (template, 3)
-    ParamSpec::Fixed(3), // 0x6D gpl usetrigger (template, 3)
-    ParamSpec::Fixed(3), // 0x6E gpl talktotrigger (template, 3)
-    ParamSpec::Fixed(3), // 0x6F gpl noorderstrigger (template, 3)
-    ParamSpec::Fixed(4), // 0x70 gpl usewithtrigger (template, 4)
-    ParamSpec::Custom,   // 0x71 gpl default
-    ParamSpec::Custom,   // 0x72 gpl default
-    ParamSpec::Custom,   // 0x73 gpl default
-    ParamSpec::Custom,   // 0x74 gpl default
-    ParamSpec::Custom,   // 0x75 gpl default
-    ParamSpec::Fixed(2), // 0x76 gpl byte plus equal (type_op_equal, 1+1)
-    ParamSpec::Fixed(2), // 0x77 gpl byte minus equal
-    ParamSpec::Fixed(2), // 0x78 gpl byte times equal
-    ParamSpec::Fixed(2), // 0x79 gpl byte divide equal
-    ParamSpec::Fixed(2), // 0x7A gpl word plus equal
-    ParamSpec::Fixed(2), // 0x7B gpl word minus equal
-    ParamSpec::Fixed(2), // 0x7C gpl word times equal
-    ParamSpec::Fixed(2), // 0x7D gpl word divide equal
-    ParamSpec::Fixed(2), // 0x7E gpl long plus equal
-    ParamSpec::Fixed(2), // 0x7F gpl long minus equal
-    ParamSpec::Fixed(2), // 0x80 gpl get range
+    ParamSpec::Fixed(1),  // 0x41 gpl setother
+    ParamSpec::Fixed(1),  // 0x42 gpl input string
+    ParamSpec::Fixed(1),  // 0x43 gpl input number
+    ParamSpec::Fixed(1),  // 0x44 gpl input money
+    ParamSpec::Custom,    // 0x45 gpl joinparty (libgff unknown)
+    ParamSpec::Custom,    // 0x46 gpl leaveparty (libgff unknown)
+    ParamSpec::Custom,    // 0x47 gpl lockdoor (libgff unknown)
+    ParamSpec::Menu,      // 0x48 gpl menu (loop until next byte == 0x4A)
+    ParamSpec::Fixed(2),  // 0x49 gpl setthing
+    ParamSpec::Custom,    // 0x4A gpl default (also menu terminator)
+    ParamSpec::Custom,    // 0x4B gpl local sub trace (libgff unknown)
+    ParamSpec::Custom,    // 0x4C gpl default
+    ParamSpec::Custom,    // 0x4D gpl default
+    ParamSpec::Custom,    // 0x4E gpl default
+    ParamSpec::Fixed(2),  // 0x4F gpl print string
+    ParamSpec::Fixed(2),  // 0x50 gpl print number
+    ParamSpec::None,      // 0x51 gpl printnl (libgff's get_params call is commented out)
+    ParamSpec::Fixed(1),  // 0x52 gpl rand
+    ParamSpec::Custom,    // 0x53 gpl default
+    ParamSpec::Fixed(1),  // 0x54 gpl showpic
+    ParamSpec::Custom,    // 0x55 gpl default
+    ParamSpec::Custom,    // 0x56 gpl default
+    ParamSpec::Custom,    // 0x57 gpl default
+    ParamSpec::Custom,    // 0x58 gpl skillroll (soloscuro lua_exit, libgff unknown)
+    ParamSpec::Fixed(3),  // 0x59 gpl statroll
+    ParamSpec::Fixed(2),  // 0x5A gpl string compare
+    ParamSpec::Custom,    // 0x5B gpl match string (libgff unknown)
+    ParamSpec::Fixed(4),  // 0x5C gpl take
+    ParamSpec::Fixed(1),  // 0x5D gpl sound
+    ParamSpec::Fixed(5),  // 0x5E gpl tport
+    ParamSpec::Fixed(1),  // 0x5F gpl music (libgff unknown; soloscuro reads 1 number)
+    ParamSpec::Custom,    // 0x60 gpl default
+    ParamSpec::None,      // 0x61 gpl cmpend
+    ParamSpec::Fixed(1),  // 0x62 gpl wait
+    ParamSpec::Fixed(1),  // 0x63 gpl while
+    ParamSpec::Fixed(1),  // 0x64 gpl wend
+    ParamSpec::Fixed(3),  // 0x65 gpl attacktrigger (template, 3)
+    ParamSpec::Fixed(3),  // 0x66 gpl looktrigger (template, 3)
+    ParamSpec::None,      // 0x67 gpl endif
+    ParamSpec::Fixed(5),  // 0x68 gpl move tiletrigger (template, 5)
+    ParamSpec::Fixed(5),  // 0x69 gpl door tiletrigger (template, 5)
+    ParamSpec::Fixed(7),  // 0x6A gpl move boxtrigger (template, 7)
+    ParamSpec::Fixed(7),  // 0x6B gpl door boxtrigger (template, 7)
+    ParamSpec::Fixed(3),  // 0x6C gpl pickup itemtrigger (template, 3)
+    ParamSpec::Fixed(3),  // 0x6D gpl usetrigger (template, 3)
+    ParamSpec::Fixed(3),  // 0x6E gpl talktotrigger (template, 3)
+    ParamSpec::Fixed(3),  // 0x6F gpl noorderstrigger (template, 3)
+    ParamSpec::Fixed(4),  // 0x70 gpl usewithtrigger (template, 4)
+    ParamSpec::Custom,    // 0x71 gpl default
+    ParamSpec::Custom,    // 0x72 gpl default
+    ParamSpec::Custom,    // 0x73 gpl default
+    ParamSpec::Custom,    // 0x74 gpl default
+    ParamSpec::Custom,    // 0x75 gpl default
+    ParamSpec::Fixed(2),  // 0x76 gpl byte plus equal (type_op_equal, 1+1)
+    ParamSpec::Fixed(2),  // 0x77 gpl byte minus equal
+    ParamSpec::Fixed(2),  // 0x78 gpl byte times equal
+    ParamSpec::Fixed(2),  // 0x79 gpl byte divide equal
+    ParamSpec::Fixed(2),  // 0x7A gpl word plus equal
+    ParamSpec::Fixed(2),  // 0x7B gpl word minus equal
+    ParamSpec::Fixed(2),  // 0x7C gpl word times equal
+    ParamSpec::Fixed(2),  // 0x7D gpl word divide equal
+    ParamSpec::Fixed(2),  // 0x7E gpl long plus equal
+    ParamSpec::Fixed(2),  // 0x7F gpl long minus equal
+    ParamSpec::Fixed(2),  // 0x80 gpl get range
 ];
 
 /// Look up an opcode byte's parameter spec.
@@ -1016,7 +1015,10 @@ pub fn build_global_cfg(
                 &cs.kind,
                 cs.chunk_id,
                 call.from_offset,
-                chunk_entries.get(&cs.chunk_id).map(|v| v.as_slice()).unwrap_or(&[]),
+                chunk_entries
+                    .get(&cs.chunk_id)
+                    .map(|v| v.as_slice())
+                    .unwrap_or(&[]),
             );
             let to_offset = if call.target_offset >= 0 {
                 call.target_offset as usize
@@ -1069,11 +1071,7 @@ fn nearest_entry_symbol(
     entries: &[usize],
 ) -> Option<String> {
     let syms = symbols?;
-    let entry_offset = entries
-        .iter()
-        .rev()
-        .find(|e| **e <= call_offset)
-        .copied()?;
+    let entry_offset = entries.iter().rev().find(|e| **e <= call_offset).copied()?;
     syms.function_name(file_basename, kind, chunk_id, entry_offset)
         .map(String::from)
 }
@@ -1082,10 +1080,7 @@ fn nearest_entry_symbol(
 /// kind+id (and inbound/outbound counts in the label tooltip);
 /// edges are styled by source chunk. Self-loops get a special
 /// style. Suitable for whole-file callgraph visualisation.
-pub fn write_global_cfg_dot(
-    gcfg: &GlobalCfg,
-    out: &mut impl Write,
-) -> io::Result<()> {
+pub fn write_global_cfg_dot(gcfg: &GlobalCfg, out: &mut impl Write) -> io::Result<()> {
     writeln!(out, "digraph global_cfg {{")?;
     writeln!(out, "  rankdir=LR;")?;
     writeln!(
@@ -1254,11 +1249,9 @@ impl Symbols {
         let mut syms = Symbols::default();
         let opcodes_path = dir.join("opcodes.toml");
         if opcodes_path.is_file() {
-            let body = fs::read_to_string(&opcodes_path).map_err(|e| {
-                SymbolsLoadError::Io {
-                    path: opcodes_path.display().to_string(),
-                    source: e,
-                }
+            let body = fs::read_to_string(&opcodes_path).map_err(|e| SymbolsLoadError::Io {
+                path: opcodes_path.display().to_string(),
+                source: e,
             })?;
             let parsed: OpcodesFile =
                 toml::from_str(&body).map_err(|e| SymbolsLoadError::Parse {
@@ -1269,11 +1262,9 @@ impl Symbols {
         }
         let functions_path = dir.join("functions.toml");
         if functions_path.is_file() {
-            let body = fs::read_to_string(&functions_path).map_err(|e| {
-                SymbolsLoadError::Io {
-                    path: functions_path.display().to_string(),
-                    source: e,
-                }
+            let body = fs::read_to_string(&functions_path).map_err(|e| SymbolsLoadError::Io {
+                path: functions_path.display().to_string(),
+                source: e,
             })?;
             let parsed: FunctionsFile =
                 toml::from_str(&body).map_err(|e| SymbolsLoadError::Parse {
@@ -1289,11 +1280,9 @@ impl Symbols {
         // (kind, id).
         let variables_path = dir.join("variables.toml");
         if variables_path.is_file() {
-            let body = fs::read_to_string(&variables_path).map_err(|e| {
-                SymbolsLoadError::Io {
-                    path: variables_path.display().to_string(),
-                    source: e,
-                }
+            let body = fs::read_to_string(&variables_path).map_err(|e| SymbolsLoadError::Io {
+                path: variables_path.display().to_string(),
+                source: e,
             })?;
             let parsed: VariablesFile =
                 toml::from_str(&body).map_err(|e| SymbolsLoadError::Parse {
@@ -1326,11 +1315,9 @@ impl Symbols {
         // the named chunk.
         let locals_path = dir.join("locals.toml");
         if locals_path.is_file() {
-            let body = fs::read_to_string(&locals_path).map_err(|e| {
-                SymbolsLoadError::Io {
-                    path: locals_path.display().to_string(),
-                    source: e,
-                }
+            let body = fs::read_to_string(&locals_path).map_err(|e| SymbolsLoadError::Io {
+                path: locals_path.display().to_string(),
+                source: e,
             })?;
             let parsed: LocalsFile =
                 toml::from_str(&body).map_err(|e| SymbolsLoadError::Parse {
@@ -1395,15 +1382,13 @@ impl Symbols {
     fn decorate_variable(&self, expr: &mut Expression) {
         match expr {
             Expression::Variable {
-                var_kind,
-                id,
-                name,
-                ..
+                var_kind, id, name, ..
             } => {
                 if name.is_none()
-                    && let Some(n) = self.variable_name(*var_kind, *id) {
-                        *name = Some(Cow::Owned(n.to_string()));
-                    }
+                    && let Some(n) = self.variable_name(*var_kind, *id)
+                {
+                    *name = Some(Cow::Owned(n.to_string()));
+                }
             }
             Expression::RetVal { inner_params, .. } => {
                 for inner in inner_params {
@@ -1476,17 +1461,13 @@ impl Symbols {
     ) {
         match expr {
             Expression::Variable {
-                var_kind,
-                id,
-                name,
-                ..
+                var_kind, id, name, ..
             } => {
                 if name.is_none()
-                    && let Some(n) =
-                        self.local_name(file_basename, kind, chunk_id, *var_kind, *id)
-                    {
-                        *name = Some(Cow::Owned(n.to_string()));
-                    }
+                    && let Some(n) = self.local_name(file_basename, kind, chunk_id, *var_kind, *id)
+                {
+                    *name = Some(Cow::Owned(n.to_string()));
+                }
             }
             Expression::RetVal { inner_params, .. } => {
                 for inner in inner_params {
@@ -1526,13 +1507,7 @@ impl Symbols {
     /// (name)`. Non-entry labels are left alone. JSON consumers
     /// (notably `dialog-extract`) pick up the enriched form
     /// automatically.
-    pub fn apply_to_labels(
-        &self,
-        cfg: &mut Cfg,
-        file_basename: &str,
-        kind: &str,
-        chunk_id: i32,
-    ) {
+    pub fn apply_to_labels(&self, cfg: &mut Cfg, file_basename: &str, kind: &str, chunk_id: i32) {
         if self.functions.is_empty() {
             return;
         }
@@ -1835,24 +1810,20 @@ fn read_expression_with_depth(bytes: &[u8], cursor: usize, retval_depth: u8) -> 
                         }
                         let h = ((bytes[pos] as u16) << 8) | bytes[pos + 1] as u16;
                         pos += 2;
-                        tokens.push(Expression::ImmediateName {
-                            value: -(h as i32),
-                        });
+                        tokens.push(Expression::ImmediateName { value: -(h as i32) });
                     }
                     // GPL_IMMED_STRING | 0x80
-                    x if x == (GPL_IMMED_STRING | 0x80) => {
-                        match read_text(bytes, pos) {
-                            Some((sub_type, value, consumed)) => {
-                                pos += consumed;
-                                tokens.push(Expression::ImmediateString { sub_type, value });
-                            }
-                            None => {
-                                tokens.push(Expression::Unknown { byte: cop });
-                                best_effort = true;
-                                break;
-                            }
+                    x if x == (GPL_IMMED_STRING | 0x80) => match read_text(bytes, pos) {
+                        Some((sub_type, value, consumed)) => {
+                            pos += consumed;
+                            tokens.push(Expression::ImmediateString { sub_type, value });
                         }
-                    }
+                        None => {
+                            tokens.push(Expression::Unknown { byte: cop });
+                            best_effort = true;
+                            break;
+                        }
+                    },
                     // GPL_HI_OPEN_PAREN: enter inner expression.
                     GPL_HI_OPEN_PAREN => {
                         paren_level += 1;
@@ -1873,8 +1844,7 @@ fn read_expression_with_depth(bytes: &[u8], cursor: usize, retval_depth: u8) -> 
                     }
                     // GPL_COMPLEX_* range (and the 0xb3 special case,
                     // which lives inside this same range).
-                    b if ((GPL_COMPLEX_LOW | 0x80)..=(GPL_COMPLEX_HIGH | 0x80)).contains(&b) =>
-                    {
+                    b if ((GPL_COMPLEX_LOW | 0x80)..=(GPL_COMPLEX_HIGH | 0x80)).contains(&b) => {
                         let tag = b & 0x7F;
                         match read_complex_access(bytes, pos) {
                             Some((obj_name, depth, elements, consumed)) => {
@@ -2092,7 +2062,11 @@ fn read_instruction_params_with_depth(
                 let raw = bytes[pos];
                 let stripped = raw & 0x7F;
                 let extended = (stripped & EXTENDED_VAR) != 0;
-                let datatype = if extended { stripped & !EXTENDED_VAR } else { stripped };
+                let datatype = if extended {
+                    stripped & !EXTENDED_VAR
+                } else {
+                    stripped
+                };
                 pos += 1;
                 if datatype < 0x10 {
                     if let Some(var_kind) = VarKind::from_tag(datatype) {
@@ -2405,10 +2379,7 @@ fn redirect_past_else(
 /// is responsible for skipping this when the disassembly was not
 /// aligned (best-effort consumption can misidentify branch
 /// instructions).
-pub fn build_cfg(
-    instructions: &[Instruction],
-    chunk_len: usize,
-) -> (Cfg, Vec<CrossChunkCall>) {
+pub fn build_cfg(instructions: &[Instruction], chunk_len: usize) -> (Cfg, Vec<CrossChunkCall>) {
     // Offset → instruction index, used to validate target offsets
     // and to populate `instruction_indices` later.
     let offset_to_idx: BTreeMap<usize, usize> = instructions
@@ -2444,7 +2415,10 @@ pub fn build_cfg(
             .unwrap_or(chunk_len);
         match class {
             BranchClass::NonBranch | BranchClass::Marker => {}
-            BranchClass::Jump | BranchClass::Conditional1 | BranchClass::Else | BranchClass::Wend => {
+            BranchClass::Jump
+            | BranchClass::Conditional1
+            | BranchClass::Else
+            | BranchClass::Wend => {
                 if let Some(v) = instr.params.first().and_then(|p| literal_target(p)) {
                     if v >= 0 && (v as usize) <= chunk_len {
                         let t = redirect_past_else(v as usize, instructions, &offset_to_idx);
@@ -2484,11 +2458,13 @@ pub fn build_cfg(
             }
             BranchClass::LocalSub => {
                 if let Some(v) = instr.params.first().and_then(|p| literal_target(p))
-                    && v >= 0 && (v as usize) <= chunk_len {
-                        let t = redirect_past_else(v as usize, instructions, &offset_to_idx);
-                        leaders.insert(t);
-                        entry_points.insert(t);
-                    }
+                    && v >= 0
+                    && (v as usize) <= chunk_len
+                {
+                    let t = redirect_past_else(v as usize, instructions, &offset_to_idx);
+                    leaders.insert(t);
+                    entry_points.insert(t);
+                }
             }
             BranchClass::GlobalSub => {
                 let target = instr
@@ -2719,11 +2695,7 @@ fn successors_for(
 /// Emit a Graphviz DOT graph for `cfg`. Block nodes carry an
 /// abbreviated label (offset + first instruction's mnemonic);
 /// edges are colored by [`EdgeKind`].
-pub fn write_dot(
-    cfg: &Cfg,
-    instructions: &[Instruction],
-    out: &mut impl Write,
-) -> io::Result<()> {
+pub fn write_dot(cfg: &Cfg, instructions: &[Instruction], out: &mut impl Write) -> io::Result<()> {
     writeln!(out, "digraph cfg {{")?;
     writeln!(out, "  rankdir=TB;")?;
     writeln!(
@@ -2806,14 +2778,18 @@ fn inline_string_run(slice: &[u8]) -> Option<String> {
         if is_printable(b) {
             start.get_or_insert(i);
         } else if let Some(s) = start.take()
-            && i - s >= MIN_STRING_LEN && best.is_none() {
-                best = Some((s, i));
-            }
+            && i - s >= MIN_STRING_LEN
+            && best.is_none()
+        {
+            best = Some((s, i));
+        }
     }
     if let Some(s) = start
-        && slice.len() - s >= MIN_STRING_LEN && best.is_none() {
-            best = Some((s, slice.len()));
-        }
+        && slice.len() - s >= MIN_STRING_LEN
+        && best.is_none()
+    {
+        best = Some((s, slice.len()));
+    }
     best.map(|(s, e)| String::from_utf8_lossy(&slice[s..e]).into_owned())
 }
 
@@ -2871,15 +2847,16 @@ impl fmt::Display for Expression {
                 // v0.2.1+ parses this sentinel to recover
                 // `inner_raw_tail` for round-trip encoding.
                 if let Some(tail) = inner_raw_tail
-                    && !tail.is_empty() {
-                        if inner_params.is_empty() {
-                            write!(f, " ")?;
-                        }
-                        write!(f, " raw_tail=")?;
-                        for b in tail {
-                            write!(f, "{:02x}", b)?;
-                        }
+                    && !tail.is_empty()
+                {
+                    if inner_params.is_empty() {
+                        write!(f, " ")?;
                     }
+                    write!(f, " raw_tail=")?;
+                    for b in tail {
+                        write!(f, "{:02x}", b)?;
+                    }
+                }
                 let _ = inner_opcode;
                 write!(f, ")")
             }
@@ -2990,10 +2967,11 @@ pub fn render_text(result: &DisasmResult, labels_on: bool) -> String {
     let labels: Option<&BTreeMap<usize, String>> = cfg.map(|c| &c.labels);
     for instr in &result.instructions {
         if let Some(map) = labels
-            && let Some(name) = map.get(&instr.offset) {
-                out.push_str(name);
-                out.push_str(":\n");
-            }
+            && let Some(name) = map.get(&instr.offset)
+        {
+            out.push_str(name);
+            out.push_str(":\n");
+        }
         render_instruction_into(&mut out, instr, labels);
         out.push('\n');
     }
@@ -3022,39 +3000,40 @@ fn render_instruction_into(
 ) {
     if let Some(map) = labels
         && let Some((target_param_idx, target_offset)) = branch_target_param(instr)
-            && let Some(label) = map.get(&target_offset) {
-                let label_param = label.split_once(" (").map(|(l, _)| l).unwrap_or(label);
-                let m = instr.mnemonic.as_deref().unwrap_or("db");
-                out.push_str(&format!(
-                    "{:04x}  {:02x}  {:<22}",
-                    instr.offset, instr.opcode, m
-                ));
-                for (i, param) in instr.params.iter().enumerate() {
-                    out.push_str(if i == 0 { "  " } else { ", " });
-                    if i == target_param_idx {
-                        out.push_str(label_param);
-                    } else {
-                        let mut buf = String::new();
-                        let _ = format_param_into(&mut buf, param);
-                        out.push_str(&buf);
-                    }
-                }
-                if instr.best_effort {
-                    out.push_str("  ; best-effort");
-                }
-                if let Some(ref tail) = instr.raw_tail {
-                    out.push_str("  ; raw_tail=");
-                    for b in tail {
-                        out.push_str(&format!("{:02x}", b));
-                    }
-                }
-                if let Some(ref s) = instr.string_run {
-                    out.push_str("  ; \"");
-                    out.push_str(&escape_text(s));
-                    out.push('"');
-                }
-                return;
+        && let Some(label) = map.get(&target_offset)
+    {
+        let label_param = label.split_once(" (").map(|(l, _)| l).unwrap_or(label);
+        let m = instr.mnemonic.as_deref().unwrap_or("db");
+        out.push_str(&format!(
+            "{:04x}  {:02x}  {:<22}",
+            instr.offset, instr.opcode, m
+        ));
+        for (i, param) in instr.params.iter().enumerate() {
+            out.push_str(if i == 0 { "  " } else { ", " });
+            if i == target_param_idx {
+                out.push_str(label_param);
+            } else {
+                let mut buf = String::new();
+                let _ = format_param_into(&mut buf, param);
+                out.push_str(&buf);
             }
+        }
+        if instr.best_effort {
+            out.push_str("  ; best-effort");
+        }
+        if let Some(ref tail) = instr.raw_tail {
+            out.push_str("  ; raw_tail=");
+            for b in tail {
+                out.push_str(&format!("{:02x}", b));
+            }
+        }
+        if let Some(ref s) = instr.string_run {
+            out.push_str("  ; \"");
+            out.push_str(&escape_text(s));
+            out.push('"');
+        }
+        return;
+    }
     // No-label / non-branch path: use Display directly.
     out.push_str(&format!("{}", instr));
 }
@@ -3194,10 +3173,7 @@ mod tests {
         // 0x91 (GPL_IMMED_NAME|0x80) + halfword 0x0040 → -64.
         let r = read_expression(&[0x91, 0x00, 0x40], 0);
         assert_eq!(r.consumed, 3);
-        assert_eq!(
-            r.tokens,
-            vec![Expression::ImmediateName { value: -64 }]
-        );
+        assert_eq!(r.tokens, vec![Expression::ImmediateName { value: -64 }]);
     }
 
     #[test]
@@ -3272,10 +3248,7 @@ mod tests {
                 assert_eq!(*inner_opcode, 0x52);
                 assert_eq!(inner_mnemonic.as_deref(), Some("gpl rand"));
                 assert_eq!(inner_params.len(), 1);
-                assert_eq!(
-                    inner_params[0],
-                    vec![Expression::Immediate14 { value: 5 }]
-                );
+                assert_eq!(inner_params[0], vec![Expression::Immediate14 { value: 5 }]);
             }
             other => panic!("expected RetVal, got {other:?}"),
         }
@@ -3505,7 +3478,11 @@ mod tests {
             bits.push(0);
         }
         bits.chunks(8)
-            .map(|c| c.iter().enumerate().fold(0u8, |acc, (i, &b)| acc | (b << (7 - i))))
+            .map(|c| {
+                c.iter()
+                    .enumerate()
+                    .fold(0u8, |acc, (i, &b)| acc | (b << (7 - i)))
+            })
             .collect()
     }
 
@@ -3591,10 +3568,7 @@ mod tests {
         assert_eq!(if_block.successors[0].kind, EdgeKind::ConditionalTaken);
         // Second is the not-taken (param target = 6).
         assert_eq!(if_block.successors[1].target_offset, 6);
-        assert_eq!(
-            if_block.successors[1].kind,
-            EdgeKind::ConditionalNotTaken
-        );
+        assert_eq!(if_block.successors[1].kind, EdgeKind::ConditionalNotTaken);
     }
 
     #[test]
@@ -3610,12 +3584,12 @@ mod tests {
         // with the redirect, the effective target is 7 (the
         // byte after the else opcode = start of the else-body).
         let instrs = vec![
-            fake_instr(0, 0x3E, Some(4)),  // if @ 0, len=3, target=4
-            fake_instr(3, 0x67, None),     // then-body filler
-            fake_instr(4, 0x3F, Some(9)),  // else @ 4, len=3, target=9
-            fake_instr(7, 0x67, None),     // else-body filler
-            fake_instr(8, 0x67, None),     // else-body filler
-            fake_instr(9, 0x67, None),     // endif @ 9
+            fake_instr(0, 0x3E, Some(4)), // if @ 0, len=3, target=4
+            fake_instr(3, 0x67, None),    // then-body filler
+            fake_instr(4, 0x3F, Some(9)), // else @ 4, len=3, target=9
+            fake_instr(7, 0x67, None),    // else-body filler
+            fake_instr(8, 0x67, None),    // else-body filler
+            fake_instr(9, 0x67, None),    // endif @ 9
         ];
         let (cfg, _) = build_cfg(&instrs, 10);
         let if_block = cfg
@@ -3678,11 +3652,7 @@ mod tests {
         let wend_block = cfg
             .blocks
             .iter()
-            .find(|b| {
-                b.successors
-                    .iter()
-                    .any(|e| e.kind == EdgeKind::WhileBack)
-            })
+            .find(|b| b.successors.iter().any(|e| e.kind == EdgeKind::WhileBack))
             .expect("block with WhileBack edge");
         assert_eq!(wend_block.terminator, TerminatorKind::Unconditional);
         assert_eq!(wend_block.successors.len(), 1);
@@ -3748,11 +3718,7 @@ mod tests {
             string_run: None,
             raw_tail: None,
         };
-        let instrs = vec![
-            instr,
-            fake_instr(5, 0x67, None),
-            fake_instr(8, 0x67, None),
-        ];
+        let instrs = vec![instr, fake_instr(5, 0x67, None), fake_instr(8, 0x67, None)];
         let (cfg, _) = build_cfg(&instrs, 9);
         let ic = &cfg.blocks[0];
         assert_eq!(ic.terminator, TerminatorKind::Conditional);
@@ -3762,20 +3728,14 @@ mod tests {
         assert_eq!(ic.successors[0].kind, EdgeKind::ConditionalTaken);
         // Param[1] target on mismatch.
         assert_eq!(ic.successors[1].target_offset, 8);
-        assert_eq!(
-            ic.successors[1].kind,
-            EdgeKind::ConditionalNotTaken
-        );
+        assert_eq!(ic.successors[1].kind, EdgeKind::ConditionalNotTaken);
     }
 
     #[test]
     fn cfg_labels_use_entry_or_label_form() {
         // Entry points get `entry_0x...`; non-entry leaders get
         // `label_0x...`.
-        let instrs = vec![
-            fake_instr(0, 0x12, Some(3)),
-            fake_instr(3, 0x15, None),
-        ];
+        let instrs = vec![fake_instr(0, 0x12, Some(3)), fake_instr(3, 0x15, None)];
         let (cfg, _) = build_cfg(&instrs, 4);
         assert_eq!(cfg.labels.get(&0).map(String::as_str), Some("entry_0x0000"));
         // 3 is a leader because it's after a Jump; not an entry.
@@ -3913,9 +3873,9 @@ mod tests {
         // Build a tiny CFG with one entry point at offset 0 and
         // one non-entry leader at offset 5.
         let instrs = vec![
-            fake_instr(0, 0x12, Some(5)),  // jump to 5 (entry-style synthetic)
+            fake_instr(0, 0x12, Some(5)), // jump to 5 (entry-style synthetic)
             fake_instr(3, 0x67, None),
-            fake_instr(5, 0x15, None),     // local ret
+            fake_instr(5, 0x15, None), // local ret
         ];
         let (mut cfg, _) = build_cfg(&instrs, 6);
         assert_eq!(cfg.labels.get(&0).map(String::as_str), Some("entry_0x0000"));
@@ -3949,10 +3909,7 @@ mod tests {
             Some("entry_0x0000 (test_function)")
         );
         // Non-entry leader at 5 stays untouched.
-        assert_eq!(
-            cfg.labels.get(&5).map(String::as_str),
-            Some("label_0x0005")
-        );
+        assert_eq!(cfg.labels.get(&5).map(String::as_str), Some("label_0x0005"));
     }
 
     #[test]
@@ -3991,10 +3948,7 @@ mod tests {
         // Two-instruction synthetic chunk: jump (0x12) target=3,
         // followed by endif (0x67). The override targets 0x12 only.
         let mut result = disassemble(&[0x12, 0x00, 0x03, 0x67]);
-        assert_eq!(
-            result.instructions[0].mnemonic.as_deref(),
-            Some("gpl jump")
-        );
+        assert_eq!(result.instructions[0].mnemonic.as_deref(), Some("gpl jump"));
         let mut opcodes = BTreeMap::new();
         opcodes.insert(
             "0x12".to_string(),
@@ -4111,7 +4065,10 @@ name = "test_fn"
         let syms = Symbols::load_from_dir(&dir).expect("load");
         let _ = std::fs::remove_dir_all(&dir);
         assert_eq!(syms.opcodes.len(), 1);
-        assert_eq!(syms.opcodes.get("0x12").map(|s| s.name.as_str()), Some("gpl jmp"));
+        assert_eq!(
+            syms.opcodes.get("0x12").map(|s| s.name.as_str()),
+            Some("gpl jmp")
+        );
         assert_eq!(syms.functions.len(), 1);
         assert_eq!(syms.functions[0].name, "test_fn");
     }

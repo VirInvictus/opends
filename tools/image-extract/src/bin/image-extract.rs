@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use anyhow::{Context, Result, anyhow};
 use clap::Parser;
 use gff_edit::{FourCC, Gff};
-use image_extract::{composite_horizontal_strip, Bitmap, Frame, Palette, write_png};
+use image_extract::{Bitmap, Frame, Palette, composite_horizontal_strip, write_png};
 
 #[derive(Parser)]
 #[command(
@@ -61,8 +61,7 @@ struct Cli {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    let gff = Gff::open(&cli.file)
-        .with_context(|| format!("opening {}", cli.file.display()))?;
+    let gff = Gff::open(&cli.file).with_context(|| format!("opening {}", cli.file.display()))?;
 
     let palette = load_palette(&gff, &cli.palette_kind, cli.palette)?;
 
@@ -84,17 +83,13 @@ fn main() -> Result<()> {
             let bmp = match Bitmap::from_bytes(bytes) {
                 Ok(b) => b,
                 Err(e) => {
-                    eprintln!(
-                        "warn: {} {} header parse failed: {}",
-                        c.kind, c.id, e
-                    );
+                    eprintln!("warn: {} {} header parse failed: {}", c.kind, c.id, e);
                     frames_skipped += 1;
                     continue;
                 }
             };
             if cli.spritesheet {
-                let (frames, per_chunk_skipped) =
-                    decode_all_or_warn(&bmp, c.kind, c.id);
+                let (frames, per_chunk_skipped) = decode_all_or_warn(&bmp, c.kind, c.id);
                 frames_skipped += per_chunk_skipped;
                 if frames.is_empty() {
                     continue;
@@ -165,7 +160,9 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    let id = cli.id.ok_or_else(|| anyhow!("--id is required (or pass --all)"))?;
+    let id = cli
+        .id
+        .ok_or_else(|| anyhow!("--id is required (or pass --all)"))?;
     let kind = parse_fourcc(&cli.kind)?;
     let bytes = gff
         .read(kind, id)
@@ -192,8 +189,7 @@ fn main() -> Result<()> {
                 id
             ))
         });
-        write_png(&out, &strip, &palette)
-            .with_context(|| format!("writing {}", out.display()))?;
+        write_png(&out, &strip, &palette).with_context(|| format!("writing {}", out.display()))?;
         eprintln!(
             "wrote {} ({}x{}, {} frames, {} skipped)",
             out.display(),
@@ -249,14 +245,14 @@ fn main() -> Result<()> {
     let frame = bmp
         .decode_frame(cli.frame)
         .with_context(|| format!("decoding frame {} of {} {}", cli.frame, kind, id))?;
-    let out = cli
-        .output
-        .unwrap_or_else(|| PathBuf::from(format!(
+    let out = cli.output.unwrap_or_else(|| {
+        PathBuf::from(format!(
             "{}-{}-{}.png",
             String::from_utf8_lossy(kind.as_bytes()).trim_end(),
             id,
             cli.frame
-        )));
+        ))
+    });
     write_png(&out, &frame, &palette).with_context(|| format!("writing {}", out.display()))?;
     eprintln!(
         "wrote {} ({}x{}, {})",

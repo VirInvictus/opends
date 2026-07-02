@@ -10,7 +10,10 @@ use serde::Serialize;
 // `docs/file-formats.md` §1.
 const KIND_CATALOGUE: &[(&[u8; 4], &str)] = &[
     // Structural
-    (b"GFFI", "Magic / structural; also wraps the file's primary cross-reference table."),
+    (
+        b"GFFI",
+        "Magic / structural; also wraps the file's primary cross-reference table.",
+    ),
     (b"FORM", "Form chunk (IFF-like grouping)."),
     (b"GFRE", "Free / freelist (deleted entries)."),
     (b"GTOC", "Table of contents."),
@@ -61,7 +64,10 @@ const KIND_CATALOGUE: &[(&[u8; 4], &str)] = &[
     // Game data and objects
     (b"IT1R", "Items."),
     (b"OJFF", "Object data (general)."),
-    (b"RDFF", "Record data; distinct schemas per game (DS1/DS2/DSO) for item, combat, char, mini, player, entity records."),
+    (
+        b"RDFF",
+        "Record data; distinct schemas per game (DS1/DS2/DSO) for item, combat, char, mini, player, entity records.",
+    ),
     (b"FNFO", "Object data table."),
     (b"RDAT", "Names."),
     (b"NAME", "Names."),
@@ -92,7 +98,9 @@ const KIND_CATALOGUE: &[(&[u8; 4], &str)] = &[
 const TEXT_KINDS: &[&[u8; 4]] = &[b"TEXT", b"ETME", b"MERR", b"NAME", b"SPIN"];
 
 fn is_text_kind(kind: FourCC) -> bool {
-    TEXT_KINDS.iter().any(|k| k.as_slice() == kind.as_bytes().as_slice())
+    TEXT_KINDS
+        .iter()
+        .any(|k| k.as_slice() == kind.as_bytes().as_slice())
 }
 
 fn kind_description(kind: FourCC) -> Option<&'static str> {
@@ -272,8 +280,7 @@ fn cmd_info(file: PathBuf, json: bool) -> Result<()> {
             header: gff.header(),
             types: gff.types(),
         };
-        serde_json::to_writer_pretty(std::io::stdout().lock(), &payload)
-            .context("writing JSON")?;
+        serde_json::to_writer_pretty(std::io::stdout().lock(), &payload).context("writing JSON")?;
         println!();
         return Ok(());
     }
@@ -418,8 +425,7 @@ fn cmd_replace(
 
 fn cmd_dump_text(file: PathBuf, output: PathBuf) -> Result<()> {
     let gff = Gff::open(&file).with_context(|| format!("opening {}", file.display()))?;
-    std::fs::create_dir_all(&output)
-        .with_context(|| format!("creating {}", output.display()))?;
+    std::fs::create_dir_all(&output).with_context(|| format!("creating {}", output.display()))?;
     let mut count = 0usize;
     for c in gff.chunks() {
         if !is_text_kind(c.kind) {
@@ -440,9 +446,7 @@ fn cmd_pack_text(file: PathBuf, dir: PathBuf, output: PathBuf) -> Result<()> {
     let mut current = original;
 
     let mut replacements: Vec<(FourCC, i32, Vec<u8>)> = Vec::new();
-    for entry in std::fs::read_dir(&dir)
-        .with_context(|| format!("reading {}", dir.display()))?
-    {
+    for entry in std::fs::read_dir(&dir).with_context(|| format!("reading {}", dir.display()))? {
         let entry = entry?;
         let path = entry.path();
         if path.extension().and_then(|e| e.to_str()) != Some("txt") {
@@ -460,16 +464,12 @@ fn cmd_pack_text(file: PathBuf, dir: PathBuf, output: PathBuf) -> Result<()> {
             .with_context(|| format!("parsing id from {}", path.display()))?;
         let kind = parse_kind_padded(kind_str)
             .with_context(|| format!("parsing kind from {}", path.display()))?;
-        let bytes = std::fs::read(&path)
-            .with_context(|| format!("reading {}", path.display()))?;
+        let bytes = std::fs::read(&path).with_context(|| format!("reading {}", path.display()))?;
         replacements.push((kind, id, bytes));
     }
 
     if replacements.is_empty() {
-        eprintln!(
-            "note: no <kind>-<id>.txt files found in {}",
-            dir.display()
-        );
+        eprintln!("note: no <kind>-<id>.txt files found in {}", dir.display());
     }
 
     // Sort for deterministic output ordering.
@@ -477,9 +477,9 @@ fn cmd_pack_text(file: PathBuf, dir: PathBuf, output: PathBuf) -> Result<()> {
 
     for (kind, id, bytes) in &replacements {
         let gff = Gff::from_bytes(current.clone())?;
-        current = gff.replace_chunk(*kind, *id, bytes).with_context(|| {
-            format!("replacing '{}' id={}", kind, id)
-        })?;
+        current = gff
+            .replace_chunk(*kind, *id, bytes)
+            .with_context(|| format!("replacing '{}' id={}", kind, id))?;
     }
 
     std::fs::write(&output, &current)
@@ -493,8 +493,7 @@ fn cmd_pack_text(file: PathBuf, dir: PathBuf, output: PathBuf) -> Result<()> {
 }
 
 fn cmd_what(file: PathBuf, kind: String, id: i32) -> Result<()> {
-    let gff = Gff::open(&file)
-        .with_context(|| format!("opening {}", file.display()))?;
+    let gff = Gff::open(&file).with_context(|| format!("opening {}", file.display()))?;
     let fc = parse_kind_padded(&kind)?;
     let bytes = gff
         .read(fc, id)
@@ -519,9 +518,7 @@ fn cmd_what(file: PathBuf, kind: String, id: i32) -> Result<()> {
                 println!("  bitmap: {frame_count} frame(s)");
                 let table_end = 6 + 4 * frame_count as usize;
                 if frame_count >= 1 && bytes.len() >= table_end + 4 {
-                    let off = u32::from_le_bytes([
-                        bytes[6], bytes[7], bytes[8], bytes[9],
-                    ]) as usize;
+                    let off = u32::from_le_bytes([bytes[6], bytes[7], bytes[8], bytes[9]]) as usize;
                     if off + 4 <= bytes.len() {
                         let w = u16::from_le_bytes([bytes[off], bytes[off + 1]]);
                         let h = u16::from_le_bytes([bytes[off + 2], bytes[off + 3]]);
@@ -529,18 +526,28 @@ fn cmd_what(file: PathBuf, kind: String, id: i32) -> Result<()> {
                     }
                 }
             }
-            println!("  next step: `image-extract {} --kind {} --id {} -o sprite.png`",
-                     file.display(), kind.trim_end(), id);
+            println!(
+                "  next step: `image-extract {} --kind {} --id {} -o sprite.png`",
+                file.display(),
+                kind.trim_end(),
+                id
+            );
         }
         b"PAL " | b"CPAL" => {
             println!("  palette: 256 entries (768 bytes 6-bit RGB)");
-            println!("  next step: pass via `--palette {}:{kind}:{id}` to image-extract / region-render",
-                     file.display());
+            println!(
+                "  next step: pass via `--palette {}:{kind}:{id}` to image-extract / region-render",
+                file.display()
+            );
         }
         b"GPL " | b"MAS " => {
             println!("  GPL bytecode chunk");
-            println!("  next step: `gpl-disasm {} --kind {} --id {}`",
-                     file.display(), kind.trim_end(), id);
+            println!(
+                "  next step: `gpl-disasm {} --kind {} --id {}`",
+                file.display(),
+                kind.trim_end(),
+                id
+            );
         }
         b"TEXT" | b"ETME" | b"MERR" | b"NAME" | b"SPIN" => {
             // Plain DOS text (CRLF). Show the first ~80 chars,
@@ -551,19 +558,29 @@ fn cmd_what(file: PathBuf, kind: String, id: i32) -> Result<()> {
                 .replace('\n', "  ");
             let truncated = preview.len() > 80;
             let head: String = preview.chars().take(80).collect();
-            println!("  text preview: {head:?}{}", if truncated { " ..." } else { "" });
-            println!("  next step: `gff-cat dump-text {} -o text-dir/`",
-                     file.display());
+            println!(
+                "  text preview: {head:?}{}",
+                if truncated { " ..." } else { "" }
+            );
+            println!(
+                "  next step: `gff-cat dump-text {} -o text-dir/`",
+                file.display()
+            );
         }
-        b"CHAR" | b"SAVE" | b"STXT" | b"PSIN" | b"PSST" | b"SPST" | b"CACT" | b"PREF" | b"GREQ" | b"ETAB" => {
+        b"CHAR" | b"SAVE" | b"STXT" | b"PSIN" | b"PSST" | b"SPST" | b"CACT" | b"PREF" | b"GREQ"
+        | b"ETAB" => {
             println!("  save-game record");
-            println!("  next step: `python3 tools/save-inspect/save-inspect.py {}`",
-                     file.display());
+            println!(
+                "  next step: `python3 tools/save-inspect/save-inspect.py {}`",
+                file.display()
+            );
         }
         b"RMAP" | b"GMAP" => {
             println!("  region tile / passability map");
-            println!("  next step: `region-render {} -o region.png`",
-                     file.display());
+            println!(
+                "  next step: `region-render {} -o region.png`",
+                file.display()
+            );
         }
         _ => {
             // No tool dispatch hint; the user is on their own.
@@ -572,7 +589,6 @@ fn cmd_what(file: PathBuf, kind: String, id: i32) -> Result<()> {
     }
     Ok(())
 }
-
 
 fn cmd_kind(fourcc: Option<String>, list: bool) -> Result<()> {
     if list {
