@@ -33,6 +33,13 @@ fn every_gpl_and_mas_chunk_disassembles() {
     let mut total_consumed = 0usize;
     let mut total_instructions = 0usize;
 
+    // Skip when the corpus is absent (CI / fresh clone), matching the gpl-asm
+    // corpus tests. CORPUS is hardcoded to Brandon's .games trees.
+    if CORPUS.iter().all(|p| !Path::new(p).is_file()) {
+        eprintln!("skipping corpus smoke: no GPLDATA.GFF found (.games absent)");
+        return;
+    }
+
     for path in CORPUS {
         let p = Path::new(path);
         if !p.is_file() {
@@ -101,6 +108,13 @@ fn every_cfg_successor_resolves_to_instruction_boundary() {
     let mut total_edges = 0usize;
     let mut unresolved_count = 0usize;
     let mut cross_chunk_calls = 0usize;
+
+    // Skip when the corpus is absent (CI / fresh clone), matching the gpl-asm
+    // corpus tests. CORPUS is hardcoded to Brandon's .games trees.
+    if CORPUS.iter().all(|p| !Path::new(p).is_file()) {
+        eprintln!("skipping corpus smoke: no GPLDATA.GFF found (.games absent)");
+        return;
+    }
 
     for path in CORPUS {
         let p = Path::new(path);
