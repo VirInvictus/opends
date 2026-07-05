@@ -54,6 +54,7 @@ def session_dir(target_game: str, session_name: str) -> Path:
     safe_session = session_name.replace("/", "_").replace("\\", "_")
     return state_root() / f"play-{target_game}-{safe_session}"
 
+
 # Exit codes
 EXIT_PASS = 0
 EXIT_FAIL = 1
@@ -276,7 +277,7 @@ class KeystrokeScheduler(threading.Thread):
     """
 
     KEY_ALIASES = {
-        "return": "29:1 29:0",      # KEY_ENTER press + release
+        "return": "29:1 29:0",  # KEY_ENTER press + release
         "enter": "29:1 29:0",
         "space": "57:1 57:0",
         "esc": "1:1 1:0",
@@ -311,7 +312,7 @@ class KeystrokeScheduler(threading.Thread):
             send = str(entry["send"])
             try:
                 if send.startswith("type:"):
-                    self._fire(["type", "--", send[len("type:"):]])
+                    self._fire(["type", "--", send[len("type:") :]])
                 else:
                     key = send.strip().lower()
                     if key in self.KEY_ALIASES:
@@ -325,14 +326,13 @@ class KeystrokeScheduler(threading.Thread):
                         # every KEY_* name.
                         self._fire(["key", send])
             except Exception as e:
-                self.log_lines.append(
-                    f"ydotool error at +{at:.2f}s for {send!r}: {e}"
-                )
+                self.log_lines.append(f"ydotool error at +{at:.2f}s for {send!r}: {e}")
 
     def _fire(self, args: list[str]) -> None:
         res = subprocess.run(
             [self.ydotool_bin] + args,
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         elapsed = time.monotonic() - self.start_time
         if res.returncode != 0:
@@ -341,9 +341,7 @@ class KeystrokeScheduler(threading.Thread):
                 f"rc={res.returncode} stderr={res.stderr.strip()!r}"
             )
         else:
-            self.log_lines.append(
-                f"ydotool +{elapsed:.2f}s {' '.join(args)} -> ok"
-            )
+            self.log_lines.append(f"ydotool +{elapsed:.2f}s {' '.join(args)} -> ok")
 
 
 class VideoRecorder:
@@ -361,7 +359,9 @@ class VideoRecorder:
     in the log and the run continues without video.
     """
 
-    def __init__(self, ffmpeg_bin: str, output_path: Path, log_lines: list[str]) -> None:
+    def __init__(
+        self, ffmpeg_bin: str, output_path: Path, log_lines: list[str]
+    ) -> None:
         self.ffmpeg_bin = ffmpeg_bin
         self.output_path = output_path
         self.log_lines = log_lines
@@ -372,13 +372,20 @@ class VideoRecorder:
         cmd = [
             self.ffmpeg_bin,
             "-y",
-            "-loglevel", "warning",
-            "-f", "x11grab",
-            "-framerate", "24",
-            "-i", display,
-            "-c:v", "libx264",
-            "-pix_fmt", "yuv420p",
-            "-preset", "veryfast",
+            "-loglevel",
+            "warning",
+            "-f",
+            "x11grab",
+            "-framerate",
+            "24",
+            "-i",
+            display,
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-preset",
+            "veryfast",
             "-an",
             str(self.output_path),
         ]
@@ -456,9 +463,7 @@ def run_dosbox(
     if video_path is not None:
         ffmpeg_bin = ffmpeg_available()
         if ffmpeg_bin is None:
-            automation_lines.append(
-                "WARN ffmpeg not found; video capture skipped."
-            )
+            automation_lines.append("WARN ffmpeg not found; video capture skipped.")
 
     start = time.monotonic()
     with log_path.open("wb") as log_file:
@@ -507,9 +512,7 @@ def run_dosbox(
     return proc.returncode, elapsed, timed_out
 
 
-def evaluate(
-    fixture: BugFixture, result: RunResult
-) -> tuple[bool, list[str]]:
+def evaluate(fixture: BugFixture, result: RunResult) -> tuple[bool, list[str]]:
     """Check each expected-criterion. Returns (passed, reasons)."""
     reasons: list[str] = []
     ok = True
@@ -533,11 +536,7 @@ def evaluate(
     # like DARKRUN.GFF lands and is mostly noise).
     drive_d = result.scratch_dir / "d"
     scratch_files = sorted(drive_d.rglob("*")) if drive_d.is_dir() else []
-    scratch_rel = [
-        str(p.relative_to(drive_d))
-        for p in scratch_files
-        if p.is_file()
-    ]
+    scratch_rel = [str(p.relative_to(drive_d)) for p in scratch_files if p.is_file()]
 
     for pattern in fixture.require_files:
         matches = [n for n in scratch_rel if fnmatch.fnmatch(n, pattern)]
@@ -793,9 +792,7 @@ def main(argv: list[str] | None = None) -> int:
         scratch_was_new = not scratch_dir.exists()
         scratch_dir.mkdir(parents=True, exist_ok=True)
     else:
-        scratch_dir = Path(
-            tempfile.mkdtemp(prefix=f"repro-{fixture.id}-", dir="/tmp")
-        )
+        scratch_dir = Path(tempfile.mkdtemp(prefix=f"repro-{fixture.id}-", dir="/tmp"))
 
     print(f"=== {fixture.id} ===")
     if fixture.description:
@@ -840,13 +837,12 @@ def main(argv: list[str] | None = None) -> int:
                 None,
                 dosbox_log,
                 keystrokes=fixture.keystrokes or None,
-                video_path=(scratch_dir / "repro.mp4") if fixture.record_video else None,
+                video_path=(scratch_dir / "repro.mp4")
+                if fixture.record_video
+                else None,
                 automation_log_path=scratch_dir / "automation.log",
             )
-            print(
-                f"DOSBox closed after {elapsed:.2f}s "
-                f"(rc={exit_code})"
-            )
+            print(f"DOSBox closed after {elapsed:.2f}s (rc={exit_code})")
             print()
             print(f"Session retained at: {scratch_dir}")
             print(f"In-game saves are at {overlay_dir}/")
@@ -872,10 +868,7 @@ def main(argv: list[str] | None = None) -> int:
             end_marker = "DOSBox quit on its own (game exited or never launched)"
         else:
             end_marker = "DOSBox quit on its own with non-zero rc"
-        print(
-            f"DOSBox finished after {elapsed:.2f}s "
-            f"(rc={exit_code}, {end_marker})"
-        )
+        print(f"DOSBox finished after {elapsed:.2f}s (rc={exit_code}, {end_marker})")
         if not timed_out and exit_code == 0:
             # The most common gotcha: game exited fast because of
             # MEL Fatal Error or similar. Point at the log.
@@ -883,9 +876,7 @@ def main(argv: list[str] | None = None) -> int:
             if dsun_log.exists() and dsun_log.stat().st_size > 0:
                 preview = dsun_log.read_text(errors="replace").strip().splitlines()[:3]
                 if preview:
-                    print(
-                        "  (DSUN.LOG has content, first 3 lines):"
-                    )
+                    print("  (DSUN.LOG has content, first 3 lines):")
                     for line in preview:
                         print(f"    {line}")
         print()

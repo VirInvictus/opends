@@ -50,135 +50,135 @@ from pathlib import Path
 # in tools/gpl-disasm/src/lib.rs. Keep in sync; this is the only
 # Python consumer.
 LIBGFF_OPCODES: list[str] = [
-    "gpl zero",              # 0x00
-    "gpl long divide equal", # 0x01
-    "gpl byte dec",          # 0x02
-    "gpl word dec",          # 0x03
-    "gpl long dec",          # 0x04
-    "gpl byte inc",          # 0x05
-    "gpl word inc",          # 0x06
-    "gpl long inc",          # 0x07
-    "gpl hunt",              # 0x08
-    "gpl getxy",             # 0x09
-    "gpl string copy",       # 0x0A
-    "gpl p damage",          # 0x0B
-    "gpl changemoney",       # 0x0C
-    "gpl setvar",            # 0x0D
-    "gpl toggle accum",      # 0x0E
-    "gpl getstatus",         # 0x0F
-    "gpl getlos",            # 0x10
+    "gpl zero",  # 0x00
+    "gpl long divide equal",  # 0x01
+    "gpl byte dec",  # 0x02
+    "gpl word dec",  # 0x03
+    "gpl long dec",  # 0x04
+    "gpl byte inc",  # 0x05
+    "gpl word inc",  # 0x06
+    "gpl long inc",  # 0x07
+    "gpl hunt",  # 0x08
+    "gpl getxy",  # 0x09
+    "gpl string copy",  # 0x0A
+    "gpl p damage",  # 0x0B
+    "gpl changemoney",  # 0x0C
+    "gpl setvar",  # 0x0D
+    "gpl toggle accum",  # 0x0E
+    "gpl getstatus",  # 0x0F
+    "gpl getlos",  # 0x10
     "gpl long times equal",  # 0x11
-    "gpl jump",              # 0x12
-    "gpl local sub",         # 0x13
-    "gpl global sub",        # 0x14
-    "gpl local ret",         # 0x15
-    "gpl load variable",     # 0x16
-    "gpl compare",           # 0x17
-    "gpl load accum",        # 0x18
-    "gpl global ret",        # 0x19
-    "gpl nextto",            # 0x1A
-    "gpl inlostrigger",      # 0x1B
-    "gpl notinlostrigger",   # 0x1C
-    "gpl clear los",         # 0x1D
-    "gpl nametonum",         # 0x1E
-    "gpl numtoname",         # 0x1F
-    "gpl bitsnoop",          # 0x20
-    "gpl award",             # 0x21
-    "gpl request",           # 0x22
-    "gpl source trace",      # 0x23
-    "gpl shop",              # 0x24
-    "gpl clone",             # 0x25
-    "gpl default",           # 0x26
-    "gpl ifcompare",         # 0x27
-    "gpl trace var",         # 0x28
-    "gpl orelse",            # 0x29
-    "gpl clearpic",          # 0x2A
-    "gpl continue",          # 0x2B
-    "gpl log",               # 0x2C
-    "gpl damage",            # 0x2D
-    "gpl source line num",   # 0x2E
-    "gpl drop",              # 0x2F
-    "gpl passtime",          # 0x30
-    "gpl exit gpl",          # 0x31
-    "gpl fetch",             # 0x32
-    "gpl search",            # 0x33
-    "gpl getparty",          # 0x34
-    "gpl fight",             # 0x35
-    "gpl flee",              # 0x36
-    "gpl follow",            # 0x37
-    "gpl getyn",             # 0x38
-    "gpl give",              # 0x39
-    "gpl go",                # 0x3A
-    "gpl input bignum",      # 0x3B
-    "gpl goxy",              # 0x3C
-    "gpl readorders",        # 0x3D
-    "gpl if",                # 0x3E
-    "gpl else",              # 0x3F
-    "gpl setrecord",         # 0x40
-    "gpl setother",          # 0x41
-    "gpl input string",      # 0x42
-    "gpl input number",      # 0x43
-    "gpl input money",       # 0x44
-    "gpl joinparty",         # 0x45
-    "gpl leaveparty",        # 0x46
-    "gpl lockdoor",          # 0x47
-    "gpl menu",              # 0x48
-    "gpl setthing",          # 0x49
-    "gpl default",           # 0x4A
-    "gpl local sub trace",   # 0x4B
-    "gpl default",           # 0x4C
-    "gpl default",           # 0x4D
-    "gpl default",           # 0x4E
-    "gpl print string",      # 0x4F
-    "gpl print number",      # 0x50
-    "gpl printnl",           # 0x51
-    "gpl rand",              # 0x52
-    "gpl default",           # 0x53
-    "gpl showpic",           # 0x54
-    "gpl default",           # 0x55
-    "gpl default",           # 0x56
-    "gpl default",           # 0x57
-    "gpl skillroll",         # 0x58
-    "gpl statroll",          # 0x59
-    "gpl string compare",    # 0x5A
-    "gpl match string",      # 0x5B
-    "gpl take",              # 0x5C
-    "gpl sound",             # 0x5D
-    "gpl tport",             # 0x5E
-    "gpl music",             # 0x5F
-    "gpl default",           # 0x60
-    "gpl cmpend",            # 0x61
-    "gpl wait",              # 0x62
-    "gpl while",             # 0x63
-    "gpl wend",              # 0x64
-    "gpl attacktrigger",     # 0x65
-    "gpl looktrigger",       # 0x66
-    "gpl endif",             # 0x67
+    "gpl jump",  # 0x12
+    "gpl local sub",  # 0x13
+    "gpl global sub",  # 0x14
+    "gpl local ret",  # 0x15
+    "gpl load variable",  # 0x16
+    "gpl compare",  # 0x17
+    "gpl load accum",  # 0x18
+    "gpl global ret",  # 0x19
+    "gpl nextto",  # 0x1A
+    "gpl inlostrigger",  # 0x1B
+    "gpl notinlostrigger",  # 0x1C
+    "gpl clear los",  # 0x1D
+    "gpl nametonum",  # 0x1E
+    "gpl numtoname",  # 0x1F
+    "gpl bitsnoop",  # 0x20
+    "gpl award",  # 0x21
+    "gpl request",  # 0x22
+    "gpl source trace",  # 0x23
+    "gpl shop",  # 0x24
+    "gpl clone",  # 0x25
+    "gpl default",  # 0x26
+    "gpl ifcompare",  # 0x27
+    "gpl trace var",  # 0x28
+    "gpl orelse",  # 0x29
+    "gpl clearpic",  # 0x2A
+    "gpl continue",  # 0x2B
+    "gpl log",  # 0x2C
+    "gpl damage",  # 0x2D
+    "gpl source line num",  # 0x2E
+    "gpl drop",  # 0x2F
+    "gpl passtime",  # 0x30
+    "gpl exit gpl",  # 0x31
+    "gpl fetch",  # 0x32
+    "gpl search",  # 0x33
+    "gpl getparty",  # 0x34
+    "gpl fight",  # 0x35
+    "gpl flee",  # 0x36
+    "gpl follow",  # 0x37
+    "gpl getyn",  # 0x38
+    "gpl give",  # 0x39
+    "gpl go",  # 0x3A
+    "gpl input bignum",  # 0x3B
+    "gpl goxy",  # 0x3C
+    "gpl readorders",  # 0x3D
+    "gpl if",  # 0x3E
+    "gpl else",  # 0x3F
+    "gpl setrecord",  # 0x40
+    "gpl setother",  # 0x41
+    "gpl input string",  # 0x42
+    "gpl input number",  # 0x43
+    "gpl input money",  # 0x44
+    "gpl joinparty",  # 0x45
+    "gpl leaveparty",  # 0x46
+    "gpl lockdoor",  # 0x47
+    "gpl menu",  # 0x48
+    "gpl setthing",  # 0x49
+    "gpl default",  # 0x4A
+    "gpl local sub trace",  # 0x4B
+    "gpl default",  # 0x4C
+    "gpl default",  # 0x4D
+    "gpl default",  # 0x4E
+    "gpl print string",  # 0x4F
+    "gpl print number",  # 0x50
+    "gpl printnl",  # 0x51
+    "gpl rand",  # 0x52
+    "gpl default",  # 0x53
+    "gpl showpic",  # 0x54
+    "gpl default",  # 0x55
+    "gpl default",  # 0x56
+    "gpl default",  # 0x57
+    "gpl skillroll",  # 0x58
+    "gpl statroll",  # 0x59
+    "gpl string compare",  # 0x5A
+    "gpl match string",  # 0x5B
+    "gpl take",  # 0x5C
+    "gpl sound",  # 0x5D
+    "gpl tport",  # 0x5E
+    "gpl music",  # 0x5F
+    "gpl default",  # 0x60
+    "gpl cmpend",  # 0x61
+    "gpl wait",  # 0x62
+    "gpl while",  # 0x63
+    "gpl wend",  # 0x64
+    "gpl attacktrigger",  # 0x65
+    "gpl looktrigger",  # 0x66
+    "gpl endif",  # 0x67
     "gpl move tiletrigger",  # 0x68
     "gpl door tiletrigger",  # 0x69
-    "gpl move boxtrigger",   # 0x6A
-    "gpl door boxtrigger",   # 0x6B
-    "gpl pickup itemtrigger",# 0x6C
-    "gpl usetrigger",        # 0x6D
-    "gpl talktotrigger",     # 0x6E
-    "gpl noorderstrigger",   # 0x6F
-    "gpl usewithtrigger",    # 0x70
-    "gpl default",           # 0x71
-    "gpl default",           # 0x72
-    "gpl default",           # 0x73
-    "gpl default",           # 0x74
-    "gpl default",           # 0x75
-    "gpl byte plus equal",   # 0x76
+    "gpl move boxtrigger",  # 0x6A
+    "gpl door boxtrigger",  # 0x6B
+    "gpl pickup itemtrigger",  # 0x6C
+    "gpl usetrigger",  # 0x6D
+    "gpl talktotrigger",  # 0x6E
+    "gpl noorderstrigger",  # 0x6F
+    "gpl usewithtrigger",  # 0x70
+    "gpl default",  # 0x71
+    "gpl default",  # 0x72
+    "gpl default",  # 0x73
+    "gpl default",  # 0x74
+    "gpl default",  # 0x75
+    "gpl byte plus equal",  # 0x76
     "gpl byte minus equal",  # 0x77
     "gpl byte times equal",  # 0x78
-    "gpl byte divide equal", # 0x79
-    "gpl word plus equal",   # 0x7A
+    "gpl byte divide equal",  # 0x79
+    "gpl word plus equal",  # 0x7A
     "gpl word minus equal",  # 0x7B
     "gpl word times equal",  # 0x7C
-    "gpl word divide equal", # 0x7D
-    "gpl long plus equal",   # 0x7E
+    "gpl word divide equal",  # 0x7D
+    "gpl long plus equal",  # 0x7E
     "gpl long minus equal",  # 0x7F
-    "gpl get range",         # 0x80
+    "gpl get range",  # 0x80
 ]
 
 # libgff handler names that mean "we don't know what this opcode
@@ -263,7 +263,8 @@ def find_unmatched_decoders(
     """
     matched_names = {dso for _, _, dso in matches}
     return sorted(
-        name for name in funcs
+        name
+        for name in funcs
         if name.startswith("Decode") and name not in matched_names
     )
 
@@ -298,7 +299,8 @@ GPL_GLOBAL_PREFIXES = ("gGpl", "bGpl", "gGame", "gParty", "gCurrent")
 def render_globals_summary(globs: dict[str, int]) -> str:
     """Markdown table of GPL-related engine globals."""
     rows = sorted(
-        (name, addr) for name, addr in globs.items()
+        (name, addr)
+        for name, addr in globs.items()
         if any(name.startswith(p) for p in GPL_GLOBAL_PREFIXES)
     )
     lines = [
@@ -312,7 +314,9 @@ def render_globals_summary(globs: dict[str, int]) -> str:
         "|--------|-------------------|-------------|",
     ]
     for name, addr in rows:
-        lines.append(f"| `{name}` | `0x{addr:08x}` | _(TBD; cross-reference and verify)_ |")
+        lines.append(
+            f"| `{name}` | `0x{addr:08x}` | _(TBD; cross-reference and verify)_ |"
+        )
     return "\n".join(lines)
 
 
@@ -328,7 +332,8 @@ GPL_FUNCTION_PATTERNS = (
 def render_functions_summary(funcs: dict[str, int]) -> str:
     """Markdown table of GPL/GFF-related engine functions."""
     rows = sorted(
-        (name, addr) for name, addr in funcs.items()
+        (name, addr)
+        for name, addr in funcs.items()
         if any(p.search(name) for p in GPL_FUNCTION_PATTERNS)
     )
     lines = [
@@ -386,19 +391,23 @@ def main() -> int:
     )
     mode = ap.add_mutually_exclusive_group()
     mode.add_argument(
-        "--opcodes-proposed", action="store_true",
+        "--opcodes-proposed",
+        action="store_true",
         help="emit TOML opcode-rename proposals only",
     )
     mode.add_argument(
-        "--functions-summary", action="store_true",
+        "--functions-summary",
+        action="store_true",
         help="emit markdown engine-functions summary only",
     )
     mode.add_argument(
-        "--globals-summary", action="store_true",
+        "--globals-summary",
+        action="store_true",
         help="emit markdown engine-globals summary only",
     )
     mode.add_argument(
-        "--unmatched-decoders", action="store_true",
+        "--unmatched-decoders",
+        action="store_true",
         help="emit list of DSO Decode* handlers with no libgff slot",
     )
     args = ap.parse_args()

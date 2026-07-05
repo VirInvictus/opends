@@ -3,6 +3,7 @@
 
 Stdlib-only. Python 3.11+ for tomllib.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -111,9 +112,7 @@ def _verify_install(
         manifest = tomllib.load(f)
 
     expected: dict[str, str] = manifest.get("files", {})
-    runtime_patterns: list[str] = manifest.get("runtime_state", {}).get(
-        "patterns", []
-    )
+    runtime_patterns: list[str] = manifest.get("runtime_state", {}).get("patterns", [])
 
     matched: list[str] = []
     mismatched: list[dict] = []
@@ -140,9 +139,7 @@ def _verify_install(
         if got == want_hash:
             matched.append(rel)
         else:
-            mismatched.append(
-                {"path": rel, "expected": want_hash, "actual": got}
-            )
+            mismatched.append({"path": rel, "expected": want_hash, "actual": got})
 
     for p in walk_files(install):
         rel = relpath(p, install)
@@ -199,9 +196,7 @@ def _print_report(meta: dict, report: dict, args: argparse.Namespace) -> None:
             for rel in report["extras"]:
                 print(f"  {rel}")
         else:
-            print(
-                f"\n({len(report['extras'])} extras; pass --show-extras to list)"
-            )
+            print(f"\n({len(report['extras'])} extras; pass --show-extras to list)")
     if report["skipped"] and args.show_skipped:
         print("\nSKIPPED (matched runtime_state pattern):")
         for rel in report["skipped"]:
@@ -242,9 +237,7 @@ def _extract_from_installer(installer: Path) -> Path:
     return tmp
 
 
-def cmd_repair(
-    args: argparse.Namespace, install: Path, report: dict
-) -> int:
+def cmd_repair(args: argparse.Namespace, install: Path, report: dict) -> int:
     """Restore mismatched / missing files from the GOG installer.
 
     Stages a backup of any overwritten file at
@@ -319,12 +312,11 @@ def cmd_rollback(args: argparse.Namespace, install: Path) -> int:
             file=sys.stderr,
         )
         return 0
-    targets: list[Path] = sorted(
-        p for p in backup_root.rglob("*") if p.is_file()
-    )
+    targets: list[Path] = sorted(p for p in backup_root.rglob("*") if p.is_file())
     if not targets:
-        print(f"verify-install: backup directory {backup_root} is empty.",
-              file=sys.stderr)
+        print(
+            f"verify-install: backup directory {backup_root} is empty.", file=sys.stderr
+        )
         return 0
     if args.dry_run:
         print(f"rollback --dry-run: would restore {len(targets)} file(s):")
@@ -363,16 +355,20 @@ def _print_summary(meta: dict, report: dict) -> None:
     extras = len(report["extras"])
     skipped = len(report["skipped"])
     matched = len(report["matched"])
-    game_label = {"ds1": "Dark Sun: Shattered Lands",
-                  "ds2": "Dark Sun: Wake of the Ravager"}.get(
-                      meta.get("game"), meta.get("game", "?"))
+    game_label = {
+        "ds1": "Dark Sun: Shattered Lands",
+        "ds2": "Dark Sun: Wake of the Ravager",
+    }.get(meta.get("game"), meta.get("game", "?"))
     src_label = meta.get("source", "?")
+
     def plural(n: int, singular: str, plural_form: str | None = None) -> str:
         word = plural_form or (singular + "s")
         return f"{n} {singular if n == 1 else word}"
 
     if report["ok"]:
-        bits = [f"Your {game_label} install matches the canonical {src_label} hash manifest."]
+        bits = [
+            f"Your {game_label} install matches the canonical {src_label} hash manifest."
+        ]
         if extras > 0:
             bits.append(
                 f"{plural(extras, 'extra')} (probably saves / DOSBox config / DSUN.LOG)."
@@ -380,7 +376,9 @@ def _print_summary(meta: dict, report: dict) -> None:
         if skipped > 0:
             bits.append(f"{plural(skipped, 'runtime-state file')} skipped by policy.")
         print(" ".join(bits))
-        print(f"  ({plural(matched, 'file')} matched, no mismatches, no missing files.)")
+        print(
+            f"  ({plural(matched, 'file')} matched, no mismatches, no missing files.)"
+        )
         return
     bits: list[str] = []
     if m > 0:
@@ -390,9 +388,7 @@ def _print_summary(meta: dict, report: dict) -> None:
     issue_summary = " + ".join(bits) if bits else "an issue"
     print(f"Your {game_label} install has {issue_summary}.")
     if m + miss > 0:
-        print(
-            "  Run with --repair <GOG-installer.exe> to restore canonical bytes."
-        )
+        print("  Run with --repair <GOG-installer.exe> to restore canonical bytes.")
         print("  --rollback restores a previous --repair from the backup dir.")
     if extras > 0:
         print(
@@ -466,9 +462,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="verify-install",
         description="Verify a Dark Sun install against a canonical hash manifest.",
     )
-    p.add_argument(
-        "--version", action="version", version=f"verify-install {VERSION}"
-    )
+    p.add_argument("--version", action="version", version=f"verify-install {VERSION}")
     p.add_argument(
         "--game",
         choices=["ds1", "ds2"],
@@ -577,7 +571,7 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "verify-mode: emit a one-line plain-English status "
             "instead of the full hash-by-hash table. Useful for "
-            "the common-case modder check: \"is my install in "
+            'the common-case modder check: "is my install in '
             "shape, yes / no, what's wrong.\""
         ),
     )

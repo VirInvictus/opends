@@ -80,13 +80,14 @@ def chrome_close() -> str:
 def escape(s: str) -> str:
     return (
         s.replace("&", "&amp;")
-         .replace("<", "&lt;")
-         .replace(">", "&gt;")
-         .replace('"', "&quot;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
     )
 
 
 # ----- tool discovery (mirrors the umbrella opends crate's pattern) -----
+
 
 def find_binary(name: str) -> Path | None:
     """target/release/<name> > target/debug/<name> > $PATH."""
@@ -104,6 +105,7 @@ def find_python_tool(crate_dir: str, script: str) -> Path | None:
 
 
 # ----- game discovery -----
+
 
 def discover_games(games_dir: Path) -> list[tuple[str, Path]]:
     """Look for game install directories. Each must contain DSUN.EXE
@@ -126,6 +128,7 @@ def discover_games(games_dir: Path) -> list[tuple[str, Path]]:
 
 # ----- sprite gallery -----
 
+
 def build_sprite_gallery(
     out_dir: Path,
     game_label: str,
@@ -142,7 +145,8 @@ def build_sprite_gallery(
     pngs_dir.mkdir(parents=True, exist_ok=True)
     res = subprocess.run(
         [str(image_extract), str(gff), "--all", "-o", str(pngs_dir)],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     written = sorted(p.name for p in pngs_dir.glob("*.png"))
     skipped = 0
@@ -160,7 +164,9 @@ def build_sprite_gallery(
         f'<span class="stat">skipped: <strong>{skipped}</strong></span></p>'
     )
     if not written:
-        parts.append('<p class="warn">No sprites decoded; check that image-extract ran cleanly.</p>')
+        parts.append(
+            '<p class="warn">No sprites decoded; check that image-extract ran cleanly.</p>'
+        )
     else:
         parts.append('<div class="grid">')
         for name in written:
@@ -169,7 +175,7 @@ def build_sprite_gallery(
                 f'<div class="thumb">'
                 f'<a href="{rel}"><img src="{rel}" alt="{escape(name)}"></a>'
                 f'<div class="label">{escape(name)}</div>'
-                f'</div>'
+                f"</div>"
             )
         parts.append("</div>")
     parts.append(chrome_close())
@@ -178,6 +184,7 @@ def build_sprite_gallery(
 
 
 # ----- region gallery -----
+
 
 def build_region_gallery(
     out_dir: Path,
@@ -224,7 +231,7 @@ def build_region_gallery(
         parts.append(
             f'<div class="region"><h3>{escape(p.stem)}</h3>'
             f'<a href="{rel}"><img src="{rel}" alt="{escape(p.stem)}"></a>'
-            f'</div>'
+            f"</div>"
         )
     for name, err in failed:
         parts.append(
@@ -236,6 +243,7 @@ def build_region_gallery(
 
 
 # ----- dialog -----
+
 
 def build_dialog_page(
     out_dir: Path,
@@ -252,13 +260,18 @@ def build_dialog_page(
     raw_html_path.parent.mkdir(parents=True, exist_ok=True)
     res = subprocess.run(
         [
-            "python3", str(dialog_extract),
+            "python3",
+            str(dialog_extract),
             str(gpldata),
-            "--text-source", str(text_source),
-            "--format", "html",
-            "-o", str(raw_html_path),
+            "--text-source",
+            str(text_source),
+            "--format",
+            "html",
+            "-o",
+            str(raw_html_path),
         ],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     if res.returncode != 0 or not raw_html_path.is_file():
         # Drop a stub explaining the failure.
@@ -278,7 +291,7 @@ def build_dialog_page(
     # post-editing the <body> tag.
     body = raw_html_path.read_text(encoding="utf-8")
     nav = "".join(f'<a href="../{url}">{label}</a>' for label, url in sections)
-    body = body.replace("<body>", f'<body>\n<nav>{nav}</nav>\n', 1)
+    body = body.replace("<body>", f"<body>\n<nav>{nav}</nav>\n", 1)
     # Inject our shared CSS (after the existing one).
     body = body.replace("</style>", f"</style>\n<style>{CSS}</style>", 1)
     raw_html_path.write_text(body, encoding="utf-8")
@@ -286,6 +299,7 @@ def build_dialog_page(
 
 
 # ----- index -----
+
 
 def build_index(
     out_dir: Path,
@@ -306,21 +320,25 @@ def build_index(
         s = summary["sprite_html"]
         parts.append(
             f'<li><a href="{Path(s["path"]).name}">Sprites</a>: '
-            f'{s["count"]} decoded, {s["skipped"]} skipped (per source GFF).</li>'
+            f"{s['count']} decoded, {s['skipped']} skipped (per source GFF).</li>"
         )
     if summary.get("regions"):
         r = summary["regions"]
         parts.append(
             f'<li><a href="regions.html">Regions</a>: {r["count"]} rendered, '
-            f'{r["failed"]} failed.</li>'
+            f"{r['failed']} failed.</li>"
         )
     if summary.get("dialog"):
         d = summary["dialog"]
         if d["ok"]:
-            parts.append(f'<li><a href="{Path(d["path"]).name}">Dialog</a>: '
-                         f'every NPC line as a single browsable page.</li>')
+            parts.append(
+                f'<li><a href="{Path(d["path"]).name}">Dialog</a>: '
+                f"every NPC line as a single browsable page.</li>"
+            )
         else:
-            parts.append(f'<li><a href="{Path(d["path"]).name}">Dialog (failed)</a></li>')
+            parts.append(
+                f'<li><a href="{Path(d["path"]).name}">Dialog (failed)</a></li>'
+            )
     parts.append("</ul>")
     parts.append(chrome_close())
     html_path.write_text("".join(parts), encoding="utf-8")
@@ -342,16 +360,19 @@ def build_root_index(out_dir: Path, games: list[tuple[str, Path]]) -> Path:
         parts.append(f'<li><a href="{label}/index.html">{escape(label)}</a></li>')
     parts.append("</ul>")
     parts.append("<h2>About</h2>")
-    parts.append("<p>This static site is the umbrella browser for an OpenDS toolkit run. "
-                 "Sprites come from <code>image-extract --all</code>; regions from "
-                 "<code>region-render</code>; dialog from "
-                 "<code>dialog-extract --format html</code>. Every link is local; no network needed.</p>")
+    parts.append(
+        "<p>This static site is the umbrella browser for an OpenDS toolkit run. "
+        "Sprites come from <code>image-extract --all</code>; regions from "
+        "<code>region-render</code>; dialog from "
+        "<code>dialog-extract --format html</code>. Every link is local; no network needed.</p>"
+    )
     parts.append(chrome_close())
     html_path.write_text("".join(parts), encoding="utf-8")
     return html_path
 
 
 # ----- driver -----
+
 
 def cmd_build(args: argparse.Namespace) -> int:
     out_dir: Path = args.output
@@ -364,18 +385,24 @@ def cmd_build(args: argparse.Namespace) -> int:
 
     games = discover_games(games_dir)
     if not games:
-        print(f"error: no game installs found under {games_dir} "
-              "(looking for DSUN.EXE)", file=sys.stderr)
+        print(
+            f"error: no game installs found under {games_dir} (looking for DSUN.EXE)",
+            file=sys.stderr,
+        )
         return 2
 
     print(f"atlas: building site at {out_dir}")
-    print(f"atlas: found {len(games)} game(s): {', '.join(label for label,_ in games)}")
+    print(
+        f"atlas: found {len(games)} game(s): {', '.join(label for label, _ in games)}"
+    )
     if image_extract is None:
         print("atlas: WARN image-extract not found; sprites skipped", file=sys.stderr)
     if region_render is None:
         print("atlas: WARN region-render not found; regions skipped", file=sys.stderr)
     if dialog_extract is None:
-        print("atlas: WARN dialog-extract.py not found; dialog skipped", file=sys.stderr)
+        print(
+            "atlas: WARN dialog-extract.py not found; dialog skipped", file=sys.stderr
+        )
 
     for label, game_dir in games:
         print(f"atlas: --- {label} ({game_dir}) ---")
@@ -393,9 +420,17 @@ def cmd_build(args: argparse.Namespace) -> int:
         if image_extract and resource.is_file():
             print(f"  sprites: extracting {resource.name}...")
             html, count, skipped = build_sprite_gallery(
-                out_dir, label, resource, image_extract, sections,
+                out_dir,
+                label,
+                resource,
+                image_extract,
+                sections,
             )
-            summary["sprite_html"] = {"path": str(html), "count": count, "skipped": skipped}
+            summary["sprite_html"] = {
+                "path": str(html),
+                "count": count,
+                "skipped": skipped,
+            }
             print(f"    -> {count} sprites, {skipped} skipped")
 
         # Regions: every RGN*.GFF.
@@ -404,7 +439,11 @@ def cmd_build(args: argparse.Namespace) -> int:
             if rgns:
                 print(f"  regions: rendering {len(rgns)} regions...")
                 html, count, failed = build_region_gallery(
-                    out_dir, label, rgns, region_render, sections,
+                    out_dir,
+                    label,
+                    rgns,
+                    region_render,
+                    sections,
                 )
                 summary["regions"] = {"count": count, "failed": failed}
                 print(f"    -> {count} rendered, {failed} failed")
@@ -414,7 +453,12 @@ def cmd_build(args: argparse.Namespace) -> int:
         if dialog_extract and gpldata.is_file() and resource.is_file():
             print(f"  dialog: extracting {gpldata.name}...")
             html, ok = build_dialog_page(
-                out_dir, label, gpldata, resource, dialog_extract, sections,
+                out_dir,
+                label,
+                gpldata,
+                resource,
+                dialog_extract,
+                sections,
             )
             summary["dialog"] = {"path": str(html), "ok": ok}
             print(f"    -> {'ok' if ok else 'FAILED'}")
@@ -431,10 +475,19 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--version", action="version", version=f"atlas {VERSION}")
     sub = p.add_subparsers(dest="cmd", required=True)
     pb = sub.add_parser("build", help="generate the static site")
-    pb.add_argument("--games-dir", type=Path, required=True,
-                    help="directory containing one or more game installs (DSUN.EXE marker)")
-    pb.add_argument("-o", "--output", type=Path, required=True,
-                    help="output site directory (created if missing)")
+    pb.add_argument(
+        "--games-dir",
+        type=Path,
+        required=True,
+        help="directory containing one or more game installs (DSUN.EXE marker)",
+    )
+    pb.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        required=True,
+        help="output site directory (created if missing)",
+    )
     args = p.parse_args(argv)
     if args.cmd == "build":
         return cmd_build(args)

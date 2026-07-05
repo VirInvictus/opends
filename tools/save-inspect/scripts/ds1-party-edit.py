@@ -74,21 +74,21 @@ DEFAULT_SAVE01 = Path.home() / ".wine/drive_c/GOG Games/Dark Sun/SAVE01.SAV"
 # Offsets within the relevant SAVE chunks (relative to chunk start).
 # SAVE-5 (combat sub-blocks; 58 bytes per record):
 COMBAT_RECORD_SIZE = 58
-COMBAT_HP_OFF = 0          # i16
-COMBAT_PSP_OFF = 2         # i16
-COMBAT_STATS_OFF = 34      # u8[6]
-COMBAT_NAME_OFF = 40       # char[18]
+COMBAT_HP_OFF = 0  # i16
+COMBAT_PSP_OFF = 2  # i16
+COMBAT_STATS_OFF = 34  # u8[6]
+COMBAT_NAME_OFF = 40  # char[18]
 
 # SAVE-6 (character sub-blocks; 71-72 bytes per record):
-CHAR_RECORD_SIZE = 72      # ds1_character_t with palette byte
-CHAR_CURRENT_XP_OFF = 0    # u32
-CHAR_HIGH_XP_OFF = 4       # u32
-CHAR_BASE_HP_OFF = 8       # u16
-CHAR_HIGH_HP_OFF = 10      # u16
-CHAR_BASE_PSP_OFF = 12     # u16
-CHAR_STATS_OFF = 27        # u8[6] (after the 21-byte preamble)
-CHAR_NUM_DICE_OFF = 46     # u8[3]
-CHAR_NUM_SIDES_OFF = 49    # u8[3]
+CHAR_RECORD_SIZE = 72  # ds1_character_t with palette byte
+CHAR_CURRENT_XP_OFF = 0  # u32
+CHAR_HIGH_XP_OFF = 4  # u32
+CHAR_BASE_HP_OFF = 8  # u16
+CHAR_HIGH_HP_OFF = 10  # u16
+CHAR_BASE_PSP_OFF = 12  # u16
+CHAR_STATS_OFF = 27  # u8[6] (after the 21-byte preamble)
+CHAR_NUM_DICE_OFF = 46  # u8[3]
+CHAR_NUM_SIDES_OFF = 49  # u8[3]
 CHAR_NUM_BONUSES_OFF = 52  # u8[3]
 
 
@@ -108,7 +108,7 @@ def parse_gff_chunk(data: bytes, kind: bytes, chunk_id: int) -> tuple[int, int]:
     num_types = struct.unpack_from("<H", data, cursor)[0]
     cursor += 2
     for _ in range(num_types):
-        type_kind = data[cursor:cursor + 4]
+        type_kind = data[cursor : cursor + 4]
         raw_count = struct.unpack_from("<I", data, cursor + 4)[0]
         cursor += 8
         if raw_count & 0x80000000:
@@ -137,19 +137,22 @@ def find_party_records(darkrun: bytes) -> list[dict]:
         record_off = s5_off + i * COMBAT_RECORD_SIZE
         if record_off + COMBAT_RECORD_SIZE > s5_off + s5_len:
             break
-        name_field = darkrun[record_off + COMBAT_NAME_OFF:
-                             record_off + COMBAT_NAME_OFF + 18]
+        name_field = darkrun[
+            record_off + COMBAT_NAME_OFF : record_off + COMBAT_NAME_OFF + 18
+        ]
         # Strip at first null. Empty -> end of party.
         name = name_field.split(b"\x00", 1)[0].decode("latin-1", errors="replace")
         if not name:
             break
         char_record_off = s6_off + i * CHAR_RECORD_SIZE if s6_off >= 0 else -1
-        pcs.append({
-            "index": i,
-            "name": name,
-            "combat_abs": record_off,
-            "char_abs": char_record_off,
-        })
+        pcs.append(
+            {
+                "index": i,
+                "name": name,
+                "combat_abs": record_off,
+                "char_abs": char_record_off,
+            }
+        )
     return pcs
 
 
@@ -160,14 +163,17 @@ def find_pc(pcs: list[dict], who: str) -> dict:
         idx = int(who)
         if 0 <= idx < len(pcs):
             return pcs[idx]
-        raise SystemExit(f"PC index {idx} out of range (0..{len(pcs)-1})")
+        raise SystemExit(f"PC index {idx} out of range (0..{len(pcs) - 1})")
     matches = [p for p in pcs if who.lower() in p["name"].lower()]
     if not matches:
-        raise SystemExit(f"no PC name matching {who!r}; available: "
-                         + ", ".join(p["name"] for p in pcs))
+        raise SystemExit(
+            f"no PC name matching {who!r}; available: "
+            + ", ".join(p["name"] for p in pcs)
+        )
     if len(matches) > 1:
-        raise SystemExit(f"multiple PCs matching {who!r}: "
-                         + ", ".join(p["name"] for p in matches))
+        raise SystemExit(
+            f"multiple PCs matching {who!r}: " + ", ".join(p["name"] for p in matches)
+        )
     return matches[0]
 
 
@@ -181,20 +187,22 @@ def show(args: argparse.Namespace) -> int:
     co = pc["combat_abs"]
     hp = struct.unpack_from("<h", data, co + COMBAT_HP_OFF)[0]
     psp = struct.unpack_from("<h", data, co + COMBAT_PSP_OFF)[0]
-    stats = list(data[co + COMBAT_STATS_OFF:co + COMBAT_STATS_OFF + 6])
+    stats = list(data[co + COMBAT_STATS_OFF : co + COMBAT_STATS_OFF + 6])
     print(f"  combat HP={hp} PSP={psp} stats={stats} (STR DEX CON INT WIS CHR)")
     if pc["char_abs"] >= 0:
         ho = pc["char_abs"]
         xp = struct.unpack_from("<I", data, ho + CHAR_CURRENT_XP_OFF)[0]
         max_hp = struct.unpack_from("<H", data, ho + CHAR_BASE_HP_OFF)[0]
         max_psp = struct.unpack_from("<H", data, ho + CHAR_BASE_PSP_OFF)[0]
-        cstats = list(data[ho + CHAR_STATS_OFF:ho + CHAR_STATS_OFF + 6])
-        nd = list(data[ho + CHAR_NUM_DICE_OFF:ho + CHAR_NUM_DICE_OFF + 3])
-        ns = list(data[ho + CHAR_NUM_SIDES_OFF:ho + CHAR_NUM_SIDES_OFF + 3])
-        nb = list(data[ho + CHAR_NUM_BONUSES_OFF:ho + CHAR_NUM_BONUSES_OFF + 3])
+        cstats = list(data[ho + CHAR_STATS_OFF : ho + CHAR_STATS_OFF + 6])
+        nd = list(data[ho + CHAR_NUM_DICE_OFF : ho + CHAR_NUM_DICE_OFF + 3])
+        ns = list(data[ho + CHAR_NUM_SIDES_OFF : ho + CHAR_NUM_SIDES_OFF + 3])
+        nb = list(data[ho + CHAR_NUM_BONUSES_OFF : ho + CHAR_NUM_BONUSES_OFF + 3])
         print(f"  char   XP={xp} max_hp={max_hp} max_psp={max_psp}")
         print(f"  char   stats={cstats}")
-        print(f"  char   weapon: {nd[0]}d{ns[0]}+{nb[0]} (num_dice/sides/bonuses [0..2] = {nd} / {ns} / {nb})")
+        print(
+            f"  char   weapon: {nd[0]}d{ns[0]}+{nb[0]} (num_dice/sides/bonuses [0..2] = {nd} / {ns} / {nb})"
+        )
     return 0
 
 
@@ -205,7 +213,7 @@ def list_pcs(args: argparse.Namespace) -> int:
     for p in pcs:
         co = p["combat_abs"]
         hp = struct.unpack_from("<h", data, co + COMBAT_HP_OFF)[0]
-        stats = list(data[co + COMBAT_STATS_OFF:co + COMBAT_STATS_OFF + 6])
+        stats = list(data[co + COMBAT_STATS_OFF : co + COMBAT_STATS_OFF + 6])
         print(f"  {p['index']}  {p['name']:14}  HP={hp:>4}  stats={stats}")
     return 0
 
@@ -232,54 +240,88 @@ def edit(args: argparse.Namespace) -> int:
     save01_buf = bytearray(save01_bytes)
 
     def both(off: int, new_bytes: bytes, label: str) -> None:
-        before_d = bytes(darkrun_buf[off:off + len(new_bytes)])
-        darkrun_buf[off:off + len(new_bytes)] = new_bytes
-        save01_buf[off:off + len(new_bytes)] = new_bytes
+        before_d = bytes(darkrun_buf[off : off + len(new_bytes)])
+        darkrun_buf[off : off + len(new_bytes)] = new_bytes
+        save01_buf[off : off + len(new_bytes)] = new_bytes
         log.append(f"  {label}: {before_d.hex(' ')} -> {new_bytes.hex(' ')}")
 
     # Combat record edits
     if args.hp is not None:
         both(co + COMBAT_HP_OFF, struct.pack("<h", args.hp), f"combat.hp -> {args.hp}")
     if args.psp is not None:
-        both(co + COMBAT_PSP_OFF, struct.pack("<h", args.psp), f"combat.psp -> {args.psp}")
+        both(
+            co + COMBAT_PSP_OFF,
+            struct.pack("<h", args.psp),
+            f"combat.psp -> {args.psp}",
+        )
     stat_edits = [
-        ("str", 0), ("dex", 1), ("con", 2),
-        ("int", 3), ("wis", 4), ("cha", 5),
+        ("str", 0),
+        ("dex", 1),
+        ("con", 2),
+        ("int", 3),
+        ("wis", 4),
+        ("cha", 5),
     ]
     for stat_key, stat_idx in stat_edits:
         v = getattr(args, stat_key, None)
         if v is not None:
             # Combat stats
-            both(co + COMBAT_STATS_OFF + stat_idx, bytes([v]),
-                 f"combat.stats.{stat_key} -> {v}")
+            both(
+                co + COMBAT_STATS_OFF + stat_idx,
+                bytes([v]),
+                f"combat.stats.{stat_key} -> {v}",
+            )
             # Char stats
             if ho >= 0:
-                both(ho + CHAR_STATS_OFF + stat_idx, bytes([v]),
-                     f"char.stats.{stat_key} -> {v}")
+                both(
+                    ho + CHAR_STATS_OFF + stat_idx,
+                    bytes([v]),
+                    f"char.stats.{stat_key} -> {v}",
+                )
     # Character record edits
     if ho >= 0:
         if args.max_hp is not None:
-            both(ho + CHAR_BASE_HP_OFF, struct.pack("<H", args.max_hp),
-                 f"char.base_hp -> {args.max_hp}")
+            both(
+                ho + CHAR_BASE_HP_OFF,
+                struct.pack("<H", args.max_hp),
+                f"char.base_hp -> {args.max_hp}",
+            )
         if args.max_psp is not None:
-            both(ho + CHAR_BASE_PSP_OFF, struct.pack("<H", args.max_psp),
-                 f"char.base_psp -> {args.max_psp}")
+            both(
+                ho + CHAR_BASE_PSP_OFF,
+                struct.pack("<H", args.max_psp),
+                f"char.base_psp -> {args.max_psp}",
+            )
         if args.xp is not None:
-            both(ho + CHAR_CURRENT_XP_OFF, struct.pack("<I", args.xp),
-                 f"char.current_xp -> {args.xp}")
+            both(
+                ho + CHAR_CURRENT_XP_OFF,
+                struct.pack("<I", args.xp),
+                f"char.current_xp -> {args.xp}",
+            )
         if args.weapon_dice is not None:
-            both(ho + CHAR_NUM_DICE_OFF, bytes([args.weapon_dice]),
-                 f"char.num_dice[0] -> {args.weapon_dice}")
+            both(
+                ho + CHAR_NUM_DICE_OFF,
+                bytes([args.weapon_dice]),
+                f"char.num_dice[0] -> {args.weapon_dice}",
+            )
         if args.weapon_sides is not None:
-            both(ho + CHAR_NUM_SIDES_OFF, bytes([args.weapon_sides]),
-                 f"char.num_sides[0] -> {args.weapon_sides}")
+            both(
+                ho + CHAR_NUM_SIDES_OFF,
+                bytes([args.weapon_sides]),
+                f"char.num_sides[0] -> {args.weapon_sides}",
+            )
         if args.weapon_bonus is not None:
-            both(ho + CHAR_NUM_BONUSES_OFF, bytes([args.weapon_bonus]),
-                 f"char.num_bonuses[0] -> {args.weapon_bonus}")
+            both(
+                ho + CHAR_NUM_BONUSES_OFF,
+                bytes([args.weapon_bonus]),
+                f"char.num_bonuses[0] -> {args.weapon_bonus}",
+            )
 
     if not log:
-        print("error: no edit flags given. See --help for available fields.",
-              file=sys.stderr)
+        print(
+            "error: no edit flags given. See --help for available fields.",
+            file=sys.stderr,
+        )
         return 2
 
     print(f"PC {pc['index']}: {pc['name']}")
@@ -292,6 +334,7 @@ def edit(args: argparse.Namespace) -> int:
 
     # Backup both files (latest mtime in the filename for collision-free)
     import time
+
     ts = int(time.time())
     dr_bak = args.darkrun.with_name(args.darkrun.name + f".bak.ds1-party-edit.{ts}")
     sv_bak = args.save01.with_name(args.save01.name + f".bak.ds1-party-edit.{ts}")
@@ -309,11 +352,16 @@ def edit(args: argparse.Namespace) -> int:
 
 def restore(args: argparse.Namespace) -> int:
     # Find the most recent ds1-party-edit backup pair.
-    dr_baks = sorted(args.darkrun.parent.glob(args.darkrun.name + ".bak.ds1-party-edit.*"))
-    sv_baks = sorted(args.save01.parent.glob(args.save01.name + ".bak.ds1-party-edit.*"))
+    dr_baks = sorted(
+        args.darkrun.parent.glob(args.darkrun.name + ".bak.ds1-party-edit.*")
+    )
+    sv_baks = sorted(
+        args.save01.parent.glob(args.save01.name + ".bak.ds1-party-edit.*")
+    )
     if not dr_baks or not sv_baks:
-        print(f"no ds1-party-edit backups found alongside {args.darkrun}",
-              file=sys.stderr)
+        print(
+            f"no ds1-party-edit backups found alongside {args.darkrun}", file=sys.stderr
+        )
         return 1
     dr = dr_baks[-1]
     sv = sv_baks[-1]
@@ -324,11 +372,18 @@ def restore(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(prog="ds1-party-edit", description=__doc__.splitlines()[0])
-    p.add_argument("--darkrun", type=Path, default=DEFAULT_DARKRUN,
-                   help="path to DARKRUN.GFF")
-    p.add_argument("--save01", type=Path, default=DEFAULT_SAVE01,
-                   help="path to SAVE01.SAV (engine reads this on load)")
+    p = argparse.ArgumentParser(
+        prog="ds1-party-edit", description=__doc__.splitlines()[0]
+    )
+    p.add_argument(
+        "--darkrun", type=Path, default=DEFAULT_DARKRUN, help="path to DARKRUN.GFF"
+    )
+    p.add_argument(
+        "--save01",
+        type=Path,
+        default=DEFAULT_SAVE01,
+        help="path to SAVE01.SAV (engine reads this on load)",
+    )
     sub = p.add_subparsers(dest="cmd", required=True)
 
     p_list = sub.add_parser("list", help="list party PCs")
@@ -347,18 +402,22 @@ def main(argv: list[str] | None = None) -> int:
     p_edit.add_argument("--xp", type=int)
     for stat in ("str", "dex", "con", "int", "wis", "cha"):
         p_edit.add_argument(f"--{stat}", type=int)
-    p_edit.add_argument("--weapon-dice", type=int,
-                        help="num_dice[0] (number of damage dice)")
-    p_edit.add_argument("--weapon-sides", type=int,
-                        help="num_sides[0] (die size, e.g. 6 = 1d6)")
-    p_edit.add_argument("--weapon-bonus", type=int,
-                        help="num_bonuses[0] (flat damage bonus)")
+    p_edit.add_argument(
+        "--weapon-dice", type=int, help="num_dice[0] (number of damage dice)"
+    )
+    p_edit.add_argument(
+        "--weapon-sides", type=int, help="num_sides[0] (die size, e.g. 6 = 1d6)"
+    )
+    p_edit.add_argument(
+        "--weapon-bonus", type=int, help="num_bonuses[0] (flat damage bonus)"
+    )
     p_edit.add_argument("--dry-run", action="store_true")
     p_edit.add_argument("--no-backup", action="store_true")
     p_edit.set_defaults(handler=edit)
 
-    p_restore = sub.add_parser("restore",
-                               help="restore from the most recent .bak.ds1-party-edit.* pair")
+    p_restore = sub.add_parser(
+        "restore", help="restore from the most recent .bak.ds1-party-edit.* pair"
+    )
     p_restore.set_defaults(handler=restore)
 
     args = p.parse_args(argv)

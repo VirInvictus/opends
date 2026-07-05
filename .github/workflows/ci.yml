@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    name: rust — fmt + clippy + test
+    runs-on: ubuntu-latest
+    # Pure-Rust workspace: clap/anyhow/serde/toml/png (png pulls flate2 +
+    # miniz_oxide, both pure Rust). No system libraries to install.
+    env:
+      RUSTFLAGS: -D warnings
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo fmt --check
+        run: cargo fmt --all --check
+
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: cargo test
+        # Corpus tests read GFFs from `.games/` (gitignored, never
+        # redistributed); absent on CI, they skip silently and only the
+        # tracked-fixture unit + smoke tests run.
+        run: cargo test --workspace
+
+  python:
+    name: python — ruff + compile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - run: pip install ruff==0.15.20
+
+      - name: ruff check
+        run: ruff check tools
+
+      - name: ruff format --check
+        run: ruff format --check tools
+
+      - name: compile check
+        # Stdlib-only single-file tools; no unittest/pytest suite exists,
+        # so byte-compilation is the syntax gate.
+        run: python -m compileall -q tools

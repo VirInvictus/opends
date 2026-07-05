@@ -52,11 +52,7 @@ EXIT_HARNESS_ERROR = 2
 
 def require_built() -> None:
     """Bail if the Rust binaries we depend on aren't built."""
-    missing = [
-        p
-        for p in (GFF_CAT, GPL_DISASM, GPL_ASM)
-        if not p.is_file()
-    ]
+    missing = [p for p in (GFF_CAT, GPL_DISASM, GPL_ASM) if not p.is_file()]
     if missing:
         names = ", ".join(p.name for p in missing)
         raise SystemExit(
@@ -119,9 +115,7 @@ def list_chunks(gff: Path) -> list[ChunkRef]:
         if not parts:
             continue
         try:
-            chunk_id = (
-                int(parts[0], 16) if parts[0].startswith("0x") else int(parts[0])
-            )
+            chunk_id = int(parts[0], 16) if parts[0].startswith("0x") else int(parts[0])
         except ValueError:
             continue
         out.append(ChunkRef(kind=kind, id=chunk_id))
@@ -187,9 +181,7 @@ def asm_from_json(json_path: Path, out_path: Path) -> None:
     )
 
 
-def replace_chunk(
-    gff: Path, ref: ChunkRef, bytes_path: Path, out_gff: Path
-) -> None:
+def replace_chunk(gff: Path, ref: ChunkRef, bytes_path: Path, out_gff: Path) -> None:
     subprocess.run(
         [
             str(GFF_CAT),
@@ -354,7 +346,11 @@ def synthesise_fixture(
     shutil.copy2(patched_gff, fixture_gff)
     shutil.copy2(sound_cfg_src, fixture_sound)
 
-    trigger_cmd = "DSUN -W0 -L > d:\\dsun.log" if target_game == "ds2" else "DSUN.EXE > d:\\dsun.log"
+    trigger_cmd = (
+        "DSUN -W0 -L > d:\\dsun.log"
+        if target_game == "ds2"
+        else "DSUN.EXE > d:\\dsun.log"
+    )
     bug_toml = f"""# Synthesised by opcode-fuzz from {work_dir}
 # This fixture replaces GPLDATA.GFF with a patched version
 # carrying the modified chunk; the harness mounts it via the
@@ -478,9 +474,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         asm_from_json(chunk_json, new_bin)
         # 2. Replace in a copy of the source GFF.
         patched = tmp_root / "patched.gff"
-        gff_replace(
-            source_gff, meta["kind"], int(meta["id"]), new_bin, patched
-        )
+        gff_replace(source_gff, meta["kind"], int(meta["id"]), new_bin, patched)
         # 3. Synthesise a repro fixture.
         bugs_root = tmp_root / "bugs"
         bugs_root.mkdir(parents=True, exist_ok=True)
@@ -667,15 +661,21 @@ def cmd_boot_chunks(args: argparse.Namespace) -> int:
         try:
             subprocess.run(
                 [
-                    str(GPL_DISASM), str(gff),
-                    "--global-cfg", str(out_path),
+                    str(GPL_DISASM),
+                    str(gff),
+                    "--global-cfg",
+                    str(out_path),
                     "--json",
                 ],
-                check=True, capture_output=True, text=True,
+                check=True,
+                capture_output=True,
+                text=True,
             )
         except subprocess.CalledProcessError as e:
-            print(f"opcode-fuzz: gpl-disasm --global-cfg failed: {e.stderr}",
-                  file=sys.stderr)
+            print(
+                f"opcode-fuzz: gpl-disasm --global-cfg failed: {e.stderr}",
+                file=sys.stderr,
+            )
             return EXIT_HARNESS_ERROR
         gcfg = json.loads(out_path.read_text())
 
@@ -739,7 +739,9 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     p_ext.add_argument("gff", type=Path, help="source GFF file")
-    p_ext.add_argument("kind", help="chunk kind (e.g. 'GPL ' with trailing space, or 'MAS ')")
+    p_ext.add_argument(
+        "kind", help="chunk kind (e.g. 'GPL ' with trailing space, or 'MAS ')"
+    )
     p_ext.add_argument("id", type=int, help="chunk id (decimal)")
     p_ext.add_argument(
         "-o",
