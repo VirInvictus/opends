@@ -50,6 +50,16 @@ fn builder_round_trip_preserves_chunks() {
     let mut skipped_segmented = 0usize;
     let mut failed: Vec<String> = Vec::new();
 
+    // Skip when the corpus is absent (CI / fresh clone), matching the gpl-asm
+    // corpus tests. CORPUS_DIRS is hardcoded to Brandon's machine layout.
+    if CORPUS_DIRS
+        .iter()
+        .all(|d| gff_files(Path::new(d)).is_empty())
+    {
+        eprintln!("skipping builder corpus: no GFFs under CORPUS_DIRS (.games absent)");
+        return;
+    }
+
     for dir in CORPUS_DIRS {
         for path in gff_files(Path::new(dir)) {
             let bytes = fs::read(&path).expect("read");

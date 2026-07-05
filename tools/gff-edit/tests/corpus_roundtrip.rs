@@ -37,6 +37,15 @@ fn gff_files(dir: &Path) -> Vec<PathBuf> {
 fn no_op_replace_preserves_bytes() {
     let mut tested = 0usize;
     let mut failed: Vec<String> = Vec::new();
+    // Skip when the corpus is absent (CI / fresh clone), matching the gpl-asm
+    // corpus tests and this file's own doc comment above.
+    if CORPUS_DIRS
+        .iter()
+        .all(|d| gff_files(Path::new(d)).is_empty())
+    {
+        eprintln!("skipping corpus round-trip: no GFFs under CORPUS_DIRS (.games absent)");
+        return;
+    }
     for dir in CORPUS_DIRS {
         for path in gff_files(Path::new(dir)) {
             let original = fs::read(&path).expect("read");
