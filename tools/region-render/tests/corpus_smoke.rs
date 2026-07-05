@@ -66,6 +66,16 @@ fn every_region_renders_clean() {
     let mut total_missing_entities = 0usize;
     let mut total_entity_decode_failures = 0usize;
 
+    // Skip when the corpus is absent (CI / fresh clone), matching the gpl-asm
+    // corpus tests. CORPUS_ROOTS is hardcoded to Brandon's .games trees.
+    if CORPUS_ROOTS
+        .iter()
+        .all(|r| collect_region_gffs(std::path::Path::new(r)).is_empty())
+    {
+        eprintln!("skipping region corpus: no region GFFs found (.games absent)");
+        return;
+    }
+
     for root in CORPUS_ROOTS {
         let root_path = Path::new(root);
         if !root_path.is_dir() {

@@ -42,6 +42,13 @@ fn every_ds1_rle_frame_packs_unpacks_pixel_identical() {
     let mut decode_errors = 0usize;
     let mut failures: Vec<String> = Vec::new();
 
+    // Skip when the corpus is absent (CI / fresh clone), matching the gpl-asm
+    // corpus tests. CORPUS is hardcoded to Brandon's .games trees.
+    if CORPUS.iter().all(|p| !std::path::Path::new(p).is_file()) {
+        eprintln!("skipping pack corpus: no GFFs found (.games absent)");
+        return;
+    }
+
     for path in CORPUS {
         let p = Path::new(path);
         if !p.is_file() {

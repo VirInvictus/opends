@@ -39,6 +39,13 @@ fn every_bitmap_chunk_decodes_or_reports_cleanly() {
     // (one chunk at v0.2.0).
     let mut failures: Vec<(String, String, i32, usize, String)> = Vec::new();
 
+    // Skip when the corpus is absent (CI / fresh clone), matching the gpl-asm
+    // corpus tests. CORPUS is hardcoded to Brandon's .games trees.
+    if CORPUS.iter().all(|p| !std::path::Path::new(p).is_file()) {
+        eprintln!("skipping corpus smoke: no bitmap GFFs found (.games absent)");
+        return;
+    }
+
     for path in CORPUS {
         let p = Path::new(path);
         if !p.is_file() {
