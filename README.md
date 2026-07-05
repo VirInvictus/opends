@@ -138,3 +138,11 @@ broader catalogue of every upstream project we read or might
 read. If you've worked on Dark Sun reverse-engineering and
 aren't listed, open an issue — we'd rather over-credit than
 under-credit.
+
+## Support
+
+If OpenDS is useful to you and you'd like to chip in:
+
+```
+bc1qkge6zr45tzqfwfmvma2ylumt6mg7wlwmhr05yv
+```
