@@ -13,6 +13,13 @@ authoring fixes is plumbing, not archaeology.
 Each phase ships a deliverable that is useful on its own,
 independent of whether later phases happen.
 
+**How a release is recorded here.** Per-tool `VERSION` files plus a
+`patchnotes.md` entry are the release record. This roadmap says
+"Released: `<tool>` vX.Y.Z" and that means exactly those two things.
+The `<tool>-vX.Y.Z` git tags that `docs/versioning.md` calls for have
+**not been cut yet** (`git tag` returns nothing); see the open item at
+the end of Phase 0. Reconciled against the tree 2026-07-23.
+
 ## Phase 0 — Documentation & extraction (current)
 
 **Goal**: every fact we know is written down; both games' files
@@ -31,19 +38,20 @@ are extractable on Fedora.
 - [x] **Tool**: `tools/verify-install/` (Python, stdlib-only) —
       hashes a player's install, identifies GOG 1.10 / original
       CD / unknown, supports a capture mode for regenerating the
-      manifest. Tagged: `verify-install-v0.1.0`. **v0.2.0** adds
+      manifest. Released: `verify-install` v0.1.0. **v0.2.0** adds
       `--json` (stable machine-readable report for CI / the repro
       harness) and `--repair <installer.exe>` (shells to
       `innoextract` to restore canonical bytes; backs up the
       pre-repair files to `__verify-install-backup/<path>`;
-      `--dry-run` previews the plan). Tagged:
-      `verify-install-v0.2.0`. **v0.3.0** adds `--rollback`
+      `--dry-run` previews the plan). Released:
+      `verify-install` v0.2.0. **v0.3.0** adds `--rollback`
       (inverse of `--repair`; restores every file in the
       `__verify-install-backup/` dir and removes it; pairs
       with `--dry-run`) and `--summary` (one-line plain-
       English status for the common-case modder check; frames
       next-step advice so the user doesn't have to remember
-      which flag does what). Tagged: `verify-install-v0.3.0`.
+      which flag does what). Released: `verify-install` v0.3.0
+      (matches the current `VERSION`).
 - [x] Source-hash manifests at
       `docs/source-hashes/ds1-gog-1.10.toml` and
       `ds2-gog-1.10.toml` — SHA256 of every shipped file per
@@ -57,6 +65,15 @@ are extractable on Fedora.
       Wine, on Windows, or natively) already have the same file
       tree. Reinstated if a contributor needs from-installer
       extraction without running the installer.
+- [ ] **Cut the per-tool git tags.** `docs/versioning.md` and
+      `CLAUDE.md` both say each tool ships a `<tool>-vX.Y.Z` tag,
+      and this roadmap claimed twelve of them. **None exist**:
+      `git tag` returns nothing. Every release so far is recorded
+      only by a `VERSION` file plus a patchnotes entry. Either
+      backfill tags against the commits that bumped each
+      `VERSION`, or amend `docs/versioning.md` to drop the tag
+      requirement. Found in the 2026-07-23 reconciliation sweep;
+      the false claims are already corrected above.
 
 **Done when**: a working game install + one command →
 `verify-install` reports a clean match against the canonical
@@ -70,8 +87,8 @@ so we don't depend on a JVM tool for the most basic operation.
 Every later phase reads or writes GFFs through this.
 
 **Ships**: `tools/gff-edit/` (Rust) as a workspace member crate;
-library plus `gff-cat` binary. Tagged release:
-`gff-edit-v0.1.0`.
+library plus `gff-cat` binary. First release: `gff-edit` v0.1.0;
+current `VERSION` is 0.6.0.
 
 - [x] Parse the 28-byte file header and the TOC per the layout
       documented in
@@ -107,7 +124,7 @@ library plus `gff-cat` binary. Tagged release:
       `add_chunk(kind, id, payload)` and `build()`. Indexed-only
       for v0.5.0; corpus round-trip verified structural
       equivalence on 50 indexed-only GFFs (78 segmented skipped
-      pending v0.6.0). Tagged: `gff-edit-v0.5.0`.
+      pending v0.6.0). Released: `gff-edit` v0.5.0.
 - [ ] Segmented-type build (the secondary-table + `GFFI`
       cross-reference dance) so the builder covers the full GFF
       feature set. Originally targeted for `gff-edit-v0.6.0`;
@@ -171,8 +188,8 @@ into mnemonic form, even if many opcodes are still `db`. This is
 the single most important tool — the bulk of patch authoring
 runs through it.
 
-**Ships**: `tools/gpl-disasm/` (Rust). Tagged release:
-`gpl-disasm-v0.1.0`.
+**Ships**: `tools/gpl-disasm/` (Rust). First release: `gpl-disasm`
+v0.1.0; current `VERSION` is 0.6.0.
 
 - [x] Read GPL and MAS chunks via our `gff-edit` library.
       (gpl-disasm v0.1.0; smoke-tested against 600 chunks in
@@ -302,7 +319,8 @@ look at the maps directly.
       `syms/speakers.toml` curated chunk-id → NPC name
       catalogue; missing rows fall back to "GPL chunk N".
       `--format json` (default) unchanged for back-compat.
-- [x] Tagged: `dialog-extract-v0.1.0`. (this release)
+- [x] Released: `dialog-extract` v0.1.0. (this release; current
+      `VERSION` is 0.7.1)
 
 ### `tools/save-inspect/` (Python)
 
@@ -402,7 +420,8 @@ look at the maps directly.
       inactive char templates). Plus `scripts/ds1-party-
       edit.py` for DS1 active-party edits via DARKRUN.
       Cookbook entries at `docs/cookbook/`.
-- [x] Tagged: `save-inspect-v0.1.0`. (this release)
+- [x] Released: `save-inspect` v0.1.0. (this release; current
+      `VERSION` is 0.9.4)
 
 ### `tools/image-extract/` (Rust)
 
@@ -425,11 +444,20 @@ look at the maps directly.
       the GOG 1.10 ship (3 frames declared, space for ~2.5).
       The decoder reports `FrameOutOfBounds` and the corpus
       test pins it as the only expected failure.)
-- [ ] Sprite-frame animation export (multi-frame BMPs as GIF /
-      animated PNG / spritesheet).
-- [x] Tagged: `image-extract-v0.1.0` (initial); `image-extract-v0.2.0`
-      (PLAN + PLNR fix); `image-extract-v0.3.0` (multi-frame
-      export); `image-extract-v0.4.0` (`image-pack` companion
+- [x] Sprite-frame export, still-image half. (image-extract
+      v0.3.0: `--frames-all <dir>` writes a multi-frame BMP out as
+      a numbered PNG sequence, `--spritesheet` writes the frames
+      as one sheet; the two conflict by design. `image-pack
+      --frames-dir` round-trips the `--frames-all` output back
+      into a chunk.)
+- [ ] Sprite-frame export, animated half: GIF / animated PNG.
+      Neither format is written today. Split off the shipped
+      spritesheet half 2026-07-23; needs an encoder decision
+      before it is real work (no in-tree GIF/APNG writer, and a
+      new dep needs sign-off per spec §7a).
+- [x] Released: `image-extract` v0.1.0 (initial); v0.2.0
+      (PLAN + PLNR fix); v0.3.0 (multi-frame
+      export); v0.4.0 (`image-pack` companion
       binary: palette-indexed PNG → DS1 RLE BMP chunk; 883 / 883
       corpus DS1 RLE frames round-trip pixel-identical;
       multi-span row emission handles 320-pixel sprite rows
@@ -489,11 +517,56 @@ the friction is felt.
       dep gets a clear error. Text annotations
       (`--annotate` entity-name overlays) deferred to v0.7.1
       (no in-tree Rust font without a new dep).
-- [x] Tagged: `region-render-v0.1.0`. (this release)
+- [x] Released: `region-render` v0.1.0. (this release; current
+      `VERSION` is 0.7.1)
+
+### `tools/atlas/` (Python)
+
+*Added to the roadmap 2026-07-23. It shipped without ever being
+written down here.*
+
+- [x] Static-HTML site generator for a whole toolkit run: drives
+      `image-extract`, `region-render`, and `dialog-extract.py` as
+      subprocesses and emits a browsable directory of pages
+      (per-game sprite gallery from every BMP / PORT / ICON /
+      BMAP / OMAP / TILE chunk in `RESOURCE.GFF`, a region-map
+      page from every `RGN*.GFF`, and the dialog trees) behind one
+      `file://` URL. Stdlib-only Python; the closest thing the
+      toolkit has to "open the whole game and look around."
+- [x] Released: `atlas` v0.1.0; current `VERSION` is 0.1.1.
 
 **Done when**: dialog-extract, save-inspect, image-extract, and
-region-render all exist with their own READMEs, each tagged at
-`v0.1.0`, and `tools/README.md` indexes them.
+region-render all exist with their own READMEs, each released at
+`v0.1.0`, and `tools/README.md` indexes them. *(Met. `atlas`
+landed later as a fifth Phase 4 tool.)*
+
+## Phase 4.5: the human-friendliness sprint (shipped)
+
+*Added to the roadmap 2026-07-23. This whole body of work shipped
+and was recorded only in `patchnotes.md`; the roadmap never knew
+about it. Per-item detail stays in patchnotes rather than being
+duplicated here.*
+
+**Goal**: make the toolkit approachable to someone who has just
+cloned the repo and does not yet know the tool names.
+
+- [x] **New tool**: `tools/opends/` (Rust), the umbrella CLI.
+      Auto-dispatches by file magic ("I have this file, what is
+      it?"), shelling out to `gff-cat`, `gpl-disasm`,
+      `save-inspect.py`, `dialog-extract.py`, `region-render`, and
+      `image-pack`; never reimplements their logic. Prefers
+      in-tree `target/release/` binaries over `$PATH` so a
+      contributor lands on their own builds. Carries the FOURCC
+      dispatch table that maps a chunk kind to the tool that
+      reads it. Released: `opends` v0.1.0 (current `VERSION`).
+- [x] Round-trip and write paths across the existing tools:
+      `image-pack` (`image-extract` v0.4.0), `save-inspect`
+      SAVE-chunk decoding (v0.7.0) and its write path (v0.8.0),
+      `dialog-extract --format tree` (v0.7.0), and `atlas`
+      (above). See `patchnotes.md` for each.
+
+**Done when**: a new contributor can go from `git clone` to
+looking at game content without reading a tool README first. *(Met.)*
 
 ## Phase 5 — `gpl-asm` + `opcode-fuzz`
 
@@ -565,7 +638,8 @@ just read it. Be able to discover unknown opcodes systematically.
       fingerprint check stays mandatory. Was pencilled in as
       v0.8.1; lands as v0.9.0 (v0.8.1 shipped as the
       text-parser length-accounting bugfix instead).
-- [x] Tagged: `gpl-asm-v0.1.0`. (this release)
+- [x] Released: `gpl-asm` v0.1.0. (this release; current
+      `VERSION` is 0.8.1)
 
 ### `tools/opcode-fuzz/` (Python; drives DOSBox debugger over IPC)
 
@@ -606,7 +680,8 @@ just read it. Be able to discover unknown opcodes systematically.
       documentation; recipe-driven `fuzz` ships in v0.3.1+
       once the recipe format (short-form mnemonics vs JSON vs
       gpl-asm extension) settles.
-- [x] Tagged: `opcode-fuzz-v0.1.0`. (chunk pipeline)
+- [x] Released: `opcode-fuzz` v0.1.0. (chunk pipeline; current
+      `VERSION` is 0.3.0)
 
 **Done when**: we can author and verify a synthetic GPL chunk
 end-to-end, and `opcode-fuzz` can discover at least one
