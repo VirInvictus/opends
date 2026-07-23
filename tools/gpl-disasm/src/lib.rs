@@ -4254,7 +4254,7 @@ name = "hp_temp"
             }
             _ => panic!("expected Variable"),
         }
-        let rendered = format!("{}", &result.instructions[0].params[0][0]);
+        let rendered = format!("{}", result.instructions[0].params[0][0]);
         assert_eq!(rendered, "LBYTE[7 (loop_counter)]");
     }
 
