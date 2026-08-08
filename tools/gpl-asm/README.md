@@ -13,6 +13,39 @@ Depends on `gpl-disasm` for the [`DisasmResult`] type (and the
 `Deserialize` impls added there in v0.4.4 specifically so this
 crate can consume the same JSON the disassembler emits).
 
+## What `gpl-asm v0.9.0` ships
+
+**Label-relative `--patch` addressing.** Patch scripts no longer
+need hand-counted byte offsets: an `[[edit]]` record can address
+its target relative to a label the disassembler produces, or to a
+curated function name.
+
+```toml
+[[edit]]
+at = "label_0x0042 + 3"      # or: at = "iniya_first_meeting + 3"
+bytes_old = "3a"             # fingerprint check, still mandatory
+bytes_new = "3b"
+reason = "example: retarget the immediate after the label"
+```
+
+- `at` takes `"<base>"` or `"<base> + N"` (N decimal or `0x` hex).
+  The base is either a `label_0xNNNN` / `entry_0xNNNN` block-leader
+  label, or a name resolved from `syms/functions.toml` (the
+  `gpl-disasm` catalogue; `--syms <dir>` overrides the default
+  workspace lookup, `--no-syms` disables it).
+- The resolver disassembles the target chunk and requires the base
+  to be a real block leader **in that chunk**, so a patch cannot
+  silently address into the wrong chunk. An ambiguous name (two
+  catalogue rows) is a hard error naming the candidates.
+- Exactly one of `at` / `at_offset` per edit; the v0.8.0 absolute
+  form keeps working unchanged, and the `bytes_old` fingerprint
+  stays mandatory for both.
+
+This closes the roadmap item that soft-blocked Phase 6 darkfix
+authoring on hand-counted offsets. (v0.8.1 shipped as the
+text-parser length-accounting bugfix; this feature landed as
+v0.9.0.)
+
 ## What `gpl-asm v0.7.0` ships
 
 Two real authoring features on top of v0.6.0's directive

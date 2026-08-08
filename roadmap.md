@@ -629,17 +629,19 @@ just read it. Be able to discover unknown opcodes systematically.
       patches will use for 1-3 byte tweaks once Phase 6
       starts. Label-relative addressing
       (`at = "label_0x42 + 3"`) deferred (see below).
-- [ ] Label-relative patch addressing for `--patch` scripts:
+- [x] Label-relative patch addressing for `--patch` scripts
+      *(shipped as v0.9.0, 2026-08-08)*:
       `at = "label_0x42 + 3"` and `at = "<name> + N"` with
       names resolved from `syms/functions.toml`, so darkfix
       authoring doesn't require hand-counted byte offsets.
       Resolver disassembles the target chunk, resolves the
-      label, computes the absolute offset; the `bytes_old`
-      fingerprint check stays mandatory. Was pencilled in as
-      v0.8.1; lands as v0.9.0 (v0.8.1 shipped as the
+      label, computes the absolute offset (and refuses a base
+      that is not a block leader in that chunk); the
+      `bytes_old` fingerprint check stays mandatory. Was
+      pencilled in as v0.8.1 (v0.8.1 shipped as the
       text-parser length-accounting bugfix instead).
 - [x] Released: `gpl-asm` v0.1.0. (this release; current
-      `VERSION` is 0.8.1)
+      `VERSION` is 0.9.0)
 
 ### `tools/opcode-fuzz/` (Python; drives DOSBox debugger over IPC)
 

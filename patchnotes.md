@@ -4,6 +4,21 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/gpl-asm/` v0.9.0** ships label-relative `--patch`
+  addressing: `at = "label_0x0042 + 3"` and `at = "<name> + N"`
+  (names resolved from `syms/functions.toml`, with `--syms` /
+  `--no-syms` mirroring the gpl-disasm CLI). The resolver
+  disassembles the target chunk and requires the base to be a
+  real block leader there, so a patch cannot silently address
+  into the wrong chunk; ambiguous names are a hard error, and
+  the `bytes_old` fingerprint stays mandatory for both
+  addressing forms. Exactly one of `at` / `at_offset` per edit;
+  v0.8.0 absolute-offset scripts keep working unchanged. New
+  synthetic-chunk integration suite (8 tests, no `.games/`
+  dependency) plus 9 parser/resolver unit tests; corpus
+  round-trip stays 600 / 600. This removes hand-counted byte
+  offsets from darkfix authoring, the Phase 6 soft-blocker.
+
 - **`tools/dialog-extract/` v0.7.1** adds the missing
   `from typing import Any` (six annotation sites used `Any`
   unimported; harmless under deferred annotation evaluation
