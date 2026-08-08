@@ -701,6 +701,116 @@ just read it. Be able to discover unknown opcodes systematically.
 end-to-end, and `opcode-fuzz` can discover at least one
 previously-unknown opcode and add it to `docs/gpl-opcodes.md`.
 
+## Phase 5.5 — `ovr-map`: the executable's overlay map
+
+**Goal**: turn `DSUN.EXE` from a 600 KB blob you hex-search into a
+segmented, addressable artifact. Everything the toolkit does today
+stops at the GFF containers; the engine binary itself has been
+read by eye. This phase makes it machine-readable.
+
+**Added 2026-08-08**, out of the per-region palette work (Phase 4
+exploration). That item stalled for a full pass because the binary
+was documented as DOS/4GW with 32-bit code, and it is not: both
+games are **Borland-overlaid 16-bit real-mode** programs. See
+`docs/dsun-exe-re.md` §1 and §3.5. Correcting that did not just
+answer one question, it exposed a structure the toolkit can stand
+on, so it earns a phase rather than a footnote.
+
+**Ships**: `ovr-map` v0.1.0 (Python, stdlib-only, matching the
+other single-file Python tools).
+
+### What the structure gives us (already measured)
+
+Both binaries parse cleanly with the same code:
+
+| | DS1 | DS2 |
+|---|---|---|
+| Overlay segments | 51 | 48 |
+| Overlaid code | 246 KB | 251 KB |
+| Overlay area accounted for | 92.5% | 92.8% |
+| Entry stubs (confirmed function entries) | 934 | 852 |
+| Direct far-call edges | 210 | 216 |
+| Stubs with a direct caller | 115 | 121 |
+
+The number that matters most is **934 and 852 confirmed function
+entry points**. Every entry stub names an address that is
+definitely the first byte of a function. RE against this binary has
+so far had no reliable way to know whether a given offset is a
+prologue or the middle of an instruction; that problem is now
+solved for ~900 addresses per game.
+
+### Tasks
+
+- [ ] `tools/ovr-map/ovr-map.py`: parse the MZ header, the `FBOV`
+      header, the 32-byte overlay segment descriptors, and the
+      5-byte `INT 3Fh` entry stubs. Emit JSON: per segment its file
+      range, payload offset, size, relocation count, and entry
+      list.
+- [ ] `--disasm <segment>`: dump one segment at its correct base in
+      16-bit mode, with entry points labelled. Replaces
+      "disassemble small windows by eye" in `docs/dsun-exe-re.md`.
+- [ ] `--callgraph`: far calls whose linear target is a stub, as
+      caller/callee edges. **Scope it honestly in the output:** only
+      about 13% of stubs have a direct caller, so the rest are
+      reached indirectly (69 `FF 1E` sites in DS1) or by table
+      dispatch. The tool must report coverage, not imply the graph
+      is complete.
+- [ ] `--verify <file-offset>`: answer "what is at this address",
+      naming the segment, the offset within it, and the nearest
+      preceding entry point. This is the query the patch workflow
+      needs.
+- [ ] **Tests:** parse both shipped binaries and assert the
+      invariants above (segment counts, >92% area coverage, every
+      descriptor's range inside the overlay area, every stub inside
+      its own segment). Corpus-style, skipping when `.games/` is
+      absent, matching `gff-edit/tests/corpus_roundtrip.rs`.
+
+### Why this matters for patching (Phase 6 onward)
+
+- **It makes an in-place-only rule enforceable, and explains why.**
+  Every descriptor stores its segment's payload offset as an
+  absolute position in the overlay area. Insert or delete a single
+  byte anywhere before the last segment and all following payload
+  offsets are wrong, so the game loads garbage as code. darkfix is
+  already byte-for-byte with `bytes_old` fingerprints, so this is
+  not a redesign; it is the reason that rule is load-bearing rather
+  than stylistic, and it belongs in `spec.md` §4 in those terms.
+- **Patch sites can be authored by name instead of by raw offset.**
+  `gpl-asm` v0.9.0 just replaced hand-counted byte offsets with
+  label-relative addressing (`at = "label_0x42 + 3"`) for GPL
+  bytecode, and called it the Phase 6 soft-blocker. EXE patches have
+  exactly the same problem and can now get exactly the same fix:
+  `at = "ovr:19+0x17a7"`, resolved against the segment map.
+- **A patch can be checked before it ships.** `--verify` catches a
+  site that has drifted, straddles a segment boundary, or lands in
+  the 7.5% of the overlay area that is inter-segment padding rather
+  than code. Today nothing would notice.
+
+### Why it matters for mining
+
+- **Systematic disassembly.** 246 KB of overlaid code becomes
+  reachable segment by segment at the right base, instead of
+  hex-searching for byte patterns and disassembling windows by hand.
+- **It unblocks the DS2 symbol cross-reference.**
+  `docs/dsun-exe-re.md` §2 already wants to "name DS2 functions from
+  `.dso-online`'s symbol table by call-graph shape", and the missing
+  piece was a call graph. 852 entry points plus 216 edges is a
+  starting skeleton against that 3,530-symbol table.
+- **The MZ relocation table** (4,853 / 4,703 entries) marks which
+  words are segment fixups, which separates code addresses from
+  data without guessing.
+
+**Done when**: `ovr-map` parses both games, its invariants are
+under test, and `docs/dsun-exe-re.md` cites it instead of
+describing manual hex-searching.
+
+**Sequencing note**: this sits before Phase 6 because its
+`--verify` and named-addressing output are what make EXE patch
+authoring safe, the same way `gpl-asm`'s label addressing did for
+bytecode. It is not a hard blocker: a Phase 6 fix that only touches
+GFF chunks needs none of it. Do not let it hold the first darkfix
+if that fix never opens `DSUN.EXE`.
+
 ## Phase 6 — First DS1 fix shipped (pipeline proof)
 
 **Goal**: prove the patch pipeline end-to-end on the smallest
