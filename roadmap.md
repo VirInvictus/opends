@@ -495,17 +495,29 @@ the friction is felt.
       line 180. v0.5.0 RE pass located `VGAColorCycle` and
       `gCycleColor` candidates in the DSO symbol table but
       hasn't decoded the cycle-table layout yet; still queued.
-- [~] Per-region palette discovery for DS1. **Partial.** v0.5.0
-      RE pass located the engine routine: at DS1 `DSUN.EXE`
-      file offset `0x56ad3..0x56b00`, the engine calls
-      `load_resource('CMAT', si, &cmat_buf)` then (on failure)
-      `load_resource('CPAL', si, &cpal_buf)` with the same
-      region-derived family id `si`, which resolves to 200 or
-      300 in `RESOURCE.GFF`. Default fallback updated from
-      `PAL :1000` (menu palette, never used for regions) to
-      `CPAL:200` (engine-default). What's still open: tracing
-      the caller to find the region-number-to-family-id map.
-      Write-up at `docs/dsun-exe-re.md`.
+- [x] Per-region palette discovery for DS1. **Closed 2026-08-08:
+      there is no per-region palette map, and `region-render`'s
+      `CPAL:200` default is already correct.** The v0.5.0 pass had
+      located the routine (file `0x56ad3..0x56b00`: try
+      `load_resource('CMAT', si, ...)`, fall back to
+      `load_resource('CPAL', si, ...)`) and left one step open,
+      tracing the caller to find the region-number-to-family-id
+      map. That trace had failed because the binary's format was
+      misidentified. DS1 and DS2 are **Borland-overlaid 16-bit
+      real-mode** programs (`FBOV` header, ~5,000 MZ relocations,
+      994/904 `INT 3Fh` sites), not DOS/4GW, so overlaid routines
+      are reached by a far call to a 5-byte `INT 3Fh` stub, never
+      at their own address. Searching for calls to the routine was
+      therefore guaranteed to find nothing. Following the stub
+      instead: the dispatcher has exactly **one** caller in the
+      whole binary (file `0x01cc0f`), and it pushes a literal `1`,
+      so `si` is never region-derived and the `200`/`300` arms
+      holding the CMAT/CPAL load are unreachable on that path.
+      The overlay segment descriptor also independently confirms
+      the segment base and extent that had been inferred from
+      padding. Method, worked example, and the withdrawn
+      "DOS/4GW selector `0x3a98`" lead are all in
+      `docs/dsun-exe-re.md` §1, §3.3, §3.5.
 - [x] **Animated GIF output** (region-render v0.7.0): new
       `--gif` flag bundles the `--animate-entities` PNG
       sequence into a single shareable GIF via a two-pass

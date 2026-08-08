@@ -23,15 +23,47 @@ binary directly.
 | Container | MS-DOS MZ executable | MS-DOS MZ executable |
 | `e_lfanew` | `0x10000` | `0x10000` |
 | Bytes at `e_lfanew` | `89 46 ...` | `89 46 ...` |
-| Extender | DOS/4GW DPMI, 32-bit overlay | DOS/4GW DPMI, 32-bit overlay |
+| MZ image ends | `0x52ea0` | `0x57570` |
+| Signature at image end | `FBOV` | `FBOV` |
+| MZ relocations | 4,853 | 4,703 |
+| `INT 3Fh` sites | 994 | 904 |
+| Overlay scheme | Borland/TLINK (VROOM), 16-bit real mode | same |
 
-The MZ stub at offset 0 is the loader; the real 32-bit code sits
-in a DOS/4GW DPMI overlay after it. The four bytes at `e_lfanew`
-are **not** an LE / LX signature, so radare2's bin-loader can't
-chop the executable into segments automatically. To read code,
-work in raw mode against file offsets (`r2 -e bin.cache=true
--e asm.bits=32`) or hex-search for the patterns documented below
-and disassemble small windows by eye / with Capstone.
+> **Correction (2026-08-08).** This table previously read
+> "Extender: DOS/4GW DPMI, 32-bit overlay" for both games, and the
+> paragraph below described "the real 32-bit code" sitting in a
+> DPMI overlay. **That was wrong, and it sent the per-region
+> palette caller-hunt (§3.3) down a dead end for a whole pass.**
+> The evidence against it is unambiguous:
+>
+> - An **`FBOV`** signature sits immediately after the MZ image in
+>   both binaries. That is the Borland/TLINK overlay header, not
+>   anything DOS/4GW emits.
+> - Both carry ~5,000 **MZ relocations**. A DOS/4GW program's MZ
+>   part is a tiny stub with almost none; thousands of them mean
+>   the real program *is* the MZ image, in real mode.
+> - There are **994 / 904 `INT 3Fh` sites**. `INT 3Fh` is Borland's
+>   overlay-manager entry point.
+> - The code is **16-bit** with occasional `66` operand-size
+>   prefixes. What looked like 32-bit code is 16-bit code compiled
+>   for a 386: `66 68 43 4d 41 54` is `push dword 'CMAT'` *in a
+>   16-bit segment*, not a 32-bit instruction.
+> - No `LE` / `LX` header exists at `e_lfanew` because there is no
+>   linear executable to find. That absence was read as "the
+>   bin-loader can't cope"; it actually means "wrong format
+>   assumed".
+>
+> The practical consequence is in §3.3: overlaid routines are not
+> reached by `9A` far calls to their own code, so searching for
+> those finds nothing. See §3.5 for how the overlay actually works
+> and how to find a caller.
+
+The MZ image at offset 0 **is** the program. Everything past the
+`FBOV` header is the overlay area: code segments that the Borland
+overlay manager pages in on demand. To read code, work in raw mode
+against file offsets with 16-bit disassembly (`ndisasm -b 16`, or
+`r2 -e asm.bits=16`), and use §3.5's overlay tables to turn a file
+offset into a segment and an entry point.
 
 ## 2. The resource loader: `load_resource(fourcc, id, far*)`
 
@@ -122,47 +154,115 @@ which is the function's epilogue / fall-through.
 ### 3.3 What we still need to crack
 
 The switch handles **five fixed family ids**, not 50-odd
-region numbers. So the engine's region-load path must compute
-`family_id ∈ {0, 1, 100, 200, 300}` from the region number
-*before* calling this dispatcher. Identifying that
-region-number-to-family-id mapping (per region in DS1) is the
-remaining gap.
+region numbers. The open question was therefore: where does the
+engine compute `family_id ∈ {0, 1, 100, 200, 300}` from a region
+number, and what is that per-region map?
 
-Pattern-search for callers of the dispatcher at `0x568be`
-turned up zero hits across the obvious channels: no
-`9a 2e 04 <seg> <seg>` (16-bit far call), no `9a 2e 04 00 00
-<seg> <seg>` (32-bit far call), no `e8` near call landing on
-`0x568be`, and no other `9a` site with a target offset of
-`0x042e`. The dispatcher is reachable via some indirect
-mechanism that byte-pattern search doesn't surface.
+**Resolved 2026-08-08: there is no such map, because the
+dispatcher is called exactly once in the whole program, with a
+constant.** See §3.5 for the method; the result is:
 
-**One real signal did fall out of the caller-trace pass: the
-segment selector for the dispatcher's code segment is
-`0x3a98`.** It's the only `2e 04` (offset `0x042e`) value at a
-2-byte-aligned position outside the segment itself; the
-adjacent bytes resolve to a far pointer `0x3a98:0x042e`. So
-the code segment that starts at file offset `0x56490`
-corresponds to DOS/4GW selector `0x3a98`. That maps cleanly
-onto the dispatcher entry: `0x3a98:0x042e` is file
-`0x56490 + 0x042e = 0x568be`. Useful for naming the segment
-in any future RE pass.
+- The dispatcher's overlay segment exports **three** entry points
+  (`cs:0x0000`, `cs:0x0165`, `cs:0x042e`).
+- Entry `cs:0x042e` (the dispatcher) has exactly **one** caller in
+  the binary: a far call at file `0x01cc0f`.
+- The other two entry points have **no** callers at all.
+- That one caller pushes a literal `1`:
 
-The reference itself, however, sits inside a long array of
-uniform 6-byte records of the form `(0x0500, offset, 0x3a98)`
-at file `0x40670..` onward, with `offset` ascending by `0x0c`
-per entry (`0x031a, 0x0326, 0x0332, ..., 0x042e, 0x043a, ...`).
-The targets at every twelfth byte in segment `0x3a98` mostly
-fall mid-instruction, not on function prologues, so the array
-isn't a function-pointer table. It looks more like a Watcom
-or DOS/4GW emitted bookkeeping table (relocations, line-number
-records, or similar). Worth verifying once we have an LE / LX
-parser, but it's not the caller channel.
+```
+0000CBFF  833E721F04   cmp  word [0x1f72], 4
+0000CC04  770F         ja   0xcc15            ; skip unless <= 4
+0000CC06  833E7C112A   cmp  word [0x117c], 0x2a
+0000CC0B  7508         jnz  0xcc15            ; skip unless == 42
+0000CC0D  6A01         push word 1            ; family_id = 1, always
+0000CC0F  9A2000BB41   call 0x41bb:0x0020     ; -> overlay stub -> dispatcher
+0000CC14  59           pop  cx
+```
 
-What's worth trying next: walk the data segment forward from
-the bookkeeping table looking for a *different* table with
-4-byte entries that holds real callable far pointers, and
-search for code that loads from `ds:<that table>` to find the
-indirect-call site.
+So `si` is never region-derived, and the `si == 200` / `si == 300`
+arms that hold the `CMAT` / `CPAL` load are **unreachable through
+the only call path**. DS1 as shipped never loads a per-region
+`CMAT` or `CPAL` at runtime through this routine, which is
+consistent with `0x56ad3` / `0x56af0` being the only two sites in
+the binary that push those FOURCCs at all (§3.4).
+
+**What this means for `region-render`:** the current
+`CPAL:200` engine-default fallback is the correct behaviour, not a
+stopgap awaiting a per-region table. There is no per-region
+palette selection to reproduce.
+
+Two honest caveats. This is static analysis: an argument patched
+at runtime, or a dispatch path that does not look like a call,
+would not show up, though nothing seen suggests either. And the
+guard (`[0x117c] == 42`) is not yet identified, so *what* that one
+invocation is for remains open; it is plainly not "load the
+palette for region N".
+
+### 3.5 How overlaid code is actually called (the method)
+
+The previous pass searched for `9A` far calls to `0x568be` and for
+`E8` near calls landing there, and found nothing. Both searches
+were correct and both were doomed, because **an overlaid routine
+is never called at its own address.**
+
+DS1 and DS2 are Borland-overlaid real-mode programs (see the
+correction in §1). The scheme works like this:
+
+1. Past the MZ image sits an `FBOV` header: `'FBOV'`, then dwords
+   `ovrsize`, `exeinfo`, `segnum`. In DS1 that is file `0x52ea0`,
+   so the **overlay area begins at `0x52eb0`**.
+2. Each overlaid code segment is described by a record in the
+   resident image that begins `CD 3F 00 00` and continues with a
+   dword payload offset (relative to the overlay area) and a word
+   size.
+3. Immediately after each descriptor sit that segment's **entry
+   stubs**, five bytes each: `CD 3F <entry_offset:2> <ovr:1>`.
+4. A caller does an ordinary **far call to the stub**. `INT 3Fh`
+   traps into the overlay manager, which pages the segment in and
+   jumps to `entry_offset` within it.
+
+So the call graph edge you are looking for points at the *stub*,
+in the resident image, not at the function.
+
+Worked example for the palette dispatcher:
+
+| Item | Value |
+|---|---|
+| Overlay area base | `0x52eb0` |
+| Segment descriptor | file `0x046fb0` |
+| Descriptor payload / size | `0x35e0` / `0x0750` |
+| Segment file range | `0x52eb0 + 0x35e0 = 0x56490` .. `0x56be0` |
+| Entry stubs | `0x046fd0` (`cs:0x042e`), `0x046fd5` (`cs:0x0000`), `0x046fda` (`cs:0x0165`) |
+| Dispatcher | `0x56490 + 0x042e = 0x568be` |
+| Its one caller | far call at file `0x01cc0f` → `0x41bb:0x0020` |
+
+The descriptor **independently confirms** the segment base that
+§3.1 had inferred from zero-padding, and confirms its extent: the
+segment ends at `0x56be0`, which is exactly where the switch jump
+table (`0x56bd6` + five words) ends. That is a strong check that
+the segmentation is right.
+
+To find the callers of any overlaid routine:
+
+1. Find the descriptor whose payload offset equals
+   `segment_file_base - 0x52eb0`.
+2. Read the stubs after it; match your routine's `cs:` offset.
+3. Convert the stub's file offset to a load-image linear address
+   by subtracting the MZ header size (`0x5400` in DS1).
+4. Scan for `9A <off:2> <seg:2>` where `seg * 16 + off` equals that
+   linear address. Cross-check that the segment word appears in the
+   MZ relocation table (4,853 entries at file `0x3e`), since it is
+   fixed up at load time.
+
+The old `(0x0500, offset, 0x3a98)` array at `0x40670` and the
+"DOS/4GW selector `0x3a98`" reading are both **withdrawn**. There
+are no DOS/4GW selectors in this binary. That array is unrelated
+bookkeeping and was a false lead.
+
+The old plan under that model (walk the data segment for a table
+of callable far pointers and find code loading from
+`ds:<that table>`) is moot: the indirect channel was the overlay
+stub all along.
 
 ### 3.4 Original finding: the CMAT-first / CPAL-fallback pattern
 
