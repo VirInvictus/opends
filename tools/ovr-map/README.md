@@ -89,6 +89,44 @@ stubs have a direct caller; the rest are reached indirectly or by table
 dispatch. A stub absent from the edge list is **not** evidence that it is
 unreachable. The tool reports coverage rather than implying completeness.
 
+### Ghidra bridge
+
+```sh
+python3 ovr-map.py .games/ds1/DSUN.EXE --ghidra -o OvrMap.java
+```
+
+Emits a self-contained Ghidra script. Drop it in your Ghidra scripts
+directory, import `DSUN.EXE`, and run it from the Script Manager.
+
+Ghidra's MZ loader maps only the resident image (as `CODE_n` blocks).
+Everything past the `FBOV` header, which is where the overlaid code
+lives, is **not mapped at all**. The script creates one overlay memory
+block per segment at its correct base, fills it from the file, labels
+every entry stub as `ovrNN_XXXX`, and labels the matching stub in the
+resident image as `stub_ovrNN_XXXX` so a caller's far call reads as a
+name.
+
+Verified headless against Ghidra 12.1.2: 52 blocks, 935 labels, and
+`ovr04_042e` lands on `55 8b ec 83 ec 0e`, the dispatcher prologue in
+`docs/dsun-exe-re.md` §3.1.
+
+Notes, each of which cost a debugging round:
+
+- **Java, not Python.** Ghidra 12 dropped Jython; Python scripts now
+  need a PyGhidra (jpype) install. Java scripts run on a stock Ghidra,
+  which matters for a public toolkit.
+- **Ghidra's MZ loader already selects `x86:LE:16:Real Mode`.** No
+  manual language choice is needed for an MZ import (it is only needed
+  if you import as raw binary).
+- ⚠ **An overlay block lives in its own address space.** Addresses
+  inside it must come from `block.getStart()`, not from the default
+  space. Labelling through the default space silently lands in `ram:`
+  and points at unrelated bytes rather than erroring.
+- ⚠ **Segment bases are allocated consecutively, not on a fixed
+  stride.** A `0x1000`-paragraph stride overflows the 16-bit segment
+  range at segment 57. `ovr-map` assigns bases from the segments' real
+  sizes and errors if the layout will not fit.
+
 ### Self-test
 
 ```sh

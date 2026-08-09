@@ -794,7 +794,7 @@ solved for ~900 addresses per game.
       test harness at all (CI gates them with ruff plus
       `compileall`, and says so in a comment). A flag keeps the
       single-file idiom and is one line to add to CI.
-- [ ] `--ghidra`: emit the segment map as a Ghidra script (or a
+- [x] `--ghidra`: emit the segment map as a Ghidra script (or a
       JSON the script reads) that creates one overlay memory block
       per segment at its real base and labels every entry stub.
       **This is where the digging actually opens up.** Ghidra was
@@ -813,8 +813,20 @@ solved for ~900 addresses per game.
       not *clean C*.
       ⚠ Do **not** reach for `ghidra-lx-loader` or any LE/LX
       extension: that is the DOS/4GW format §1 of
-      `docs/dsun-exe-re.md` disproved. Ghidra's stock MZ loader at
-      `x86:LE:16:Real Mode` is the correct path.
+      `docs/dsun-exe-re.md` disproved. Ghidra's stock MZ loader is the
+      correct path, and it **already selects** `x86:LE:16:Real Mode`
+      on its own for an MZ import (verified headless against Ghidra
+      12.1.2); the language only needs setting by hand for a raw-binary
+      import.
+      ✅ **Shipped in `ovr-map` v0.2.0** and verified headless rather
+      than merely generated: 52 blocks, 935 labels, and `ovr04_042e`
+      reads `55 8b ec 83 ec 0e`, the §3.1 dispatcher prologue. Two
+      traps found by testing, both recorded in the tool README: an
+      overlay block lives in its **own address space** (labelling via
+      the default space silently lands in `ram:` on unrelated bytes
+      rather than erroring), and segment bases must be allocated
+      **consecutively**, since a fixed 0x1000-paragraph stride
+      overflows the 16-bit segment range at segment 57.
 
 ### Why this matters for patching (Phase 6 onward)
 

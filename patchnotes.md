@@ -4,6 +4,32 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/ovr-map/` v0.2.0** closes Phase 5.5 with `--ghidra`: emits a
+  self-contained Ghidra script that creates one overlay memory block per
+  segment at its correct base, fills it from the file, and labels all
+  935 (DS1) / 854 (DS2) entry stubs, plus the matching stub in the
+  resident image so a caller's far call reads as a name. Ghidra's MZ
+  loader maps only the resident image, so without this the overlay area
+  is simply absent from the program.
+
+  Verified headless against Ghidra 12.1.2, not just generated: 52 blocks,
+  935 labels, and `ovr04_042e` reads `55 8b ec 83 ec 0e`, the dispatcher
+  prologue documented in `docs/dsun-exe-re.md` §3.1.
+
+  Four things the headless runs taught, all now in the tool README.
+  The script is **Java**, because Ghidra 12 dropped Jython and Python
+  scripts now require a PyGhidra/jpype install, which is a poor ask for a
+  public toolkit. Ghidra's MZ loader **already** selects
+  `x86:LE:16:Real Mode`, so the earlier "set the language manually"
+  guidance only applies to raw-binary imports. ⚠ An overlay block lives in
+  its **own address space**, so addresses inside it must derive from
+  `block.getStart()`; labelling through the default space silently lands
+  in `ram:` on unrelated bytes instead of erroring, which is exactly how
+  the first working-looking run was wrong. ⚠ Segment bases are allocated
+  **consecutively rather than on a fixed stride**, because a
+  0x1000-paragraph stride overflows the 16-bit segment range at segment
+  57; the layout is validated and errors if it will not fit.
+
 - **`tools/ovr-map/` v0.1.0** is new: the executable's overlay map
   (Phase 5.5). Parses the MZ header, the `FBOV` header, the 32-byte
   Borland overlay descriptors and their 5-byte `INT 3Fh` entry stubs,

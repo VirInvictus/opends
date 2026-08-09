@@ -696,10 +696,11 @@ and will waste a pass if assumed wrong.
    §1 disproved. It cannot load these binaries and its presence
    would only re-suggest the wrong mental model. Ghidra loads plain
    MZ and `x86:LE:16:Real Mode` natively, which is what is needed.
-2. ⚠ **Set the language to 16-bit real mode at import**, not the
-   default Ghidra guesses. Same failure mode as the Capstone
-   `CS_MODE_32` bug in §6: wrong width does not error, it produces
-   convincing nonsense.
+2. **The MZ loader already selects `x86:LE:16:Real Mode`.** Verified
+   headless against Ghidra 12.1.2, so an MZ import needs no manual
+   language choice. ⚠ A raw-binary import does, and the failure mode is
+   the Capstone `CS_MODE_32` bug from §6: wrong width does not error, it
+   produces convincing nonsense.
 3. ⚠ **Ghidra does not understand Borland overlays.** A plain
    import gives one flat image with the overlay area as
    undifferentiated bytes, which is the same blob problem this doc

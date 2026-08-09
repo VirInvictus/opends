@@ -84,7 +84,7 @@ Installed on Brandon's machine 2026-08-08. **None of this is a repo dependency**
 **Four things to know before pointing Ghidra at these binaries.** Full detail in [`docs/dsun-exe-re.md`](docs/dsun-exe-re.md) §7.
 
 1. ⚠ **Do not install an LE/LX loader extension.** The top search result for "Ghidra + DOS game" is `ghidra-lx-loader`, for the linear-executable format DOS/4GW emits. `dsun-exe-re.md` §1 disproved that format for these binaries on 2026-08-08. It cannot load them, and having it installed only re-suggests the wrong model.
-2. ⚠ **Set the language to `x86:LE:16:Real Mode` at import.** Wrong width does not error, it produces convincing nonsense. Same class of bug as the `CS_MODE_32` line that sat in the §6 reproduce recipe until 2026-08-08.
+2. **The MZ loader already selects `x86:LE:16:Real Mode`** (verified headless against 12.1.2), so an MZ import needs no manual language choice. ⚠ It *is* needed for a raw-binary import, and getting the width wrong does not error, it produces convincing nonsense (same class of bug as the `CS_MODE_32` line that sat in the §6 reproduce recipe until 2026-08-08).
 3. ⚠ **Ghidra does not understand Borland overlays.** A plain import leaves the overlay area as undifferentiated bytes, which is the blob problem the docs already work around by hand. `ovr-map` (Phase 5.5, shipped v0.1.0) is the bridge, and that pairing is the actual reason to install Ghidra. It maps 935 (DS1) / 854 (DS2) confirmed function entries.
 4. **`pwndbg` is installed on this machine and is NOT for this project.** It is a gdb plugin for live Linux ELF processes. These binaries run under DOSBox, whose debugger `opcode-fuzz` already drives over IPC. Do not reach for it here.
 
