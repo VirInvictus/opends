@@ -46,10 +46,12 @@ What it **is**:
 
 ## 2. Implementation guess
 
-*(Written before we opened the binary. Since confirmed by direct
-EXE work: Watcom C/C++ codebase under a DOS/4GW DPMI 32-bit
-overlay; see [`dsun-exe-re.md`](dsun-exe-re.md) §1. Kept here as
-the public-evidence trail.)*
+*(Written before we opened the binary. Direct EXE work confirmed
+the Watcom C/C++ lineage but **disproved the extender theory**: the
+games are Borland/TLINK (VROOM) overlaid 16-bit real-mode programs,
+not DOS/4GW DPMI 32-bit. Corrected 2026-08-08; see
+[`dsun-exe-re.md`](dsun-exe-re.md) §1. Kept here as the
+public-evidence trail.)*
 
 No published statement of the language or DOS extender is available, but
 the available evidence converges:

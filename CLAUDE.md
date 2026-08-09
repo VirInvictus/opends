@@ -70,6 +70,24 @@ When porting logic from any of these, cite the upstream file/function in a code 
 
 The "DSO Emulator" sometimes discussed in the community is a multiplayer Crimson Sands project on a private Discord; it is unrelated to OpenDS's singleplayer DS1/DS2 toolkit.
 
+## Host RE tooling
+
+Installed on Brandon's machine 2026-08-08. **None of this is a repo dependency**: nothing under `tools/` imports it, no `Cargo.toml` or Python tool references it, and the stdlib-only rule is untouched. It is what you reach for when digging into `DSUN.EXE` by hand.
+
+| Tool | Path | Use |
+|---|---|---|
+| **Ghidra 12.1.2** | `~/.local/share/ghidra_12.1.2_PUBLIC/ghidraRun` | Static analysis + decompilation of `DSUN.EXE`. The "when r2 stalls" tool `docs/binary-patching.md` has always named. |
+| Temurin **JDK 21** | `~/.local/share/jdk/jdk-21.0.12+8` | Ghidra needs 21; Fedora 44 ships only 25/26. Pinned in Ghidra's `support/launch.properties` via `JAVA_HOME_OVERRIDE`, so the system JDK is untouched. |
+| `radare2` / `r2` | system | Still the scriptable first stop, unchanged. |
+| `pwntools` | uv tool, Python 3.13 | `pwn asm` / `pwn disasm` at `arch='i386', bits=16` for authoring patch bytes. |
+
+**Four things to know before pointing Ghidra at these binaries.** Full detail in [`docs/dsun-exe-re.md`](docs/dsun-exe-re.md) §7.
+
+1. ⚠ **Do not install an LE/LX loader extension.** The top search result for "Ghidra + DOS game" is `ghidra-lx-loader`, for the linear-executable format DOS/4GW emits. `dsun-exe-re.md` §1 disproved that format for these binaries on 2026-08-08. It cannot load them, and having it installed only re-suggests the wrong model.
+2. ⚠ **Set the language to `x86:LE:16:Real Mode` at import.** Wrong width does not error, it produces convincing nonsense. Same class of bug as the `CS_MODE_32` line that sat in the §6 reproduce recipe until 2026-08-08.
+3. ⚠ **Ghidra does not understand Borland overlays.** A plain import leaves the overlay area as undifferentiated bytes, which is the blob problem the docs already work around by hand. `ovr-map` (Phase 5.5) is the bridge, and that pairing is the actual reason to install Ghidra.
+4. **`pwndbg` is installed on this machine and is NOT for this project.** It is a gdb plugin for live Linux ELF processes. These binaries run under DOSBox, whose debugger `opcode-fuzz` already drives over IPC. Do not reach for it here.
+
 ## Versioning
 
 Per [`docs/versioning.md`](docs/versioning.md): every tool and every patch versions independently. Each tool's directory contains a plain-text `VERSION` (one line, no leading `v`). For Rust tools, `Cargo.toml`'s `version =` must match the `VERSION` file. Python single-file tools read their `VERSION` at runtime. Tags are `<tool>-vMAJOR.MINOR.PATCH` (e.g. `gpl-disasm-v0.5.0`). The umbrella repo itself is not versioned.

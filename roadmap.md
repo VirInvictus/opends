@@ -764,6 +764,27 @@ solved for ~900 addresses per game.
       descriptor's range inside the overlay area, every stub inside
       its own segment). Corpus-style, skipping when `.games/` is
       absent, matching `gff-edit/tests/corpus_roundtrip.rs`.
+- [ ] `--ghidra`: emit the segment map as a Ghidra script (or a
+      JSON the script reads) that creates one overlay memory block
+      per segment at its real base and labels every entry stub.
+      **This is where the digging actually opens up.** Ghidra was
+      installed 2026-08-08 (see `CLAUDE.md` "Host RE tooling"); on
+      its own it imports these binaries as one flat image with the
+      overlay area as undifferentiated bytes, which is the same
+      blob problem `docs/dsun-exe-re.md` has worked around by hand
+      all along. Fed the segment map, it becomes a navigable
+      database with all **934 (DS1) / 852 (DS2)** confirmed
+      function entries named, and the decompiler pointed at
+      correctly-based code instead of garbage.
+      ⚠ Scope this honestly, like `--callgraph`: Ghidra's
+      decompiler is much weaker on 16-bit segmented code than on
+      32/64-bit (far pointers and overlay thunks decompile badly),
+      so the deliverable is *navigable and correctly segmented*,
+      not *clean C*.
+      ⚠ Do **not** reach for `ghidra-lx-loader` or any LE/LX
+      extension: that is the DOS/4GW format §1 of
+      `docs/dsun-exe-re.md` disproved. Ghidra's stock MZ loader at
+      `x86:LE:16:Real Mode` is the correct path.
 
 ### Why this matters for patching (Phase 6 onward)
 

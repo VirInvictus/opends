@@ -14,8 +14,9 @@ years). The risk is bounded; the practice is mature.
 ### DS1 `DSUN.EXE`
 
 - 611 KB
-- DOS executable (likely DOS/4GW or similar; needs confirmation
-  via `r2 -A`)
+- MS-DOS MZ executable, **Borland/TLINK (VROOM) overlaid, 16-bit
+  real mode**. Watcom C/C++ compiled. Confirmed, not assumed: see
+  [`dsun-exe-re.md`](dsun-exe-re.md) §1.
 - `.games/ds1/DSUN.EXE`
 
 ### DS2 `DSUN.EXE`
@@ -46,9 +47,19 @@ doesn't match the canonical 1.10 GOG build.
 | `keystone` (Python)       | Assemble x86 instructions into bytes       |
 | `xxd`, `bvi`, `hexedit`   | Manual hex inspection                      |
 
-All on Fedora via `sudo dnf install radare2 hexedit ghidra`
-(or pip for the Python ones). DOSBox-Staging via Flatpak:
+Most on Fedora via `sudo dnf install radare2 hexedit` (or pip /
+`uv tool` for the Python ones). DOSBox-Staging via Flatpak:
 `flatpak install flathub io.github.dosbox-staging`.
+
+⚠ **`ghidra` is NOT in the Fedora repos** (verified against F44:
+`dnf list --available ghidra` finds nothing). This line used to
+say `dnf install radare2 hexedit ghidra`, which silently fails the
+whole transaction. Ghidra is a manual install, and it needs
+**JDK 21** while Fedora 44 ships only 25 and 26. The working setup
+on this machine, plus the three import traps specific to a
+Borland-overlaid real-mode target, is documented in
+[`dsun-exe-re.md`](dsun-exe-re.md) §7 and summarised in the repo
+`CLAUDE.md` under "Host RE tooling".
 
 ## 3. Process for one binary fix
 
@@ -154,13 +165,25 @@ Three checks:
 DOS-era executables have a few wrinkles modern tools handle but
 worth being aware of:
 
-- **MZ header**: standard DOS PE-style preamble. r2 handles it.
-- **Protected-mode extender stub**: DOS/4GW or PMODE/W or HMI
-  prepends a 32-bit DOS-extender stub. The actual code lives
-  past it. r2's auto-analysis usually finds the entry point.
-- **Segmented memory model**: 16-bit code segments may have
-  far calls (`9A`-prefixed). Modern tools handle this; just be
-  aware when reading addresses.
+- **MZ header**: standard DOS preamble. The MZ image at offset 0
+  **is** the program, not a stub.
+- ⚠ **No protected-mode extender.** This section previously said a
+  DOS/4GW / PMODE/W / HMI stub prepends 32-bit code. **That was
+  wrong** and it cost the palette caller-hunt a full pass. There is
+  no `LE`/`LX` header, an `FBOV` (Borland/TLINK) header sits right
+  after the MZ image, both binaries carry ~5,000 MZ relocations,
+  and there are 994 / 904 `INT 3Fh` sites (Borland's overlay-manager
+  entry point). What looked like 32-bit code is 16-bit code built
+  for a 386: `66 68 43 4d 41 54` is `push dword 'CMAT'` *in a 16-bit
+  segment*. Full evidence in [`dsun-exe-re.md`](dsun-exe-re.md) §1.
+- **Overlays, not extenders**: everything past `FBOV` is overlay
+  code the Borland manager pages in on demand. Disassemble in raw
+  mode at file offsets with 16-bit width (`ndisasm -b 16`, or
+  `r2 -e asm.bits=16`), and use §3.5's tables to map a file offset
+  to a segment and entry point. `ovr-map` (Phase 5.5) automates this.
+- **Segmented memory model**: far calls exist, but overlaid routines
+  are *not* reached by `9A` far calls to their own code, so searching
+  for those finds nothing. See §3.5 for how a caller is actually found.
 - **Self-modifying code**: rare in this era for SSI titles, but
   possible. If r2's analysis looks wrong, check if a `MOV [seg:off], imm`
   is rewriting the code we're reading.

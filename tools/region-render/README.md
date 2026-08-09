@@ -15,8 +15,8 @@ Depends on `gff-edit` for GFF I/O and `image-extract` for the
 ## What `region-render v0.6.0` ships
 
 **Animated entity sprites.** Pivots past the palette-cycle
-wall documented in `docs/dsun-exe-re.md` §4.5 (the DOS/4GW
-runtime ABI dive needed to crack the cycle table is queued
+wall documented in `docs/dsun-exe-re.md` §4.5 (the real-mode
+timer-ISR hunt needed to crack the cycle table is queued
 separately). v0.6.0 instead uses `image-extract v0.3.0`'s
 multi-frame decoder to walk every ETAB-referenced BMP's full
 `frame_count` and renders the region with each entity
@@ -54,8 +54,8 @@ multi-frame map.
 ### What's still queued
 
 - **Palette animation** (`VGAColorCycle`) stays parked.
-  Cracking the cycle table needs either a DOS/4GW runtime
-  ABI dive or a DSO function-table dump; see
+  Cracking the cycle table needs either the real-mode
+  timer-ISR inventory or a DSO function-table dump; see
   `docs/dsun-exe-re.md` §4.5.
 - **Per-entity timing.** v0.6.0 advances every entity one
   frame per emitted region-frame. Real per-entity frame
@@ -79,7 +79,8 @@ tries `CMAT[region_family_id]` (a colour remap delta) first, and
 falls through to `CPAL[region_family_id]` (a full custom 768-byte
 palette) only when CMAT is missing. The pattern lives at DS1
 `DSUN.EXE` offset `0x56ad3..0x56b00`, decoded by hex-search
-because radare2 can't auto-load the DOS/4GW DPMI overlay.
+because radare2 can't auto-load the Borland/TLINK overlay
+(see `docs/dsun-exe-re.md` §1; `ovr-map` addresses this).
 
 `RESOURCE.GFF` ships two palette families (id 200 and 300), and
 `PAL :1000` (the v0.4.x default) is not in the engine's

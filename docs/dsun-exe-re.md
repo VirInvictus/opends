@@ -494,13 +494,26 @@ don't occur. The two `cd 31` (`int 31h`) hits at `0x88f12` and
 `0x88fde` are **false positives**: the bytes appear inside
 `mov ax, 0x31cd` immediates, not actual interrupts.
 
-Implication: **the engine does not install timer ISRs via
-DPMI calls in its own code**. The DOS/4GW extender's runtime
-must be doing it on the engine's behalf, with the engine
-itself just registering a callback via DOS/4GW's interface.
-Following the tick-handler chain therefore requires
-understanding the DOS/4GW runtime, not just byte-pattern
-searches in DSUN.EXE. That's a separate RE thread; queued.
+> **Correction (2026-08-08), consequent on §1.** This subsection
+> previously concluded that "the DOS/4GW extender's runtime must be
+> doing it on the engine's behalf" and sent the tick-handler thread
+> off to study the DOS/4GW runtime. **There is no DOS/4GW runtime.**
+> §1 established these are Borland-overlaid 16-bit real-mode
+> programs, so that thread pointed at a component that does not
+> exist in the binary.
+>
+> The DPMI evidence above is still *correct*, it is just no longer
+> *informative*: a real-mode program has no reason to call
+> `int 31h`, so the absence of `b8 05 02` / `b8 04 02` / real
+> `cd 31` is exactly what the format predicts. It rules nothing in
+> or out.
+>
+> **The replacement question** (not yet a finding): in a real-mode
+> DOS program the timer is hooked either through `int 21h` with
+> `AH=25h` (Set Interrupt Vector) or by writing the interrupt
+> vector table directly, and the tick source is `int 8` (IRQ0) or
+> `int 1Ch` (the BIOS user-timer hook). Those are the byte patterns
+> worth inventorying next, in place of the DPMI set above.
 
 #### 4.5.3 No additional palette-I/O sites
 
@@ -519,12 +532,16 @@ DAC directly.
    The zero-run guess (`0x28700`) is one possibility; the
    segment might actually start earlier (inside the
    zero-padding) or later (after a non-zero prologue that's
-   common to the segment). DPMI / LX-overlay parsing of the
-   binary would give the actual segment table.
-2. **DOS/4GW runtime cross-reference**. The extender's
-   public ABI documents its callback-registration entry
-   points; once the engine's calls into the extender are
-   identified, the tick chain becomes traceable.
+   common to the segment). ✅ **This no longer needs guessing.**
+   The `FBOV` overlay descriptors carry each segment's real base
+   and payload range; parsing them is exactly what `ovr-map`
+   (Phase 5.5) ships. The old text said "DPMI / LX-overlay
+   parsing would give the actual segment table", which was the
+   wrong format (see §1) and is superseded by `ovr-map --verify`.
+2. ~~**DOS/4GW runtime cross-reference**~~. **Struck 2026-08-08:
+   there is no extender to cross-reference.** Replaced by the
+   real-mode ISR inventory described in §4.5.2's correction
+   (`int 21h`/`AH=25h`, direct IVT writes, `int 8` / `int 1Ch`).
 3. **Locate cycle table via data-segment patterns**. If the
    cycle table is `count × N-byte record`, scanning the data
    segment for a uniform N-byte stride with plausible
@@ -614,8 +631,11 @@ order of value to the toolkit:
 ## 5. How to reproduce the findings on this page
 
 All of section 2 / 3 was extracted with Python against the raw
-file bytes. Radare2 can't auto-load the DOS/4GW DPMI overlay,
-so byte-pattern search is the working tool. The minimal recipe:
+file bytes. Radare2 can't auto-load the Borland/TLINK overlay
+(§1; the old text here said "DOS/4GW DPMI overlay", same
+mistake), so byte-pattern search was the working tool. The
+minimal recipe below still stands, but see §7 for the tooling
+that now supersedes hex-search for anything overlay-aware.
 
 ```python
 import re
@@ -632,9 +652,13 @@ for fcc in (b'CMAT', b'CPAL', b'PAL ', b'GMAP'):
 
 For window disassembly without r2: pull 64-128 bytes around the
 site of interest and decode by hand against the Intel manual, or
-feed the slice to Capstone (`md = Cs(CS_ARCH_X86, CS_MODE_32)`).
-The patterns in section 2 are short enough that hand-decoding
-catches it.
+feed the slice to Capstone. ⚠ **Use `CS_MODE_16`, not `CS_MODE_32`**
+(`md = Cs(CS_ARCH_X86, CS_MODE_16)`). This line said `CS_MODE_32`
+until 2026-08-08, a leftover from the disproved extender theory in
+§1; decoding this 16-bit binary in 32-bit mode silently produces
+plausible-looking garbage rather than an error, which is the worst
+possible failure for RE work. The patterns in section 2 are short
+enough that hand-decoding catches it.
 
 ## 6. Related
 
@@ -648,3 +672,57 @@ catches it.
 - [`upstream-projects.md`](upstream-projects.md) links to the
   `libgff` and `dsoageofheroes` work that shaped the GFF chunk
   vocabulary the engine consumes.
+
+## 7. Tooling
+
+Installed 2026-08-08. Everything here is host tooling, not a repo
+dependency: nothing in `tools/` imports any of it, and the
+stdlib-only rule for the Python tools is unaffected.
+
+| Tool | Where | What it is for here |
+|---|---|---|
+| **Ghidra 12.1.2** | `~/.local/share/ghidra_12.1.2_PUBLIC` | Static analysis and decompilation of `DSUN.EXE`. The heavy tool this doc has always named as "when r2 stalls". |
+| Temurin **JDK 21** | `~/.local/share/jdk/jdk-21.0.12+8` | Ghidra requires JDK 21; Fedora 44 ships only 25/26. Pinned via `JAVA_HOME_OVERRIDE` so the system JDK is untouched. |
+| `pwntools` 4.15 | uv tool, Python 3.13 | `pwn asm` / `pwn disasm` at `arch='i386', bits=16` for authoring patch bytes. Not used for exploitation here. |
+
+### Ghidra against these binaries: read this before importing
+
+Three things are specific to a Borland-overlaid real-mode target
+and will waste a pass if assumed wrong.
+
+1. ⚠ **Do not install an LE/LX loader extension.** The obvious
+   search result for "Ghidra + DOS game" is `ghidra-lx-loader`, for
+   the LX/LE linear-executable format. That is the DOS/4GW format
+   §1 disproved. It cannot load these binaries and its presence
+   would only re-suggest the wrong mental model. Ghidra loads plain
+   MZ and `x86:LE:16:Real Mode` natively, which is what is needed.
+2. ⚠ **Set the language to 16-bit real mode at import**, not the
+   default Ghidra guesses. Same failure mode as the Capstone
+   `CS_MODE_32` bug in §6: wrong width does not error, it produces
+   convincing nonsense.
+3. ⚠ **Ghidra does not understand Borland overlays.** A plain
+   import gives one flat image with the overlay area as
+   undifferentiated bytes, which is the same blob problem this doc
+   has worked around by hand. The fix is `ovr-map` (Phase 5.5):
+   its JSON carries each segment's base, file range and entry
+   stubs, which a Ghidra script can replay as overlay memory
+   blocks with all 934 (DS1) / 852 (DS2) entry points labelled.
+   **That pairing is the actual reason to install Ghidra**, and it
+   is tracked as a Phase 5.5 task rather than assumed to work.
+
+Temper expectations on the decompiler: Ghidra's output is much
+weaker on 16-bit segmented code than on 32/64-bit. Far pointers
+and overlay thunks decompile badly. It still beats reading bytes
+by eye, but it will not hand over clean C.
+
+### Not applicable
+
+`pwndbg` was installed on this machine for CTF work. It is a
+**gdb plugin for live Linux ELF processes** and does nothing for
+this project: the binaries run under DOSBox, and the debugger for
+that is DOSBox's own, already driven over IPC by `opcode-fuzz`
+(Phase 5). Recorded here so it is not mistaken for opends tooling.
+
+> ⓘ Numbering note: this document has two sections numbered 5
+> (§5 "What we still don't know" and §5 "How to reproduce"). Left
+> as-is to avoid breaking existing cross-references.
