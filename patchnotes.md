@@ -4,6 +4,47 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`tools/ovr-map/` v0.1.0** is new: the executable's overlay map
+  (Phase 5.5). Parses the MZ header, the `FBOV` header, the 32-byte
+  Borland overlay descriptors and their 5-byte `INT 3Fh` entry stubs,
+  and turns `DSUN.EXE` from a blob you hex-search into a segmented,
+  addressable artifact. Stdlib-only single-file Python, matching the
+  other Python tools. Modes: default summary, `--json` full map,
+  `--verify <offset>` (segment, segment-local offset, nearest preceding
+  entry), `--disasm <seg>` (shells to `ndisasm -b 16` at the segment's
+  real base, entry stubs labelled), `--callgraph`, and `--selftest`.
+
+  Two things make a naive parse wrong, and both cost a pass during
+  development. `exeinfo` does **not** point at the descriptor table; it
+  points at a block of 8-byte records followed by the overlay's own
+  filename (`darkcd.exe` in DS1), and the table starts after that. And a
+  stub whose `entry_offset` is 0 is byte-identical to a descriptor
+  prefix (DS1 has one at `0x46fd5`, inside the palette dispatcher's own
+  segment), so any heuristic that sniffs for the next descriptor
+  miscounts. The explicit stub count at descriptor `+0x0c` is what makes
+  the walk deterministic. Zero-size descriptors are legitimate empty
+  overlay slots (DS1 has 6) and must not terminate the chain.
+
+  `--callgraph` filters far-call candidates against the MZ relocation
+  table, since a real `9A off:2 seg:2` has its segment word fixed up at
+  load time. It reports coverage rather than implying completeness: only
+  12.3% (DS1) and 14.2% (DS2) of stubs have a direct caller, and a stub
+  absent from the edge list is not evidence it is unreachable.
+
+  ⚠ **Corrects the Phase 5.5 measurements.** The roadmap's figures came
+  from a throwaway parser that is one segment short in each binary. The
+  shipped parser finds **DS1 52 segments / 935 entry stubs / 93.13%** and
+  **DS2 49 / 854 / 93.39%**, against the recorded 51 / 934 / 92.5% and
+  48 / 852 / 92.8%. Three independent checks say the tool is right: it
+  reproduces the §3.5 worked example exactly (segment range
+  `0x56490..0x56be0`, stub `0x46fd0`, `cs:0x042e`, flagged an entry
+  point); the descriptor chain terminates precisely where the
+  `Borland C++` copyright string begins; and `--callgraph` reproduces all
+  four recorded edge figures unchanged (DS1 210 edges / 115 stubs with a
+  direct caller, DS2 216 / 121), which is consistent because the extra
+  segment carries a single stub that has no direct caller. The roadmap
+  table is corrected in the same commit.
+
 - **`tools/gpl-asm/` v0.9.0** ships label-relative `--patch`
   addressing: `at = "label_0x0042 + 3"` and `at = "<name> + N"`
   (names resolved from `syms/functions.toml`, with `--syms` /

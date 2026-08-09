@@ -719,20 +719,33 @@ on, so it earns a phase rather than a footnote.
 **Ships**: `ovr-map` v0.1.0 (Python, stdlib-only, matching the
 other single-file Python tools).
 
-### What the structure gives us (already measured)
+### What the structure gives us (measured by the shipped tool)
 
 Both binaries parse cleanly with the same code:
 
 | | DS1 | DS2 |
 |---|---|---|
-| Overlay segments | 51 | 48 |
-| Overlaid code | 246 KB | 251 KB |
-| Overlay area accounted for | 92.5% | 92.8% |
-| Entry stubs (confirmed function entries) | 934 | 852 |
+| Overlay segments | 52 | 49 |
+| Empty overlay slots (size 0) | 6 | 0 |
+| Overlaid code | 247 KB | 252 KB |
+| Overlay area accounted for | 93.13% | 93.39% |
+| Entry stubs (confirmed function entries) | 935 | 854 |
 | Direct far-call edges | 210 | 216 |
 | Stubs with a direct caller | 115 | 121 |
 
-The number that matters most is **934 and 852 confirmed function
+> **Correction (2026-08-08).** The first four rows previously read
+> 51 / 246 KB / 92.5% / 934 and 48 / 251 KB / 92.8% / 852, measured
+> with a throwaway parser that is **one segment short in each
+> binary**. `ovr-map` v0.1.0 supersedes them. Three independent
+> checks say the tool is right: it reproduces §3.5's worked example
+> exactly (segment range `0x56490..0x56be0`, stub `0x46fd0`,
+> `cs:0x042e`, flagged as an entry point); the descriptor chain
+> terminates precisely where the `Borland C++` copyright string
+> begins; and the last two rows are **unchanged**, which is exactly
+> what the discrepancy predicts, because the extra segment carries a
+> single stub that has no direct caller.
+
+The number that matters most is **935 and 854 confirmed function
 entry points**. Every entry stub names an address that is
 definitely the first byte of a function. RE against this binary has
 so far had no reliable way to know whether a given offset is a
@@ -741,29 +754,46 @@ solved for ~900 addresses per game.
 
 ### Tasks
 
-- [ ] `tools/ovr-map/ovr-map.py`: parse the MZ header, the `FBOV`
+- [x] `tools/ovr-map/ovr-map.py`: parse the MZ header, the `FBOV`
       header, the 32-byte overlay segment descriptors, and the
       5-byte `INT 3Fh` entry stubs. Emit JSON: per segment its file
       range, payload offset, size, relocation count, and entry
       list.
-- [ ] `--disasm <segment>`: dump one segment at its correct base in
+- [x] `--disasm <segment>`: dump one segment at its correct base in
       16-bit mode, with entry points labelled. Replaces
       "disassemble small windows by eye" in `docs/dsun-exe-re.md`.
-- [ ] `--callgraph`: far calls whose linear target is a stub, as
+      Shells out to `ndisasm -b 16`, which `dsun-exe-re.md` already
+      recommends and which matches the shell-out precedent in
+      `verify-install` and `repro`.
+- [x] `--callgraph`: far calls whose linear target is a stub, as
       caller/callee edges. **Scope it honestly in the output:** only
-      about 13% of stubs have a direct caller, so the rest are
-      reached indirectly (69 `FF 1E` sites in DS1) or by table
-      dispatch. The tool must report coverage, not imply the graph
-      is complete.
-- [ ] `--verify <file-offset>`: answer "what is at this address",
+      12.3% (DS1) / 14.2% (DS2) of stubs have a direct caller, so the
+      rest are reached indirectly (62 `FF 1E` sites in DS1, 65 in DS2)
+      or by table dispatch. The tool reports coverage and states in
+      its own output that a stub absent from the edge list is not
+      evidence it is unreachable.
+      ⚠ Candidates are filtered against the MZ relocation table: a
+      real `9A off:2 seg:2` has its segment word fixed up at load
+      time, so that word's location appears there. Without that
+      filter a raw `0x9A` scan is mostly false positives.
+      ⚠ The `FF 1E` counts above are the tool's; the earlier prose
+      said 69 for DS1. That figure came from the same throwaway
+      parser as the corrected table above and was not reproduced.
+- [x] `--verify <file-offset>`: answer "what is at this address",
       naming the segment, the offset within it, and the nearest
       preceding entry point. This is the query the patch workflow
       needs.
-- [ ] **Tests:** parse both shipped binaries and assert the
+- [x] **Tests:** parse both shipped binaries and assert the
       invariants above (segment counts, >92% area coverage, every
       descriptor's range inside the overlay area, every stub inside
       its own segment). Corpus-style, skipping when `.games/` is
       absent, matching `gff-edit/tests/corpus_roundtrip.rs`.
+      ⚠ Shipped as a `--selftest` flag on the tool, **not** a separate
+      suite. The Rust corpus tests were the stated model, but the
+      Python tools here are single-file and the repo has no Python
+      test harness at all (CI gates them with ruff plus
+      `compileall`, and says so in a comment). A flag keeps the
+      single-file idiom and is one line to add to CI.
 - [ ] `--ghidra`: emit the segment map as a Ghidra script (or a
       JSON the script reads) that creates one overlay memory block
       per segment at its real base and labels every entry stub.
@@ -773,7 +803,7 @@ solved for ~900 addresses per game.
       overlay area as undifferentiated bytes, which is the same
       blob problem `docs/dsun-exe-re.md` has worked around by hand
       all along. Fed the segment map, it becomes a navigable
-      database with all **934 (DS1) / 852 (DS2)** confirmed
+      database with all **935 (DS1) / 854 (DS2)** confirmed
       function entries named, and the decompiler pointed at
       correctly-based code instead of garbage.
       ⚠ Scope this honestly, like `--callgraph`: Ghidra's

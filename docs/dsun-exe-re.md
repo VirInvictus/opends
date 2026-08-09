@@ -706,7 +706,9 @@ and will waste a pass if assumed wrong.
    has worked around by hand. The fix is `ovr-map` (Phase 5.5):
    its JSON carries each segment's base, file range and entry
    stubs, which a Ghidra script can replay as overlay memory
-   blocks with all 934 (DS1) / 852 (DS2) entry points labelled.
+   blocks with all 935 (DS1) / 854 (DS2) entry points labelled
+   (figures from `ovr-map` v0.1.0, which corrected the earlier
+   throwaway-parser counts of 934 / 852; see roadmap Phase 5.5).
    **That pairing is the actual reason to install Ghidra**, and it
    is tracked as a Phase 5.5 task rather than assumed to work.
 
