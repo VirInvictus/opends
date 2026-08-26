@@ -808,7 +808,7 @@ fn decode_all_wall_frames(
 /// | 6      | s16  | ojff_number     |
 fn parse_etab(bytes: &[u8]) -> Vec<EntityRecord> {
     let mut out = Vec::with_capacity(bytes.len() / 8);
-    for chunk in bytes.chunks_exact(8) {
+    for chunk in bytes.as_chunks::<8>().0 {
         let x = i16::from_le_bytes([chunk[0], chunk[1]]);
         let y = i16::from_le_bytes([chunk[2], chunk[3]]);
         let y_offset = chunk[4] as i8;
