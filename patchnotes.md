@@ -26,13 +26,20 @@ Released versions appear here, newest first.
   "Failed Uncompress in Loadgamefromdisk" (saves are stored
   compressed), and a DS1 string cluster anchoring the
   region-change code Phase 7 needs; (6) the official-patch
-  diff is blocked: the floppy 1.0 binary is a different build
-  (42 of 49 segments differ materially, resident +1,840
-  bytes, 866 vs 854 entries), so diffing needs a CD 1.0 base
-  that no archive artifact provides; (7) DS2's MZ header size
-  is `0x5200` (previously unrecorded). `dsun-exe-re.md` §5
-  carries an item-by-item pointer; the Phase 5.6
-  official-patch-diffing checkbox is updated with the block.
+  delta is measured after all: the CD 1.0 base (hash-matched
+  against the `install-variants.md` record and staged
+  dev-side) diffs against GOG 1.10 as 5 identical overlay
+  segments, 44 changed, 117,566 differing bytes, with
+  fix-sized localized clusters in segments 0, 5, 8, 9, 16,
+  36 - SSI's own bug sites, enumerable; (7) DS2's MZ header
+  size is `0x5200` (previously unrecorded). Two same-day
+  corrections are recorded in the survey: an earlier "diff
+  blocked" verdict compared only against the floppy line
+  (a different product build), and an earlier "20 undocumented
+  chunk types" claim was checked against `file-formats.md` and
+  reduced to three. `dsun-exe-re.md` §5 carries an item-by-item
+  pointer; the Phase 5.6 official-patch-diffing checkbox is
+  updated with the measurement.
 
 - **`ds1-patch/` (darkfix-ds1) v0.0.1** is new: the darkfix
   distribution format and applier, the first Phase 6 deliverable.

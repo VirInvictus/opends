@@ -68,6 +68,21 @@ installed, with SSI's official 1.10 CD patch applied**:
 So "GOG ships 1.10" is exact: their tree is the official patch
 output, byte for byte, with one launcher swapped.
 
+> **Staged base (2026-08-28).** A second, independently sourced
+> public CD-tree zip has been hash-verified against this
+> section's records: `DSUN.EXE = e73f79c3...`,
+> `GPLDATA.GFF = 11fda691...` (the shared 1.0 GPLDATA), and
+> `RESOURCE.GFF` at the 1.0 size (5,782,746 B). The three files
+> are staged dev-side at `.games/archive-org/cd10-extracted/`
+> as the working CD 1.0 base, which makes the official-patch
+> diff (CD 1.0 vs GOG 1.10) directly computable; see
+> [`dsun-exe-survey.md`](dsun-exe-survey.md) §8 for the first
+> measurement. The same source also supplies the `wakecd11.exe`
+> / `wakejc11.exe` patcher SFXs. DS1 check: an independently
+> sourced DS1 tree hash-matches the GOG 1.10 `DSUN.EXE` and
+> `GPLDATA.GFF` exactly, consistent with §1's single-lineage
+> reading.
+
 ## 4. The community recommendation, and what holds up
 
 A community member recommended targeting the floppy 1.10 rather

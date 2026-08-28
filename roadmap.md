@@ -211,18 +211,25 @@ Three leverage points, in order of cost:
       review-ready proposals, curated by hand into the
       catalogue; never auto-committed, matching the existing
       curation rule.
-- [ ] **Official-patch diffing.** ⚠ **Update 2026-08-28: blocked
-      as framed; the floppy 1.0 binary is a different build, not
-      a near revision** (resident image +1,840 bytes, 866 vs 854
-      entry points, 42 of 49 overlay segments differ materially
-      when paired by index; `RESFLOP.GFF` shows the floppy line
-      diverges at the source level). Measured evidence in
+- [ ] **Official-patch diffing.** ✅ **Unblocked and first-measured
+      2026-08-28.** The CD 1.0 base exists and is hash-confirmed:
+      `install-variants.md` §3 records `game.gog` carrying the
+      1.0 CD tree (`DSUN.EXE = e73f79c3...`), and an
+      independently sourced public CD-tree zip hash-matches that
+      record exactly; the tree is staged dev-side at
+      `.games/archive-org/cd10-extracted/`. The CD 1.0 vs GOG
+      1.10 segment diff is the official fix delta: 5 segments
+      byte-identical, 44 changed, 117,566 differing bytes, with
+      fix-sized localized clusters in segments 0, 5, 8, 9, 16
+      and 36. Measured evidence and reading in
       [`../docs/dsun-exe-survey.md`](docs/dsun-exe-survey.md) §8.
-      Reviving this item needs a **CD 1.0 `DSUN.EXE`** (a
-      pre-patch CD-tree artifact; the `cd11` archive holds the
-      RTPatch package, not a base tree), or a parser for
-      RTPatch's own old-file fingerprints. `.games/archive-org/`
-      artifacts remain on hand either way.
+      Remaining: characterize the low-cluster segments
+      instruction-by-instruction against the 1.02 fix list
+      (`known-bugs.md` §1); cross-ref with the DSO symbol
+      matches. (The floppy 1.0 line is a different product
+      build and stays useless as a diff base; an earlier
+      same-day note calling this item blocked was wrong and is
+      corrected in the survey.)
 - [ ] **First named consumers.** The catalogue is real when
       something else uses it: at minimum, the VGA
       colour-cycling routine (`VGAColorCycle` /
