@@ -1,0 +1,31 @@
+# darkfix-ds1 patch manifest. Schema version 1 (spec.md §4).
+#
+# The patch version lives in this directory's VERSION file
+# (docs/versioning.md); it is never duplicated here.
+
+[meta]
+schema_version = 1
+game = "ds1"
+name = "darkfix-ds1"
+license = "MIT"
+homepage = "https://github.com/VirInvictus/opends"
+
+[target]
+source = "GOG"
+engine_version = "1.10"
+# Canonical full-install hash manifest, repo-relative. Authoring-time
+# only (`apply.py --check-all`): a distributed zip does not ship
+# docs/, and the applier must not depend on it.
+reference_manifest = "docs/source-hashes/ds1-gog-1.10.toml"
+
+[target.files]
+# Every file at least one enabled fix touches, hashed on the
+# canonical GOG 1.10 install (docs/source-hashes/ds1-gog-1.10.toml).
+# The applier refuses to run when any of these differ: wrong engine
+# build, already-patched file, or damaged install.
+"DSUN.EXE" = "7bbd84f105b1ebe538a4abdfccdb2bacbf5b4fa763b45fa3a84499780f1d8c96"
+
+[[fixes]]
+id = "fix.ds1.noop"
+path = "fixes/000-noop.py"
+enabled = true
