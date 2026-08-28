@@ -4,6 +4,31 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`ds1-patch/` (darkfix-ds1) v0.0.1** is new: the darkfix
+  distribution format and applier, the first Phase 6 deliverable.
+  `manifest.toml` (schema v1, spec.md §4) declares the target
+  game, the canonical GOG 1.10 hashes of every file a fix
+  touches, and the ordered fix list with on/off state.
+  `scripts/apply.py` verifies those hashes before touching
+  anything (refusing an already-patched or non-1.10 install),
+  backs up originals to `darkfix-backup/`, applies each enabled
+  fix, writes a `darkfix-applied.json` journal, and `--unapply`
+  restores byte-identically from backup after re-verifying every
+  backup hash. `scripts/darkfix/patcher.py` is the engine:
+  fingerprint-checked same-length byte edits (in-place only; a
+  length change shifts every following overlay payload), GFF
+  chunk replacement via `gff-cat replace`, backup, and journal.
+  `fix.ds1.noop` proves the shape per the roadmap: it applies,
+  verifies, and unapplies a copy of the real `DSUN.EXE`
+  byte-identically. `apply.py --selftest` runs the whole cycle
+  in temp dirs plus the refusal paths (tampered target, wrong
+  site fingerprint, overlapping edits). Validated end-to-end on a
+  throwaway copy of the DS1 install and against the canonical
+  hash manifest via `--check-all` (57 matched, 0 mismatched);
+  the pristine install was never written. Still open from the
+  same roadmap checkbox: proving the applier under Wine and a
+  real fix to ship.
+
 - **`tools/ovr-map/` v0.2.0** closes Phase 5.5 with `--ghidra`: emits a
   self-contained Ghidra script that creates one overlay memory block per
   segment at its correct base, fills it from the file, and labels all

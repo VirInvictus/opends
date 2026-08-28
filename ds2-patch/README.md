@@ -17,6 +17,13 @@ Status: pre-release. No fixes shipped yet. See
 **the mines elevator freeze** ([`../docs/known-bugs.md`](../docs/known-bugs.md)
 section 2.1).
 
+The applier machinery is proven on the DS1 side
+([`../ds1-patch/`](../ds1-patch/) v0.0.1: manifest schema,
+`apply.py`, the `darkfix` engine, no-op round-trip). The scripts
+below get populated from that proven shape when Phase 7 starts;
+decide then whether `scripts/darkfix/` is promoted to shared
+tooling or copied per patch.
+
 ## Layout
 
 - `manifest.toml` — patch manifest (target hashes, fix list,

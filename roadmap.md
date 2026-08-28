@@ -1,8 +1,19 @@
 # OpenDS — Roadmap
 
 Phased plan. Each phase has a single shippable artifact; later
-phases depend on earlier ones. Solo-dev pacing — phases are
-sized to fit a weekend or a week, not a quarter.
+phases depend on earlier ones.
+
+**This file is forward-looking.** Rewritten 2026-08-28 from the
+2026-07-23 reconciled version. The old roadmap had become a
+second changelog: ~85% of it annotated already-shipped work,
+duplicating [`patchnotes.md`](patchnotes.md), and it twice failed
+to notice whole bodies of work until after they shipped (Phase
+4.5, `atlas`). Shipped phases are now condensed to one short
+section each: what it delivered, what is still open, where the
+detail lives. Per-tool `VERSION` files plus a `patchnotes.md`
+entry remain the release record; the previous version of this
+file (with all its per-release annotation and correction
+history) is in git history.
 
 **Tools come before patches.** Anything that makes the digging
 easier is priority over any specific fix. Every digging-tool
@@ -13,866 +24,258 @@ authoring fixes is plumbing, not archaeology.
 Each phase ships a deliverable that is useful on its own,
 independent of whether later phases happen.
 
-**How a release is recorded here.** Per-tool `VERSION` files plus a
-`patchnotes.md` entry are the release record. This roadmap says
-"Released: `<tool>` vX.Y.Z" and that means exactly those two things.
-The `<tool>-vX.Y.Z` git tags that `docs/versioning.md` calls for have
-**not been cut yet** (`git tag` returns nothing); see the open item at
-the end of Phase 0. Reconciled against the tree 2026-07-23.
+## Where we are (snapshot 2026-08-28)
 
-## Phase 0 — Documentation & extraction (current)
+Phases 0 through 5.5 are shipped. The toolkit reads, writes,
+round-trips, renders, and reassembles the games' data, and the
+engine binary is segmented and addressable.
 
-**Goal**: every fact we know is written down; both games' files
-are extractable on Fedora.
-
-**Ships**: docs + first two tools (`extract.sh`, `verify-install.py`).
-
-- [x] Project skeleton, `.gitignore`, README, spec, roadmap, logo.
-- [x] Engine research dossier ([`docs/research.md`](docs/research.md)).
-- [x] Format catalog ([`docs/file-formats.md`](docs/file-formats.md)).
-- [x] Known-bugs catalog ([`docs/known-bugs.md`](docs/known-bugs.md)).
-- [x] Upstream-projects map ([`docs/upstream-projects.md`](docs/upstream-projects.md)).
-- [x] GPL bytecode strategy ([`docs/gpl-bytecode.md`](docs/gpl-bytecode.md)).
-- [x] Binary patching strategy ([`docs/binary-patching.md`](docs/binary-patching.md)).
-- [x] Patch authoring workflow ([`docs/patch-workflow.md`](docs/patch-workflow.md)).
-- [x] **Tool**: `tools/verify-install/` (Python, stdlib-only) —
-      hashes a player's install, identifies GOG 1.10 / original
-      CD / unknown, supports a capture mode for regenerating the
-      manifest. Released: `verify-install` v0.1.0. **v0.2.0** adds
-      `--json` (stable machine-readable report for CI / the repro
-      harness) and `--repair <installer.exe>` (shells to
-      `innoextract` to restore canonical bytes; backs up the
-      pre-repair files to `__verify-install-backup/<path>`;
-      `--dry-run` previews the plan). Released:
-      `verify-install` v0.2.0. **v0.3.0** adds `--rollback`
-      (inverse of `--repair`; restores every file in the
-      `__verify-install-backup/` dir and removes it; pairs
-      with `--dry-run`) and `--summary` (one-line plain-
-      English status for the common-case modder check; frames
-      next-step advice so the user doesn't have to remember
-      which flag does what). Released: `verify-install` v0.3.0
-      (matches the current `VERSION`).
-- [x] Source-hash manifests at
-      `docs/source-hashes/ds1-gog-1.10.toml` and
-      `ds2-gog-1.10.toml` — SHA256 of every shipped file per
-      game. Canonical reference; `verify-install` checks against
-      these, and future patch `manifest.toml` files cite them.
-      Captured from the pristine innoextract of the GOG
-      installers under `.games/`.
-- [ ] **Tool (deferred)**: `tools/extract.sh` — GOG installer
-      (.exe or .rar + .exe) → `.games/ds1/` or `.games/ds2/`.
-      Not blocking: developers who run the GOG installer (under
-      Wine, on Windows, or natively) already have the same file
-      tree. Reinstated if a contributor needs from-installer
-      extraction without running the installer.
-- [ ] **Cut the per-tool git tags.** `docs/versioning.md` and
-      `CLAUDE.md` both say each tool ships a `<tool>-vX.Y.Z` tag,
-      and this roadmap claimed twelve of them. **None exist**:
-      `git tag` returns nothing. Every release so far is recorded
-      only by a `VERSION` file plus a patchnotes entry. Either
-      backfill tags against the commits that bumped each
-      `VERSION`, or amend `docs/versioning.md` to drop the tag
-      requirement. Found in the 2026-07-23 reconciliation sweep;
-      the false claims are already corrected above.
-
-**Done when**: a working game install + one command →
-`verify-install` reports a clean match against the canonical
-source-hash manifest for that game. The tool has its own README
-and VERSION and is listed in `tools/README.md`.
-
-## Phase 1 — `gff-edit` + `gff-cat` (the foundation)
-
-**Goal**: a pure-Rust GFF reader/writer crate in our own code,
-so we don't depend on a JVM tool for the most basic operation.
-Every later phase reads or writes GFFs through this.
-
-**Ships**: `tools/gff-edit/` (Rust) as a workspace member crate;
-library plus `gff-cat` binary. First release: `gff-edit` v0.1.0;
-current `VERSION` is 0.6.0.
-
-- [x] Parse the 28-byte file header and the TOC per the layout
-      documented in
-      [`docs/file-formats.md`](docs/file-formats.md) §1.
-      (gff-edit v0.1.0; both indexed and segmented TOC types are
-      parsed at the type level.)
-- [x] Iterator API on the library: `gff.chunks()` returns a slice
-      of indexed `ChunkRef`s; `gff.types()` exposes per-type
-      metadata including segmented-list details; `gff.find(kind, id)`
-      and `gff.read(kind, id)` for targeted access. (gff-edit
-      v0.1.0)
-- [x] Resolve individual segmented-chunk locations via GFFI
-      cross-reference. (gff-edit v0.2.0; 63,080 chunks across
-      128 GFFs in DS1+DS2 resolved cleanly.)
-- [x] Extract a chunk (indexed or segmented) to a file by
-      `(kind, id)`. (gff-edit v0.2.0, `gff-cat extract`.)
-- [x] Replace a chunk in-place (or append on grow); rewrite
-      the (location, length) record in TOC or secondary table.
-      (gff-edit v0.3.0; works for indexed and segmented.)
-- [x] Round-trip test: no-op replace produces byte-identical
-      output for every GFF in DS1 and DS2 (128/128 corpus
-      pass). (gff-edit v0.3.0)
-- [x] CLI: `gff-cat info <file>`, `gff-cat list <file>`.
-      (gff-edit v0.1.0)
-- [x] CLI: `gff-cat extract <file> <kind> <id> [-o <out>]`.
-      (gff-edit v0.2.0)
-- [x] CLI: `gff-cat replace <file> <kind> <id> <bytes-file>
-      -o <out>`. (gff-edit v0.3.0)
-- [x] Tested against every shipped GFF in both DS1 and DS2 with
-      no parse errors. (gff-edit v0.1.0: 61/61 pristine,
-      67/67 deployed.)
-- [x] Construction from scratch: `GffBuilder` library type with
-      `add_chunk(kind, id, payload)` and `build()`. Indexed-only
-      for v0.5.0; corpus round-trip verified structural
-      equivalence on 50 indexed-only GFFs (78 segmented skipped
-      pending v0.6.0). Released: `gff-edit` v0.5.0.
-- [ ] Segmented-type build (the secondary-table + `GFFI`
-      cross-reference dance) so the builder covers the full GFF
-      feature set. Originally targeted for `gff-edit-v0.6.0`;
-      deferred to v0.6.1+ once a downstream consumer needs it.
-      v0.6.0 instead landed `gff-cat what` (per-chunk describer
-      with tool-dispatch hints) as the higher-value
-      human-friendliness piece.
-
-**Done when**: every GFF under `.games/ds1/` and `.games/ds2/`
-opens, lists, and round-trips cleanly through the Rust crate
-with no Java dependency.
-
-## Phase 2 — DOSBox repro harness
-
-**Goal**: any bug from the known-bugs list can be reproduced on
-the local machine in under five minutes. Validation infrastructure
-for everything that follows.
-
-**Ships**: `tools/repro/` (Shell + Python) — DOSBox configs,
-save library, recording wrapper.
-
-- [x] DOSBox-Staging configured to run DS1 and DS2 reliably on
-      Fedora. (repro v0.1.0: `tools/repro/configs/ds[12].conf`,
-      overlay-mount discipline so writes never reach the install,
-      MEL audio detect gotcha documented and bypassed via a
-      sound_ds-derived `SOUND.CFG` staged from the fixture.
-      repro v0.2.0 adds the DS2 path via the `ds2-smoke` fixture
-      with `imgmount` of `game.ins` for CD audio.)
-- [~] Save-state library: per-bug, a save-game placed just
-      before the bug-triggering action. Indexed by bug ID. (Two
-      smoke fixtures shipped (`ds1-smoke`, `ds2-smoke`) plus a
-      `bugs/README.md` catalogue. repro v0.3.0 adds `--play
-      --session <name>` so in-game saves persist across runs
-      under `$XDG_STATE_HOME/opends-repro/play-<game>-<session>/`
-      plus `--list-sessions` and `--reset-session`. Real
-      bug-triggering save curation continues alongside input
-      automation in v0.3.x / v0.4.0+.)
-- [x] Recording wrapper + input automation (repro v0.4.0):
-      `[expected].record_video = true` enables `ffmpeg -f
-      x11grab` capture to `<scratch>/repro.mp4` (libx264,
-      24fps, mute; XWayland surface is visible so GNOME-
-      Wayland works without a portal). `[[trigger.keystrokes]]`
-      schedule fires `ydotool key`/`type` at scheduled
-      offsets from a daemon thread. Both gracefully degrade
-      when the dep is missing (log warning, skip automation,
-      run still completes). README documents the one-time
-      Fedora setup. v0.4.0 unblocks the deterministic-
-      execution half of `opcode-fuzz v0.3.0`.
-- [ ] Differential capture: run-with-patch and run-without-patch
-      side-by-side helper. (v0.4.0+.)
-
-**Done when**: every known bug we plan to fix has a saved game
-and a one-command repro. New bugs we discover get added to the
-library as we find them. v0.1.0 ships the harness pattern; bug
-curation continues in v0.2.0+ as fixtures get added.
-
-## Phase 3 — `gpl-disasm` v0 (the keystone)
-
-**Goal**: every byte of every `GPL ` chunk in DS1 disassembles
-into mnemonic form, even if many opcodes are still `db`. This is
-the single most important tool — the bulk of patch authoring
-runs through it.
-
-**Ships**: `tools/gpl-disasm/` (Rust). First release: `gpl-disasm`
-v0.1.0; current `VERSION` is 0.6.0.
-
-- [x] Read GPL and MAS chunks via our `gff-edit` library.
-      (gpl-disasm v0.1.0; smoke-tested against 600 chunks in
-      DS1+DS2 GPLDATA.GFF.)
-- [x] Print annotated assembly with offset markers.
-      (gpl-disasm v0.1.0; byte-annotation pass.)
-- [x] String detection: embedded ASCII auto-shown next to the
-      bytes that reference it. (gpl-disasm v0.1.0; runs of
-      ≥4 printable bytes annotated inline.)
-- [x] Document the opcode table as we learn it
-      (`docs/gpl-opcodes.md`). (Seed catalogue of 129 entries
-      0x00..0x80 from libgff `gpl_commands`; gpl-disasm
-      v0.1.0.)
-- [x] Tool README with usage examples on real game files.
-      (gpl-disasm v0.1.0.)
-- [x] Identify entry points and basic-block boundaries.
-      (gpl-disasm v0.3.0; recursive-descent CFG with labeled
-      successors, `--entries` / `--cfg` / `--no-labels` flags.
-      Verified on 600 / 600 DS1+DS2 chunks: 71,403 edges, 1,384
-      cross-chunk `global sub` call sites, 0 computed-target
-      edges.)
-- [x] Decode each opcode's parameters (port libgff's
-      `gpl_read_number` / `gpl_get_parameters`). True
-      instruction-boundary alignment for the common path
-      (gpl-disasm v0.2.0); deferred cases (RETVAL recursion,
-      COMPLEX_*, `gpl_setrecord`, complex-write of
-      `gpl_load_variable`) closed in v0.2.1. **100% corpus
-      alignment on all 600 DS1+DS2 GPL/MAS chunks.**
-- [x] Cross-reference with `the-dark-lens` and DSO v1.0 debug
-      symbols; emit a `syms.toml` we curate by hand and grow
-      over time. (gpl-disasm v0.4.0: `tools/gpl-disasm/syms/`
-      with `opcodes.toml` + `functions.toml` schemas; function-
-      entry decoration wired through text and JSON output;
-      starter catalogue ships 2 verified entries. v0.4.2 ships
-      opcode-mnemonic override wiring; variable naming remains
-      a follow-up.)
-- [x] Inter-chunk control-flow graph (gpl-disasm v0.4.1):
-      `--global-cfg <path>` aggregates per-chunk
-      `cross_chunk_calls` into a whole-GFF callgraph. 250 nodes
-      / 587 edges for DS1; 350 nodes / 797 edges for DS2;
-      combined 1,384 edges matches the v0.3.0 corpus soundness
-      count exactly. Symbol-derived caller/callee names flow
-      through edge metadata.
-- [x] Opcode-mnemonic overrides (gpl-disasm v0.4.2):
-      `syms/opcodes.toml` rows rewrite `Instruction.mnemonic` in
-      both text and JSON output via
-      `Symbols::apply_to_mnemonics`. Ships with the catalogue
-      empty by design and a documented curation rule.
-- [x] Per-chunk local-variable overlays (gpl-disasm v0.6.0):
-      `syms/locals.toml` with per-kind tables
-      (`[[lbyte]]` / `[[lnum]]` / ...) keyed by `(file, kind,
-      chunk_id, id, name)`. `Symbols::apply_to_locals` walker
-      mirrors the v0.5.0 globals path with chunk context;
-      catalogue ships empty by design.
-- [x] DSO-symbol importer (gpl-disasm v0.6.0):
-      `scripts/import-dso-symbols.py` (stdlib-only) parses
-      `.dso-online/tools/symbols.txt` and emits review-ready
-      proposals: 100 opcode-byte rename candidates by libgff /
-      DSO PascalCase equivalence, plus 15 unmatched DSO
-      `Decode*` handlers (candidates for libgff's
-      `gpl default` rows). Script is the review surface; no
-      automatic commits.
-
-**Done when**: `gpl-disasm .games/ds1/GPLDATA.GFF` produces
-output that lets a reader locate a quest-script function by
-name (or by nearby string reference) and read its control
-flow. v0.1.0 shipped the byte-annotation foundation; v0.2.0
-ships true instruction boundaries on the common path; control
-flow comes in v0.3.0.
-
-## Phase 4 — Exploration tools
-
-**Goal**: the digging surface widens. Tools that let us locate
-which chunk a bug lives in, see the state a fix changes, and
-look at the maps directly.
-
-**Ships**: three tools, each with its own tag.
-
-### `tools/dialog-extract/` (Python)
-
-- [x] Pull inline NPC dialog strings from GPL/MAS chunks as
-      structured JSON. (dialog-extract v0.1.0; heuristic
-      IMMED_STRING scan + 7-bit decoder ported from
-      soloscuro-archive. 13,938 strings from DS1 GPLDATA, 22,431
-      from DS2, total 36,369.)
-- [x] Search-friendly: `dialog-extract --grep "Magnolia"` finds
-      chunks whose inline strings match the pattern.
-      (dialog-extract v0.1.0.)
-- [x] Resolve text-id references (`gpl_get_gstr(id)`,
-      `gpl_get_lstr(id)`) into the matching TEXT chunks for a
-      complete dialog set. (dialog-extract v0.2.0: GSTRING refs
-      resolve against `--text-source RESOURCE.GFF`. LSTRING refs
-      resolve via path-aware LSTR-slot tracking in
-      dialog-extract v0.4.0: 96.4% of corpus reads now resolve;
-      the remaining 32 reads are caller-populated slots resolved
-      via inter-chunk expansion.)
-- [x] Output a richer `{ speaker, lines, branches, gpl_refs }`
-      tree once instruction boundaries from gpl-disasm v0.2.0
-      let us correlate strings to the surrounding control flow.
-      (dialog-extract v0.3.0: CFG-aware `dialog_tree` built on
-      `gpl-disasm v0.3.1`'s CFG. 46,611 lines across 4,229
-      declared + 15,027 discovered entry-point walks; 0
-      invariant violations on the DS1+DS2 corpus.)
-- [x] Inter-chunk dialog tree walking: `gpl global sub` call
-      sites expand inline under the calling block as
-      `cross_chunk_call` subtrees, using `gpl-disasm`'s per-
-      chunk `cross_chunk_calls` metadata. (dialog-extract
-      v0.4.0: 889 DS1 + 1,014 DS2 expansions; 666 + 806 fully
-      resolved; cycles, mid-function calls, and cross-GFF calls
-      surface as explicit unresolved markers with reasons.)
-- [x] LSTR tail closer (dialog-extract v0.5.0): the 32
-      previously-unresolved LSTR reads each now carry a
-      `possible_writers` array drawn from the global LSTR-write
-      index and narrowed by the inter-chunk callgraph
-      (`gpl global sub`). DS1 + DS2 average 4.0 / 6.7 writers
-      per unresolved read after narrowing; **zero** corpus LSTR
-      reads lack a statically-reachable writer. New `lstr_stats`
-      top-level field + stderr stats line. Path-aware caller
-      picking (CFG-distance ordering or symbolic trace) is
-      queued for v0.6.0+.
-- [x] **Human-readable output** (dialog-extract v0.7.0):
-      `--format transcript` (per-NPC plain-text listing; DS1
-      GPLDATA emits 18349 lines covering 215 chunks / 17699
-      strings) and `--format html` (single-file static page
-      with embedded CSS, collapsible `<details>` per chunk,
-      colour-coded unresolved strings). New
-      `syms/speakers.toml` curated chunk-id → NPC name
-      catalogue; missing rows fall back to "GPL chunk N".
-      `--format json` (default) unchanged for back-compat.
-- [x] Released: `dialog-extract` v0.1.0. (this release; current
-      `VERSION` is 0.7.1)
-
-### `tools/save-inspect/` (Python)
-
-- [x] Read `CHARSAVE.GFF` and dump as JSON. (save-inspect
-      v0.1.0; decodes PSIN/PSST/TEXT plus the CHAR RDFF header;
-      opaque hex preview for CHAR body, SPST, CACT, PREF, GREQ.)
-- [x] Decode CHAR record body per DS1 RDFF schemas (combat,
-      character, item sub-blocks): hp/psp/stats/AC/THAC0, race/
-      alignment/class/level enums, item slots and indices.
-      (save-inspect v0.2.0; DS1 fully decoded, DS2 surfaces
-      names + raw hex as a heuristic until DS2 schema is
-      fully RE'd in v0.3.0+.)
-- [x] Diff two saves: structured JSON diff with `path` /
-      `kind` / `from` / `to` records per change.
-      (save-inspect v0.3.0: `save-inspect.py diff a.GFF
-      b.GFF`.)
-- [x] DS2 combat partial decode: DS1-shared prefix bytes
-      (HP, PSP, ids, item indices, special_*) plus heuristic
-      stats lookup 8 bytes before the name. (save-inspect
-      v0.3.0.)
-- [x] DS2 combat **full** structured schema. v0.4.0 locks the
-      49-byte layout (shared 24-byte prefix, `_reserved_0`,
-      `stats[6]`, `_slot_31`, `_reserved_1`, `name[16]`), with
-      first-class `stats` + `name` fields replacing v0.3.0's
-      `_likely_*` heuristics. Three positions (24, 31, 32)
-      still ship as opaque bytes pending DSUN.EXE RE.
-- [x] DS2 **character** sub-block (66 bytes). save-inspect
-      v0.5.0 locks the layout: DS1's 72-byte structure minus
-      `_data2` (4 bytes) and two of `(race, gender, alignment)`
-      (2 bytes). All 19 DS2 CHAR records decode with stats in
-      the 3..25 D&D 2e range, alignments in the documented
-      0..8 set, HP / PSP matching the combat sub-block.
-- [x] DS2 **item** sub-block (23 bytes). save-inspect v0.6.0
-      validates that libgff's `ds1_item_t` schema is exactly
-      DS2's wire format: 151 items across played + factory
-      DS2 CHARSAVEs decode with zero truncations, including
-      the trailing `priority` + `data0` pair that DS1 omits.
-      Per-item `_format` tag (`ds1_item` / `ds2_item`) added.
-      Save-slot files (`SAVE0N.SAV`) discovered to be
-      byte-identical snapshots of `DARKRUN.GFF`; save-inspect
-      reads them natively.
-- [x] **Save-edit write path** (save-inspect v0.8.0): every
-      existing decoder gets a sibling encoder (combat /
-      character / item DS1+DS2; PSIN/PSST/TEXT/STXT/SAVE/
-      ETME/ETAB) plus a pure-Python `write_gff` that inverts
-      `parse_gff`. New `save-edit` subcommand (JSON-in,
-      GFF-out, backup + dry-run) plus a `roundtrip`
-      regression test that hits 100% chunk-level
-      byte-identity on every CHARSAVE / DARKSAVE / DARKRUN
-      in the corpus (27/27 + 98/98 + 1/1 + 63/63).
-      End-to-end smoke proves the modder workflow: edit a
-      PC's HP field in the JSON, save-edit, re-decode, HP
-      updated. The first true mod workflow on the toolkit.
-- [~] **SAVE chunk structural decode** (save-inspect v0.7.0):
-      per-region world state inside `DARKRUN.GFF` (~60 per
-      save). Schema is empirically incomplete, so v0.7.0
-      surfaces what's locked (chunk-id-keyed shape; u16
-      scalars in the 2-byte chunk family at ids 10..17; ETME
-      template text; STXT save name) and leaves the rest as
-      opaque hex with the per-game tag `_format:
-      ds1_save_chunk`. New `save-diff` subcommand operates at
-      the chunk-byte level: per-chunk byte-diff counts plus
-      first-diff offsets, defaulting to SAVE chunks only.
-      Field-by-field RE continues as more played saves
-      surface; the v0.7.0 deliverable is the harness the RE
-      runs through, not the full schema.
-- [~] **SAVE chunk decode for DS1 party records**
-      (`tools/save-inspect/scripts/ds1-party-edit.py`,
-      2026-05-18): SAVE/5 RE'd as an array of DS1 combat
-      sub-blocks (58 bytes each, libgff `ds1_combat_t`
-      layout); SAVE/6 RE'd as DS1 character sub-blocks
-      (71-72 bytes, libgff `ds1_character_t`). One per
-      active party PC in display order. End-to-end edit
-      tested against Brandon's played save (stats, HP,
-      weapon damage). Full layout documented in
-      `docs/file-formats.md` §3. The other ~58 SAVE chunks
-      remain opaque; this opens the modder-facing path for
-      DS1 active-party edits without requiring full
-      per-chunk RE.
-- [ ] RE the remaining `DARKRUN.GFF` SAVE chunks: SAVE/1 (the
-      largest at ~10 KB; probably the master per-region state
-      table), SAVE/2-/4 and /7-/9, the u16 scalar family at ids
-      10..17 (identify what each counter / pointer represents),
-      and the 51-byte SAVE/18 boolean array (all 0x01 in the
-      reference played save; region-visited flags?). Bootstrap
-      empirically with the v0.7.0 `save-diff` harness: snapshot,
-      do one in-game action, snapshot, diff. Document each
-      locked layout in `docs/file-formats.md` §3 and extend
-      `ds1-party-edit.py` (or a sibling `ds1-world-edit.py`)
-      with editable accessors. Quest and world-state fixes
-      need this; without it they're raw byte edits with no
-      schema safety.
-- [x] **Modder-altitude PC edit surface** (save-inspect
-      v0.9.0 - v0.9.4): `list-pcs`, `list-items`, `edit-pc`,
-      `edit-item`, `give-item`, `find-empty-slots` for
-      CHARSAVE-based edits (works for DS2 active party + DS1
-      inactive char templates). Plus `scripts/ds1-party-
-      edit.py` for DS1 active-party edits via DARKRUN.
-      Cookbook entries at `docs/cookbook/`.
-- [x] Released: `save-inspect` v0.1.0. (this release; current
-      `VERSION` is 0.9.4)
-
-### `tools/image-extract/` (Rust)
-
-- [x] Pull bitmap chunks (`BMP `, `PORT`, `ICON`, `BMAP`, `OMAP`,
-      `TILE`) out as palette-indexed PNG. Decodes DS1 RLE
-      (per-row spans with even/odd code split) and PLNR
-      (bit-packed dictionary) frame formats. Palette parser
-      for `PAL ` / `CPAL` chunks with libgff's 6-bit → 8-bit
-      `intensity_multiplier`. (image-extract v0.1.0; 1,328 of
-      1,976 frames across DS1+DS2 decode cleanly; the
-      remaining ~648 were PLAN frames + 410 PLNR frames that
-      hit libgff's lossy "split bits!" chomp.)
-- [x] PLAN frame format support. (image-extract v0.2.0: PLAN
-      decoder ported from `dsun_music`'s `ImageReading`;
-      simultaneously fixed PLNR's chomp by switching to the
-      same big-endian chomper. Corpus now decodes 1,975 / 1,976
-      frames = **99.95%**; image-extract v0.2.1 root-causes
-      the lone non-decoded frame as DS1
-      `RESOURCE.GFF:ICON/0x7f9` frame 2, a malformed chunk in
-      the GOG 1.10 ship (3 frames declared, space for ~2.5).
-      The decoder reports `FrameOutOfBounds` and the corpus
-      test pins it as the only expected failure.)
-- [x] Sprite-frame export, still-image half. (image-extract
-      v0.3.0: `--frames-all <dir>` writes a multi-frame BMP out as
-      a numbered PNG sequence, `--spritesheet` writes the frames
-      as one sheet; the two conflict by design. `image-pack
-      --frames-dir` round-trips the `--frames-all` output back
-      into a chunk.)
-- [ ] Sprite-frame export, animated half: GIF / animated PNG.
-      Neither format is written today. Split off the shipped
-      spritesheet half 2026-07-23; needs an encoder decision
-      before it is real work (no in-tree GIF/APNG writer, and a
-      new dep needs sign-off per spec §7a).
-- [x] Released: `image-extract` v0.1.0 (initial); v0.2.0
-      (PLAN + PLNR fix); v0.3.0 (multi-frame
-      export); v0.4.0 (`image-pack` companion
-      binary: palette-indexed PNG → DS1 RLE BMP chunk; 883 / 883
-      corpus DS1 RLE frames round-trip pixel-identical;
-      multi-span row emission handles 320-pixel sprite rows
-      that exceed the single-span 255-byte cap).
-
-### `tools/region-render/` (Rust)
-
-The interactive SDL2 viewer was descoped in favour of a static
-PNG emitter for v0.1.0: ships sooner, fits the "screenshot first,
-interactive later" pattern the toolkit follows elsewhere, and
-gives modders the visual artifact without an SDL2 dependency.
-Interactive viewing rolls into a future `region-view` release if
-the friction is felt.
-
-- [x] Open a single region GFF and composite the background-tile
-      layer (`RMAP` for DS1, `MAP ` for DS2 + per-region `TILE`
-      bitmaps) into a 2048 x 1568 palette-indexed PNG.
-      (region-render v0.1.0; corpus smoke renders 35 DS1 + 18
-      DS2 regions cleanly, 0 missing-tile bytes across the
-      corpus.)
-- [x] Palette discovery for DS2 (inline `PAL ` chunk).
-- [x] Palette fallback for DS1 (sibling
-      `RESOURCE.GFF:PAL :1000`) plus `--palette <gff>:<kind>:<id>`
-      and `--palette-file <raw>` override flags.
-- [x] Walls (`GMAP` lower 5 bits + per-region `WALL` chunks).
-      (region-render v0.2.0: DS1 walls load from sibling
-      `GPLDATA.GFF`; corpus has 350 sprites across 35 regions
-      with 0 decode failures. DS2 storage TBD.)
-- [x] Entity sprites (`ETAB` + `OJFF` + `BMP `). (region-render
-      v0.3.0: DS1 entities load from sibling `SEGOBJEX.GFF`,
-      DS2 from `OBJEX.GFF`. Corpus: 26,587 ETAB records,
-      8,223 distinct sprites, 0 missing ids, 0 decode failures.)
-- [ ] Animated palette colours. Needs `DSUN.EXE` RE; the
-      `dsun_music/region-tool` Java reference has a TODO at
-      line 180. v0.5.0 RE pass located `VGAColorCycle` and
-      `gCycleColor` candidates in the DSO symbol table but
-      hasn't decoded the cycle-table layout yet; still queued.
-- [x] Per-region palette discovery for DS1. **Closed 2026-08-08:
-      there is no per-region palette map, and `region-render`'s
-      `CPAL:200` default is already correct.** The v0.5.0 pass had
-      located the routine (file `0x56ad3..0x56b00`: try
-      `load_resource('CMAT', si, ...)`, fall back to
-      `load_resource('CPAL', si, ...)`) and left one step open,
-      tracing the caller to find the region-number-to-family-id
-      map. That trace had failed because the binary's format was
-      misidentified. DS1 and DS2 are **Borland-overlaid 16-bit
-      real-mode** programs (`FBOV` header, ~5,000 MZ relocations,
-      994/904 `INT 3Fh` sites), not DOS/4GW, so overlaid routines
-      are reached by a far call to a 5-byte `INT 3Fh` stub, never
-      at their own address. Searching for calls to the routine was
-      therefore guaranteed to find nothing. Following the stub
-      instead: the dispatcher has exactly **one** caller in the
-      whole binary (file `0x01cc0f`), and it pushes a literal `1`,
-      so `si` is never region-derived and the `200`/`300` arms
-      holding the CMAT/CPAL load are unreachable on that path.
-      The overlay segment descriptor also independently confirms
-      the segment base and extent that had been inferred from
-      padding. Method, worked example, and the withdrawn
-      "DOS/4GW selector `0x3a98`" lead are all in
-      `docs/dsun-exe-re.md` §1, §3.3, §3.5.
-- [x] **Animated GIF output** (region-render v0.7.0): new
-      `--gif` flag bundles the `--animate-entities` PNG
-      sequence into a single shareable GIF via a two-pass
-      ffmpeg pipeline (palettegen + paletteuse with
-      `dither=none` for clean pixel-art colour fidelity).
-      Default 8 fps; `--gif-fps N` overrides. Frames stay in
-      a sibling `<stem>-frames/` directory for editing reuse.
-      ffmpeg detected via stdlib-only `$PATH` lookup; missing
-      dep gets a clear error. Text annotations
-      (`--annotate` entity-name overlays) deferred to v0.7.1
-      (no in-tree Rust font without a new dep).
-- [x] Released: `region-render` v0.1.0. (this release; current
-      `VERSION` is 0.7.1)
-
-### `tools/atlas/` (Python)
-
-*Added to the roadmap 2026-07-23. It shipped without ever being
-written down here.*
-
-- [x] Static-HTML site generator for a whole toolkit run: drives
-      `image-extract`, `region-render`, and `dialog-extract.py` as
-      subprocesses and emits a browsable directory of pages
-      (per-game sprite gallery from every BMP / PORT / ICON /
-      BMAP / OMAP / TILE chunk in `RESOURCE.GFF`, a region-map
-      page from every `RGN*.GFF`, and the dialog trees) behind one
-      `file://` URL. Stdlib-only Python; the closest thing the
-      toolkit has to "open the whole game and look around."
-- [x] Released: `atlas` v0.1.0; current `VERSION` is 0.1.1.
-
-**Done when**: dialog-extract, save-inspect, image-extract, and
-region-render all exist with their own READMEs, each released at
-`v0.1.0`, and `tools/README.md` indexes them. *(Met. `atlas`
-landed later as a fifth Phase 4 tool.)*
-
-## Phase 4.5: the human-friendliness sprint (shipped)
-
-*Added to the roadmap 2026-07-23. This whole body of work shipped
-and was recorded only in `patchnotes.md`; the roadmap never knew
-about it. Per-item detail stays in patchnotes rather than being
-duplicated here.*
-
-**Goal**: make the toolkit approachable to someone who has just
-cloned the repo and does not yet know the tool names.
-
-- [x] **New tool**: `tools/opends/` (Rust), the umbrella CLI.
-      Auto-dispatches by file magic ("I have this file, what is
-      it?"), shelling out to `gff-cat`, `gpl-disasm`,
-      `save-inspect.py`, `dialog-extract.py`, `region-render`, and
-      `image-pack`; never reimplements their logic. Prefers
-      in-tree `target/release/` binaries over `$PATH` so a
-      contributor lands on their own builds. Carries the FOURCC
-      dispatch table that maps a chunk kind to the tool that
-      reads it. Released: `opends` v0.1.0 (current `VERSION`).
-- [x] Round-trip and write paths across the existing tools:
-      `image-pack` (`image-extract` v0.4.0), `save-inspect`
-      SAVE-chunk decoding (v0.7.0) and its write path (v0.8.0),
-      `dialog-extract --format tree` (v0.7.0), and `atlas`
-      (above). See `patchnotes.md` for each.
-
-**Done when**: a new contributor can go from `git clone` to
-looking at game content without reading a tool README first. *(Met.)*
-
-## Phase 5 — `gpl-asm` + `opcode-fuzz`
-
-**Goal**: close the GPL loop. Be able to write GPL bytecode, not
-just read it. Be able to discover unknown opcodes systematically.
-
-**Ships**: two tools.
-
-### `tools/gpl-asm/` (Rust)
-
-- [x] Round-trip reassembler: `gpl-disasm --json` → bytecode.
-      (gpl-asm v0.1.0; 456/600 DS1+DS2 chunks round-trip
-      byte-identical out of the box.)
-- [x] Preservation field for `gpl_search` (0x33) side bytes:
-      raw payload bytes captured on `Instruction` and on
-      `Expression::RetVal::inner_raw_tail` so the encoder can
-      reproduce them. **(gpl-disasm v0.4.5 + gpl-asm v0.1.1:
-      corpus round-trip is now 600/600 byte-identical.)**
-- [x] Text-listing parser: consume `gpl-disasm`'s text output
-      as input alongside the JSON path. (gpl-asm v0.2.0:
-      456/456 non-Search chunks via `--no-labels`. v0.2.1 +
-      `gpl-disasm` v0.4.6: labelled form + `; raw_tail=HEX`
-      trailers, **600 / 600** chunks round-trip byte-identical
-      through `bytes -> disasm -> labelled text -> parse ->
-      encode`. CLI auto-detects JSON vs text from extension.)
-- [x] Structural edits: `Editor::insert_instruction(at, instr)`
-      / `delete_instruction(at)` / `replace_instruction(at,
-      with)` API that recomputes branch targets and offsets.
-      (gpl-asm v0.3.0; 6 new unit tests cover insert / delete /
-      replace + branch retargeting.) Unblocks fixes that need
-      to insert or delete bytes without no-op padding.
-- [x] Label-relative editing API
-      (`Editor::insert_before_label("label_0x...", instr)`) +
-      parser support for arbitrary user-chosen label names so
-      modders can name their own branch targets. (gpl-asm
-      v0.4.0; 6 new unit tests cover both halves.)
-- [x] Author safety net (gpl-asm v0.5.0): rustc-style caret
-      parse errors (`format_with_caret`, `error_line`,
-      `error_span`) anchor `ParseError` variants in the source,
-      and a static `validate()` pass (branch-target bounds,
-      `Immediate14` 15-bit overflow, RetVal depth) wired as the
-      default pre-encode check (`--validate-only`,
-      `--no-validate`). Corpus validates 600 / 600 clean.
-- [x] Authoring conveniences (gpl-asm v0.6.0): `%define
-      <name> <replacement>` for token substitution and
-      `%search-tail <hex-bytes>` for ergonomic raw-tail
-      composition on `gpl_search`. Reject lists on `%define`
-      names cover operator words, variable shorts, keyword
-      tokens, and mnemonic words. Directive lines blank-
-      replace so caret error line numbers still match the
-      user's source. Corpus stays at 600 / 600. Parameterised
-      macros and `@include` directives are queued for v0.7.0+.
-- [x] **Declarative patch-script mode** (gpl-asm v0.8.0):
-      `gpl-asm --patch fix.patch chunk.bin -o new.bin`
-      applies offset-based byte edits from a TOML script. Each
-      `[[edit]]` carries `at_offset`, `bytes_old`
-      (fingerprint-verified; refuses to apply on mismatch),
-      `bytes_new` (same length), and an optional `reason`.
-      `--dry-run` previews. The authoring surface darkfix
-      patches will use for 1-3 byte tweaks once Phase 6
-      starts. Label-relative addressing
-      (`at = "label_0x42 + 3"`) deferred (see below).
-- [x] Label-relative patch addressing for `--patch` scripts
-      *(shipped as v0.9.0, 2026-08-08)*:
-      `at = "label_0x42 + 3"` and `at = "<name> + N"` with
-      names resolved from `syms/functions.toml`, so darkfix
-      authoring doesn't require hand-counted byte offsets.
-      Resolver disassembles the target chunk, resolves the
-      label, computes the absolute offset (and refuses a base
-      that is not a block leader in that chunk); the
-      `bytes_old` fingerprint check stays mandatory. Was
-      pencilled in as v0.8.1 (v0.8.1 shipped as the
-      text-parser length-accounting bugfix instead).
-- [x] Released: `gpl-asm` v0.1.0. (this release; current
-      `VERSION` is 0.9.0)
-
-### `tools/opcode-fuzz/` (Python; drives DOSBox debugger over IPC)
-
-- [x] Chunk-patchwork pipeline (opcode-fuzz v0.1.0): `extract`
-      stages a GPL/MAS chunk for editing; `pack` re-encodes
-      the (possibly edited) work-dir back into a patched GFF;
-      `roundtrip` corpus self-test verifies every GPL/MAS
-      chunk in DS1 (250 / 250) and DS2 (350 / 350) survives
-      `extract -> disasm -> reasm -> replace` byte-identical.
-      The foundation v0.2.0+ builds on.
-- [~] Harness that runs the original game in DOSBox with a
-      single GPL chunk swapped to a one-opcode test.
-      (opcode-fuzz v0.2.0: `run` subcommand packs a work-dir,
-      synthesises a repro fixture that stages the patched
-      GPLDATA.GFF, launches DOSBox via `repro.py --play
-      --session`, snapshots c-overlay/DARKRUN.GFF before and
-      after, emits a JSON byte-level diff. Sessions live in
-      the same XDG state path as `repro --play`; resumable.
-      What's still required for the full discovery loop:
-      input automation (`repro v0.3.x` ydotool integration)
-      to drive the engine to the state where the chunk fires,
-      plus identification of which chunks the engine invokes
-      on boot via `DSUN.EXE` RE.)
-- [~] Records the engine state delta (memory regions, register
-      state via DOSBox debugger). (opcode-fuzz v0.2.0: byte-
-      level diff against `DARKRUN.GFF` pre/post; the cheap path
-      observing `DARKRUN.GFF` / `SAVE0N.SAV` diffs rather than
-      live debugger inspection, leveraging save-inspect v0.6.0.)
-- [ ] The fastest path to filling in unknown opcodes; turns
-      "guess from context" into "observe the effect."
-- [x] **Boot-chunk identification** (opcode-fuzz v0.3.0): new
-      `boot-chunks <gff>` subcommand drives `gpl-disasm
-      --global-cfg --json` and surfaces every chunk with zero
-      inbound `gpl global sub` edges (the engine must dispatch
-      them directly; safest swap targets for fuzz runs). DS1
-      GPLDATA: 129 boot candidates / 250 chunks; DS2: 196 /
-      350. `recipes/` scaffold lands as forward-looking
-      documentation; recipe-driven `fuzz` ships in v0.3.1+
-      once the recipe format (short-form mnemonics vs JSON vs
-      gpl-asm extension) settles.
-- [x] Released: `opcode-fuzz` v0.1.0. (chunk pipeline; current
-      `VERSION` is 0.3.0)
-
-**Done when**: we can author and verify a synthetic GPL chunk
-end-to-end, and `opcode-fuzz` can discover at least one
-previously-unknown opcode and add it to `docs/gpl-opcodes.md`.
-
-## Phase 5.5 — `ovr-map`: the executable's overlay map
-
-**Goal**: turn `DSUN.EXE` from a 600 KB blob you hex-search into a
-segmented, addressable artifact. Everything the toolkit does today
-stops at the GFF containers; the engine binary itself has been
-read by eye. This phase makes it machine-readable.
-
-**Added 2026-08-08**, out of the per-region palette work (Phase 4
-exploration). That item stalled for a full pass because the binary
-was documented as DOS/4GW with 32-bit code, and it is not: both
-games are **Borland-overlaid 16-bit real-mode** programs. See
-`docs/dsun-exe-re.md` §1 and §3.5. Correcting that did not just
-answer one question, it exposed a structure the toolkit can stand
-on, so it earns a phase rather than a footnote.
-
-**Ships**: `ovr-map` v0.1.0 (Python, stdlib-only, matching the
-other single-file Python tools).
-
-### What the structure gives us (measured by the shipped tool)
-
-Both binaries parse cleanly with the same code:
-
-| | DS1 | DS2 |
+| Tool | Version | Status |
 |---|---|---|
-| Overlay segments | 52 | 49 |
-| Empty overlay slots (size 0) | 6 | 0 |
-| Overlaid code | 247 KB | 252 KB |
-| Overlay area accounted for | 93.13% | 93.39% |
-| Entry stubs (confirmed function entries) | 935 | 854 |
-| Direct far-call edges | 210 | 216 |
-| Stubs with a direct caller | 115 | 121 |
+| `verify-install` | 0.3.0 | shipped |
+| `gff-edit` | 0.6.0 | shipped; segmented-type builder deferred |
+| `repro` | 0.4.0 | shipped; differential capture + bug-save curation open |
+| `gpl-disasm` | 0.6.0 | shipped; 100% corpus alignment, CFG, callgraph, symbol catalogues |
+| `dialog-extract` | 0.7.1 | shipped; path-aware caller picking queued |
+| `save-inspect` | 0.9.4 | shipped; DARKRUN SAVE chunk RE continues |
+| `image-extract` | 0.4.0 | shipped; GIF/APNG sprite export deferred |
+| `region-render` | 0.7.1 | shipped; animated palette + `--annotate` deferred |
+| `atlas` | 0.1.1 | shipped |
+| `opends` | 0.1.0 | shipped |
+| `gpl-asm` | 0.9.0 | shipped; 600/600 round-trip; macros queued |
+| `opcode-fuzz` | 0.3.0 | shipped; recipe-driven fuzz + first opcode discovery open |
+| `ovr-map` | 0.2.0 | shipped; `--ghidra` verified headless |
 
-> **Correction (2026-08-08).** The first four rows previously read
-> 51 / 246 KB / 92.5% / 934 and 48 / 251 KB / 92.8% / 852, measured
-> with a throwaway parser that is **one segment short in each
-> binary**. `ovr-map` v0.1.0 supersedes them. Three independent
-> checks say the tool is right: it reproduces §3.5's worked example
-> exactly (segment range `0x56490..0x56be0`, stub `0x46fd0`,
-> `cs:0x042e`, flagged as an entry point); the descriptor chain
-> terminates precisely where the `Borland C++` copyright string
-> begins; and the last two rows are **unchanged**, which is exactly
-> what the discrepancy predicts, because the extra segment carries a
-> single stub that has no direct caller.
+What the digging surface looks like today:
 
-The number that matters most is **935 and 854 confirmed function
-entry points**. Every entry stub names an address that is
-definitely the first byte of a function. RE against this binary has
-so far had no reliable way to know whether a given offset is a
-prologue or the middle of an instruction; that problem is now
-solved for ~900 addresses per game.
+- **Data side is basically solved.** Every GFF in both games
+  parses and round-trips; GPL bytecode disassembles at 100%
+  corpus alignment and reassembles byte-identically; saves
+  decode and edit; regions render (with entity animation and
+  GIF output); dialogs extract as browsable trees.
+- **The binary side just opened.** `ovr-map` turns `DSUN.EXE`
+  from a 600 KB blob into 52 / 49 overlay segments with **935
+  (DS1) / 854 (DS2)** confirmed function entry points,
+  disassembled at correct bases, and importable into Ghidra as
+  labelled, correctly-based memory blocks (verified headless,
+  `ovr-map` v0.2.0).
+- **The patch pipeline has its first real surface.** Bytecode
+  patches author by label-relative address with fingerprint
+  checks (`gpl-asm --patch`), and the darkfix package shape
+  (manifest, applier, journal, unapply) shipped under
+  `ds1-patch/` v0.0.1, proven with a no-op fix (Phase 6,
+  checkbox 1). The EXE patch-authoring surface does not exist
+  yet; that is Phase 5.7.
 
-### Tasks
+Open items from the shipped phases are consolidated in the
+[Backlog](#backlog-deferred-items-with-triggers) at the end,
+each with the trigger that promotes it into real work.
 
-- [x] `tools/ovr-map/ovr-map.py`: parse the MZ header, the `FBOV`
-      header, the 32-byte overlay segment descriptors, and the
-      5-byte `INT 3Fh` entry stubs. Emit JSON: per segment its file
-      range, payload offset, size, relocation count, and entry
-      list.
-- [x] `--disasm <segment>`: dump one segment at its correct base in
-      16-bit mode, with entry points labelled. Replaces
-      "disassemble small windows by eye" in `docs/dsun-exe-re.md`.
-      Shells out to `ndisasm -b 16`, which `dsun-exe-re.md` already
-      recommends and which matches the shell-out precedent in
-      `verify-install` and `repro`.
-- [x] `--callgraph`: far calls whose linear target is a stub, as
-      caller/callee edges. **Scope it honestly in the output:** only
-      12.3% (DS1) / 14.2% (DS2) of stubs have a direct caller, so the
-      rest are reached indirectly (62 `FF 1E` sites in DS1, 65 in DS2)
-      or by table dispatch. The tool reports coverage and states in
-      its own output that a stub absent from the edge list is not
-      evidence it is unreachable.
-      ⚠ Candidates are filtered against the MZ relocation table: a
-      real `9A off:2 seg:2` has its segment word fixed up at load
-      time, so that word's location appears there. Without that
-      filter a raw `0x9A` scan is mostly false positives.
-      ⚠ The `FF 1E` counts above are the tool's; the earlier prose
-      said 69 for DS1. That figure came from the same throwaway
-      parser as the corrected table above and was not reproduced.
-- [x] `--verify <file-offset>`: answer "what is at this address",
-      naming the segment, the offset within it, and the nearest
-      preceding entry point. This is the query the patch workflow
-      needs.
-- [x] **Tests:** parse both shipped binaries and assert the
-      invariants above (segment counts, >92% area coverage, every
-      descriptor's range inside the overlay area, every stub inside
-      its own segment). Corpus-style, skipping when `.games/` is
-      absent, matching `gff-edit/tests/corpus_roundtrip.rs`.
-      ⚠ Shipped as a `--selftest` flag on the tool, **not** a separate
-      suite. The Rust corpus tests were the stated model, but the
-      Python tools here are single-file and the repo has no Python
-      test harness at all (CI gates them with ruff plus
-      `compileall`, and says so in a comment). A flag keeps the
-      single-file idiom and is one line to add to CI.
-- [x] `--ghidra`: emit the segment map as a Ghidra script (or a
-      JSON the script reads) that creates one overlay memory block
-      per segment at its real base and labels every entry stub.
-      **This is where the digging actually opens up.** Ghidra was
-      installed 2026-08-08 (see `CLAUDE.md` "Host RE tooling"); on
-      its own it imports these binaries as one flat image with the
-      overlay area as undifferentiated bytes, which is the same
-      blob problem `docs/dsun-exe-re.md` has worked around by hand
-      all along. Fed the segment map, it becomes a navigable
-      database with all **935 (DS1) / 854 (DS2)** confirmed
-      function entries named, and the decompiler pointed at
-      correctly-based code instead of garbage.
-      ⚠ Scope this honestly, like `--callgraph`: Ghidra's
-      decompiler is much weaker on 16-bit segmented code than on
-      32/64-bit (far pointers and overlay thunks decompile badly),
-      so the deliverable is *navigable and correctly segmented*,
-      not *clean C*.
-      ⚠ Do **not** reach for `ghidra-lx-loader` or any LE/LX
-      extension: that is the DOS/4GW format §1 of
-      `docs/dsun-exe-re.md` disproved. Ghidra's stock MZ loader is the
-      correct path, and it **already selects** `x86:LE:16:Real Mode`
-      on its own for an MZ import (verified headless against Ghidra
-      12.1.2); the language only needs setting by hand for a raw-binary
-      import.
-      ✅ **Shipped in `ovr-map` v0.2.0** and verified headless rather
-      than merely generated: 52 blocks, 935 labels, and `ovr04_042e`
-      reads `55 8b ec 83 ec 0e`, the §3.1 dispatcher prologue. Two
-      traps found by testing, both recorded in the tool README: an
-      overlay block lives in its **own address space** (labelling via
-      the default space silently lands in `ram:` on unrelated bytes
-      rather than erroring), and segment bases must be allocated
-      **consecutively**, since a fixed 0x1000-paragraph stride
-      overflows the 16-bit segment range at segment 57.
+## Phases 0-5.5 (shipped, condensed)
 
-### Why this matters for patching (Phase 6 onward)
+Detail for every shipped item lives in `patchnotes.md` and each
+tool's README. What follows is the one-paragraph record plus
+anything still open.
 
-- **It makes an in-place-only rule enforceable, and explains why.**
-  Every descriptor stores its segment's payload offset as an
-  absolute position in the overlay area. Insert or delete a single
-  byte anywhere before the last segment and all following payload
-  offsets are wrong, so the game loads garbage as code. darkfix is
-  already byte-for-byte with `bytes_old` fingerprints, so this is
-  not a redesign; it is the reason that rule is load-bearing rather
-  than stylistic, and it belongs in `spec.md` §4 in those terms.
-- **Patch sites can be authored by name instead of by raw offset.**
-  `gpl-asm` v0.9.0 just replaced hand-counted byte offsets with
-  label-relative addressing (`at = "label_0x42 + 3"`) for GPL
-  bytecode, and called it the Phase 6 soft-blocker. EXE patches have
-  exactly the same problem and can now get exactly the same fix:
-  `at = "ovr:19+0x17a7"`, resolved against the segment map.
-- **A patch can be checked before it ships.** `--verify` catches a
-  site that has drifted, straddles a segment boundary, or lands in
-  the 7.5% of the overlay area that is inter-segment padding rather
-  than code. Today nothing would notice.
+- **Phase 0, documentation + extraction**: docs corpus
+  (`file-formats.md`, `known-bugs.md`, `gpl-bytecode.md`,
+  `binary-patching.md`, `patch-workflow.md`, `research.md`,
+  `install-variants.md`, `dso-symbols.md`, `dsun-exe-re.md`),
+  source-hash manifests, `verify-install` v0.3.0.
+  Open: the per-tool git tags (see Backlog).
+- **Phase 1, `gff-edit`**: pure-Rust GFF read/write, 128/128
+  corpus round-trip, bulk extract, text codec, `gff-cat what`
+  describer, indexed builder. Open: segmented-type build.
+- **Phase 2, `repro`**: DOSBox-Staging harness with overlay-mount
+  discipline, smoke fixtures, `--play --session` continuity,
+  scheduled keystrokes via ydotool, video capture.
+  Open: differential capture; bug-triggering save curation.
+- **Phase 3, `gpl-disasm`**: recursive-descent CFG, inter-chunk
+  callgraph, curated
+  `syms/{opcodes,functions,variables,locals}.toml`, DSO-symbol
+  importer producing review-ready rename proposals.
+- **Phase 4, exploration tools**: `dialog-extract`,
+  `save-inspect`, `image-extract` (+`image-pack`),
+  `region-render`, `atlas`.
+- **Phase 4.5, human-friendliness sprint**: `opends` umbrella
+  CLI, write paths across the toolkit, `atlas`. (This whole
+  sprint shipped before the roadmap knew about it; see the
+  rewrite note in the header.)
+- **Phase 5, `gpl-asm` + `opcode-fuzz`**: 600/600 byte-identical
+  round-trip through bytes, JSON, and labelled text; structural
+  edit API; author safety net; declarative `--patch` mode with
+  label-relative addressing (v0.9.0); chunk-patchwork pipeline
+  and DOSBox-driven `run` harness in `opcode-fuzz`.
+  Open: recipe-driven fuzz; the phase's done-when (discover at
+  least one previously-unknown opcode) is not yet met.
+- **Phase 5.5, `ovr-map`**: overlay segment map for both
+  binaries; `--disasm`, `--callgraph`, `--verify`,
+  `--selftest`, and the `--ghidra` script verified headless
+  (52 blocks, 935 labels, dispatcher prologue reads
+  correctly). Measured structure: DS1 52 segments / 247 KB /
+  93.13% coverage / 935 stubs / 210 direct far-call edges;
+  DS2 49 / 252 KB / 93.39% / 854 / 216. The "why this
+  matters" section of the previous roadmap named two
+  follow-on workstreams; they are now Phases 5.6 and 5.7
+  below.
 
-### Why it matters for mining
+## Can we patch the EXE yet? (assessment, 2026-08-28)
 
-- **Systematic disassembly.** 246 KB of overlaid code becomes
-  reachable segment by segment at the right base, instead of
-  hex-searching for byte patterns and disassembling windows by hand.
-- **It unblocks the DS2 symbol cross-reference.**
-  `docs/dsun-exe-re.md` §2 already wants to "name DS2 functions from
-  `.dso-online`'s symbol table by call-graph shape", and the missing
-  piece was a call graph. 852 entry points plus 216 edges is a
-  starting skeleton against that 3,530-symbol table.
-- **The MZ relocation table** (4,853 / 4,703 entries) marks which
-  words are segment fixups, which separates code addresses from
-  data without guessing.
+Asked outright: do we understand `DSUN.EXE` well enough to write
+a binary patch, or does a fix need a full exploration report
+first? The honest split:
 
-**Done when**: `ovr-map` parses both games, its invariants are
-under test, and `docs/dsun-exe-re.md` cites it instead of
-describing manual hex-searching.
+**Solved: mechanical safety.** The overlay map is complete and
+verified (52 / 49 segments, 935 / 854 entry stubs, ~93%
+coverage), any byte is addressable as `ovr:seg+off`, the Ghidra
+import is verified headless, and the applier layer refuses
+fingerprint drift, length changes, and wrong installs. Authoring
+a *safe* byte patch is already plumbing.
 
-**Sequencing note**: this sits before Phase 6 because its
-`--verify` and named-addressing output are what make EXE patch
-authoring safe, the same way `gpl-asm`'s label addressing did for
-bytecode. It is not a hard blocker: a Phase 6 fix that only touches
-GFF chunks needs none of it. Do not let it hold the first darkfix
-if that fix never opens `DSUN.EXE`.
+**Not solved: finding anything.** Almost nothing in the binary
+is *named*. The DSO symbol transfer and the official-patch
+diffing have not been run; the callgraph identifies direct
+callers for only ~12-14% of stubs; the resident image (all code
+before the overlays) has had no systematic pass at all. "Where
+does the mines elevator transition live?" is today a dig, not a
+lookup. That gap is exactly what Phase 5.6 exists to close.
+
+**Decision: no full-exploration gate.** Requiring a complete EXE
+report before any patch attempt is the engine-first trap again
+(spec §1a): it defers every fix behind a multi-month research
+program, and most target bugs never touch the binary at all.
+Instead, exploration is **targeted and per-fix**:
+
+- A data-surface fix (most quest, flag, and dialog bugs) never
+  touches the EXE and proceeds now. Phase 6 explicitly prefers
+  one for exactly this reason.
+- A binary-surface fix requires a written **site report** before
+  the patch is authored, added to `docs/dsun-exe-re.md` (or the
+  fix's own writeup): the function(s) involved, the evidence
+  chain (string xrefs, DSO symbol match, a 1.0-vs-1.10
+  official-patch diff hit, or call-shape match), and
+  before/after disassembly. The report is the deliverable; the
+  patch is its application. No site report, no patch.
+- The Phase 5.6 leverage points (DSO symbol transfer,
+  official-patch diffing) are pulled forward only when a specific
+  fix needs them. They are accelerators, not prerequisites.
+- Phase 7 (the mines elevator) is the first plausible
+  binary-surface fix. Its site report is the first test of this
+  policy; if the evidence chain stalls, the honest fallback is
+  another data-surface or deferred bug, not an open-ended dig.
+
+## Phase 5.6 — Name the binary (EXE RE at scale)
+
+**Goal**: turn 935 / 854 confirmed entry points into a *named*
+function catalogue per game, so that "where does this bug live
+in `DSUN.EXE`" becomes a lookup instead of a dig.
+
+**Ships**: per-game EXE symbol catalogues under
+`tools/ovr-map/syms/` (or a sibling), plus the Ghidra pipeline
+that grows them, and docs. No new tool required; this is
+labour with tooling that already exists.
+
+Three leverage points, in order of cost:
+
+- [ ] **Ghidra headless workflow written down and run.** The
+      `ovr-map --ghidra` script lands segments and entry-stub
+      labels. What is missing is the working session recipe:
+      a headless `analyzeHeadless` invocation (the binary
+      ships with Ghidra at
+      `~/.local/share/ghidra_12.1.2_PUBLIC/`; it is not on
+      `$PATH`, which is fine), a script skeleton for bulk
+      renaming from a TOML catalogue, and an export path back
+      to text (decompiler listing or disassembly) checked
+      into `docs/` as findings. Keep the Phase 5.5 caveat:
+      the decompiler is weak on 16-bit segmented code; the
+      deliverable is *navigable, correctly segmented, and
+      named*, not *clean C*.
+- [ ] **DSO symbol transfer.** `docs/dso-symbols.md`
+      documents the 3,530-function Watcom symbol table from
+      Dark Sun Online (which inherited the WotR codebase).
+      The offsets do not map directly onto our binaries; the
+      work is byte-pattern and call-shape matching, seeded by
+      the `ovr-map --callgraph` edges and the `gpl-disasm`
+      `import-dso-symbols.py` precedent (which already does
+      this class of matching for GPL symbols). Produce
+      review-ready proposals, curated by hand into the
+      catalogue; never auto-committed, matching the existing
+      curation rule.
+- [ ] **Official-patch diffing.** `.games/archive-org/`
+      already holds the DS2 release-lineage artifacts
+      (`docs/install-variants.md`): floppy 1.0 trees and the
+      official 1.10 RTPatch packages, and `WAKECD11` applies
+      cleanly to the CD 1.0 line. Diffing 1.0 against 1.10
+      (`radiff2`, already installed) localizes exactly where
+      SSI themselves fixed bugs between 1994 and 1995. Those
+      sites are a map of the combat, save, and
+      region-transition code, and they cross-check the DSO
+      symbol matches. Check whether any DS1 1.0 artifact
+      exists in the archive; if so, same treatment.
+- [ ] **First named consumers.** The catalogue is real when
+      something else uses it: at minimum, the VGA
+      colour-cycling routine (`VGAColorCycle` /
+      `gCycleColor` candidates already located via the DSO
+      table) decoded far enough to unblock `region-render`'s
+      animated palette backlog item, and one known-bug site
+      located by name as input to Phase 6 or 7.
+
+**Done when**: a reader can ask "what is at `ovr:NN+0x...`"
+and get a name with evidence for a meaningful fraction of the
+catalogue (target: the ~200 most-called functions), and at
+least one downstream item (animated palette, or a Phase 6/7
+site) cites it.
+
+## Phase 5.7 — EXE patch authoring surface
+
+**Goal**: give `DSUN.EXE` byte patches exactly what `gpl-asm`
+v0.9.0 gave bytecode patches: authored by name, fingerprint-
+checked, verified before it ships.
+
+**Ships**: named addressing and a verify gate for EXE patches,
+in whatever tool owns the job (decide: extend `gpl-asm
+--patch` with a second target kind, or a sibling `exe-patch`;
+decide by whether the TOML schema can stay shared).
+
+- [ ] `at = "ovr:19+0x17a7"` addressing, resolved against the
+      `ovr-map` segment map (file offset, segment-local
+      offset, payload bounds). Symbol-relative addressing
+      (`at = "<exe-symbol> + N"`) once Phase 5.6's catalogue
+      exists; refuse non-block-leader bases, matching the
+      bytecode resolver's rule.
+- [ ] `bytes_old` fingerprint mandatory, as on the bytecode
+      side; refuse to apply on mismatch.
+- [ ] A `--verify` pass that fails a site which: drifts from
+      its fingerprint, straddles a segment boundary, or lands
+      in the ~7% inter-segment padding. Today nothing notices
+      any of these.
+- [ ] **In-place-only rule made enforceable and explained.**
+      Every overlay descriptor stores its payload offset as
+      an absolute position; one inserted byte anywhere before
+      the last segment shifts every following payload and the
+      game loads garbage as code. State this in `spec.md` §4
+      in those terms (the previous roadmap's own suggestion,
+      still undone), and have `--verify` reject any script
+      that changes file length.
+- [ ] Assembler for replacement bytes: `keystone-engine` is
+      already named in `docs/build-environment.md` §2 for
+      exactly this (16-bit x86). Confirm it assembles
+      `arch=i386, mode=16` correctly against `ndisasm -b 16`
+      round-trips before relying on it; `pwn asm` at
+      `arch='i386', bits=16` is the documented fallback. The
+      stdlib-only Python rule already has a pre-approved
+      exception class for the applier (per
+      `build-environment.md`, alongside `bsdiff4`); this fits
+      it.
+- [ ] Round-trip proof: a no-op EXE patch script applies and
+      unapplies byte-identically; a deliberately wrong site
+      (off-by-one into padding) is rejected by `--verify`.
+
+**Done when**: Phase 6+ can author a two-byte EXE fix by
+symbol name and `--verify` is the last gate before packaging.
+This is the same soft-blocker shape as `gpl-asm` v0.9.0 was
+for bytecode: not a hard blocker for a data-only first fix,
+and must not hold one.
 
 ## Phase 6 — First DS1 fix shipped (pipeline proof)
 
@@ -882,21 +285,38 @@ authoring should feel like routine work.
 
 **Ships**: `darkfix-ds1-v0.1.0`.
 
-- [ ] Darkfix distribution format per `spec.md` §4:
+- [x] Darkfix distribution format per `spec.md` §4:
       `manifest.toml` schema (target hashes, fix list, on/off
       state), `apply.py` applier (verify install hashes against
       the manifest, back up to `darkfix-backup/`, apply each
       enabled fix, write `darkfix-applied.json`), and `apply.py
-      --unapply` restore. Prove the package shape with a no-op
-      fix that applies and unapplies cleanly before any real
-      fix ships.
+      --unapply` restore. Proven with the `fix.ds1.noop` fix:
+      applies and unapplies byte-identically against a copy of
+      the real `DSUN.EXE`; wrong-fingerprint and tampered-target
+      refusals covered by `apply.py --selftest` (2026-08-28).
+- [ ] **Applier runs on the player platform.** The audience is
+      Windows-first. Test `apply.py` under Wine and, ideally,
+      real Windows Python before calling the package shape
+      proven; a fix that only applies on Fedora is not a fix.
+      Decide the dependency stance in the same breath: pure
+      stdlib (preferred, matches spec §7a) versus the
+      `bsdiff4`/`keystone` venv `build-environment.md`
+      sketches.
 - [ ] Pick one trivial DS1 bug (identified during Phase 2 repro
-      work).
+      work). Prefer a GPL-data fix if one is available: it
+      exercises `gpl-asm --patch` + `gff-edit` and defers the
+      EXE surface until Phase 5.7 exists.
 - [ ] Repro fixture for the chosen bug
       (`tools/repro/bugs/<id>/bug.toml`) so the fix is
       verifiable. Requires ydotool installed locally; repro
       v0.4.0 already integrates the input automation.
-- [ ] Author the fix using `gpl-disasm` + `gff-edit`.
+- [ ] **Differential capture** (promoted from the repro
+      backlog, because it is the fix's proof): a
+      run-with-patch and run-without-patch side-by-side
+      helper, emitting both videos plus a structured
+      pass/fail delta.
+- [ ] Author the fix using `gpl-disasm` + `gff-edit` (plus the
+      Phase 5.7 surface if it turns out to be an EXE fix).
 - [ ] Author the test (hash before/after, in-game repro via
       `tools/repro/`).
 - [ ] Tag `darkfix-ds1-v0.1.0`, push GitHub release.
@@ -909,7 +329,7 @@ authoring should feel like routine work.
 
 ## Phase 7 — DS2 mines elevator (the headline)
 
-**Goal**: fix the most famous DS2 bug — the one that broke the
+**Goal**: fix the most famous DS2 bug, the one that broke the
 late game in 1994 and has never been fixed.
 
 **Ships**: `darkfix-ds2-v0.1.0`.
@@ -926,8 +346,13 @@ late game in 1994 and has never been fixed.
       authoring needs this fluency.
 - [ ] Reproduce in DOSBox via `tools/repro/`.
 - [ ] Locate the GPL function or DSUN.EXE routine controlling
-      the elevator transition (use `dialog-extract` and
-      `gpl-disasm` to narrow it down).
+      the elevator transition. New leverage since this phase
+      was written: Phase 5.6's official-patch diff may show
+      whether SSI themselves touched the transition code
+      between 1.0 and 1.10, and the DSO symbol table likely
+      names the region-transition functions outright (DSO
+      inherited the whole WotR codebase). Use both before
+      hand-digging.
 - [ ] Diagnose the race / state bug.
 - [ ] Author the fix (data or binary, whichever it lives in).
 - [ ] Verify a full DS2 playthrough does not reproduce the
@@ -978,12 +403,130 @@ recommended to fellow Dark Sun players in good conscience.
 
 ## Phase 11+ — Engine plausibility (deferred)
 
-If the toolkit accumulates enough — `gpl-disasm` with most
+If the toolkit accumulates enough, `gpl-disasm` with most
 opcodes documented, working `gpl-asm`, native GFF read/write,
-region viewer, save inspector — then **OpenDS the engine**
-becomes plumbing rather than reverse-engineering. At that point
-spinning it up makes sense.
+region viewer, save inspector, then **OpenDS the engine**
+becomes plumbing rather than reverse-engineering. At that
+point spinning it up makes sense.
 
 We do not commit to a date. We commit to building the toolkit
 that makes it possible. If someone else picks up the toolkit
 and ships an engine first, that is a successful outcome.
+
+## Backlog (deferred items with triggers)
+
+Everything still open from the shipped phases, each with the
+condition that promotes it into scheduled work. Nothing here is
+abandoned; nothing here is scheduled.
+
+- [ ] **Cut the per-tool git tags, or drop the requirement.**
+      `docs/versioning.md` says each release ships a
+      `<tool>-vX.Y.Z` tag; `git tag` returns nothing, so no
+      release has ever complied. Two honest resolutions:
+      backfill tags against the commits that bumped each
+      `VERSION` (a one-off script walking `git log -- VERSION`
+      makes this mechanical), or amend `docs/versioning.md` to
+      name `VERSION` + `patchnotes.md` as the whole release
+      record and drop tags. Open since the 2026-07-23
+      reconciliation sweep. **Decide before the first darkfix
+      release**, so patches do not inherit the ambiguity.
+- [ ] **`gff-edit` segmented-type build.** Builder covers
+      indexed GFFs only; the secondary-table + `GFFI`
+      cross-reference dance is unwritten. Promote when a
+      downstream consumer needs to *construct* a segmented
+      GFF from scratch (reading and replacing already work).
+- [ ] **`repro` bug-triggering save curation.** Per-bug saves
+      placed just before the trigger, indexed by bug ID.
+      Ongoing alongside every fix; promote to a focused push
+      when Phase 6 picks its first bug (it needs one).
+- [ ] **`image-extract` animated sprite export (GIF / APNG).**
+      The still half shipped in v0.3.0 (`--frames-all`,
+      `--spritesheet`). Needs an encoder decision first: no
+      in-tree GIF/APNG writer, and a new dep needs sign-off
+      per spec §7a. Note `region-render` v0.7.0 already
+      shells to ffmpeg for `--gif`; the same trick applies
+      here and probably settles the question.
+- [ ] **`region-render` animated palette colours.** VGA
+      colour cycling; blocked on EXE RE of the cycle-table
+      layout. Phase 5.6 is the unblocker; candidates
+      (`VGAColorCycle`, `gCycleColor`) are already named in
+      the DSO symbol table.
+- [ ] **`region-render --annotate`.** Entity-name overlays on
+      rendered maps; deferred for lack of an in-tree font
+      without a new dep. Promote when atlas or a modder
+      workflow wants labelled maps badly enough to revisit
+      (SVG output or a tiny embedded bitmap font are the
+      escape hatches).
+- [ ] **`dialog-extract` path-aware caller picking.** For the
+      32 LSTR reads resolved via `possible_writers` arrays:
+      CFG-distance ordering or symbolic trace instead of the
+      current narrowing. Queued since v0.5.0; promote when an
+      unresolved dialog actually misleads someone.
+- [ ] **`gpl-asm` parameterised macros and `@include`.**
+      Queued since v0.6.0. Promote when a darkfix script
+      gets repetitive enough to want them; the `--patch` TOML
+      mode may obsolete the need instead. Re-evaluate at
+      Phase 6.
+- [ ] **`opcode-fuzz` recipe format decision + recipe-driven
+      fuzz.** The harness runs a swapped chunk through DOSBox
+      and diffs `DARKRUN.GFF`; what is missing is the settled
+      recipe format (short-form mnemonics vs JSON vs gpl-asm
+      extension) and the loop that walks candidate opcodes.
+      Phase 5's done-when (discover at least one
+      previously-unknown opcode, add it to
+      `docs/gpl-opcodes.md`) is still open; keep this phase
+      alive until it is met or explicitly closed.
+- [ ] **`save-inspect` DARKRUN SAVE chunk RE.** SAVE/1 (the
+      ~10 KB probable master per-region state table),
+      SAVE/2-/4, /7-/9, the u16 scalar family at ids 10..17,
+      the 51-byte SAVE/18 boolean array. Bootstrap with the
+      v0.7.0 `save-diff` harness: snapshot, one in-game
+      action, snapshot, diff. Quest and world-state fixes
+      need this; promote when the first such fix is chosen.
+- [ ] **`extract.sh`.** From-installer extraction wrapper.
+      Deferred; `innoextract` is one command and
+      `verify-install --repair` already shells out. Reinstate
+      only if a contributor needs it.
+- [ ] **Python test harness decision.** The repo has none;
+      Python tools gate on ruff + `compileall` in CI and ship
+      `--selftest` flags (`ovr-map`). Options: keep the flag
+      idiom, or standardise on stdlib `unittest` discovery in
+      CI. Decide the next time a third Python tool grows a
+      selftest.
+
+## Tooling inventory and gaps
+
+Checked on the dev host 2026-08-28. **Everything the docs cite
+is installed.** Nothing blocks any phase.
+
+| Tool | Status | Used by |
+|---|---|---|
+| Ghidra 12.1.2 | installed (`~/.local/share/ghidra_12.1.2_PUBLIC/`; `analyzeHeadless` not on `$PATH`, invoke by full path) | Phase 5.6; `ovr-map --ghidra` |
+| radare2 5.9.8 (incl. `radiff2`, `rabin2`, `rahash2`) | installed | Phase 5.6 official-patch diffing; `dsun-exe-re.md` §6 |
+| `ndisasm` / `nasm` | installed | `ovr-map --disasm`; patch byte authoring |
+| DOSBox-Staging 0.82.2 (as `dosbox`) | installed | `repro`, `opcode-fuzz` |
+| `ffmpeg` | installed | `repro` video capture; `region-render --gif` |
+| `innoextract` | installed | `verify-install --repair` |
+| `ydotool` | installed | `repro` keystroke automation |
+| `wine` | installed | Phase 6 applier testing |
+| `pwndbg` | installed; **not for this project** (gdb plugin for live Linux ELF; these binaries run under DOSBox) | nothing |
+
+Optional, only if a phase asks for it:
+
+- **DOSBox-X**: a second emulator with a deeper built-in
+  debugger (instruction tracing, more breakpoint/logging
+  surface than Staging's). `opcode-fuzz` and hard-to-catch
+  races are the plausible consumers. Staging's debugger plus
+  the `DARKRUN.GFF` diff loop has sufficed so far; install
+  when the first bug defeats both.
+- **`keystone-engine` + `bsdiff4`** in the applier venv:
+  already named in `docs/build-environment.md` §2 as the
+  pre-approved Python non-stdlib exceptions. Install them
+  when Phase 5.7 / Phase 6 begin, not before; no tool under
+  `tools/` depends on them today.
+
+Not needed, for the record: LE/LX Ghidra loaders (the DOS/4GW
+model was disproved, `dsun-exe-re.md` §1), decompilers beyond
+Ghidra (16-bit real-mode support elsewhere is worse), and any
+Windows-cross toolchain (patches are data + Python, not
+compiled code).

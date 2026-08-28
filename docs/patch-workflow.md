@@ -108,9 +108,15 @@ Long-form analysis. Include:
 
 ### 4.2. Patch script: `dsN-patch/fixes/NNN-<short-id>.py`
 
-Python 3, no dependencies beyond stdlib + the project's tools.
-Reads the original file, applies the edit, writes the output.
-Idempotent: running twice does not double-apply.
+Python 3, stdlib-only. Reads the original file, applies the edit,
+writes the output. Idempotent: running twice does not double-apply.
+
+The engine behind the skeleton is real: `darkfix.patcher` lives at
+`ds1-patch/scripts/darkfix/patcher.py` (byte edits, GFF chunk
+replacement, backup, journal), and `ds1-patch/scripts/apply.py` is
+the working umbrella applier (verify, backup, apply, `--unapply`).
+`ds1-patch/fixes/000-noop.py` is a live example of the contract
+below.
 
 Skeleton:
 
@@ -174,8 +180,8 @@ This is the catch-net for "fix A interacts badly with fix B."
 5. Commit. Suggested message:
    `dsN: fix.dsN.<short-id> — one-line summary`.
 
-(Per `~/CLAUDE.md`: do not commit on the user's behalf without
-being asked.)
+(Per house rule, see `.clinerules`: do not commit on the user's
+behalf without being asked.)
 
 ## 7. Ship
 
@@ -185,7 +191,10 @@ When the next minor version is ready:
 2. Move "Unreleased" content in `patchnotes.md` under a new
    version heading.
 3. Build the distribution zip:
-   `tools/build-release.sh dsN <version>`.
+   `tools/build-release.sh dsN <version>`. (The script does not
+   exist yet; building it is Phase 6 packaging work. Until then,
+   zip `manifest.toml`, `fixes/`, `scripts/apply.py`, and
+   `scripts/darkfix/` as `darkfix-dsN-v<version>/`.)
 4. Tag the umbrella repo: `git tag darkfix-dsN-vMAJOR.MINOR.PATCH`.
 5. Push. Create a GitHub release; attach the zip.
 

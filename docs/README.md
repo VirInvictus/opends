@@ -31,6 +31,10 @@ trove that names 3,530 engine functions.
 **"I want to author or apply patches."**
 [`patch-workflow.md`](patch-workflow.md) is the end-to-end fix
 authoring guide (GPL edit or binary patch, and how to choose).
+The applier is real: [`../../ds1-patch/`](../../ds1-patch/)
+(v0.0.1) ships `apply.py` + the `darkfix` engine that verify an
+install against the canonical hashes, back up, apply, journal,
+and unapply; `apply.py --selftest` proves the whole cycle.
 [`binary-patching.md`](binary-patching.md) covers the
 EXE-patching path in detail. [`known-bugs.md`](known-bugs.md) is
 the target list. [`source-hashes/`](source-hashes/) holds the

@@ -86,7 +86,9 @@ sprites, and saves can all be edited and written back with
 round-trip verification. Roadmap Phases 0-5 (documentation,
 GFF foundation, repro harness, disassembler, exploration tools,
 assembler) have substantially shipped. The current front is
-Phase 6: author, package, and ship the first darkfix patch.
+Phase 6: the darkfix distribution format and applier shipped
+(darkfix-ds1 v0.0.1, proven with a no-op fix); picking and
+authoring the first real fix is next.
 
 - [`spec.md`](spec.md) — design spec and invariants
 - [`roadmap.md`](roadmap.md) — phased plan and current status

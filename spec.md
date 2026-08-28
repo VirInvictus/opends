@@ -131,6 +131,11 @@ Each binary fix:
   the canonical 1.10 GOG `DSUN.EXE`.
 - Refuses to apply if the fingerprint doesn't match (we will not
   overwrite an already-patched binary or a non-1.10 build).
+- **In-place only.** The applier rejects any byte patch that changes
+  the file length. Every Borland overlay descriptor stores its
+  payload offset as an absolute file position; one inserted byte
+  anywhere before the last segment shifts every following payload,
+  and the game loads garbage as code.
 - Distributed as a `.bsdiff` or hand-rolled `(offset, original, replacement)`
   triples.
 
