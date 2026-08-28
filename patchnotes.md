@@ -4,6 +4,36 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`docs/dsun-exe-survey.md`** is new: a whole-binary measured
+  survey of both engines, the exploration half of Phase 5.6.
+  Method: `ovr-map` as a library plus byte-pattern scans over
+  both `DSUN.EXE`s and the archive's floppy-1.0 comparison
+  binary. Findings: (1) overlay code makes zero DOS/BIOS
+  calls (92,948 / 94,837 disassembled instructions; the only
+  exceptions are three decode-suspect DS2 sites), so the
+  resident image is the OS-service layer entire; (2) overlays
+  reach resident code through only ~340 distinct functions
+  (4,865 / 5,067 direct far-call sites) - naming that set is
+  the highest-value next RE pass and the right first target
+  for DSO symbol shape-matching; (3) the Borland overlay
+  manager body is located (DS1 `0x466e0`, DS2 `0x4aff0`, the
+  only `INT 3Fh` outside the stub region); (4) the FOURCC
+  push census weights the chunk vocabulary by runtime load
+  frequency (`BMP` 47+38 pushes; `APFM`, `RDFF`, the
+  button/edit-box GUI families next) and surfaces three types
+  absent from `file-formats.md` (`RGTP`, `PREF`, `GREQ`); (5) source-file
+  breadcrumbs survive: `gpldisk.c` (the save/region module),
+  "Failed Uncompress in Loadgamefromdisk" (saves are stored
+  compressed), and a DS1 string cluster anchoring the
+  region-change code Phase 7 needs; (6) the official-patch
+  diff is blocked: the floppy 1.0 binary is a different build
+  (42 of 49 segments differ materially, resident +1,840
+  bytes, 866 vs 854 entries), so diffing needs a CD 1.0 base
+  that no archive artifact provides; (7) DS2's MZ header size
+  is `0x5200` (previously unrecorded). `dsun-exe-re.md` §5
+  carries an item-by-item pointer; the Phase 5.6
+  official-patch-diffing checkbox is updated with the block.
+
 - **`ds1-patch/` (darkfix-ds1) v0.0.1** is new: the darkfix
   distribution format and applier, the first Phase 6 deliverable.
   `manifest.toml` (schema v1, spec.md §4) declares the target

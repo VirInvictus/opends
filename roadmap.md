@@ -175,6 +175,16 @@ in `DSUN.EXE`" becomes a lookup instead of a dig.
 that grows them, and docs. No new tool required; this is
 labour with tooling that already exists.
 
+> Progress 2026-08-28: the whole-binary structure survey
+> ([`docs/dsun-exe-survey.md`](docs/dsun-exe-survey.md)) shipped.
+> Headline: the overlay code calls only ~340 distinct resident
+> functions (4,865 / 5,067 direct far-call sites, census in
+> survey §3.3), the overlay manager body is located
+> (`0x466e0` / `0x4aff0`), and the DSO name list has a concrete
+> matching order: resident targets first, overlays second. The
+> official-patch diffing leverage point below is updated: it is
+> blocked without a CD 1.0 base.
+
 Three leverage points, in order of cost:
 
 - [ ] **Ghidra headless workflow written down and run.** The
@@ -201,17 +211,18 @@ Three leverage points, in order of cost:
       review-ready proposals, curated by hand into the
       catalogue; never auto-committed, matching the existing
       curation rule.
-- [ ] **Official-patch diffing.** `.games/archive-org/`
-      already holds the DS2 release-lineage artifacts
-      (`docs/install-variants.md`): floppy 1.0 trees and the
-      official 1.10 RTPatch packages, and `WAKECD11` applies
-      cleanly to the CD 1.0 line. Diffing 1.0 against 1.10
-      (`radiff2`, already installed) localizes exactly where
-      SSI themselves fixed bugs between 1994 and 1995. Those
-      sites are a map of the combat, save, and
-      region-transition code, and they cross-check the DSO
-      symbol matches. Check whether any DS1 1.0 artifact
-      exists in the archive; if so, same treatment.
+- [ ] **Official-patch diffing.** ⚠ **Update 2026-08-28: blocked
+      as framed; the floppy 1.0 binary is a different build, not
+      a near revision** (resident image +1,840 bytes, 866 vs 854
+      entry points, 42 of 49 overlay segments differ materially
+      when paired by index; `RESFLOP.GFF` shows the floppy line
+      diverges at the source level). Measured evidence in
+      [`../docs/dsun-exe-survey.md`](docs/dsun-exe-survey.md) §8.
+      Reviving this item needs a **CD 1.0 `DSUN.EXE`** (a
+      pre-patch CD-tree artifact; the `cd11` archive holds the
+      RTPatch package, not a base tree), or a parser for
+      RTPatch's own old-file fingerprints. `.games/archive-org/`
+      artifacts remain on hand either way.
 - [ ] **First named consumers.** The catalogue is real when
       something else uses it: at minimum, the VGA
       colour-cycling routine (`VGAColorCycle` /

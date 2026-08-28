@@ -13,7 +13,11 @@ The companion symbol catalogue lives at
 [`dso-symbols.md`](dso-symbols.md). That page is the
 DSO-symbols-to-DS2-functions cross-reference; this page is the
 behavioural / structural notes that come out of opening the
-binary directly.
+binary directly. The whole-binary measured structure (resident
+API census, overlay int/PROLOGUE census, FOURCC vocabulary,
+file surface, official-patch diff verdict) lives in
+[`dsun-exe-survey.md`](dsun-exe-survey.md); this page stays the
+behavioural index, the survey stays the numbers.
 
 ## 1. Binary layout
 
@@ -590,6 +594,15 @@ distinctive enough to confirm `0x23075`'s function is the
 `VGAColorCycle` counterpart once we have a caller-trace.
 
 ## 5. What we still don't know
+
+> ⓘ The whole-binary survey
+> ([`dsun-exe-survey.md`](dsun-exe-survey.md), 2026-08-28) adds
+> measured structure to several items below: the resident API
+> surface is ~340 functions (census in survey §3.3), the overlay
+> manager body is at file `0x466e0` (DS1) / `0x4aff0` (DS2), the
+> save/region module is string-anchored via `gpldisk.c` breadcrumbs,
+> and item 5 is resolved to a file offset. See survey §9 for the
+> item-by-item answers.
 
 These are the next pieces an RE pass should crack, in rough
 order of value to the toolkit:

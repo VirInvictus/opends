@@ -22,7 +22,9 @@ reference.
 Read [`research.md`](research.md) first for the short version:
 lineage, architecture, what GPL is. Then
 [`dsun-exe-re.md`](dsun-exe-re.md) for the disassembly-level
-detail of `DSUN.EXE`. For the scripting VM specifically:
+detail of `DSUN.EXE`, and [`dsun-exe-survey.md`](dsun-exe-survey.md)
+for the measured whole-binary structure of both engines. For the
+scripting VM specifically:
 [`gpl-bytecode.md`](gpl-bytecode.md) explains the language and
 encoding, [`gpl-opcodes.md`](gpl-opcodes.md) is the opcode table,
 and [`dso-symbols.md`](dso-symbols.md) documents the debug-symbol
@@ -62,6 +64,7 @@ attribute-everything policy; see also the repo-root
 | [`known-bugs.md`](known-bugs.md) | reference | The bug catalog: SSI's official 1.02 fix list plus community-reported post-1.10 bugs. |
 | [`research.md`](research.md) | context | The short engine overview: lineage, architecture, GPL at a glance. Read before `dsun-exe-re.md`. |
 | [`dsun-exe-re.md`](dsun-exe-re.md) | reference | `DSUN.EXE` reverse-engineering index: functions, memory layout, segment offsets. |
+| [`dsun-exe-survey.md`](dsun-exe-survey.md) | reference | Whole-binary measured survey of both engines: resident API census, overlay int/prologue census, FOURCC vocabulary, file surface, official-patch diff verdict. |
 | [`gpl-bytecode.md`](gpl-bytecode.md) | reference | The GPL scripting language and its bytecode encoding. |
 | [`gpl-opcodes.md`](gpl-opcodes.md) | reference | The 129-entry GPL opcode table. |
 | [`dso-symbols.md`](dso-symbols.md) | reference | Index into the Dark Sun Online debug symbols and how we curate names from them. |
