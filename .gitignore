@@ -1,6 +1,9 @@
 # Local game binaries (GOG installers, extracted assets)
 .games/
 
+# Brandon's private test-install staging area (GOG installers).
+/testing_facility/
+
 # Upstream reference repos cloned for reverse-engineering research.
 # Each is its own checkout under a dot-prefixed directory.
 .dsun_music/
