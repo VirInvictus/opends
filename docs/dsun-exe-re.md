@@ -720,11 +720,24 @@ and will waste a pass if assumed wrong.
    has worked around by hand. The fix is `ovr-map` (Phase 5.5):
    its JSON carries each segment's base, file range and entry
    stubs, which a Ghidra script can replay as overlay memory
-   blocks with all 935 (DS1) / 854 (DS2) entry points labelled
-   (figures from `ovr-map` v0.1.0, which corrected the earlier
-   throwaway-parser counts of 934 / 852; see roadmap Phase 5.5).
-   **That pairing is the actual reason to install Ghidra**, and it
-   is tracked as a Phase 5.5 task rather than assumed to work.
+   blocks with all 935 (DS1) / 854 (DS2) entry points labelled.
+   **The headless workflow to do this is proven (Phase 5.6):**
+
+   ```sh
+   # 1. Generate the Java script from ovr-map
+   python3 tools/ovr-map/ovr-map.py .games/ds1/DSUN.EXE --ghidra -o OvrMap.java
+
+   # 2. Run analyzeHeadless (using /tmp/ avoids Ghidra's aversion to dot-hidden paths like .gitrepos/)
+   rm -rf /tmp/ghidra_proj
+   mkdir -p /tmp/ghidra_proj
+   ~/.local/share/ghidra_12.1.2_PUBLIC/support/analyzeHeadless \
+       /tmp/ghidra_proj ds1_proj \
+       -import .games/ds1/DSUN.EXE \
+       -scriptPath $(pwd) \
+       -postScript OvrMap.java \
+       -overwrite
+   ```
+   This builds a project in `/tmp/ghidra_proj` with `DSUN.EXE` fully segmented and labelled. You can then open it in the Ghidra GUI.
 
 Temper expectations on the decompiler: Ghidra's output is much
 weaker on 16-bit segmented code than on 32/64-bit. Far pointers
