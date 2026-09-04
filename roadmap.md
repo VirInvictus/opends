@@ -589,6 +589,17 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > 0x800, 0x14dd = 0x620), calls 0x28:0xb with the
       > region id, then conditionally formats a follow-up
       > message from strings at 0x1787/0x178a.
+      > Script family found (2026-09-04, evening): the
+      > elevator lives in GPL chunks 76-85 (Blick the
+      > elevator operator, Zeegrat, the miners; 'We can't
+      > use the elevator until he's found' is the gate) with
+      > later references in 268/273/283/284/295. Also: the
+      > two fatal-exit validation calls resolved — routine
+      > A (0xfb7) re-validates the 37-byte record array
+      > (same stride at ds:0x67bc), routine B (0x8e3) builds
+      > the string 'SAVE' and checks the save file: the
+      > 'Invalid save' fatal is literally a save-validation
+      > failure on region change.
 - [x] **Decode\* dispatch-order study.** `.dso-online`'s
       symbols.txt names 115 `Decode*` GPL handlers in a
       contiguous, address-ordered block, and ~114/115 agree
