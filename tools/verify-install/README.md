@@ -52,6 +52,30 @@ the canonical bytes in a temp dir, then copies each requested
 file into place over a same-path backup. Requires `innoextract`
 on `PATH` (Fedora: `dnf install innoextract`).
 
+### Rollback (undo a repair)
+
+```sh
+# Restore every file in the backup dir and remove it. Pair with
+# --dry-run first to preview what comes back.
+python3 verify-install.py --game ds1 --rollback
+```
+
+`--rollback` is the inverse of `--repair`: it restores the
+pre-repair copies from `<install>/__verify-install-backup/` and
+deletes the backup dir once every file is restored.
+
+### Summary (one-line status)
+
+```sh
+python3 verify-install.py --game ds1 --summary
+# ds1: 217/218 files match the manifest (1 modified). Run
+# verify-install.py --game ds1 for the full list.
+```
+
+`--summary` prints one plain-English status line instead of the
+full table: for the common "is my install OK?" check, including
+a next-step pointer when it is not.
+
 ### Capture (regenerate the canonical manifest)
 
 ```sh

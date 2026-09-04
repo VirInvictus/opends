@@ -366,7 +366,7 @@ mistake the format. Entities (with `WALL`s) come in v0.2+.
 | `SJMP` | Animation script jump table                                |
 | `POBJ` | Polymesh object database                                   |
 
-#### Scripting (the GPL VM, see `scripting-gpl.md`)
+#### Scripting (the GPL VM, see `gpl-bytecode.md`)
 
 | FOURCC | Purpose                                  |
 |--------|------------------------------------------|

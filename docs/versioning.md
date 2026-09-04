@@ -21,11 +21,14 @@ Each item's directory contains a plain-text `VERSION` file:
 - Single source of truth for that item's version.
 
 ```
-tools/verify-install/VERSION   →  0.1.0
-tools/gff-edit/VERSION         →  0.1.0
-ds1-patch/VERSION              →  0.1.0
-ds2-patch/VERSION              →  0.1.0
+tools/verify-install/VERSION   →  see the file (do not restate here)
+tools/gff-edit/VERSION         →  see the file
+ds1-patch/VERSION              →  see the file
+ds2-patch/VERSION              →  see the file
 ```
+
+(Examples are deliberately placeholders: restating version numbers
+in docs guarantees drift against the single source of truth.)
 
 The git tag for a release of that item is `<item>-v<contents-of-VERSION>`.
 

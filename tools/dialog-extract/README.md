@@ -5,10 +5,10 @@ for browsing NPC dialog, prompts, NPC names, and other strings
 that appear in `GPL ` and `MAS ` bytecode chunks.
 
 - **Language**: Python (stdlib only).
-- **Requires**: Python 3.11+; `gpl-disasm` (from `gpl-disasm`
-  v0.2.0+) on `$PATH` or at `../../target/release/gpl-disasm`.
-  `gff-cat` (from `gff-edit`) is required only when
-  `--text-source` is passed.
+- **Requires**: Python 3.11+; `gpl-disasm` on `$PATH` or at
+  `../../target/release/gpl-disasm`. `gff-cat` (from `gff-edit`)
+  is required only when `--text-source` is passed. Pin either
+  binary explicitly with `--gpl-disasm <path>` / `--gff-cat <path>`.
 - **Version**: see [`VERSION`](VERSION).
 - **License**: MIT.
 
