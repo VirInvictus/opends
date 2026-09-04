@@ -299,9 +299,9 @@ Four original leverage points, in order of cost:
       overwritten) with a real proposal generator modelled on
       the `gpl-disasm` importer. Gitignore or scratch-park
       the generated `OvrMap.java`.
-      (Landed 2026-09-04 as `scripts/propose-exe-symbols.py`
-      — the rename also resolves the same-filename-in-two-
-      tools collision with gpl-disasm's importer. Three
+      (Landed 2026-09-04 as `scripts/propose-exe-symbols.py`;
+      the rename also resolves the same-filename-in-two-tools
+      collision with gpl-disasm's importer. Three
       honest modes: `--census` (exact seg:off resident-target
       worklist with 55 8B EC evidence marks), `--strings`
       (source-file anchors; finds `gpldisk.c` at 0x49d3d and
@@ -346,7 +346,7 @@ Four original leverage points, in order of cost:
       > `scratch/ghidra_project/ds1_proj.rep`. Still blocked,
       > host-side: Ghidra's OSGi script compiler broke on this
       > machine between 2026-08-29 (last successful compile)
-      > and 2026-09-04 — every script, including a trivial
+      > and 2026-09-04: every script, including a trivial
       > control, fails with "Failed to get OSGi bundle";
       > cache nuking does not help; manual javac against the
       > pinned JDK compiles our scripts clean. Full evidence
@@ -366,8 +366,8 @@ Four original leverage points, in order of cost:
       verified, 25 fall to flagged UNVERIFIED index pairing.
       First read: segment 16's two 1-byte clusters are SSI
       repointing an overlaid `load_resource` far-call from
-      `0128:04a1` to `0128:04ab` — the documented 1.10 loader
-      address — the exact fix shape the 5.6.3 census hunts.)
+      `0128:04a1` to `0128:04ab`, the documented 1.10 loader
+      address: the exact fix shape the 5.6.3 census hunts.)
 - [ ] **GPL↔EXE cross-reference index.** Join `gpl-disasm
       --global-cfg` edges and chunk entry points with
       `ovr-map --callgraph` far-call edges and the resident
@@ -376,7 +376,7 @@ Four original leverage points, in order of cost:
       makes the ~340-resident-function survey navigable, and
       the substrate the name catalogue grows on.
       > Progress 2026-09-04: the EXE half exists as reusable
-      > data — `propose-exe-symbols.py --census --json`
+      > data: `propose-exe-symbols.py --census --json`
       > emits the exact seg:off resident-target census with
       > per-target call counts. Remaining: the GPL side
       > (chunk FOURCC/id surface from `gpl-disasm --global-cfg
