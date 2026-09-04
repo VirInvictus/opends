@@ -26,8 +26,12 @@ tooling or copied per patch.
 
 ## Layout
 
-- `manifest.toml` — patch manifest (target hashes, fix list,
-  version). Created when the first fix lands.
+- `VERSION` — patch version (docs/versioning.md; single source
+  for the release tooling). 0.0.1 = pre-release, nothing
+  shipped.
+- `manifest.toml` — schema v1 (spec.md §4): target game and the
+  canonical `DSUN.EXE` hash. The fix list is empty until the
+  first fix lands.
 - `fixes/` — one markdown writeup + one applier script per fix.
   Each fix has a stable identifier (`fix.ds2.<short-name>`).
 - `scripts/apply.py` — the umbrella applier.

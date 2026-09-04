@@ -14,10 +14,12 @@ use gff_edit::{FourCC, Gff};
 use image_extract::Palette;
 use region_render::{REGION_PIXEL_HEIGHT, REGION_PIXEL_WIDTH, RegionMap, inline_palette};
 
-const CORPUS_ROOTS: &[&str] = &[
-    "/home/bdkl/.gitrepos/opends/.games/ds1",
-    "/home/bdkl/.gitrepos/opends/.games/ds2",
-];
+fn corpus_roots() -> Vec<PathBuf> {
+    ["ds1", "ds2"]
+        .iter()
+        .map(|g| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.games").join(g))
+        .collect()
+}
 
 fn collect_region_gffs(dir: &Path) -> Vec<PathBuf> {
     let Ok(read_dir) = std::fs::read_dir(dir) else {
@@ -67,17 +69,17 @@ fn every_region_renders_clean() {
     let mut total_entity_decode_failures = 0usize;
 
     // Skip when the corpus is absent (CI / fresh clone), matching the gpl-asm
-    // corpus tests. CORPUS_ROOTS is hardcoded to Brandon's .games trees.
-    if CORPUS_ROOTS
+    // corpus tests.
+    if corpus_roots()
         .iter()
-        .all(|r| collect_region_gffs(std::path::Path::new(r)).is_empty())
+        .all(|r| collect_region_gffs(r).is_empty())
     {
         eprintln!("skipping region corpus: no region GFFs found (.games absent)");
         return;
     }
 
-    for root in CORPUS_ROOTS {
-        let root_path = Path::new(root);
+    for root in corpus_roots() {
+        let root_path = root.as_path();
         if !root_path.is_dir() {
             continue;
         }
@@ -168,7 +170,7 @@ fn every_region_renders_clean() {
     );
     // We expect the in-tree corpus to give us non-zero rendered
     // regions when .games/ exists. CI without .games/ skips here.
-    if Path::new(CORPUS_ROOTS[0]).is_dir() {
+    if corpus_roots()[0].is_dir() {
         assert!(total_regions > 0, "no regions rendered from on-disk corpus");
     }
 }

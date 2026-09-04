@@ -4,6 +4,50 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`ovr-map` v0.3.0** — the Phase 5.6.0 investigatory-tooling
+  release. The curated **EXE symbol catalogue**
+  (`syms/<game>.toml`: name, segment, offset, evidence,
+  confidence, optional `dso_source`; curation rule in the
+  header) gives discovered names a home for the first time,
+  seeded with the two verified `load_resource` rows (DS1
+  `0x58b4`, DS2 `0x692b`) and the probable overlay-manager
+  bodies (`0x466e0` / `0x4aff0`). The new `--syms` loader
+  renders those names in `--verify`, `--disasm` and
+  `--callgraph`, validates loudly (bad segment, bad
+  confidence, offset past segment end), and `--selftest`
+  now checks the catalogues too. `--ghidra-rename` generates
+  the catalogue-driven bulk-rename script, pairing with the
+  checked-in `ghidra/OvrExport.java` TSV export; the
+  headless recipe in `docs/dsun-exe-re.md` 7 is corrected
+  (dot-free script paths) and the import + persistence half
+  is re-proven with the analyzed DS1 project kept under
+  `scratch/ghidra_project/` (script execution is blocked by
+  a host-side Ghidra OSGi breakage, documented with evidence
+  and a manual-javac workaround check). New
+  `scripts/propose-exe-symbols.py` (the DSO-import stub,
+  replaced and renamed; the old same-filename-in-two-tools
+  collision is gone): `--census` resolves overlay far-calls
+  to exact `seg:off` targets (DS1 4,953 sites / 760
+  candidates; DS2 5,111 / 746; 36 / 35 prologue-confirmed),
+  breaking out survey 3.3's segment-base keying as the
+  coarser count and carrying the overlay-relocation caveat;
+  `--strings` finds the `gpldisk.c` anchor and reproduces
+  the corrected DSO prefix census (Save 12, Combat 6,
+  Region 0); `--anchors` renders curated rows into
+  catalogue format. Proposals are review input; the script
+  never writes `syms/`. `scripts/diff-official.py` is
+  promoted to the cluster-annotated official-patch differ:
+  signature-checked segment pairing (19 of 44 changed
+  segments verified), per-cluster file offsets in both
+  binaries, nearest-stub anchoring, before/after ndisasm
+  excerpts; first read found SSI repointing an overlaid
+  `load_resource` call in segment 16 (`0128:04a1` to
+  `0128:04ab`). Riders: the nine hardcoded `/home/bdkl`
+  corpus-test paths are portable now (`CARGO_MANIFEST_DIR`
+  roots, `$HOME` for the Wine installs), and `ds2-patch/`
+  has its `VERSION` (0.0.1) and `manifest.toml` (canonical
+  GOG 1.10 `DSUN.EXE` hash, empty fix list).
+
 - **`docs/dsun-exe-survey.md`** is new: a whole-binary measured
   survey of both engines, the exploration half of Phase 5.6.
   Method: `ovr-map` as a library plus byte-pattern scans over

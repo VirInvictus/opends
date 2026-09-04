@@ -12,12 +12,21 @@ use std::path::Path;
 use gff_edit::{FourCC, Gff};
 use image_extract::Bitmap;
 
-const CORPUS: &[&str] = &[
-    "/home/bdkl/.gitrepos/opends/.games/ds1/GPLDATA.GFF",
-    "/home/bdkl/.gitrepos/opends/.games/ds1/RESOURCE.GFF",
-    "/home/bdkl/.gitrepos/opends/.games/ds2/GPLDATA.GFF",
-    "/home/bdkl/.gitrepos/opends/.games/ds2/RESOURCE.GFF",
-];
+fn corpus() -> Vec<std::path::PathBuf> {
+    [
+        "ds1/GPLDATA.GFF",
+        "ds1/RESOURCE.GFF",
+        "ds2/GPLDATA.GFF",
+        "ds2/RESOURCE.GFF",
+    ]
+    .iter()
+    .map(|rel| {
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../.games")
+            .join(rel)
+    })
+    .collect()
+}
 
 fn is_bitmap(kind: FourCC) -> bool {
     matches!(
@@ -40,19 +49,19 @@ fn every_bitmap_chunk_decodes_or_reports_cleanly() {
     let mut failures: Vec<(String, String, i32, usize, String)> = Vec::new();
 
     // Skip when the corpus is absent (CI / fresh clone), matching the gpl-asm
-    // corpus tests. CORPUS is hardcoded to Brandon's .games trees.
-    if CORPUS.iter().all(|p| !std::path::Path::new(p).is_file()) {
+    // corpus tests.
+    if corpus().iter().all(|p| !p.is_file()) {
         eprintln!("skipping corpus smoke: no bitmap GFFs found (.games absent)");
         return;
     }
 
-    for path in CORPUS {
-        let p = Path::new(path);
+    for path in corpus() {
+        let p = path.as_path();
         if !p.is_file() {
             continue;
         }
-        let bytes = fs::read(p).unwrap_or_else(|e| panic!("reading {path}: {e}"));
-        let gff = Gff::from_bytes(bytes).unwrap_or_else(|e| panic!("parsing {path}: {e}"));
+        let bytes = fs::read(p).unwrap_or_else(|e| panic!("reading {path:?}: {e}"));
+        let gff = Gff::from_bytes(bytes).unwrap_or_else(|e| panic!("parsing {path:?}: {e}"));
 
         for c in gff.chunks() {
             if !is_bitmap(c.kind) {
@@ -98,7 +107,7 @@ fn every_bitmap_chunk_decodes_or_reports_cleanly() {
                             other => format!("other:{other}"),
                         };
                         *err_kinds.entry(kind.clone()).or_insert(0) += 1;
-                        failures.push((path.to_string(), c.kind.to_string(), c.id, frame_id, kind));
+                        failures.push((path.display().to_string(), c.kind.to_string(), c.id, frame_id, kind));
                     }
                 }
             }
@@ -133,7 +142,7 @@ fn every_bitmap_chunk_decodes_or_reports_cleanly() {
     }
     assert!(
         total_chunks > 0,
-        "no bitmap chunks found; check CORPUS paths"
+        "no bitmap chunks found; check .games/ paths"
     );
     assert!(decoded_frames > 0, "no frames decoded");
 

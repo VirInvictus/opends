@@ -387,7 +387,7 @@ Four original leverage points, in order of cost:
       onto `save-inspect save-diff`'s byte diffs, so each
       play-session diff accumulates understanding instead of
       scrollback.
-- [ ] **Hygiene riders.** De-hardcode `/home/bdkl` from the
+- [x] **Hygiene riders.** De-hardcode `/home/bdkl` from the
       five Rust corpus tests (portable root discovery; the
       current silent skips hide coverage loss from CI);
       resolve the duplicate `import-dso-symbols.py` naming
@@ -395,6 +395,16 @@ Four original leverage points, in order of cost:
       filename in two tools); give `ds2-patch/` its
       `manifest.toml` + `VERSION` and record the
       promote-vs-copy decision for the applier.
+      (Done 2026-09-04. Nine corpus test files carried the
+      hardcode, not five; all resolve from `CARGO_MANIFEST_DIR`
+      now, with gff-edit's Wine install roots keyed off `$HOME`
+      so coverage survives on any clone. Collision resolved by
+      the rename to `scripts/propose-exe-symbols.py` (box 1).
+      ds2-patch has `VERSION` 0.0.1 and a `manifest.toml`
+      carrying the canonical GOG 1.10 `DSUN.EXE` hash and an
+      empty fix list; promote-vs-copy for `scripts/darkfix/`
+      stays an explicit Phase 7 decision per that README,
+      not silently made.)
 
 ### 5.6.1 — The naming campaign
 

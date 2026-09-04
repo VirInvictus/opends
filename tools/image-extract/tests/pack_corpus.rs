@@ -13,17 +13,25 @@
 //! encoder (per the encode_bitmap_rle doc).
 
 use std::fs;
-use std::path::Path;
 
 use gff_edit::{FourCC, Gff};
 use image_extract::{Bitmap, FrameType, encode_bitmap_rle};
 
-const CORPUS: &[&str] = &[
-    "/home/bdkl/.gitrepos/opends/.games/ds1/GPLDATA.GFF",
-    "/home/bdkl/.gitrepos/opends/.games/ds1/RESOURCE.GFF",
-    "/home/bdkl/.gitrepos/opends/.games/ds2/GPLDATA.GFF",
-    "/home/bdkl/.gitrepos/opends/.games/ds2/RESOURCE.GFF",
-];
+fn corpus() -> Vec<std::path::PathBuf> {
+    [
+        "ds1/GPLDATA.GFF",
+        "ds1/RESOURCE.GFF",
+        "ds2/GPLDATA.GFF",
+        "ds2/RESOURCE.GFF",
+    ]
+    .iter()
+    .map(|rel| {
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../.games")
+            .join(rel)
+    })
+    .collect()
+}
 
 fn is_bitmap(kind: FourCC) -> bool {
     matches!(
@@ -43,19 +51,19 @@ fn every_ds1_rle_frame_packs_unpacks_pixel_identical() {
     let mut failures: Vec<String> = Vec::new();
 
     // Skip when the corpus is absent (CI / fresh clone), matching the gpl-asm
-    // corpus tests. CORPUS is hardcoded to Brandon's .games trees.
-    if CORPUS.iter().all(|p| !std::path::Path::new(p).is_file()) {
+    // corpus tests.
+    if corpus().iter().all(|p| !p.is_file()) {
         eprintln!("skipping pack corpus: no GFFs found (.games absent)");
         return;
     }
 
-    for path in CORPUS {
-        let p = Path::new(path);
+    for path in corpus() {
+        let p = path.as_path();
         if !p.is_file() {
             continue;
         }
-        let bytes = fs::read(p).unwrap_or_else(|e| panic!("reading {path}: {e}"));
-        let gff = Gff::from_bytes(bytes).unwrap_or_else(|e| panic!("parsing {path}: {e}"));
+        let bytes = fs::read(p).unwrap_or_else(|e| panic!("reading {path:?}: {e}"));
+        let gff = Gff::from_bytes(bytes).unwrap_or_else(|e| panic!("parsing {path:?}: {e}"));
 
         for c in gff.chunks() {
             if !is_bitmap(c.kind) {
@@ -98,7 +106,7 @@ fn every_ds1_rle_frame_packs_unpacks_pixel_identical() {
                     Ok(b) => b,
                     Err(e) => {
                         failures.push(format!(
-                            "{path}:{:?}/{} frame {}: encode failed: {}",
+                            "{path:?}:{:?}/{} frame {}: encode failed: {}",
                             c.kind, c.id, frame_id, e
                         ));
                         continue;
@@ -108,7 +116,7 @@ fn every_ds1_rle_frame_packs_unpacks_pixel_identical() {
                     Ok(b) => b,
                     Err(e) => {
                         failures.push(format!(
-                            "{path}:{:?}/{} frame {}: re-parse failed: {}",
+                            "{path:?}:{:?}/{} frame {}: re-parse failed: {}",
                             c.kind, c.id, frame_id, e
                         ));
                         continue;
@@ -118,7 +126,7 @@ fn every_ds1_rle_frame_packs_unpacks_pixel_identical() {
                     Ok(f) => f,
                     Err(e) => {
                         failures.push(format!(
-                            "{path}:{:?}/{} frame {}: re-decode failed: {}",
+                            "{path:?}:{:?}/{} frame {}: re-decode failed: {}",
                             c.kind, c.id, frame_id, e
                         ));
                         continue;
@@ -129,7 +137,7 @@ fn every_ds1_rle_frame_packs_unpacks_pixel_identical() {
                     || redecoded.indices != original.indices
                 {
                     failures.push(format!(
-                        "{path}:{:?}/{} frame {}: pixel mismatch ({}x{} vs {}x{})",
+                        "{path:?}:{:?}/{} frame {}: pixel mismatch ({}x{} vs {}x{})",
                         c.kind,
                         c.id,
                         frame_id,

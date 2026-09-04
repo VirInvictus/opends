@@ -8,16 +8,24 @@
 //! round-trip too. Target: 600/600.
 
 use std::fs;
-use std::path::Path;
 
 use gff_edit::{FourCC, Gff};
 use gpl_asm::{encode, parse};
 use gpl_disasm::{disassemble, render_text};
 
-const CORPUS: &[&str] = &[
-    "/home/bdkl/.gitrepos/opends/.games/ds1/GPLDATA.GFF",
-    "/home/bdkl/.gitrepos/opends/.games/ds2/GPLDATA.GFF",
-];
+fn corpus() -> Vec<std::path::PathBuf> {
+    [
+        "ds1/GPLDATA.GFF",
+        "ds2/GPLDATA.GFF",
+    ]
+    .iter()
+    .map(|rel| {
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../.games")
+            .join(rel)
+    })
+    .collect()
+}
 
 fn is_script(kind: FourCC) -> bool {
     matches!(kind.as_bytes(), b"GPL " | b"MAS ")
@@ -33,13 +41,13 @@ fn every_aligned_chunk_roundtrips_through_text() {
     let mut mismatch_samples: Vec<String> = Vec::new();
     let mut skipped_unaligned = 0usize;
 
-    for path in CORPUS {
-        let p = Path::new(path);
+    for path in corpus() {
+        let p = path.as_path();
         if !p.is_file() {
             continue;
         }
-        let bytes = fs::read(p).unwrap_or_else(|e| panic!("reading {path}: {e}"));
-        let gff = Gff::from_bytes(bytes).unwrap_or_else(|e| panic!("parsing {path}: {e}"));
+        let bytes = fs::read(p).unwrap_or_else(|e| panic!("reading {path:?}: {e}"));
+        let gff = Gff::from_bytes(bytes).unwrap_or_else(|e| panic!("parsing {path:?}: {e}"));
         for c in gff.chunks() {
             if !is_script(c.kind) {
                 continue;
@@ -54,7 +62,7 @@ fn every_aligned_chunk_roundtrips_through_text() {
             let text = render_text(&result, true);
             let chunk_id = format!(
                 "{}{}:{}-{}",
-                path,
+                path.display(),
                 "",
                 String::from_utf8_lossy(c.kind.as_bytes()).trim_end(),
                 c.id
@@ -121,7 +129,7 @@ fn every_aligned_chunk_roundtrips_through_text() {
     for (chunk, err) in encode_failures.iter().take(10) {
         eprintln!("  encode-fail [{chunk}]: {err}");
     }
-    if !Path::new(CORPUS[0]).is_file() {
+    if !corpus()[0].is_file() {
         return;
     }
     assert!(tested > 0);

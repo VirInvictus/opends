@@ -6,16 +6,24 @@
 //! same shape as the other crates' corpus smoke tests.
 
 use std::fs;
-use std::path::Path;
 
 use gff_edit::{FourCC, Gff};
 use gpl_asm::{EncodeError, encode};
 use gpl_disasm::disassemble;
 
-const CORPUS: &[&str] = &[
-    "/home/bdkl/.gitrepos/opends/.games/ds1/GPLDATA.GFF",
-    "/home/bdkl/.gitrepos/opends/.games/ds2/GPLDATA.GFF",
-];
+fn corpus() -> Vec<std::path::PathBuf> {
+    [
+        "ds1/GPLDATA.GFF",
+        "ds2/GPLDATA.GFF",
+    ]
+    .iter()
+    .map(|rel| {
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../.games")
+            .join(rel)
+    })
+    .collect()
+}
 
 fn is_script(kind: FourCC) -> bool {
     matches!(kind.as_bytes(), b"GPL " | b"MAS ")
@@ -31,13 +39,13 @@ fn every_aligned_gpl_chunk_roundtrips_byte_identical() {
     let mut skipped_unaligned = 0usize;
     let mut skipped_custom = 0usize;
 
-    for path in CORPUS {
-        let p = Path::new(path);
+    for path in corpus() {
+        let p = path.as_path();
         if !p.is_file() {
             continue;
         }
-        let bytes = fs::read(p).unwrap_or_else(|e| panic!("reading {path}: {e}"));
-        let gff = Gff::from_bytes(bytes).unwrap_or_else(|e| panic!("parsing {path}: {e}"));
+        let bytes = fs::read(p).unwrap_or_else(|e| panic!("reading {path:?}: {e}"));
+        let gff = Gff::from_bytes(bytes).unwrap_or_else(|e| panic!("parsing {path:?}: {e}"));
         for c in gff.chunks() {
             if !is_script(c.kind) {
                 continue;
@@ -63,7 +71,7 @@ fn every_aligned_gpl_chunk_roundtrips_byte_identical() {
                                 .unwrap_or(src.len().min(encoded.len()));
                             mismatch_samples.push(format!(
                                 "{}:{}{}: src_len={} enc_len={} first_diff@{:#x}",
-                                path,
+                                path.display(),
                                 String::from_utf8_lossy(c.kind.as_bytes()).trim_end(),
                                 c.id,
                                 src.len(),
@@ -80,7 +88,7 @@ fn every_aligned_gpl_chunk_roundtrips_byte_identical() {
                     encode_failures.push((
                         format!(
                             "{}:{}{}",
-                            path,
+                            path.display(),
                             String::from_utf8_lossy(c.kind.as_bytes()).trim_end(),
                             c.id
                         ),
@@ -103,7 +111,7 @@ fn every_aligned_gpl_chunk_roundtrips_byte_identical() {
     for (chunk, err) in encode_failures.iter().take(10) {
         eprintln!("  encode-fail [{chunk}]: {err}");
     }
-    if !Path::new(CORPUS[0]).is_file() {
+    if !corpus()[0].is_file() {
         // Corpus not on disk; nothing to assert.
         return;
     }

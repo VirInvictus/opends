@@ -16,16 +16,24 @@
 
 use std::borrow::Cow;
 use std::fs;
-use std::path::Path;
 
 use gff_edit::{FourCC, Gff};
 use gpl_asm::{ValidationError, validate};
 use gpl_disasm::{DisasmResult, Expression, Instruction, disassemble};
 
-const CORPUS: &[&str] = &[
-    "/home/bdkl/.gitrepos/opends/.games/ds1/GPLDATA.GFF",
-    "/home/bdkl/.gitrepos/opends/.games/ds2/GPLDATA.GFF",
-];
+fn corpus() -> Vec<std::path::PathBuf> {
+    [
+        "ds1/GPLDATA.GFF",
+        "ds2/GPLDATA.GFF",
+    ]
+    .iter()
+    .map(|rel| {
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../.games")
+            .join(rel)
+    })
+    .collect()
+}
 
 fn is_script(kind: FourCC) -> bool {
     matches!(kind.as_bytes(), b"GPL " | b"MAS ")
@@ -37,20 +45,20 @@ fn corpus_chunks_validate_clean() {
     let mut clean = 0usize;
     let mut samples: Vec<String> = Vec::new();
 
-    for path in CORPUS {
-        let p = Path::new(path);
+    for path in corpus() {
+        let p = path.as_path();
         if !p.is_file() {
             continue;
         }
-        let bytes = fs::read(p).unwrap_or_else(|e| panic!("reading {path}: {e}"));
-        let gff = Gff::from_bytes(bytes).unwrap_or_else(|e| panic!("parsing {path}: {e}"));
+        let bytes = fs::read(p).unwrap_or_else(|e| panic!("reading {path:?}: {e}"));
+        let gff = Gff::from_bytes(bytes).unwrap_or_else(|e| panic!("parsing {path:?}: {e}"));
         for c in gff.chunks() {
             if !is_script(c.kind) {
                 continue;
             }
             let chunk_bytes = gff
                 .read(c.kind, c.id)
-                .unwrap_or_else(|| panic!("reading {path} {} {}: missing", c.kind, c.id));
+                .unwrap_or_else(|| panic!("reading {path:?} {} {}: missing", c.kind, c.id));
             let result = disassemble(chunk_bytes);
             if !result.aligned {
                 continue;
@@ -62,7 +70,7 @@ fn corpus_chunks_validate_clean() {
             } else if samples.len() < 5 {
                 samples.push(format!(
                     "{} {}/{:#x}: {:?}",
-                    path, c.kind, c.id, report.errors
+                    path.display(), c.kind, c.id, report.errors
                 ));
             }
         }

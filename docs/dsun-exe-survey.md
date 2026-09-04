@@ -145,6 +145,21 @@ races like the mines elevator).
 
 ### 3.3 The resident API surface (the headline census)
 
+> **Correction (2026-09-04, from the Phase 5.6.0 tooling).** This
+> census keyed targets by the far-call's *segment base only*
+> (`seg*16 + header`), dropping the call offset; the counts below
+> are distinct called **segment values**, not distinct functions.
+> The `propose-exe-symbols.py --census` worklist resolves exact
+> `seg:off` pairs: DS1 4,953 sites / 760 candidate targets, DS2
+> 5,111 / 746 (36 / 35 confirmed by a `55 8B EC` entry prologue).
+> Two caveats carry over from the re-measurement: overlay far-call
+> segment words predate the overlay manager's relocation pass
+> (their per-descriptor relocation tables are still unlocated, §4),
+> so a resolved target is a *candidate* until corroborated; and
+> this census counts calls decoded in overlay code only, so a
+> function with all callers resident-side (like `load_resource`)
+> does not appear in the exact-target list at all.
+
 Strict census: every disassembled overlay instruction whose
 bytes are exactly `9A <off:2> <seg:2>` with target landing in
 the resident image.

@@ -23,12 +23,21 @@ use std::path::{Path, PathBuf};
 
 use gff_edit::{Gff, builder_from_gff};
 
-const CORPUS_DIRS: &[&str] = &[
-    "/home/bdkl/.gitrepos/opends/.games/ds1",
-    "/home/bdkl/.gitrepos/opends/.games/ds2",
-    "/home/bdkl/.wine/drive_c/GOG Games/Dark Sun",
-    "/home/bdkl/.wine/drive_c/GOG Games/Dark Sun 2",
-];
+/// Corpus roots: the in-tree innoextract trees, plus the recovery
+/// installs under $HOME/.wine (absent on other machines, where those
+/// two entries simply skip).
+fn corpus_dirs() -> Vec<PathBuf> {
+    let mut dirs: Vec<PathBuf> = ["ds1", "ds2"]
+        .iter()
+        .map(|g| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.games").join(g))
+        .collect();
+    if let Some(home) = std::env::var_os("HOME") {
+        let home = PathBuf::from(home);
+        dirs.push(home.join(".wine/drive_c/GOG Games/Dark Sun"));
+        dirs.push(home.join(".wine/drive_c/GOG Games/Dark Sun 2"));
+    }
+    dirs
+}
 
 fn gff_files(dir: &Path) -> Vec<PathBuf> {
     let Ok(entries) = fs::read_dir(dir) else {
@@ -51,17 +60,17 @@ fn builder_round_trip_preserves_chunks() {
     let mut failed: Vec<String> = Vec::new();
 
     // Skip when the corpus is absent (CI / fresh clone), matching the gpl-asm
-    // corpus tests. CORPUS_DIRS is hardcoded to Brandon's machine layout.
-    if CORPUS_DIRS
+    // corpus tests.
+    if corpus_dirs()
         .iter()
-        .all(|d| gff_files(Path::new(d)).is_empty())
+        .all(|d| gff_files(d).is_empty())
     {
-        eprintln!("skipping builder corpus: no GFFs under CORPUS_DIRS (.games absent)");
+        eprintln!("skipping builder corpus: no GFFs under the corpus dirs (.games absent)");
         return;
     }
 
-    for dir in CORPUS_DIRS {
-        for path in gff_files(Path::new(dir)) {
+    for dir in corpus_dirs() {
+        for path in gff_files(&dir) {
             let bytes = fs::read(&path).expect("read");
             let gff = Gff::from_bytes(bytes).expect("parse");
             let Some(b) = builder_from_gff(&gff) else {
@@ -120,7 +129,7 @@ fn builder_round_trip_preserves_chunks() {
 
     assert!(
         tested + skipped_segmented > 0,
-        "no corpus GFFs found; check CORPUS_DIRS"
+        "no corpus GFFs found; check the corpus dirs"
     );
     assert!(
         failed.is_empty(),

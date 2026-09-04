@@ -10,20 +10,23 @@
 //!    full byte coverage). The 2026-05 handoff notes
 //!    (pick-it-up.md, since retired) targeted `>= 95%`.
 //!
-//! Paths are hardcoded to Brandon's pristine innoextract trees.
+//! Paths resolve from the checkout root (`CARGO_MANIFEST_DIR`/../..),
+//! so any clone with `.games/` populated runs the corpus; CI skips.
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use std::collections::BTreeSet;
 
 use gff_edit::{FourCC, Gff};
 use gpl_disasm::disassemble;
 
-const CORPUS: &[&str] = &[
-    "/home/bdkl/.gitrepos/opends/.games/ds1/GPLDATA.GFF",
-    "/home/bdkl/.gitrepos/opends/.games/ds2/GPLDATA.GFF",
-];
+fn corpus() -> Vec<PathBuf> {
+    ["ds1/GPLDATA.GFF", "ds2/GPLDATA.GFF"]
+        .iter()
+        .map(|rel| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.games").join(rel))
+        .collect()
+}
 
 #[test]
 fn every_gpl_and_mas_chunk_disassembles() {
@@ -34,19 +37,20 @@ fn every_gpl_and_mas_chunk_disassembles() {
     let mut total_instructions = 0usize;
 
     // Skip when the corpus is absent (CI / fresh clone), matching the gpl-asm
-    // corpus tests. CORPUS is hardcoded to Brandon's .games trees.
-    if CORPUS.iter().all(|p| !Path::new(p).is_file()) {
+    // corpus tests.
+    let corpus = corpus();
+    if corpus.iter().all(|p| !p.is_file()) {
         eprintln!("skipping corpus smoke: no GPLDATA.GFF found (.games absent)");
         return;
     }
 
-    for path in CORPUS {
-        let p = Path::new(path);
+    for path in &corpus {
+        let p = path.as_path();
         if !p.is_file() {
             continue;
         }
-        let bytes = fs::read(p).unwrap_or_else(|e| panic!("reading {path}: {e}"));
-        let gff = Gff::from_bytes(bytes).unwrap_or_else(|e| panic!("parsing {path}: {e}"));
+        let bytes = fs::read(p).unwrap_or_else(|e| panic!("reading {path:?}: {e}"));
+        let gff = Gff::from_bytes(bytes).unwrap_or_else(|e| panic!("parsing {path:?}: {e}"));
 
         for c in gff.chunks() {
             if c.kind != FourCC(*b"GPL ") && c.kind != FourCC(*b"MAS ") {
@@ -63,7 +67,7 @@ fn every_gpl_and_mas_chunk_disassembles() {
                 result.bytes_consumed,
                 chunk_bytes.len(),
                 "bytes_consumed != len for {}:{}-{} ({} consumed, {} bytes)",
-                path,
+                path.display(),
                 c.kind,
                 c.id,
                 result.bytes_consumed,
@@ -82,7 +86,7 @@ fn every_gpl_and_mas_chunk_disassembles() {
 
     assert!(
         total_chunks > 0,
-        "no GPL/MAS chunks found; check CORPUS paths"
+        "no GPL/MAS chunks found; check .games/ paths"
     );
     let aligned_pct = (aligned_chunks as f64 / total_chunks as f64) * 100.0;
     eprintln!(
@@ -110,19 +114,20 @@ fn every_cfg_successor_resolves_to_instruction_boundary() {
     let mut cross_chunk_calls = 0usize;
 
     // Skip when the corpus is absent (CI / fresh clone), matching the gpl-asm
-    // corpus tests. CORPUS is hardcoded to Brandon's .games trees.
-    if CORPUS.iter().all(|p| !Path::new(p).is_file()) {
+    // corpus tests.
+    let corpus = corpus();
+    if corpus.iter().all(|p| !p.is_file()) {
         eprintln!("skipping corpus smoke: no GPLDATA.GFF found (.games absent)");
         return;
     }
 
-    for path in CORPUS {
-        let p = Path::new(path);
+    for path in &corpus {
+        let p = path.as_path();
         if !p.is_file() {
             continue;
         }
-        let bytes = fs::read(p).unwrap_or_else(|e| panic!("reading {path}: {e}"));
-        let gff = Gff::from_bytes(bytes).unwrap_or_else(|e| panic!("parsing {path}: {e}"));
+        let bytes = fs::read(p).unwrap_or_else(|e| panic!("reading {path:?}: {e}"));
+        let gff = Gff::from_bytes(bytes).unwrap_or_else(|e| panic!("parsing {path:?}: {e}"));
 
         for c in gff.chunks() {
             if c.kind != FourCC(*b"GPL ") && c.kind != FourCC(*b"MAS ") {
@@ -152,7 +157,7 @@ fn every_cfg_successor_resolves_to_instruction_boundary() {
                         boundaries.contains(&edge.target_offset),
                         "{}:{}-{}: edge from block 0x{:x} to offset 0x{:x} doesn't land \
                          on an instruction boundary (chunk_len=0x{:x})",
-                        path,
+                        path.display(),
                         c.kind,
                         c.id,
                         block.start_offset,
@@ -166,7 +171,7 @@ fn every_cfg_successor_resolves_to_instruction_boundary() {
 
     assert!(
         total_chunks > 0,
-        "no aligned GPL/MAS chunks; check CORPUS paths"
+        "no aligned GPL/MAS chunks; check .games/ paths"
     );
     eprintln!(
         "CFG soundness: {total_chunks} aligned chunks, {total_edges} edges resolved, \
