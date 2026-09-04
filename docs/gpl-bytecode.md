@@ -118,59 +118,17 @@ keystone tool that everything else in this corner relies on.
 
 ### Versioning
 
-**v0.1.0 — byte-annotation pass.** Each byte was treated as a
-potential opcode. We looked up its mnemonic in the 129-entry
-catalogue sourced from libgff's `gpl_commands` table (sourced
-under MIT with attribution). v0.1.0 did *not* decode parameter
-bytes; every byte got its own line. Useful for grepping
-mnemonics and strings, but instruction boundaries were not
-aligned with the real program flow.
-
-**v0.2.0 — parameter decoding (current).** Port of libgff's
-`gpl_read_number` (the variable-length expression decoder), the
-`gpl_read_simple_num_var` helper, and the 7-bit packed-string
-decoder (`read_compressed`, from soloscuro-archive). Output is
-now **one row per instruction**, with parameters formatted in an
-infix syntax (`GFLAG[12] == 1i8`, `"Free! Finally free!..."`,
-`NAME(-22)`). Structural handlers (`gpl_load_variable`,
-`gpl_search`, `gpl_menu`, `gpl_log`) decode their custom layouts
-too. Adds a `--json` output mode for tools downstream
-(`dialog-extract` v0.2.0 will consume it).
-
-**v0.2.1** closes the deferred cases. Nested `GPL_RETVAL | 0x80`
-recursively dispatches the inner opcode's parameter shape (when
-the opcode is in libgff's safe-subset of 21 opcodes), bounded
-at four levels of nesting. `GPL_COMPLEX_*` and the `0xb3`
-"passive flag" special case decode via a port of
-`gpl_access_complex` (word obj_name + byte depth + depth bytes
-elements). `gpl_setrecord` (0x40) is a first-class
-`access_complex + read_number`. `gpl_load_variable` (0x16)'s
-complex-write path now decodes too. Corpus alignment: **100% on
-all 600 DS1+DS2 GPL/MAS chunks**.
-
-**v0.3.0 — control flow.** Every disassembled chunk
-carries a [`Cfg`] of basic blocks, entry points, and
-labeled successors. **v0.3.1 (current)** corrects the
-`gpl else` (0x3F) edge model: branch targets that land on
-an else opcode are redirected past it to the else-body
-start, with a new `target_aliases` map preserving the
-raw-target-to-label resolution for rendering. See the
-v0.3.1 patchnote entry for the rationale and corpus impact. The default text listing renders
-`gpl if label_0x0020` instead of `gpl if 32`, with `label_*:` /
-`entry_*:` lines preceding each block leader. New CLI flags:
-`--entries`, `--cfg <path>`, `--no-labels`. JSON output gains
-an additive `cfg` field. Verified on the full DS1+DS2 corpus:
-**600 / 600 chunks build a CFG where every successor offset
-(71,403 edges) resolves to a known instruction boundary, with
-0 computed-target edges and 1,384 cross-chunk `global sub`
-call sites recorded for v0.4.0+ inter-chunk analysis.** The
-underlying jump semantics for the eight branch opcodes were
-verified in a pre-implementation spike; the findings are in
-§5a below.
-
-**v0.4.0+ — symbol import** (DSO debug symbols), opcode
-discovery via `opcode-fuzz` (Phase 5), MAS/GPLX cross-
-reference, inter-chunk CFG following `global sub` edges.
+The version history lives in
+[`../patchnotes.md`](../patchnotes.md) (newest first). Current
+state, briefly: byte-annotation pass (v0.1.0), parameter decoding
+with the variable-length expression decoder and the 7-bit
+packed-string reader (v0.2.x), recursive-descent CFG with labeled
+blocks and the corrected `gpl else` edge model (v0.3.x, 600/600
+corpus chunks; the branch-semantics spike is §5a), curated symbol
+catalogues and the inter-chunk `--global-cfg` callgraph (v0.4.x),
+per-chunk locals overlays and the DSO importer (v0.5.0+), and
+`render_text` round-tripping (v0.4.6+). `tools/gpl-disasm/README.md`
+is the tool's own reference.
 
 ### §5a — Branch opcode semantics (v0.3.0 spike)
 
