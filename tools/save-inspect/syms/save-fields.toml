@@ -1,0 +1,87 @@
+# save-inspect SAVE-chunk field hypotheses.
+#
+# Consumed by scripts/save-semantic-diff.py: each [[field]] row maps a
+# byte range inside one SAVE chunk (optionally inside each record of a
+# record-array chunk) to a meaning, so play-session diffs accumulate
+# understanding instead of scrollback. The differ annotates every diff
+# cluster with the rows that cover it; rows are DATA, edit freely.
+#
+# Schema (all fields required unless marked optional):
+#
+#   [[field]]
+#   kind = "SAVE"                # chunk FOURCC (padded)
+#   id = 5                       # chunk id
+#   range = [34, 40]             # byte range: [start, end) within the
+#                                # record (record_size set) or the chunk
+#   record_size = 58             # optional: treat the chunk as an array
+#                                # of record_size-byte records; range is
+#                                # then relative to each record
+#   meaning = "..."              # what the bytes (probably) are
+#   confidence = "verified"      # verified | probable | speculative
+#   evidence = "..."             # where the knowledge came from
+#
+# Confidence definitions:
+#   verified     proven by a write + read-back round-trip in this repo
+#   probable     consistent with all observations, not yet round-tripped
+#   speculative  one-sample guess; treat as a question, not an answer
+#
+# Curation rule: add rows as play sessions teach you things (the
+# snapshot / act / snapshot / diff loop), with the evidence named.
+# Never delete a row without a written reason it was wrong.
+
+# ---- DS1 SAVE/5: combat sub-blocks (verified via ds1-party-edit) ----
+
+[[field]]
+kind = "SAVE"
+id = 5
+record_size = 58
+range = [34, 40]
+meaning = "combat stats[6] (STR DEX CON INT WIS CHA)"
+confidence = "verified"
+evidence = "tools/save-inspect/scripts/ds1-party-edit.py"
+
+[[field]]
+kind = "SAVE"
+id = 5
+record_size = 58
+range = [40, 58]
+meaning = "character name (NULL-terminated, padded)"
+confidence = "verified"
+evidence = "tools/save-inspect/scripts/ds1-party-edit.py"
+
+# ---- DS1 SAVE/6: character sub-blocks (verified via ds1-party-edit) ----
+
+[[field]]
+kind = "SAVE"
+id = 6
+record_size = 72
+range = [0, 72]
+meaning = "per-PC character sub-block (stats mirrored here; edit both SAVE/5 and SAVE/6)"
+confidence = "verified"
+evidence = "tools/save-inspect/scripts/ds1-party-edit.py"
+
+# ---- Structural speculation from one played DS1 save (README) ----
+
+[[field]]
+kind = "SAVE"
+id = 1
+range = [0, 10240]
+meaning = "party / PCs master block (largest chunk)"
+confidence = "speculative"
+evidence = "save-inspect README, one played DS1 save"
+
+[[field]]
+kind = "SAVE"
+id = 10
+range = [0, 2]
+meaning = "u16 counter / coord / region pointer"
+confidence = "speculative"
+evidence = "save-inspect README, one played DS1 save"
+
+[[field]]
+kind = "SAVE"
+id = 18
+range = [0, 51]
+meaning = "boolean array (all 0x01 in the one sample)"
+confidence = "speculative"
+evidence = "save-inspect README, one played DS1 save"

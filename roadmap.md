@@ -406,11 +406,24 @@ Four original leverage points, in order of cost:
       47 of 68 documented kinds present; gap list DATA (1,292
       chunks), MAP/RNME (60 each), PLYL, ALL, GREQ, VECT,
       CMAT, CPAL, PREF. RGTP does not appear in this corpus.)
-- [ ] **DARKRUN SAVE semantic differ.** Layer field-level
+- [x] **DARKRUN SAVE semantic differ.** Layer field-level
       hypotheses (region id, party position, quest flags)
       onto `save-inspect save-diff`'s byte diffs, so each
       play-session diff accumulates understanding instead of
       scrollback.
+      (Built 2026-09-04: `save-inspect/scripts/save-semantic-
+      diff.py` over the new `syms/save-fields.toml`. The TOML
+      seeds only what the repo already knew: the verified
+      SAVE/5 record layout (stats[6] at 34..39, name at
+      40..57) and SAVE/6 blocks from ds1-party-edit, plus the
+      README's one-save speculation rows for SAVE/1, /10 and
+      /18. Clusters no row covers print as UNKNOWN and are
+      the next session's RE target; confirmed findings become
+      rows. Smoke: a synthetic stats mutation in SAVE/5
+      record 2 annotates as `record 2 field+0x22, combat
+      stats[6] [verified]`. Region-id / party-position /
+      quest-flag rows wait on the played-save pairs only
+      Brandon's play sessions produce.)
 - [x] **Hygiene riders.** De-hardcode `/home/bdkl` from the
       five Rust corpus tests (portable root discovery; the
       current silent skips hide coverage loss from CI);
