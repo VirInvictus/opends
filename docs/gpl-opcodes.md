@@ -17,7 +17,18 @@ the per-handler bodies in the same file; see
 - Many entries are libgff's "gpl default" or "gpl unknown" stub
   names, meaning the engine reserves the byte but libgff's
   handler is a placeholder. We list those as the libgff name for
-  honesty.
+  honesty. The fifteen unknown bytes (`0x26`, `0x4a`, `0x4c`-`0x4e`,
+  `0x53`, `0x55`-`0x57`, `0x60`, `0x71`-`0x75`) cannot be named
+  from the DSO table by elimination (see
+  [`dso-symbols.md`](dso-symbols.md)'s Decode\* study); pinning
+  them needs the DSUN.EXE dispatch table.
+- **DSO cross-reference facts** (from the same study): DSO's
+  handler for `0x64` wend is the same function as `0x12` jump
+  (`DecodeWend == DecodeJump`); `0x1e`/`0x1f` are one handler in
+  DSO (`DecodeNametonum == DecodeNumtoname`); and DSO names the
+  `0x27` handler `DecodeIfis`, hinting the condition form is
+  "if (x) is (y)" rather than a generic branch. DSO spells the
+  trigger family `*check` where libgff says `*trigger`.
 - **Params column** indicates how the opcode's bytes are consumed
   after the opcode byte:
   - **N** (integer): N expressions read via `gpl_read_number`.
