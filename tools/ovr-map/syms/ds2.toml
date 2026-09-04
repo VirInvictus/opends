@@ -62,3 +62,28 @@ Bounds how many segments stay resident; directly relevant to the \
 Phase 7 elevator race. One confirming observable (a runtime trace \
 of a paging event) short of verified.
 """
+
+[[function]]
+name = "load_game_from_disk"
+segment = 18
+offset = 0xa6c
+confidence = "verified"
+evidence = "scripts/xref-string.py: pushes 'Failed Uncompress in Loadgamefromdisk' (file 0x4e6ba, DGROUP offset 0x16ba) at 0x70975"
+dso_source = "DSO::LoadGameFromDisk"
+notes = """
+The error string names the source function itself \
+(Loadgamefromdisk) and this is the containing function: the DS2 \
+save-load path, same module structure as DS1's ovr21.
+"""
+
+[[function]]
+name = "save_game_to_disk"
+segment = 11
+offset = 0x8e5
+confidence = "probable"
+evidence = "scripts/xref-string.py: pushes 'SAVE%.2d.SAV' (file 0x4dd5e, DGROUP offset 0xd5e) at 0x67be1 and 'Maximum of %ld save games!' (0x4dd6b, 0xd6b) at 0x67c81"
+dso_source = "DSO::SaveGameToDisk"
+notes = """
+The save-slot path: builds the slot filename and enforces the \
+save-count cap. Family naming from the DSO table.
+"""

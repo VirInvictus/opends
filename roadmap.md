@@ -456,6 +456,22 @@ Four original leverage points, in order of cost:
       offsets are DSO-v1.0-client-relative (flat offsets into
       the extracted 32-bit image); only the names are claimed
       to transfer.
+      > Progress 2026-09-04: the reference method is solved
+      > and six new anchors are in the catalogues (10 rows
+      > total). The naive seg:off pair search finds nothing;
+      > strings are referenced as bare 16-bit push/mov
+      > immediates relative to DGROUP, read from the entry
+      > point's `mov dx, imm16` (DS1 0x4356, DS2 0x47e0).
+      > `scripts/xref-string.py` automates it. Verified
+      > (self-naming string inside the function):
+      > `LoadGameFromDisk` DS1 ovr21+0xdde, DS2 ovr18+0xa6c.
+      > Probable (string anchors the module; DSO family
+      > naming): `SaveGameToDisk` slot path DS1 ovr13+0x7cc /
+      > DS2 ovr11+0x8e5, the region-change module DS1
+      > ovr21+0x1487, and the teleport loader DS1 ovr21+0x17d0
+      > — all six are confirmed entry stubs. The transfer
+      > premise is validated for the persistence family;
+      > ~10 more anchors to the catalogue threshold.
 - [ ] **Name the resident API surface.** The ~340 distinct
       overlay→resident call targets (survey §3.3) are the
       highest-value naming set in either binary; the survey's

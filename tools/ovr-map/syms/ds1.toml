@@ -63,3 +63,51 @@ Bounds how many segments stay resident; directly relevant to the \
 Phase 7 elevator race. One confirming observable (a runtime trace \
 of a paging event) short of verified.
 """
+
+[[function]]
+name = "load_game_from_disk"
+segment = 21
+offset = 0xdde
+confidence = "verified"
+evidence = "scripts/xref-string.py: pushes 'Failed Uncompress in Loadgamefromdisk' (file 0x49d94, DGROUP offset 0x1434) at 0x68eae"
+dso_source = "DSO::LoadGameFromDisk"
+notes = """
+The error string names the source function itself \
+(Loadgamefromdisk) and this is the containing function: the DS1 \
+save-load path.
+"""
+
+[[function]]
+name = "gpl_disk_change_region"
+segment = 21
+offset = 0x1487
+confidence = "probable"
+evidence = "scripts/xref-string.py: pushes 'Fatal error: Region change, Invalid save' (file 0x49e43, offset 0x14e3) at 0x6965f"
+dso_source = "DSO::GplDiskChangeRegion"
+notes = """
+Region-change module (gpldisk.c family). Behavioural anchor; the \
+exact DSO counterpart name is not yet pinned.
+"""
+
+[[function]]
+name = "load_teleport"
+segment = 21
+offset = 0x17d0
+confidence = "probable"
+evidence = "scripts/xref-string.py: pushes 'Error : Can't load Game data in load teleport' (file 0x49e92, offset 0x1532) at 0x69907"
+notes = """
+Same gpldisk.c module as gpl_disk_change_region; the teleport path \
+shares the save/region code.
+"""
+
+[[function]]
+name = "save_game_to_disk"
+segment = 13
+offset = 0x7cc
+confidence = "probable"
+evidence = "scripts/xref-string.py: pushes 'SAVE%.2d.SAV' (file 0x494e9, offset 0xb89) at 0x6146c and 'Maximum of %ld save games!' (0x494f6, 0xb96) at 0x6150c"
+dso_source = "DSO::SaveGameToDisk"
+notes = """
+The save-slot path: builds the slot filename and enforces the \
+save-count cap. Family naming from the DSO table.
+"""

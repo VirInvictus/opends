@@ -165,12 +165,23 @@ emits (100 rows) is consistent with these facts.
 
 ## Curated catalogue
 
-Hand-verified cross-references. Empty for now; grows as we
-verify each candidate against `DSUN.EXE`.
+Hand-verified cross-references. Coordinates are `ovr-map`
+coordinates: resident functions by file offset, overlay functions by
+(segment index, segment-local offset), matching
+`tools/ovr-map/syms/<game>.toml`, which is the machine-readable copy
+of these rows.
 
 | DSO symbol | DS2 verified at | Notes |
 |------------|-----------------|-------|
-| _(none yet)_ | | |
+| `LoadGameFromDisk` | ovr18+0xa6c (file `0x7089c`) | Self-naming: the function pushes the error string "Failed Uncompress in Loadgamefromdisk". DS1 counterpart ovr21+0xdde. |
+| `SaveGameToDisk` (slot path) | ovr11+0x8e5 (file `0x67ac5`) | Builds `SAVE%.2d.SAV` and enforces "Maximum of %ld save games!". DS1 counterpart ovr13+0x7cc. Family naming: the DSO table has several Save* functions, so the slot-path attribution is probable, not pinned to one name. |
+
+**Reference-method note (verified 2026-09-04).** Strings are
+referenced as bare 16-bit immediates relative to DGROUP, almost
+always `push imm16`; the naive adjacent (off, seg) pair search this
+file previously suggested finds nothing. DGROUP is read from the
+entry point's `mov dx, imm16` (DS1 `0x4356`, DS2 `0x47e0`).
+`tools/ovr-map/scripts/xref-string.py` automates all of it.
 
 ## Process for adding a row
 
