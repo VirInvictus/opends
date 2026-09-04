@@ -1,0 +1,65 @@
+# ovr-map EXE symbol catalogue — Dark Sun: Shattered Lands (DS1).
+#
+# Each [[function]] row names one location in DS1's DSUN.EXE. Names
+# render in `ovr-map --disasm` entry separators, `--callgraph` edges
+# and `--verify` output when loaded with `--syms syms/ds1.toml`.
+#
+# Schema (all fields required unless marked optional):
+#
+#   [[function]]
+#   name = "load_resource"       # display name
+#   segment = "resident"         # "resident", or an integer overlay segment index
+#   offset = 0x58b4              # file offset when resident; segment-local
+#                                # cs: offset when overlaid
+#   confidence = "verified"      # verified | probable | provisional
+#   evidence = "..."             # where the identification is written up
+#   dso_source = "DSO::Name"     # optional: DSO v1.0 symbol the name came from
+#   notes = "..."                # optional: rationale, falsification conditions
+#
+# Addressing follows docs/dsun-exe-survey.md: resident functions are
+# addressed by file offset; overlay functions by (segment index,
+# segment-local cs: offset), the same coordinates as the entry stubs.
+#
+# Confidence definitions:
+#
+#   verified     identification cross-checked against behavior or a
+#                second independent observable (string ref, call
+#                shape, constant) — safe to build on
+#   probable     located and consistent with all evidence, one
+#                confirming observable short of verified
+#   provisional  hypothesis under test; must state in `notes` what
+#                would confirm or kill it
+#
+# Curation rule (do not relax without surfacing it):
+#
+#   Add or change a row only with a written evidence chain in this
+#   repo's docs (docs/dsun-exe-re.md, docs/dsun-exe-survey.md, or a
+#   fix writeup). Machine-generated proposals from
+#   scripts/propose-exe-symbols.py are review input, never commits;
+#   every row here is hand-accepted.
+
+[[function]]
+name = "load_resource"
+segment = "resident"
+offset = 0x58b4
+confidence = "verified"
+evidence = "docs/dsun-exe-re.md 2; docs/dsun-exe-survey.md 3.3 (0001:04a4 = file 0x58b4)"
+notes = """
+The four-CC resource loader, `load_resource(fourcc, id, far *buf)`. \
+Identified by the CMAT/CPAL fallback call shape and the FOURCC push \
+census; carries a resident-side call-site census (96 sites, zero \
+overlay callers).
+"""
+
+[[function]]
+name = "overlay_manager"
+segment = "resident"
+offset = 0x466e0
+confidence = "probable"
+evidence = "docs/dsun-exe-survey.md 3.2"
+notes = """
+The Borland VROOM overlay dispatch body (INT 3Fh handler side). \
+Bounds how many segments stay resident; directly relevant to the \
+Phase 7 elevator race. One confirming observable (a runtime trace \
+of a paging event) short of verified.
+"""

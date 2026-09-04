@@ -299,12 +299,17 @@ Four original leverage points, in order of cost:
       overwritten) with a real proposal generator modelled on
       the `gpl-disasm` importer. Gitignore or scratch-park
       the generated `OvrMap.java`.
-- [ ] **EXE symbol catalogue format and store.** A
+- [x] **EXE symbol catalogue format and store.** A
       `tools/ovr-map/syms/<game>.toml` schema (name, segment,
       offset, evidence, confidence) plus loader support so
       `ovr-map --disasm` and `--callgraph` render names.
       Today there is nowhere to put a discovered name; every
       finding lives in prose.
+      (Shipped 2026-09-04: schema + curation rule in the
+      catalogue headers, `--syms` loader with loud validation,
+      names in `--verify` / `--disasm` / `--callgraph`,
+      selftest bound-checks rows; seeded with `load_resource`
+      both games and the two overlay-manager bodies.)
 - [ ] **Ghidra pipeline made real and persisted.** Re-run the
       headless import and keep the project plus exported
       function lists under `scratch/` (gitignored), with the

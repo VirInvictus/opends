@@ -89,6 +89,28 @@ stubs have a direct caller; the rest are reached indirectly or by table
 dispatch. A stub absent from the edge list is **not** evidence that it is
 unreachable. The tool reports coverage rather than implying completeness.
 
+### Named symbols (`--syms`)
+
+```sh
+python3 ovr-map.py .games/ds1/DSUN.EXE --syms syms/ds1.toml --verify 0x58b4
+python3 ovr-map.py .games/ds2/DSUN.EXE --syms syms/ds2.toml --disasm 5
+```
+
+Loads a curated symbol catalogue and renders names in three places:
+`--verify` gains `name` / `confidence` / `evidence` fields when the
+offset is a catalogued function, `--disasm` entry separators carry
+`<name>`, and `--callgraph` edges gain a `callee_name` field (plus a
+`named callees hit` line).
+
+The catalogues live in `syms/<game>.toml`; their header comment is the
+schema and the curation rule (rows carry an evidence chain, a
+confidence level, and are hand-accepted; machine proposals from
+`scripts/propose-exe-symbols.py` are review input, never commits).
+`--selftest` validates the shipped catalogues against the parsed maps,
+so a typo'd segment index or a row past a segment's end fails loudly
+instead of silently never matching. Names are facts we can cite; the
+DSO offsets they came from are not (docs/dso-symbols.md).
+
 ### Ghidra bridge
 
 ```sh

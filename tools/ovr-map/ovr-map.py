@@ -18,6 +18,7 @@ import json
 import struct
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +34,9 @@ STUB_SIZE = 5
 DESC_ALIGN = 16
 # Bounds a runaway parse without rejecting any real record (max seen: 47).
 MAX_STUBS = 4096
+
+# Curated EXE symbol catalogue confidence levels (syms/<game>.toml).
+SYMS_CONFIDENCE = ("verified", "probable", "provisional")
 
 
 class OvrError(Exception):
@@ -190,12 +194,78 @@ def build(path: Path) -> dict[str, Any]:
     }
 
 
-def verify(report: dict[str, Any], offset: int) -> dict[str, Any]:
+def load_syms(path: Path, report: dict[str, Any] | None = None) -> dict[tuple[Any, int], dict[str, Any]]:
+    """Load a curated EXE symbol catalogue (tools/ovr-map/syms/<game>.toml).
+
+    Returns a lookup keyed by (segment, offset): ("resident", file_offset)
+    for resident-image functions, (seg_index, segment-local cs: offset) for
+    overlay functions. Schema and curation rule live in the catalogue
+    files' header comments; this loader enforces the same rules.
+
+    When `report` is given, overlay rows are bound-checked against the
+    parsed map so a typo'd segment index or an offset past the segment end
+    fails loudly here instead of silently never matching.
+    """
+    try:
+        with path.open("rb") as fh:
+            data = tomllib.load(fh)
+    except tomllib.TOMLDecodeError as e:
+        raise OvrError(f"symbol catalogue {path} is not valid TOML: {e}") from e
+
+    lookup: dict[tuple[Any, int], dict[str, Any]] = {}
+    for i, row in enumerate(data.get("function", [])):
+        where = f"{path}:function[{i}]"
+        name = row.get("name")
+        if not isinstance(name, str) or not name:
+            raise OvrError(f"{where}: name must be a non-empty string")
+        seg = row.get("segment")
+        off = row.get("offset")
+        if seg != "resident" and not isinstance(seg, int):
+            raise OvrError(
+                f'{where}: segment must be "resident" or an integer overlay index'
+            )
+        if not isinstance(off, int) or off < 0:
+            raise OvrError(f"{where}: offset must be a non-negative integer")
+        conf = row.get("confidence", "provisional")
+        if conf not in SYMS_CONFIDENCE:
+            raise OvrError(
+                f"{where}: confidence {conf!r} not one of {SYMS_CONFIDENCE}"
+            )
+        if report is not None and isinstance(seg, int):
+            segs = [s for s in report["segments"] if s["index"] == seg]
+            if not segs:
+                raise OvrError(f"{where}: no overlay segment {seg} in this binary")
+            if not segs[0]["empty"] and off >= segs[0]["size"]:
+                raise OvrError(
+                    f"{where}: offset 0x{off:x} is past the end of segment {seg} "
+                    f"(size 0x{segs[0]['size']:x})"
+                )
+        key = (seg, off)
+        if key in lookup:
+            raise OvrError(f"{where}: duplicate catalogue address {key}")
+        lookup[key] = row
+    return lookup
+
+
+def verify(
+    report: dict[str, Any],
+    offset: int,
+    syms: dict[tuple[Any, int], dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     """Answer 'what is at this file offset'. The query the patch workflow needs."""
     out: dict[str, Any] = {"file_offset": offset}
     if offset < report["mz"]["image_end"]:
         out["region"] = "resident"
         out["note"] = "inside the MZ image; not overlaid code"
+        sym = syms.get(("resident", offset)) if syms else None
+        if sym:
+            out.update(
+                {
+                    "name": sym["name"],
+                    "confidence": sym.get("confidence", "provisional"),
+                    "evidence": sym.get("evidence", ""),
+                }
+            )
         return out
     if offset < report["fbov"]["overlay_base"]:
         out["region"] = "fbov_header"
@@ -223,6 +293,15 @@ def verify(report: dict[str, Any], offset: int) -> dict[str, Any]:
                     ),
                 }
             )
+            sym = syms.get((seg["index"], local)) if syms else None
+            if sym:
+                out.update(
+                    {
+                        "name": sym["name"],
+                        "confidence": sym.get("confidence", "provisional"),
+                        "evidence": sym.get("evidence", ""),
+                    }
+                )
             return out
 
     out["region"] = "overlay_padding"
@@ -250,7 +329,11 @@ def parse_relocations(data: bytes, mz: dict[str, int]) -> set[int]:
     return out
 
 
-def callgraph(data: bytes, report: dict[str, Any]) -> dict[str, Any]:
+def callgraph(
+    data: bytes,
+    report: dict[str, Any],
+    syms: dict[tuple[Any, int], dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     """Far-call edges whose target is an overlay entry stub.
 
     An overlaid routine is never called at its own address (docs/dsun-exe-re.md
@@ -286,6 +369,7 @@ def callgraph(data: bytes, report: dict[str, Any]) -> dict[str, Any]:
         hit = stub_by_linear.get(seg_word * 16 + off)
         if hit is not None:
             seg_index, entry = hit
+            sym = syms.get((seg_index, entry["entry_offset"])) if syms else None
             edges.append(
                 {
                     "call_site": i,
@@ -293,6 +377,7 @@ def callgraph(data: bytes, report: dict[str, Any]) -> dict[str, Any]:
                     "callee_segment": seg_index,
                     "callee_entry_offset": entry["entry_offset"],
                     "callee_file_offset": entry["file_offset"],
+                    "callee_name": sym["name"] if sym else None,
                 }
             )
         i += 1
@@ -300,6 +385,7 @@ def callgraph(data: bytes, report: dict[str, Any]) -> dict[str, Any]:
     total_stubs = report["summary"]["entry_points"]
     with_caller = len({e["target_stub"] for e in edges})
     indirect = data.count(b"\xff\x1e", 0, image_end)
+    named = len({e["callee_name"] for e in edges if e["callee_name"]})
     return {
         "edges": edges,
         "coverage": {
@@ -310,6 +396,7 @@ def callgraph(data: bytes, report: dict[str, Any]) -> dict[str, Any]:
                 round(100.0 * with_caller / total_stubs, 1) if total_stubs else 0.0
             ),
             "indirect_far_call_sites": indirect,
+            "named_callees_hit": named,
             "note": (
                 "Most stubs are reached indirectly (FF 1E) or by table dispatch. "
                 "A stub absent from these edges is NOT evidence it is unreachable; "
@@ -319,7 +406,13 @@ def callgraph(data: bytes, report: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def disasm(data: bytes, report: dict[str, Any], index: int, limit: int | None) -> str:
+def disasm(
+    data: bytes,
+    report: dict[str, Any],
+    index: int,
+    limit: int | None,
+    syms: dict[tuple[Any, int], dict[str, Any]] | None = None,
+) -> str:
     """Disassemble one segment at its correct base, in 16-bit mode.
 
     Shells out to ndisasm (nasm), matching docs/dsun-exe-re.md's own
@@ -366,10 +459,12 @@ def disasm(data: bytes, report: dict[str, Any], index: int, limit: int | None) -
         except ValueError:
             local = None
         if local is not None and local in labels:
+            sym = syms.get((index, local)) if syms else None
             out.append("")
             out.append(
                 f"; ---- entry[{labels[local]}]  cs:0x{local:04x}"
                 f"  file 0x{seg['file_start'] + local:x}"
+                + (f"  <{sym['name']}>" if sym else "")
             )
         out.append(line)
         count += 1
@@ -616,6 +711,13 @@ def selftest(paths: list[Path]) -> int:
         )
         cov = rep["summary"]["coverage_pct"]
         check(cov > 92.0, f"overlay coverage {cov}% is below the 92% floor")
+        syms_path = HERE / "syms" / f"{name}.toml"
+        if syms_path.is_file():
+            try:
+                named = load_syms(syms_path, report=rep)
+                check(bool(named), f"{syms_path.name} parsed to zero rows")
+            except OvrError as e:
+                check(False, str(e))
         print(
             f"OK   {path}  segments={len(live)} entries={rep['summary']['entry_points']} "
             f"coverage={cov}%"
@@ -676,6 +778,13 @@ def main(argv: list[str] | None = None) -> int:
         help="far-call edges targeting entry stubs (deliberately incomplete; reports coverage)",
     )
     ap.add_argument(
+        "--syms",
+        metavar="FILE",
+        type=Path,
+        help="curated symbol catalogue (tools/ovr-map/syms/<game>.toml); "
+        "names render in --disasm, --callgraph and --verify",
+    )
+    ap.add_argument(
         "--selftest",
         action="store_true",
         help="assert structural invariants against .games/ds1 and .games/ds2, skipping if absent",
@@ -712,18 +821,30 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ovr-map: {e}", file=sys.stderr)
         return 1
 
+    syms: dict[tuple[Any, int], dict[str, Any]] | None = None
+    if args.syms is not None:
+        if not args.syms.is_file():
+            print(f"ovr-map: no such symbol catalogue: {args.syms}", file=sys.stderr)
+            return 2
+        try:
+            # Load against the parsed map so catalogue typos fail loudly.
+            syms = load_syms(args.syms, report=report)
+        except OvrError as e:
+            print(f"ovr-map: {e}", file=sys.stderr)
+            return 1
+
     if args.verify is not None:
         try:
             offset = int(args.verify, 0)
         except ValueError:
             print(f"ovr-map: bad offset: {args.verify}", file=sys.stderr)
             return 2
-        print(json.dumps(verify(report, offset), indent=2))
+        print(json.dumps(verify(report, offset, syms), indent=2))
         return 0
 
     if args.disasm is not None:
         try:
-            print(disasm(args.exe.read_bytes(), report, args.disasm, args.limit))
+            print(disasm(args.exe.read_bytes(), report, args.disasm, args.limit, syms))
         except OvrError as e:
             print(f"ovr-map: {e}", file=sys.stderr)
             return 1
@@ -746,7 +867,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.callgraph:
-        graph = callgraph(args.exe.read_bytes(), report)
+        graph = callgraph(args.exe.read_bytes(), report, syms)
         if args.json:
             print(json.dumps(graph, indent=2))
         else:
@@ -757,6 +878,8 @@ def main(argv: list[str] | None = None) -> int:
                 f" / {cov['stubs_total']} ({cov['stubs_with_direct_caller_pct']}%)"
             )
             print(f"indirect far-call sites (FF 1E): {cov['indirect_far_call_sites']}")
+            if syms:
+                print(f"named callees hit: {cov['named_callees_hit']}")
             print(f"\n{cov['note']}")
         return 0
 
