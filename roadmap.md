@@ -530,6 +530,20 @@ Four original leverage points, in order of cost:
       > Both bases remain probable until a semantic handler
       > read confirms; ByteDec (DS2) already marshals and
       > calls through the far-pointer table at 0xa4d4.
+
+Site-report sketch (elevator, first read 2026-09-04): DS2's
+      > `gpl_disk_change_region` (ovr18+0x1132, 826 bytes, 307
+      > instructions) is the region-change state machine.
+      > Confirmed in the first pass: far-call helpers into
+      > segments 0x5f8/0x5b0/0x638, an optional entry hook, a
+      > relocation call `0x5b0:0xc0` taking (0, 1, 0, arg),
+      > and — matching dsun-exe-re 3.2's five-family-id model
+      > — a 5-entry iteration table (`mov si,0x6874; mov
+      > di,0x5`, cs-relative data). The 'Fatal error: Region
+      > change, Invalid save' path is at function offset
+      > 0x1b0. Next reads: the 5-entry table contents, the
+      > normal successor paths, and the failing elevator
+      > caller.
       > Base-status detail: ByteDec at 0x6500 decodes as a
       > coherent marshalling stub (byte-masked argument, far
       > call through the 0xa4d4 pointer table, iret unwind —
