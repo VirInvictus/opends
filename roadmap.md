@@ -138,7 +138,9 @@ first? The honest split:
 **Solved: mechanical safety.** The overlay map is complete and
 verified (52 / 49 segments, 935 / 854 entry stubs, ~93%
 coverage), any byte is addressable as `ovr:seg+off`, the Ghidra
-import is verified headless, and the applier layer refuses
+import is verified headless (caveat, found 2026-09-04: that run
+left no persisted artifact; 5.6.0 carries the re-prove-and-
+persist box), and the applier layer refuses
 fingerprint drift, length changes, and wrong installs. Authoring
 a *safe* byte patch is already plumbing.
 

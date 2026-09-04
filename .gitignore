@@ -29,6 +29,10 @@
 /extracted/
 /scratch/
 
+# Generated Ghidra scripts (ovr-map --ghidra). Regenerate instead of
+# editing; see docs/dsun-exe-re.md 7 for the headless recipe.
+/OvrMap.java
+
 # Python bytecode caches
 __pycache__/
 *.pyc
