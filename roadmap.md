@@ -333,6 +333,27 @@ Four original leverage points, in order of cost:
       this phase). The 2026-08-28 "verified headless" claim
       left no artifact; re-prove it once, then keep the
       proof.
+      > Progress 2026-09-04: the recipe is now real and
+      > corrected (the old one could not have run from this
+      > checkout: Ghidra resolves bare script names against
+      > $PWD and rejects every path element starting with
+      > '.', which .gitrepos is). The bulk-rename half landed:
+      > `ovr-map --ghidra-rename` generates the catalogue-
+      > driven rename script from `syms/<game>.toml`, and
+      > `tools/ovr-map/ghidra/OvrExport.java` is the checked-
+      > in TSV export path. Import + analysis + persistence
+      > re-proven: the analyzed DS1 project is kept under
+      > `scratch/ghidra_project/ds1_proj.rep`. Still blocked,
+      > host-side: Ghidra's OSGi script compiler broke on this
+      > machine between 2026-08-29 (last successful compile)
+      > and 2026-09-04 — every script, including a trivial
+      > control, fails with "Failed to get OSGi bundle";
+      > cache nuking does not help; manual javac against the
+      > pinned JDK compiles our scripts clean. Full evidence
+      > and the standing syntax-check recipe in
+      > `docs/dsun-exe-re.md` 7. Until the host layer is
+      > fixed, `propose-exe-symbols.py --census` stands in
+      > for the Ghidra-side function list.
 - [ ] **Cluster-annotated official-patch differ.** Promote
       `diff-official.py` to a real tool: per-cluster file
       offsets, nearest entry stub, before/after `ndisasm`

@@ -149,6 +149,23 @@ Notes, each of which cost a debugging round:
   range at segment 57. `ovr-map` assigns bases from the segments' real
   sizes and errors if the layout will not fit.
 
+### Ghidra rename bridge (`--ghidra-rename`)
+
+```sh
+python3 ovr-map.py .games/ds1/DSUN.EXE --ghidra-rename syms/ds1.toml -o OvrRename.java
+```
+
+Generates the catalogue-driven companion to the `--ghidra` script: it
+applies a `syms/<game>.toml` catalogue to the imported program,
+creating a named function and label at every catalogue row with the
+row's confidence and evidence as a comment. Run it after `OvrMap.java`
+in the same headless session, so the overlay blocks exist for overlay
+rows. Pair both with `ghidra/OvrExport.java` (checked in, static) to
+write the final function list as TSV.
+
+The full headless recipe, including the dot-free path rules that make
+it runnable from this checkout, is in `docs/dsun-exe-re.md` 7.
+
 ### Self-test
 
 ```sh

@@ -721,23 +721,71 @@ and will waste a pass if assumed wrong.
    its JSON carries each segment's base, file range and entry
    stubs, which a Ghidra script can replay as overlay memory
    blocks with all 935 (DS1) / 854 (DS2) entry points labelled.
-   **The headless workflow to do this is proven (Phase 5.6):**
+   **The headless pipeline (Phase 5.6.0, re-proven and persisted
+   2026-09-04):**
 
    ```sh
-   # 1. Generate the Java script from ovr-map
-   python3 tools/ovr-map/ovr-map.py .games/ds1/DSUN.EXE --ghidra -o OvrMap.java
+   # 1. Generate the Java scripts from ovr-map. The generated files
+   #    must live in a dot-free directory: Ghidra resolves bare
+   #    -postScript names against $PWD first, and any path element
+   #    starting with '.' (e.g. the .gitrepos checkout) is rejected
+   #    as a script source location.
+   mkdir -p /tmp/ovrscripts
+   python3 tools/ovr-map/ovr-map.py .games/ds1/DSUN.EXE --ghidra -o /tmp/ovrscripts/OvrMap.java
+   python3 tools/ovr-map/ovr-map.py .games/ds1/DSUN.EXE \
+       --ghidra-rename tools/ovr-map/syms/ds1.toml -o /tmp/ovrscripts/OvrRename.java
 
-   # 2. Run analyzeHeadless (using /tmp/ avoids Ghidra's aversion to dot-hidden paths like .gitrepos/)
-   rm -rf /tmp/ghidra_proj
-   mkdir -p /tmp/ghidra_proj
+   # 2. Run analyzeHeadless. Project location must also be dot-free.
+   #    Pass -postScript as absolute dot-free paths (see note 1).
+   rm -rf /tmp/ghidra_proj && mkdir -p /tmp/ghidra_proj
    ~/.local/share/ghidra_12.1.2_PUBLIC/support/analyzeHeadless \
        /tmp/ghidra_proj ds1_proj \
        -import .games/ds1/DSUN.EXE \
-       -scriptPath $(pwd) \
-       -postScript OvrMap.java \
+       -scriptPath /tmp/ovrscripts \
+       -scriptPath "$PWD/tools/ovr-map/ghidra" \
+       -postScript /tmp/ovrscripts/OvrMap.java \
+       -postScript /tmp/ovrscripts/OvrRename.java \
+       -postScript "$PWD/tools/ovr-map/ghidra/OvrExport.java" \
+                  /abs/path/scratch/ghidra_project/export/ds1-functions.txt \
        -overwrite
    ```
-   This builds a project in `/tmp/ghidra_proj` with `DSUN.EXE` fully segmented and labelled. You can then open it in the Ghidra GUI.
+
+   The three post-scripts: `OvrMap.java` creates one overlay memory
+   block per segment at its correct base and labels every entry
+   stub; `OvrRename.java` (generated from the curated catalogue,
+   `--ghidra-rename`) creates named functions with confidence and
+   evidence comments; `OvrExport.java` (checked in at
+   `tools/ovr-map/ghidra/`) writes the final function list as TSV.
+   Re-prove status 2026-09-04: import, analysis and project
+   persistence re-proven (project kept under `scratch/
+   ghidra_project/`); script execution is currently blocked by a
+   host-level Ghidra OSGi breakage, see the troubleshooting entry
+   below.
+
+   **Troubleshooting: "Failed to get OSGi bundle containing
+   script".** Ghidra compiles Java scripts through its Felix/OSGi
+   layer, and that layer broke on this host between 2026-08-29
+   (last successful compile; bundle cache has the artifacts) and
+   2026-09-04. Symptoms: every script, including a trivial
+   do-nothing one, fails with `ClassNotFoundException: Failed to
+   get OSGi bundle`; the per-script directory under
+   `~/.config/ghidra/ghidra_12.1.2_PUBLIC/osgi/compiled-bundles/`
+   is created empty; no javac diagnostic is logged anywhere. The
+   script source is not the problem: compiling the same file by
+   hand with the pinned JDK produces no errors:
+
+   ```sh
+   CP=$(fd -g '*.jar' ~/.local/share/ghidra_12.1.2_PUBLIC/Ghidra | tr '\n' ':')
+   ~/.local/share/jdk/jdk-21.0.12+8/bin/javac -cp "$CP" -d /tmp/ovrtest /tmp/ovrscripts/OvrMap.java
+   ```
+
+   That manual compile is also the standing syntax check for
+   generated scripts when the OSGi layer is broken. Until the OSGi
+   layer is fixed (suspects: a host JDK/Felix interaction; cache
+   nuking was tried and did not help), the Ghidra-side function
+   list cannot be re-exported; `scripts/propose-exe-symbols.py
+   --census` is the ndisasm-based stand-in for a function-level
+   worklist.
 
 Temper expectations on the decompiler: Ghidra's output is much
 weaker on 16-bit segmented code than on 32/64-bit. Far pointers
