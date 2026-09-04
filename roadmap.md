@@ -584,6 +584,11 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > base-0x6500 reading: the stub region IS the
       > implementation layer. Full interpretation wants the
       > runtime trace.
+      > Fatal path read: prints the message (0x5a0:0x34),
+      > resets UI/cursor state (0x14d7/0x14d9 = 0, 0x14db =
+      > 0x800, 0x14dd = 0x620), calls 0x28:0xb with the
+      > region id, then conditionally formats a follow-up
+      > message from strings at 0x1787/0x178a.
 - [x] **Decode\* dispatch-order study.** `.dso-online`'s
       symbols.txt names 115 `Decode*` GPL handlers in a
       contiguous, address-ordered block, and ~114/115 agree
