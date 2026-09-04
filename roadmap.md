@@ -537,9 +537,12 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > Confirmed in the first pass: far-call helpers into
       > segments 0x5f8/0x5b0/0x638, an optional entry hook, a
       > relocation call `0x5b0:0xc0` taking (0, 1, 0, arg),
-      > and — matching dsun-exe-re 3.2's five-family-id model
-      > — a 5-entry iteration table (`mov si,0x6874; mov
-      > di,0x5`, cs-relative data). The 'Fatal error: Region
+      > and a `mov si,0x6874; mov di,0x5` construct that CORRECTION
+      > 2026-09-04: is NOT a 5-entry data table — cs:0x6874
+      > holds code (push/inc-ax/push/call far 0x5828:0x2d),
+      > so di=0x5 iterates something else (5 attempts or
+      > slots, not a family-id array). The five-family-id
+      > model stays unconfirmed in this function. The 'Fatal error: Region
       > change, Invalid save' path is at function offset
       > 0x1b0. Next reads: the 5-entry table contents, the
       > normal successor paths, and the failing elevator
