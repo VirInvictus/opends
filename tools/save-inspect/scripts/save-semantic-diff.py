@@ -241,7 +241,7 @@ def main(argv: list[str] | None = None) -> int:
                 if others:
                     print(f"    (+{others} more hypothesis row(s) cover this range)")
             else:
-                print(f"  {loc}: UNKNOWN — no hypothesis row covers this yet")
+                print(f"  {loc}: UNKNOWN; no hypothesis row covers this yet")
             print(f"    before: {c['before']}")
             print(f"    after:  {c['after']}")
         print()
