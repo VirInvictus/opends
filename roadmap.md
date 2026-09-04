@@ -24,11 +24,17 @@ authoring fixes is plumbing, not archaeology.
 Each phase ships a deliverable that is useful on its own,
 independent of whether later phases happen.
 
-## Where we are (snapshot 2026-08-28)
+## Where we are (snapshot 2026-09-04)
 
 Phases 0 through 5.5 are shipped. The toolkit reads, writes,
 round-trips, renders, and reassembles the games' data, and the
-engine binary is segmented and addressable.
+engine binary is segmented and addressable. Revised 2026-09-04
+after a four-agent deep-dive of the whole collection (tooling,
+binaries, formats, reference clones): the data side is as
+described below, but the binary side has zero named functions
+and the known-bug list is entirely symptom-level, so Phase 5.6
+is expanded from four leverage points into the frontloaded
+understanding campaign it should have been.
 
 | Tool | Version | Status |
 |---|---|---|
@@ -53,12 +59,16 @@ What the digging surface looks like today:
   corpus alignment and reassembles byte-identically; saves
   decode and edit; regions render (with entity animation and
   GIF output); dialogs extract as browsable trees.
-- **The binary side just opened.** `ovr-map` turns `DSUN.EXE`
-  from a 600 KB blob into 52 / 49 overlay segments with **935
-  (DS1) / 854 (DS2)** confirmed function entry points,
-  disassembled at correct bases, and importable into Ghidra as
-  labelled, correctly-based memory blocks (verified headless,
-  `ovr-map` v0.2.0).
+- **The binary side just opened, and is still unnamed.**
+  `ovr-map` turns `DSUN.EXE` from a 600 KB blob into 52 / 49
+  overlay segments with **935 (DS1) / 854 (DS2)** confirmed
+  function entry points, disassembled at correct bases and
+  importable into Ghidra as labelled, correctly-based memory
+  blocks. Honest caveat from the 2026-09-04 audit: the
+  headless import was run once but left no persisted artifact
+  (`scratch/ghidra_project/` is empty), and not one of the
+  1,789 entry points carries a name. Structure: measured.
+  Semantics: not started. That gap is Phase 5.6.
 - **The patch pipeline has its first real surface.** Bytecode
   patches author by label-relative address with fingerprint
   checks (`gpl-asm --patch`), and the darkfix package shape
@@ -133,12 +143,18 @@ fingerprint drift, length changes, and wrong installs. Authoring
 a *safe* byte patch is already plumbing.
 
 **Not solved: finding anything.** Almost nothing in the binary
-is *named*. The DSO symbol transfer and the official-patch
-diffing have not been run; the callgraph identifies direct
-callers for only ~12-14% of stubs; the resident image (all code
-before the overlays) has had no systematic pass at all. "Where
-does the mines elevator transition live?" is today a dig, not a
-lookup. That gap is exactly what Phase 5.6 exists to close.
+is *named*: zero of the 1,789 entry stubs carry a name, the
+curated symbol catalogues hold two entries, and the resident
+image (all code before the overlays) has had no systematic
+pass at all. The callgraph identifies direct callers for only
+~12-14% of stubs and never scans overlay payloads for
+far-calls. The official-patch diff is first-measured at
+segment granularity (survey §8) but no changed segment has
+been read instruction-by-instruction; the DSO symbol transfer
+has a working matching precedent on the GPL side and a
+do-nothing stub on the EXE side. "Where does the mines
+elevator transition live?" is today a dig, not a lookup. That
+gap is exactly what Phase 5.6 exists to close.
 
 **Decision: no full-exploration gate.** Requiring a complete EXE
 report before any patch attempt is the engine-first trap again
@@ -156,9 +172,19 @@ Instead, exploration is **targeted and per-fix**:
   official-patch diff hit, or call-shape match), and
   before/after disassembly. The report is the deliverable; the
   patch is its application. No site report, no patch.
-- The Phase 5.6 leverage points (DSO symbol transfer,
-  official-patch diffing) are pulled forward only when a specific
-  fix needs them. They are accelerators, not prerequisites.
+- **Amended 2026-09-04, after the collection deep-dive:** the
+  Phase 5.6 leverage points are no longer pull-forward-only.
+  The deep-dive found zero named functions, an effectively
+  empty symbol catalogue, and a known-bug list in which no bug
+  has a located site or a root cause; "targeted and per-fix"
+  from that baseline means every fix pays the full
+  archaeology tax from zero. Phase 5.6 now runs as a
+  frontloaded campaign (tooling, naming, formats, bug-site
+  census) on its own schedule, and per-fix pulls happen on
+  top of it. The no-full-exploration-gate ruling stands in
+  this sense: the gate is and stays the per-bug site report,
+  not a complete EXE report, and data-surface fixes proceed
+  regardless.
 - Phase 7 (the mines elevator) is the first plausible
   binary-surface fix. Its site report is the first test of this
   policy; if the evidence chain stalls, the honest fallback is
@@ -171,9 +197,13 @@ function catalogue per game, so that "where does this bug live
 in `DSUN.EXE`" becomes a lookup instead of a dig.
 
 **Ships**: per-game EXE symbol catalogues under
-`tools/ovr-map/syms/` (or a sibling), plus the Ghidra pipeline
-that grows them, and docs. No new tool required; this is
-labour with tooling that already exists.
+`tools/ovr-map/syms/` (or a sibling), the Ghidra pipeline that
+grows them, the investigatory tools in 5.6.0, and docs. The
+2026-09-04 deep-dive corrected this phase's original premise:
+the labour was not going to be doable with the existing tools
+alone (no name store, no working EXE-side symbol matcher, no
+GPL↔EXE cross-reference, no diff annotator), so the
+instruments ship first.
 
 > Progress 2026-08-28: the whole-binary structure survey
 > ([`docs/dsun-exe-survey.md`](docs/dsun-exe-survey.md)) shipped.
@@ -185,7 +215,25 @@ labour with tooling that already exists.
 > official-patch diffing leverage point below is updated: it is
 > blocked without a CD 1.0 base.
 
-Three leverage points, in order of cost:
+> Expanded 2026-09-04 (the ground-truth frontload): a
+> four-agent deep-dive of the whole collection (tooling,
+> binaries, formats, reference clones) returned a simple
+> scorecard. Measured and solid: the overlay container, the
+> segmentation, the resident/overlay split, and the
+> official-patch delta. Empty: names (0 / 1,789 entry stubs),
+> opcode runtime semantics (no opcode's effect ever observed;
+> ~40 of 129 catalogue rows are Custom), SAVE chunk meanings
+> beyond SAVE/5-/6 (validated on a single played save), and
+> bug sites (no known bug has a located site or root cause).
+> The reference clones materially help: the DSO `Decode*`
+> handler block is address-ordered and agrees with ~114/115
+> of libgff's independently-derived opcode names, so the
+> unknown opcodes are pinnable by elimination. The items
+> below turn that scorecard into work: tooling first, then
+> naming, then formats, then the bug-site census. Phase 5.7
+> and Phase 6 start from what this phase produces.
+
+Four original leverage points, in order of cost:
 
 - [ ] **Ghidra headless workflow written down and run.** The
       `ovr-map --ghidra` script lands segments and entry-stub
@@ -238,11 +286,181 @@ Three leverage points, in order of cost:
       animated palette backlog item, and one known-bug site
       located by name as input to Phase 6 or 7.
 
+### 5.6.0 — Investigatory tooling (build the instruments first)
+
+- [ ] **Land the in-flight ovr-map scripts.** Commit
+      `tools/ovr-map/scripts/diff-official.py`, and replace
+      the `import-dso-symbols.py` stub (it parses the DSO
+      table and emits literal `*TBD*` columns for six
+      hardcoded names; it performs no matching, and carries a
+      dead statement where its argument group is immediately
+      overwritten) with a real proposal generator modelled on
+      the `gpl-disasm` importer. Gitignore or scratch-park
+      the generated `OvrMap.java`.
+- [ ] **EXE symbol catalogue format and store.** A
+      `tools/ovr-map/syms/<game>.toml` schema (name, segment,
+      offset, evidence, confidence) plus loader support so
+      `ovr-map --disasm` and `--callgraph` render names.
+      Today there is nowhere to put a discovered name; every
+      finding lives in prose.
+- [ ] **Ghidra pipeline made real and persisted.** Re-run the
+      headless import and keep the project plus exported
+      function lists under `scratch/` (gitignored), with the
+      `analyzeHeadless` recipe checked into `docs/`; add the
+      bulk-rename-from-catalogue script (the rename half of
+      this phase). The 2026-08-28 "verified headless" claim
+      left no artifact; re-prove it once, then keep the
+      proof.
+- [ ] **Cluster-annotated official-patch differ.** Promote
+      `diff-official.py` to a real tool: per-cluster file
+      offsets, nearest entry stub, before/after `ndisasm`
+      excerpts, and signature-checked segment pairing (the
+      current index pairing silently misaligns if a segment
+      was ever inserted). DS1 stays out of scope: no 1.0 base
+      exists to diff against.
+- [ ] **GPL↔EXE cross-reference index.** Join `gpl-disasm
+      --global-cfg` edges and chunk entry points with
+      `ovr-map --callgraph` far-call edges and the resident
+      call-site census, so "which EXE code runs this GPL
+      chunk" becomes a lookup. This is the missing link that
+      makes the ~340-resident-function survey navigable, and
+      the substrate the name catalogue grows on.
+- [ ] **Format coverage report.** Walk every GFF in
+      `.games/`, `.games/archive-org/`, and
+      `testing_facility/`; tabulate chunks per FOURCC against
+      `gff-cat kind --list` and `docs/file-formats.md`.
+      Quantifies exactly which chunk kinds are undocumented
+      (RNME, VECT, PLYL, ALL, DATA, RGTP, PREF, GREQ at
+      minimum) and which containers no tool has ever touched.
+- [ ] **DARKRUN SAVE semantic differ.** Layer field-level
+      hypotheses (region id, party position, quest flags)
+      onto `save-inspect save-diff`'s byte diffs, so each
+      play-session diff accumulates understanding instead of
+      scrollback.
+- [ ] **Hygiene riders.** De-hardcode `/home/bdkl` from the
+      five Rust corpus tests (portable root discovery; the
+      current silent skips hide coverage loss from CI);
+      resolve the duplicate `import-dso-symbols.py` naming
+      collision (372-line matcher vs 66-line stub, same
+      filename in two tools); give `ds2-patch/` its
+      `manifest.toml` + `VERSION` and record the
+      promote-vs-copy decision for the applier.
+
+### 5.6.1 — The naming campaign
+
+- [ ] **Verify the first DSO→DS2 address anchors** by the
+      string-xref method `docs/dso-symbols.md` itself
+      prescribes (about 20 verified rows before emitting a
+      catalogue). This validates or kills the transfer
+      premise before any scale matching; the honest fallback
+      is behavioural naming without DSO names. Note the
+      offsets are DSO-v1.0-client-relative (flat offsets into
+      the extracted 32-bit image); only the names are claimed
+      to transfer.
+- [ ] **Name the resident API surface.** The ~340 distinct
+      overlay→resident call targets (survey §3.3) are the
+      highest-value naming set in either binary; the survey's
+      own threshold is "even 100 named functions". The hot
+      targets (0x5cc0, 0x5810) are already known.
+- [ ] **Decode\* dispatch-order study.** `.dso-online`'s
+      symbols.txt names 115 `Decode*` GPL handlers in a
+      contiguous, address-ordered block, and ~114/115 agree
+      with libgff's independently derived opcode names. Sort
+      the block, align it against the 129-opcode table, and
+      pin the unknown bytes (0x53, 0x55-0x57, 0x60, 0x71-0x75)
+      by elimination; record the `DecodeIfis` (an 0x27
+      semantics hint), `DecodeWend == DecodeJump`, and
+      `DecodeNumtoname == DecodeNametonum` alias facts. Names
+      and addresses are facts (cite the AGPL table); no code
+      moves.
+- [ ] **Locate the engine subsystems.** Combat, party, map,
+      inventory, and the save path, via string anchors plus
+      the callgraph. The DS1 save-string cluster at
+      0x49d3d-0x49e92 is the seeded start; the DSO table
+      names the persistence family outright
+      (`SaveGameToDisk`/`LoadGameFromDisk` and kin).
+- [ ] **Read the overlay manager and the dispatchers.** The
+      manager bodies (0x466e0 / 0x4aff0) bound how many
+      segments stay resident (directly relevant to the
+      elevator race); the indirect-call dispatcher segments
+      (DS1 25; DS2 21/35/42) hold the concentrated `FF /2`
+      sites whose resolution turns them into ordinary
+      callgraph edges.
+- [ ] **Locate per-segment relocation tables; reconcile the
+      FBOV segnum.** The descriptors imply relocations the
+      survey has not found; reloc-safe EXE patching (Phase
+      5.7) needs them. Reconcile FBOV's segnum field (220 /
+      229) against the parsed descriptor records (58 / 49):
+      either a second segment class exists or a field is
+      misread.
+
+### 5.6.2 — Formats and saves
+
+- [ ] **Decode SAVE/1** (the ~10 KB probable master state
+      table) against libgff's object/region structs, seeded
+      by the `gpldisk.c` string anchors and the DSO
+      Save*/Load* names.
+- [ ] **Chunk-map played saves** via the `save-diff` loop
+      (snapshot, one in-game action, snapshot) for each SAVE
+      id family, converting the speculation rows in
+      `save-inspect`'s README into per-id semantics. Needs
+      play sessions (Brandon's).
+- [ ] **Settle save compression.** Locate the
+      `Failed Uncompress in Loadgamefromdisk` caller. Today
+      every on-disk save parses as a plain GFF and the survey
+      string says compression exists somewhere; which is
+      true under all engine paths decides whether save
+      diffing can be trusted.
+- [ ] **Run the opcode-fuzz recipe loop to first discovery.**
+      Phase 5's done-when (discover one previously-unknown
+      opcode) is still open; settle the recipe format and
+      meet it. The Decode\* study above narrows the
+      candidates first.
+- [ ] **Adopt the reference catalogues into the docs.**
+      libgff's `gfftypes.h` defines 83 chunk types against
+      our catalogue's gaps (BVOC/FVOC/OMAP/POBJ/SJMP/FNFO/
+      RDAT/CACT/STXT at minimum); correct the free-list prose
+      (all 61 measured files carry `toc_length − 2` plus a
+      2-byte count, not an empty list at `toc_length`; a
+      writer following the current prose produces malformed
+      files); pin `file_flags` (8 on all DS2 regions and both
+      CHARSAVEs) and the `data0` ordinals; fix
+      `dso-symbols.md`'s prefix census (Save\* 12 not 24,
+      Combat\* 6 not 11, Region\* 0 not 4, among others); and
+      record the upstream-projects.md license drift
+      (libsoloscuro ships no LICENSE file).
+
+### 5.6.3 — The bug-site census
+
+- [ ] **Stand up the census.** A table in or beside
+      `docs/known-bugs.md`: per bug, site located / site
+      named / root cause / evidence chain. Today every row
+      starts at no; the table makes the distance to
+      "patchable" visible and is the checklist the site-
+      report rule consumes.
+- [ ] **Read SSI's own fixes.** Characterize the low-cluster
+      diff segments (0, 5, 8, 9, 16, 36)
+      instruction-by-instruction against the 1.02 fix list
+      (`known-bugs.md` §1). The diffing checkbox above covers
+      the tooling; this is the reading, and SSI's fix sites
+      are the only ground truth for what an engine-code fix
+      looks like in this codebase.
+- [ ] **Locate the mines-elevator transition.** The
+      region-transition state machine (GPL side, EXE side, or
+      both) is Phase 7's site report; the investigation lives
+      here so Phase 7 starts from a site instead of a dig.
+      The DSO candidates (`GplChangeRegion`, `GplTileCheck`,
+      `GplDoorCheck`) and the official-patch diff are the
+      first two levers.
+
 **Done when**: a reader can ask "what is at `ovr:NN+0x...`"
 and get a name with evidence for a meaningful fraction of the
-catalogue (target: the ~200 most-called functions), and at
-least one downstream item (animated palette, or a Phase 6/7
-site) cites it.
+catalogue (target: the ~200 most-called functions); at least
+one downstream item (animated palette, or a Phase 6/7 site)
+cites it; the coverage report and the census table exist and
+are being consumed; and the first Phase 6/7 target bug has a
+complete site report produced by this phase rather than
+scrounged at fix time.
 
 ## Phase 5.7 — EXE patch authoring surface
 
@@ -254,6 +472,12 @@ checked, verified before it ships.
 in whatever tool owns the job (decide: extend `gpl-asm
 --patch` with a second target kind, or a sibling `exe-patch`;
 decide by whether the TOML schema can stay shared).
+
+Ordering note (2026-09-04): the authoring tooling below may be
+built in parallel with Phase 5.6's tooling half, but an
+EXE-surface fix needs both halves of that phase: the catalogue
+(for symbol-relative addressing) and the target bug's site
+report (5.6.3). Data-surface fixes do not wait on either.
 
 - [ ] `at = "ovr:19+0x17a7"` addressing, resolved against the
       `ovr-map` segment map (file offset, segment-local
@@ -323,7 +547,10 @@ authoring should feel like routine work.
 - [ ] Pick one trivial DS1 bug (identified during Phase 2 repro
       work). Prefer a GPL-data fix if one is available: it
       exercises `gpl-asm --patch` + `gff-edit` and defers the
-      EXE surface until Phase 5.7 exists.
+      EXE surface until Phase 5.7 exists. Prefer, second, a
+      bug whose site the Phase 5.6.3 census has already
+      characterized, so the fix proves the pipeline instead
+      of paying the archaeology tax.
 - [ ] Repro fixture for the chosen bug
       (`tools/repro/bugs/<id>/bug.toml`) so the fix is
       verifiable. Requires ydotool installed locally; repro
