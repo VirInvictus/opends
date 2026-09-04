@@ -353,7 +353,7 @@ Four original leverage points, in order of cost:
       > cache nuking does not help; manual javac against the
       > pinned JDK compiles our scripts clean. Full evidence
       > and the standing syntax-check recipe in
-      > `docs/dsun-exe-re.md` 8. Until the host layer is
+      > `docs/re-tooling.md`. Until the host layer is
       > fixed, `propose-exe-symbols.py --census` stands in
       > for the Ghidra-side function list.
 - [x] **Cluster-annotated official-patch differ.** Promote
