@@ -482,7 +482,13 @@ Four original leverage points, in order of cost:
       > (DS2 ovr35+0x2327) and the awaken path (DS1
       > ovr04+0x165). Catalogue: 17 rows. The transfer premise
       > holds across the persistence, status, dispatch and
-      > audio layers; ~3 more anchors to the ~20 threshold.
+      > audio layers. Fourth pass closed the threshold:
+      > find_path and line_of_sight_check (both DS1 resident),
+      > the combat save gate (DS1 ovr25+0x1383, in the
+      > dispatcher segment), and the CD-drive check (DS2
+      > ovr04+0x85d, two sibling stubs). Catalogue: 21 rows —
+      > the anchors box's catalogue condition is met, and the
+      > resident-side rows seed the resident-census box.
 - [ ] **Name the resident API surface.** The ~340 distinct
       overlay→resident call targets (survey §3.3) are the
       highest-value naming set in either binary; the survey's
