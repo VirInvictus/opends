@@ -540,6 +540,14 @@ Four original leverage points, in order of cost:
       > Bases stay probable; settlement route is the trace
       > hook (DGROUP:0x2f6) live in a debugger, or resolving
       > the 0xa4d4 pointer table.
+      > 0xa4d4 pointer-table probe result: the table is ALL
+      > ZEROS on disk (entries around 0xa4d4 included) — it
+      > is runtime-initialized by the VM's setup code, so
+      > static resolution of the operation implementations
+      > requires finding the init writer (search for stores
+      > to 0xa4d4's range) or a runtime trace. Both roads
+      > remain open; neither changes the dispatch-table
+      > findings.
 - [x] **Decode\* dispatch-order study.** `.dso-online`'s
       symbols.txt names 115 `Decode*` GPL handlers in a
       contiguous, address-ordered block, and ~114/115 agree
