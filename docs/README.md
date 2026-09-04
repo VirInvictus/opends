@@ -35,7 +35,9 @@ trove that names 3,530 engine functions.
 
 **"I want to author or apply patches."**
 [`patch-workflow.md`](patch-workflow.md) is the end-to-end fix
-authoring guide (GPL edit or binary patch, and how to choose).
+authoring guide (GPL edit or binary patch, and how to choose);
+[`fix-format.md`](fix-format.md) is the authoritative patch
+artifact specification (what the applier runs).
 The applier is real: [`../../ds1-patch/`](../../ds1-patch/)
 (v0.0.1) ships `apply.py` + the `darkfix` engine that verify an
 install against the canonical hashes, back up, apply, journal,
@@ -72,6 +74,7 @@ attribute-everything policy; see also the repo-root
 | [`gpl-opcodes.md`](gpl-opcodes.md) | reference | The 129-entry GPL opcode table. |
 | [`dso-symbols.md`](dso-symbols.md) | reference | Index into the Dark Sun Online debug symbols and how we curate names from them. |
 | [`patch-workflow.md`](patch-workflow.md) | walkthrough | Authoring a fix end to end: repro, locate, edit, verify, package. |
+| [`fix-format.md`](fix-format.md) | reference | The darkfix patch artifact spec: fix scripts, EDITS, the authoring TOML, superseded formats. |
 | [`binary-patching.md`](binary-patching.md) | walkthrough | The `DSUN.EXE` binary-patch path: TOML patch format, r2 workflow, risks. |
 | [`build-environment.md`](build-environment.md) | walkthrough | Dev setup on Fedora: deps, game extraction, corpus layout. |
 | [`source-hashes/`](source-hashes/) | reference | Canonical SHA256 manifests for the GOG 1.10 installs (`verify-install` checks against these). |

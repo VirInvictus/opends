@@ -135,11 +135,13 @@ EDITS = [
 ]
 
 def apply(source_path, dest_path):
-    apply_bytes(source_path, dest_path, EDITS, expect_sha=SOURCE_SHA256)
+    apply_bytes(source_path, dest_path, EDITS)
 ```
 
-For GPL data fixes, the script extracts the relevant chunk via
-`gff-tool`, edits it, and reinserts it.
+For GPL data fixes, the script uses `apply_gff_chunk` (same
+module): extract via `gff-edit`, edit via `gpl-asm`'s
+verified `--patch` output, reinsert. The authoritative format
+write-up is [`fix-format.md`](fix-format.md).
 
 ## 5. Test the fix
 

@@ -112,30 +112,15 @@ hackers.
 
 ### 3.4. Author the patch
 
-Smallest possible byte change. Format:
-
-```toml
-# fixes/binary/042-combat-ai-loop.toml
-id = "fix.ds2.combat-ai-loop"
-target_file = "DSUN.EXE"
-target_sha256 = "<canonical>"
-description = "Combat AI no longer infinite-loops on Umber Hulk turn"
-
-[[patch]]
-offset = 0x0001abcd
-expect = "74 0a"        # JE +0x0a
-replace = "75 0a"       # JNE +0x0a
-```
-
-The applier:
-
-1. Opens the file.
-2. Seeks to `offset`.
-3. Reads len(`expect`) bytes; if they don't match, refuses.
-4. Writes `replace` bytes.
-
-`expect` is a fingerprint, not just a comment. It guarantees we
-don't apply a fix to a binary we don't recognize.
+The patch artifact format is specified once, in
+[`fix-format.md`](fix-format.md): a darkfix fix script
+(`fixes/NNN-<short-id>.py`) whose `EDITS` carry
+`{"offset", "expect", "replace"}` — the fingerprint-gated,
+in-place-only byte edit this section used to sketch as a TOML
+applier that was never built. Author EXE edits against
+`ndisasm -b 16` output and `ovr-map`'s addressing; author GPL
+edits with `gpl-asm --patch` and paste the resolved offsets into
+the fix script.
 
 ### 3.5. Distribute
 
