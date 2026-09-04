@@ -354,13 +354,20 @@ Four original leverage points, in order of cost:
       > `docs/dsun-exe-re.md` 7. Until the host layer is
       > fixed, `propose-exe-symbols.py --census` stands in
       > for the Ghidra-side function list.
-- [ ] **Cluster-annotated official-patch differ.** Promote
+- [x] **Cluster-annotated official-patch differ.** Promote
       `diff-official.py` to a real tool: per-cluster file
       offsets, nearest entry stub, before/after `ndisasm`
       excerpts, and signature-checked segment pairing (the
       current index pairing silently misaligns if a segment
       was ever inserted). DS1 stays out of scope: no 1.0 base
       exists to diff against.
+      (Promoted 2026-09-04. Signature pairing = size + entry-
+      offset sequence: 19 of the 44 changed segments pair
+      verified, 25 fall to flagged UNVERIFIED index pairing.
+      First read: segment 16's two 1-byte clusters are SSI
+      repointing an overlaid `load_resource` far-call from
+      `0128:04a1` to `0128:04ab` — the documented 1.10 loader
+      address — the exact fix shape the 5.6.3 census hunts.)
 - [ ] **GPL↔EXE cross-reference index.** Join `gpl-disasm
       --global-cfg` edges and chunk entry points with
       `ovr-map --callgraph` far-call edges and the resident
