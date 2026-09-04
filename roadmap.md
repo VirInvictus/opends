@@ -530,6 +530,16 @@ Four original leverage points, in order of cost:
       > Both bases remain probable until a semantic handler
       > read confirms; ByteDec (DS2) already marshals and
       > calls through the far-pointer table at 0xa4d4.
+      > Base-status detail: ByteDec at 0x6500 decodes as a
+      > coherent marshalling stub (byte-masked argument, far
+      > call through the 0xa4d4 pointer table, iret unwind —
+      > an unusual VM discipline worth its own read), but the
+      > default entry 0x20a2 does not decode cleanly at
+      > 0x85a2 under any ±6 alignment: the table's tail may
+      > hold a sentinel rather than the default handler.
+      > Bases stay probable; settlement route is the trace
+      > hook (DGROUP:0x2f6) live in a debugger, or resolving
+      > the 0xa4d4 pointer table.
 - [x] **Decode\* dispatch-order study.** `.dso-online`'s
       symbols.txt names 115 `Decode*` GPL handlers in a
       contiguous, address-ordered block, and ~114/115 agree
