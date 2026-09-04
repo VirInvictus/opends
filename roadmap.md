@@ -638,6 +638,27 @@ Four original leverage points, in order of cost:
       the tooling; this is the reading, and SSI's fix sites
       are the only ground truth for what an engine-code fix
       looks like in this codebase.
+      > READ 2026-09-04, with a strategy-changing verdict:
+      > **the low-cluster segments contain no behavioral
+      > fixes.** All 183 clusters across segments 0, 5, 8, 9,
+      > 16 and 36 were classified by normalized-instruction
+      > comparison (decode both sides from their nearest
+      > entry stub, compare with immediates normalized):
+      > 179 are pure data-address rebiasing — SSI's 1.10
+      > recompile shifted DGROUP/scratch structures (e.g.
+      > segment 0's `es:0x4034` -> `es:0x40c0`, +0x8c; seg 36
+      > is ONE byte changing a `mul` operand), and the
+      > surrounding code is byte-identical. The 4 remaining
+      > clusters (seg 5 x3, seg 9 x1) are instruction-boundary
+      > desyncs at shifted addresses, not edits; seg 16's
+      > famous pair is the loader pointer repoint. So the
+      > behavioral 1.02 fixes live in the 25 REBUILT segments
+      > (the UNVERIFIED-pairing class) — reading them needs
+      > function-level pairing via the identical-signature
+      > anchor segments, which is exactly what the promoted
+      > differ's signature pairing was built for. This
+      > retroactively recontextualizes survey 8's 'fix-sized
+      > edit' reading of segment 0.
 - [ ] **Locate the mines-elevator transition.** The
       region-transition state machine (GPL side, EXE side, or
       both) is Phase 7's site report; the investigation lives
