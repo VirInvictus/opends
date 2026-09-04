@@ -4,6 +4,20 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+- **`save-inspect` v0.9.5** — the DARKRUN SAVE semantic
+  differ. `scripts/save-semantic-diff.py` diffs two
+  DARKRUN-shape GFFs, clusters the byte differences per SAVE
+  chunk, and annotates each cluster from the new
+  `syms/save-fields.toml` field-hypotheses catalogue (kind +
+  id + byte range, record-array aware): a cluster reads as
+  "record 2 field+0x22: combat stats[6] [verified]" instead
+  of raw offsets. Uncovered clusters print as UNKNOWN (the
+  next RE target); confirmed findings become TOML rows, so
+  play-session diffs accumulate understanding in the
+  catalogue. Seed rows carry only existing knowledge (the
+  verified SAVE/5 + SAVE/6 layouts from ds1-party-edit and
+  the README's one-save speculation rows).
+
 - **`ovr-map` v0.3.0** — the Phase 5.6.0 investigatory-tooling
   release. The curated **EXE symbol catalogue**
   (`syms/<game>.toml`: name, segment, offset, evidence,
