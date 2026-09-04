@@ -375,13 +375,21 @@ Four original leverage points, in order of cost:
       chunk" becomes a lookup. This is the missing link that
       makes the ~340-resident-function survey navigable, and
       the substrate the name catalogue grows on.
-- [ ] **Format coverage report.** Walk every GFF in
+- [x] **Format coverage report.** Walk every GFF in
       `.games/`, `.games/archive-org/`, and
       `testing_facility/`; tabulate chunks per FOURCC against
       `gff-cat kind --list` and `docs/file-formats.md`.
       Quantifies exactly which chunk kinds are undocumented
       (RNME, VECT, PLYL, ALL, DATA, RGTP, PREF, GREQ at
       minimum) and which containers no tool has ever touched.
+      (Done 2026-09-04: `tools/gff-edit/scripts/format-
+      coverage.py` walks the corpus TOC-only (stdlib, 12-byte
+      indexed entries, the 12-byte segmented trio per
+      gff-edit's parse), and the snapshot lives at
+      `docs/format-coverage.md`. Measured: 120 GFF containers,
+      47 of 68 documented kinds present; gap list DATA (1,292
+      chunks), MAP/RNME (60 each), PLYL, ALL, GREQ, VECT,
+      CMAT, CPAL, PREF. RGTP does not appear in this corpus.)
 - [ ] **DARKRUN SAVE semantic differ.** Layer field-level
       hypotheses (region id, party position, quest flags)
       onto `save-inspect save-diff`'s byte diffs, so each
