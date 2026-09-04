@@ -375,6 +375,13 @@ Four original leverage points, in order of cost:
       chunk" becomes a lookup. This is the missing link that
       makes the ~340-resident-function survey navigable, and
       the substrate the name catalogue grows on.
+      > Progress 2026-09-04: the EXE half exists as reusable
+      > data — `propose-exe-symbols.py --census --json`
+      > emits the exact seg:off resident-target census with
+      > per-target call counts. Remaining: the GPL side
+      > (chunk FOURCC/id surface from `gpl-disasm --global-cfg
+      > --json`), the `66 68` FOURCC push-site join
+      > (survey 5), and the index format itself.
 - [x] **Format coverage report.** Walk every GFF in
       `.games/`, `.games/archive-org/`, and
       `testing_facility/`; tabulate chunks per FOURCC against
