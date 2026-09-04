@@ -164,7 +164,7 @@ rows. Pair both with `ghidra/OvrExport.java` (checked in, static) to
 write the final function list as TSV.
 
 The full headless recipe, including the dot-free path rules that make
-it runnable from this checkout, is in `docs/dsun-exe-re.md` 7.
+it runnable from this checkout, is in `docs/dsun-exe-re.md` 8.
 
 ### Helper scripts (`scripts/`)
 

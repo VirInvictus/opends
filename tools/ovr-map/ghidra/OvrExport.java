@@ -1,6 +1,6 @@
 /*
  * OvrExport.java — the text export half of the Ghidra pipeline
- * (docs/dsun-exe-re.md 7, Phase 5.6.0). Checked in (not generated):
+ * (docs/dsun-exe-re.md 8, Phase 5.6.0). Checked in (not generated):
  * it is static, catalogue-independent, and works on any program.
  *
  * Writes every function the analysis knows as one TSV line per row:

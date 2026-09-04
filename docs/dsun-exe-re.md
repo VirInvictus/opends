@@ -598,14 +598,13 @@ entity render loop); `0x23067` was never it either.
 These are the next pieces an RE pass should crack, in rough
 order of value to the toolkit:
 
-1. **The region-number-to-family-id map** (DS1). §3.2 narrowed
-   the question: each region picks one of five family ids (`{0,
-   1, 100, 200, 300}`) before calling the dispatcher at
-   `0x568be`. Finding the caller (or whatever indirect dispatch
-   table reaches `0x568be`) gives us the lookup. Byte-pattern
-   search for direct callers turned up zero hits; the next try
-   is walking function-pointer tables in the data segment
-   backwards from `0x568be`.
+1. **RESOLVED 2026-08-08: there is no region-number-to-
+   family-id map** (DS1). §3.2 had narrowed the question to the
+   five family ids (`{0, 1, 100, 200, 300}`) and the dispatcher
+   at `0x568be`; the follow-up pass concluded no lookup table
+   exists to find. The better prize replaced it: the save/region
+   module is string-anchored instead (see §3.3's breadcrumbs and
+   the `syms/ds1.toml` anchors; survey §9.1).
 2. **The CMAT format**. With two known instances at 41,368 and
    21,643 bytes, the per-entry layout should be derivable from
    how the engine consumes the buffer. The success path after
@@ -626,13 +625,12 @@ order of value to the toolkit:
    `'PAL '` push sites (`0x2b770`, `0x68ab5`, `0x71f94`,
    `0x8db24`) against the DSO symbol table to identify the
    region-render path vs. the menu/title path.
-5. **The DS2 `load_resource` segment**. The DS2 target
-   `0128:04ab` needs mapping to a file offset; then the function
-   can be named by call-graph shape against DSO's symbol table
-   (`GffSeekChunk`, `GetResource`, `LoadResource` are the
-   plausible names).
+5. **RESOLVED: the DS2 `load_resource` segment** maps to file
+   `0x692b` (`0128:04ab` with header `0x5200`; survey §9.5), and
+   the function is named in `syms/ds2.toml` (verified). Its DS1
+   counterpart `0x58b4` is catalogued alongside.
 
-## 5. How to reproduce the findings on this page
+## 6. How to reproduce the findings on this page
 
 All of section 2 / 3 was extracted with Python against the raw
 file bytes. Radare2 can't auto-load the Borland/TLINK overlay
@@ -664,7 +662,7 @@ plausible-looking garbage rather than an error, which is the worst
 possible failure for RE work. The patterns in section 2 are short
 enough that hand-decoding catches it.
 
-## 6. Related
+## 7. Related
 
 - [`dso-symbols.md`](dso-symbols.md) is the DSO function-name
   cross-reference; pair findings on this page with candidate
@@ -677,7 +675,7 @@ enough that hand-decoding catches it.
   `libgff` and `dsoageofheroes` work that shaped the GFF chunk
   vocabulary the engine consumes.
 
-## 7. Tooling
+## 8. Tooling
 
 Installed 2026-08-08. Everything here is host tooling, not a repo
 dependency: nothing in `tools/` imports any of it, and the
