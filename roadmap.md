@@ -368,20 +368,29 @@ Four original leverage points, in order of cost:
       repointing an overlaid `load_resource` far-call from
       `0128:04a1` to `0128:04ab`, the documented 1.10 loader
       address: the exact fix shape the 5.6.3 census hunts.)
-- [ ] **GPL↔EXE cross-reference index.** Join `gpl-disasm
+- [x] **GPL↔EXE cross-reference index.** Join `gpl-disasm
       --global-cfg` edges and chunk entry points with
       `ovr-map --callgraph` far-call edges and the resident
       call-site census, so "which EXE code runs this GPL
       chunk" becomes a lookup. This is the missing link that
       makes the ~340-resident-function survey navigable, and
       the substrate the name catalogue grows on.
-      > Progress 2026-09-04: the EXE half exists as reusable
-      > data: `propose-exe-symbols.py --census --json`
-      > emits the exact seg:off resident-target census with
-      > per-target call counts. Remaining: the GPL side
-      > (chunk FOURCC/id surface from `gpl-disasm --global-cfg
-      > --json`), the `66 68` FOURCC push-site join
-      > (survey 5), and the index format itself.
+      (Built 2026-09-04: `scripts/gpl-xref.py`. The join key
+      is the loader argument pair: a `66 68 <FOURCC>` push
+      with an immediate id push behind it and the far call
+      ahead. DS1 215 sites / DS2 209, 77 / 65 carrying
+      immediate ids; the `add sp, 0xc` after the call
+      confirms the three-argument loader contract. Headline
+      finding: there are NO direct `GPL `/`MAS ` pushes in
+      either binary; script chunks load through the
+      GPLI/GPLX index chunks, so the per-chunk join resolves
+      one level. The statically visible boot requests are
+      exactly six DS1 (4x `GPLI[1]` from ovr21, 2x `GPLX[1]`
+      from ovr22) and four DS2 (`GPLI[1]` from ovr18, two of
+      whose loader calls resolve to the catalogued
+      `load_resource` 0x692b); other region script loads must
+      compute the index id at runtime. JSON index plus
+      per-game snapshots under `scratch/gpl-xref/`.)
 - [x] **Format coverage report.** Walk every GFF in
       `.games/`, `.games/archive-org/`, and
       `testing_facility/`; tabulate chunks per FOURCC against
