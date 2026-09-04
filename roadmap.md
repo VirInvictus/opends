@@ -545,9 +545,19 @@ Four original leverage points, in order of cost:
       > is runtime-initialized by the VM's setup code, so
       > static resolution of the operation implementations
       > requires finding the init writer (search for stores
-      > to 0xa4d4's range) or a runtime trace. Both roads
-      > remain open; neither changes the dispatch-table
-      > findings.
+      > to 0xa4d4's range) or a runtime trace. Init-writer
+      > hunt DONE, with a twist: the store into 0xa4d4 is at
+      > 0x6fc6 — INSIDE the handler region, in opcode 0x04's
+      > own handler (LongDec, 0x6fc1). The 0xa4d4 slot is not
+      > an init-time table; it is a self-managed VM slot the
+      > stubs read and write among themselves (ByteDec reads
+      > it and calls far through it; LongDec stores it). The
+      > handler stubs are the VM's per-opcode implementations,
+      > and 0xa4d4 holds per-execution state (likely the
+      > current-operation pointer). This strengthens the
+      > base-0x6500 reading: the stub region IS the
+      > implementation layer. Full interpretation wants the
+      > runtime trace.
 - [x] **Decode\* dispatch-order study.** `.dso-online`'s
       symbols.txt names 115 `Decode*` GPL handlers in a
       contiguous, address-ordered block, and ~114/115 agree
