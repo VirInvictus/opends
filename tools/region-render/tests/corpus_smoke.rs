@@ -17,7 +17,11 @@ use region_render::{REGION_PIXEL_HEIGHT, REGION_PIXEL_WIDTH, RegionMap, inline_p
 fn corpus_roots() -> Vec<PathBuf> {
     ["ds1", "ds2"]
         .iter()
-        .map(|g| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.games").join(g))
+        .map(|g| {
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../.games")
+                .join(g)
+        })
         .collect()
 }
 

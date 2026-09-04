@@ -107,7 +107,13 @@ fn every_bitmap_chunk_decodes_or_reports_cleanly() {
                             other => format!("other:{other}"),
                         };
                         *err_kinds.entry(kind.clone()).or_insert(0) += 1;
-                        failures.push((path.display().to_string(), c.kind.to_string(), c.id, frame_id, kind));
+                        failures.push((
+                            path.display().to_string(),
+                            c.kind.to_string(),
+                            c.id,
+                            frame_id,
+                            kind,
+                        ));
                     }
                 }
             }

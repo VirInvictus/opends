@@ -29,7 +29,11 @@ use gff_edit::{Gff, builder_from_gff};
 fn corpus_dirs() -> Vec<PathBuf> {
     let mut dirs: Vec<PathBuf> = ["ds1", "ds2"]
         .iter()
-        .map(|g| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.games").join(g))
+        .map(|g| {
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../.games")
+                .join(g)
+        })
         .collect();
     if let Some(home) = std::env::var_os("HOME") {
         let home = PathBuf::from(home);
@@ -61,10 +65,7 @@ fn builder_round_trip_preserves_chunks() {
 
     // Skip when the corpus is absent (CI / fresh clone), matching the gpl-asm
     // corpus tests.
-    if corpus_dirs()
-        .iter()
-        .all(|d| gff_files(d).is_empty())
-    {
+    if corpus_dirs().iter().all(|d| gff_files(d).is_empty()) {
         eprintln!("skipping builder corpus: no GFFs under the corpus dirs (.games absent)");
         return;
     }

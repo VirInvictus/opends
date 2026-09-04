@@ -12,17 +12,14 @@ use gpl_asm::{EncodeError, encode};
 use gpl_disasm::disassemble;
 
 fn corpus() -> Vec<std::path::PathBuf> {
-    [
-        "ds1/GPLDATA.GFF",
-        "ds2/GPLDATA.GFF",
-    ]
-    .iter()
-    .map(|rel| {
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../.games")
-            .join(rel)
-    })
-    .collect()
+    ["ds1/GPLDATA.GFF", "ds2/GPLDATA.GFF"]
+        .iter()
+        .map(|rel| {
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../.games")
+                .join(rel)
+        })
+        .collect()
 }
 
 fn is_script(kind: FourCC) -> bool {

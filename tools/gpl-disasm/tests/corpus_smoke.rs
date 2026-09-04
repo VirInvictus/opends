@@ -24,7 +24,11 @@ use gpl_disasm::disassemble;
 fn corpus() -> Vec<PathBuf> {
     ["ds1/GPLDATA.GFF", "ds2/GPLDATA.GFF"]
         .iter()
-        .map(|rel| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.games").join(rel))
+        .map(|rel| {
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../.games")
+                .join(rel)
+        })
         .collect()
 }
 

@@ -18,7 +18,11 @@ use gff_edit::Gff;
 fn corpus_dirs() -> Vec<PathBuf> {
     let mut dirs: Vec<PathBuf> = ["ds1", "ds2"]
         .iter()
-        .map(|g| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.games").join(g))
+        .map(|g| {
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../.games")
+                .join(g)
+        })
         .collect();
     if let Some(home) = std::env::var_os("HOME") {
         let home = PathBuf::from(home);
@@ -48,10 +52,7 @@ fn no_op_replace_preserves_bytes() {
     let mut failed: Vec<String> = Vec::new();
     // Skip when the corpus is absent (CI / fresh clone), matching the gpl-asm
     // corpus tests and this file's own doc comment above.
-    if corpus_dirs()
-        .iter()
-        .all(|d| gff_files(d).is_empty())
-    {
+    if corpus_dirs().iter().all(|d| gff_files(d).is_empty()) {
         eprintln!("skipping corpus round-trip: no GFFs under the corpus dirs (.games absent)");
         return;
     }

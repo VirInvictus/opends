@@ -22,17 +22,14 @@ use gpl_asm::{ValidationError, validate};
 use gpl_disasm::{DisasmResult, Expression, Instruction, disassemble};
 
 fn corpus() -> Vec<std::path::PathBuf> {
-    [
-        "ds1/GPLDATA.GFF",
-        "ds2/GPLDATA.GFF",
-    ]
-    .iter()
-    .map(|rel| {
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../.games")
-            .join(rel)
-    })
-    .collect()
+    ["ds1/GPLDATA.GFF", "ds2/GPLDATA.GFF"]
+        .iter()
+        .map(|rel| {
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../.games")
+                .join(rel)
+        })
+        .collect()
 }
 
 fn is_script(kind: FourCC) -> bool {
@@ -70,7 +67,10 @@ fn corpus_chunks_validate_clean() {
             } else if samples.len() < 5 {
                 samples.push(format!(
                     "{} {}/{:#x}: {:?}",
-                    path.display(), c.kind, c.id, report.errors
+                    path.display(),
+                    c.kind,
+                    c.id,
+                    report.errors
                 ));
             }
         }
