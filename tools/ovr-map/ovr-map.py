@@ -194,7 +194,9 @@ def build(path: Path) -> dict[str, Any]:
     }
 
 
-def load_syms(path: Path, report: dict[str, Any] | None = None) -> dict[tuple[Any, int], dict[str, Any]]:
+def load_syms(
+    path: Path, report: dict[str, Any] | None = None
+) -> dict[tuple[Any, int], dict[str, Any]]:
     """Load a curated EXE symbol catalogue (tools/ovr-map/syms/<game>.toml).
 
     Returns a lookup keyed by (segment, offset): ("resident", file_offset)
@@ -228,9 +230,7 @@ def load_syms(path: Path, report: dict[str, Any] | None = None) -> dict[tuple[An
             raise OvrError(f"{where}: offset must be a non-negative integer")
         conf = row.get("confidence", "provisional")
         if conf not in SYMS_CONFIDENCE:
-            raise OvrError(
-                f"{where}: confidence {conf!r} not one of {SYMS_CONFIDENCE}"
-            )
+            raise OvrError(f"{where}: confidence {conf!r} not one of {SYMS_CONFIDENCE}")
         if report is not None and isinstance(seg, int):
             segs = [s for s in report["segments"] if s["index"] == seg]
             if not segs:

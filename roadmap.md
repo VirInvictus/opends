@@ -290,7 +290,7 @@ Four original leverage points, in order of cost:
 
 ### 5.6.0 — Investigatory tooling (build the instruments first)
 
-- [ ] **Land the in-flight ovr-map scripts.** Commit
+- [x] **Land the in-flight ovr-map scripts.** Commit
       `tools/ovr-map/scripts/diff-official.py`, and replace
       the `import-dso-symbols.py` stub (it parses the DSO
       table and emits literal `*TBD*` columns for six
@@ -299,6 +299,21 @@ Four original leverage points, in order of cost:
       overwritten) with a real proposal generator modelled on
       the `gpl-disasm` importer. Gitignore or scratch-park
       the generated `OvrMap.java`.
+      (Landed 2026-09-04 as `scripts/propose-exe-symbols.py`
+      — the rename also resolves the same-filename-in-two-
+      tools collision with gpl-disasm's importer. Three
+      honest modes: `--census` (exact seg:off resident-target
+      worklist with 55 8B EC evidence marks), `--strings`
+      (source-file anchors; finds `gpldisk.c` at 0x49d3d and
+      reproduces the corrected DSO prefix census: Save 12,
+      Combat 6, Region 0), `--anchors` (renders curated rows
+      into catalogue format). Finding: survey 3.3's "345
+      targets" keyed targets by segment base, dropping the
+      call offset; the exact census measures 746/760
+      candidate targets (36/35 prologue-confirmed), and
+      overlay far-call segment words predate the manager's
+      relocation pass, so targets stay candidates until
+      corroborated.)
 - [x] **EXE symbol catalogue format and store.** A
       `tools/ovr-map/syms/<game>.toml` schema (name, segment,
       offset, evidence, confidence) plus loader support so
