@@ -108,6 +108,61 @@ These are *candidates*; each requires verification against DS2's
 binary before being committed to a `syms.toml` symbol file. Do
 not ship unverified mappings.
 
+## The Decode* handler block (dispatch-order study, 2026-09-04)
+
+`symbols.txt` names 115 `Decode*` functions spanning
+`0x3aff2`..`0x3d914` (DSO v1.0 client offsets; addresses are facts
+cited from the AGPL table, no code moves). This section records what
+the study established, including one correction to the premise it
+started from.
+
+**Perfect name accounting with libgff.** 111 of the 115 handler
+names match libgff's non-default opcode mnemonics under
+case-insensitive PascalCase equivalence, plus one systematic rename:
+DSO calls the 13 trigger handlers `*check` where libgff says
+`*trigger` (`DecodeMoveTilecheck` / `gpl move tiletrigger`, the
+`0x68`-`0x70` family, and `DecodeInloscheck` / `0x1b`, and kin). The
+remaining four names: two are address-aliases (below), one is
+`DecodeIfis` (below), and one is `DecodeDefault`. Adding those up,
+**every one of the 114 non-default libgff bytes has exactly one DSO
+handler name**, and DSO has no spare handler names left over.
+
+**Alias facts (verified from shared addresses).** Two pairs of names
+share one function address, confirming the source-level aliases:
+
+| Address | Names | Consequence |
+|---|---|---|
+| `0x3bb55` | `DecodeJump`, `DecodeWend` | `0x64` (wend) is the same handler as `0x12` (jump). |
+| `0x3c121` | `DecodeNumtoname`, `DecodeNametonum` | `0x1e`/`0x1f` are one handler in DSO. |
+
+**`DecodeIfis` is the `0x27` semantics hint.** `0x3bc73` sits between
+`DecodeCompare` (`0x3bc24`, our `0x17`) and `DecodeOrelse`
+(`0x3bcb5`, our `0x29`), and is the only DSO name for the `0x27`
+slot libgff calls `ifcompare`. The source-level name suggests the
+condition form is "if (x) is (y)" — a typed comparison, not a generic
+branch. Treat as a hint until the DSUN handler is read.
+
+**Correction: the block is NOT opcode-address-ordered.** The premise
+this study started from said sorting the block by address gives
+opcode order. It does not: the block opens `0x23, 0x4b, 0x15, 0x19`
+before the `0x01`..`0x08` run, and only 56 of 108 adjacent pairs are
+consecutive opcodes. The emission order is source order, locally
+ordered within nine runs (the arithmetic families, the trigger
+family, `0x76`..`0x7f`), globally not. Consequence, stated plainly:
+**the unknown bytes cannot be pinned by elimination from this
+block.** The 15 libgff-default bytes (`0x26`, `0x4a`, `0x4c`-`0x4e`,
+`0x53`, `0x55`-`0x57`, `0x60`, `0x71`-`0x75`) have no DSO handler
+names left to assign; the only unmapped DSO names are `DecodeIfis`
+(`0x27`) and `DecodeDefault`. Pinning them needs the DSUN.EXE
+dispatch table itself (a jump-table read against the
+`ovr-map --syms` catalogue) or the DSO client binary's `ExecuteGpl`
+jump table, which the symbol file alone cannot provide.
+
+**Process note.** The matching above is reproducible from
+`tools/gpl-disasm/scripts/import-dso-symbols.py`'s opcode table plus
+the alias map in this section; the `--opcodes-proposed` output it
+emits (100 rows) is consistent with these facts.
+
 ## Curated catalogue
 
 Hand-verified cross-references. Empty for now; grows as we

@@ -461,7 +461,7 @@ Four original leverage points, in order of cost:
       highest-value naming set in either binary; the survey's
       own threshold is "even 100 named functions". The hot
       targets (0x5cc0, 0x5810) are already known.
-- [ ] **Decode\* dispatch-order study.** `.dso-online`'s
+- [x] **Decode\* dispatch-order study.** `.dso-online`'s
       symbols.txt names 115 `Decode*` GPL handlers in a
       contiguous, address-ordered block, and ~114/115 agree
       with libgff's independently derived opcode names. Sort
@@ -472,6 +472,22 @@ Four original leverage points, in order of cost:
       `DecodeNumtoname == DecodeNametonum` alias facts. Names
       and addresses are facts (cite the AGPL table); no code
       moves.
+      (Done 2026-09-04, with one premise corrected; full
+      write-up in `docs/dso-symbols.md`'s Decode\* section.
+      Verified: 111/115 names match libgff case-insensitively
+      plus the systematic `*check`/`*trigger` rename for the
+      13 trigger handlers; alias facts confirmed from shared
+      addresses (`DecodeWend`+`DecodeJump` at 0x3bb55,
+      `DecodeNumtoname`+`DecodeNametonum` at 0x3c121);
+      `DecodeIfis` sits between Compare and Orelse as the
+      0x27 handler. Accounting is exact: every non-default
+      libgff byte has exactly one DSO handler name. Corrected:
+      the block is NOT opcode-address-ordered (opens
+      0x23 0x4b 0x15 0x19; only 56/108 adjacent pairs are
+      consecutive), so the unknown bytes CANNOT be pinned by
+      elimination; no spare DSO names exist. Next pinning
+      route: the DSUN.EXE dispatch table or the DSO client's
+      ExecuteGpl jump table.)
 - [ ] **Locate the engine subsystems.** Combat, party, map,
       inventory, and the save path, via string anchors plus
       the callgraph. The DS1 save-string cluster at
