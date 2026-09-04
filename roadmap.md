@@ -43,14 +43,14 @@ understanding campaign it should have been.
 | `repro` | 0.4.0 | shipped; differential capture + bug-save curation open |
 | `gpl-disasm` | 0.6.0 | shipped; 100% corpus alignment, CFG, callgraph, symbol catalogues |
 | `dialog-extract` | 0.7.1 | shipped; path-aware caller picking queued |
-| `save-inspect` | 0.9.4 | shipped; DARKRUN SAVE chunk RE continues |
+| `save-inspect` | 0.9.5 | shipped; DARKRUN SAVE chunk RE continues (semantic differ landed) |
 | `image-extract` | 0.4.0 | shipped; GIF/APNG sprite export deferred |
 | `region-render` | 0.7.1 | shipped; animated palette + `--annotate` deferred |
 | `atlas` | 0.1.1 | shipped |
 | `opends` | 0.1.0 | shipped |
 | `gpl-asm` | 0.9.0 | shipped; 600/600 round-trip; macros queued |
 | `opcode-fuzz` | 0.3.0 | shipped; recipe-driven fuzz + first opcode discovery open |
-| `ovr-map` | 0.2.0 | shipped; `--ghidra` verified headless |
+| `ovr-map` | 0.3.0 | shipped; symbol catalogue, xref tools, Ghidra bridges (5.6.0 complete) |
 
 What the digging surface looks like today:
 
@@ -64,11 +64,13 @@ What the digging surface looks like today:
   overlay segments with **935 (DS1) / 854 (DS2)** confirmed
   function entry points, disassembled at correct bases and
   importable into Ghidra as labelled, correctly-based memory
-  blocks. Honest caveat from the 2026-09-04 audit: the
-  headless import was run once but left no persisted artifact
-  (`scratch/ghidra_project/` is empty), and not one of the
-  1,789 entry points carries a name. Structure: measured.
-  Semantics: not started. That gap is Phase 5.6.
+  blocks. The 5.6.0 instruments are built (2026-09-04): the
+  import is re-proven and persisted (`scratch/ghidra_project/`),
+  the EXE symbol catalogue exists with its first five rows
+  (`load_resource` both games, the overlay-manager bodies),
+  the census / xref / differ / coverage tools are in place.
+  Names: 5 rows of 1,789 entry points. Structure: measured.
+  Semantics: started, barely. That gap is Phase 5.6.
 - **The patch pipeline has its first real surface.** Bytecode
   patches author by label-relative address with fingerprint
   checks (`gpl-asm --patch`), and the darkfix package shape
