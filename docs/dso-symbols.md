@@ -139,7 +139,7 @@ share one function address, confirming the source-level aliases:
 `DecodeCompare` (`0x3bc24`, our `0x17`) and `DecodeOrelse`
 (`0x3bcb5`, our `0x29`), and is the only DSO name for the `0x27`
 slot libgff calls `ifcompare`. The source-level name suggests the
-condition form is "if (x) is (y)" — a typed comparison, not a generic
+condition form is "if (x) is (y)": a typed comparison, not a generic
 branch. Treat as a hint until the DSUN handler is read.
 
 **Correction: the block is NOT opcode-address-ordered.** The premise
