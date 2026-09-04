@@ -537,12 +537,21 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > Confirmed in the first pass: far-call helpers into
       > segments 0x5f8/0x5b0/0x638, an optional entry hook, a
       > relocation call `0x5b0:0xc0` taking (0, 1, 0, arg),
-      > and a `mov si,0x6874; mov di,0x5` construct that CORRECTION
-      > 2026-09-04: is NOT a 5-entry data table — cs:0x6874
-      > holds code (push/inc-ax/push/call far 0x5828:0x2d),
-      > so di=0x5 iterates something else (5 attempts or
-      > slots, not a family-id array). The five-family-id
-      > model stays unconfirmed in this function. The 'Fatal error: Region
+      > and a region-entry one-shot sweep READ 2026-09-04
+      > (supersedes both earlier guesses): `mov si,0x6874;
+      > mov di,5` starts a scan of a ~315-record array of
+      > 37-byte structs at cs:0x6874, indices 5..319. Per
+      > record: call 0x100:0x2 with (1, 0:0, -1, index);
+      > field word at +0x16 — if non-negative, negate it
+      > (one-shot consumed marking) and use it x9 as an index
+      > into a 9-byte-entry DGROUP table at 0x6578; also the
+      > record's word at +0x01 << 3 indexes an 8-byte-stride
+      > array at [0x67b7] whose byte +5 gets bit 0x40
+      > cleared. Reading: on region change, consumed one-shot
+      > trigger records are marked and region-entry flag bits
+      > cleared. The region id (arg at bp+6) is saved to
+      > DGROUP:0x140c. Two fatal exits jump to offset 0x1b0
+      > when the 0xfe85/0xf7b1 validation calls return zero. The 'Fatal error: Region
       > change, Invalid save' path is at function offset
       > 0x1b0. Next reads: the 5-entry table contents, the
       > normal successor paths, and the failing elevator
