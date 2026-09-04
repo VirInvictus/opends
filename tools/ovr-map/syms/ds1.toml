@@ -82,7 +82,7 @@ name = "gpl_disk_change_region"
 segment = 21
 offset = 0x1487
 confidence = "probable"
-evidence = "scripts/xref-string.py: pushes 'Fatal error: Region change, Invalid save' (file 0x49e43, offset 0x14e3) at 0x6965f"
+evidence = "scripts/xref-string.py: pushes 'Fatal error: Region change, Invalid save' (file 0x49e43, offset 0x14e3) at 0x6965f; also pushes ' Failed to move to region #%Fs ' (0x49e70, 0x1510) at 0x696b4"
 dso_source = "DSO::GplDiskChangeRegion"
 notes = """
 Region-change module (gpldisk.c family). Behavioural anchor; the \
@@ -110,4 +110,16 @@ dso_source = "DSO::SaveGameToDisk"
 notes = """
 The save-slot path: builds the slot filename and enforces the \
 save-count cap. Family naming from the DSO table.
+"""
+
+[[function]]
+name = "gpldisk_ictrl_check"
+segment = 21
+offset = 0x0
+confidence = "probable"
+evidence = "scripts/xref-string.py: pushes 'Bad iCtrl in gpldisk.c' (literal with newline, file 0x49d3c, offset 0x13dc) at 0x68039"
+notes = """
+The segment's first entry. Validates the iCtrl field when loading \
+saved games; an internal-consistency assert of the gpldisk.c \
+module.
 """

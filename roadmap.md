@@ -468,10 +468,15 @@ Four original leverage points, in order of cost:
       > Probable (string anchors the module; DSO family
       > naming): `SaveGameToDisk` slot path DS1 ovr13+0x7cc /
       > DS2 ovr11+0x8e5, the region-change module DS1
-      > ovr21+0x1487, and the teleport loader DS1 ovr21+0x17d0
-      > — all six are confirmed entry stubs. The transfer
-      > premise is validated for the persistence family;
-      > ~10 more anchors to the catalogue threshold.
+      > ovr21+0x1487 (two string refs now), and the teleport
+      > loader DS1 ovr21+0x17d0; all confirmed entry stubs.
+      > Second pass added four more: gpldisk iCtrl validator
+      > (DS1 ovr21+0x0, the segment's first entry), MEL/DJ
+      > audio init (DS2 ovr11+0x26), and the resident-side
+      > version-banner check (DS2 resident 0x1cf85). Catalogue:
+      > 14 rows. The transfer premise is validated for the
+      > persistence and status layers; ~6 more anchors to the
+      > ~20 threshold.
 - [ ] **Name the resident API surface.** The ~340 distinct
       overlay→resident call targets (survey §3.3) are the
       highest-value naming set in either binary; the survey's
@@ -795,7 +800,7 @@ Everything still open from the shipped phases, each with the
 condition that promotes it into scheduled work. Nothing here is
 abandoned; nothing here is scheduled.
 
-- [ ] **Cut the per-tool git tags, or drop the requirement.**
+- [x] **Cut the per-tool git tags, or drop the requirement.**
       `docs/versioning.md` says each release ships a
       `<tool>-vX.Y.Z` tag; `git tag` returns nothing, so no
       release has ever complied. Two honest resolutions:
@@ -806,6 +811,11 @@ abandoned; nothing here is scheduled.
       record and drop tags. Open since the 2026-07-23
       reconciliation sweep. **Decide before the first darkfix
       release**, so patches do not inherit the ambiguity.
+      (Decided 2026-09-04: tags are cut, forward-only. First
+      two: `ovr-map-v0.3.0` and `save-inspect-v0.9.5` at their
+      release commits. Backfilling the 13 tools' older
+      releases stays open as an optional one-off; the audit's
+      §5.21 ruling is satisfied by forward-only tagging.)
 - [ ] **`gff-edit` segmented-type build.** Builder covers
       indexed GFFs only; the secondary-table + `GFFI`
       cross-reference dance is unwritten. Promote when a

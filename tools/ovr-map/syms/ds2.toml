@@ -87,3 +87,25 @@ notes = """
 The save-slot path: builds the slot filename and enforces the \
 save-count cap. Family naming from the DSO table.
 """
+
+[[function]]
+name = "mel_dj_audio_init"
+segment = 11
+offset = 0x26
+confidence = "probable"
+evidence = "scripts/xref-string.py: pushes 'Wowowowowowow... Mel DJ failed... Is CD.DAT in you dir?' (file 0x4da0b, DGROUP offset 0xa0b) at 0x67293"
+notes = """
+MEL/DJ audio startup; the error names its CD.DAT dependency. \
+Behavioural anchor.
+"""
+
+[[function]]
+name = "check_engine_version"
+segment = "resident"
+offset = 0x1cf85
+confidence = "probable"
+evidence = "scripts/xref-string.py: pushes 'VERSION 1.1' (file 0x4d77b, DGROUP offset 0x77b) at 0x1d05a"
+notes = """
+Resident-image function referencing the 1.10 version banner (the \
+marker install-variants.md infers from). Rare resident-side anchor.
+"""
