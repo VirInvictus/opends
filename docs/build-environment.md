@@ -1,7 +1,7 @@
 # Build Environment
 
 Fedora-first dev setup for authoring darkfix patches. Other
-distros and OSes work too; commands below are Fedora 43.
+distros and OSes work too; commands below are Fedora 44.
 
 ## 1. System packages
 
@@ -15,7 +15,11 @@ sudo dnf install \
     flac vorbis-tools
 ```
 
-`ghidra` is available on Fedora as a third-party COPR or via
+Ghidra is NOT installed from Fedora packages here: the pinned
+12.1.2 build lives in `~/.local/share/ghidra_12.1.2_PUBLIC` with a
+pinned Temurin JDK 21 (Fedora ships only 25/26), and the setup is
+documented in `dsun-exe-re.md` 7. Historically a third-party COPR
+offered ghidra, but
 direct download. Optional; r2 covers most needs.
 
 ## 2. Python tooling
@@ -25,7 +29,7 @@ set of pip packages. Per `~/CLAUDE.md`, prefer `uv` for
 environment management:
 
 ```sh
-cd ~/.gitrepos/opends    # (will be ~/.gitrepos/darkfix after rename)
+cd ~/.gitrepos/opends
 uv venv .venv
 source .venv/bin/activate
 uv pip install bsdiff4 keystone-engine

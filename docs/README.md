@@ -21,9 +21,12 @@ reference.
 **"I want to understand the engine."**
 Read [`research.md`](research.md) first for the short version:
 lineage, architecture, what GPL is. Then
+[`dsun-exe-survey.md`](dsun-exe-survey.md) for the measured
+whole-binary structure of both engines, then
 [`dsun-exe-re.md`](dsun-exe-re.md) for the disassembly-level
-detail of `DSUN.EXE`, and [`dsun-exe-survey.md`](dsun-exe-survey.md)
-for the measured whole-binary structure of both engines. For the
+detail of `DSUN.EXE`. [`format-coverage.md`](format-coverage.md)
+says which chunk kinds the corpus ships but the docs do not yet
+describe. For the
 scripting VM specifically:
 [`gpl-bytecode.md`](gpl-bytecode.md) explains the language and
 encoding, [`gpl-opcodes.md`](gpl-opcodes.md) is the opcode table,
@@ -75,8 +78,11 @@ attribute-everything policy; see also the repo-root
 | [`install-variants.md`](install-variants.md) | reference | DS1/DS2 release lineages (floppy vs CD), proof of what GOG ships, and the patch-base rationale. |
 | [`upstream-projects.md`](upstream-projects.md) | reference | Catalog of prior Dark Sun RE projects and exactly what we use from each. |
 | [`versioning.md`](versioning.md) | reference | Per-tool semver policy, `VERSION` files, tag format. |
+| [`format-coverage.md`](format-coverage.md) | reference | Machine-generated: chunk kinds present in the corpus vs documented, with the gap list. |
 
-The repo root holds the project-level documents:
+The per-tool overview lives in [`../tools/README.md`](../tools/README.md)
+(13 tools, versions, what each does). The repo root holds the
+project-level documents:
 [`spec.md`](../spec.md) (the contract; read before changing
 semantics), [`roadmap.md`](../roadmap.md) (phase status, the
 single source of planning truth), and

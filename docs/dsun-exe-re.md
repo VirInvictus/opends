@@ -574,24 +574,15 @@ subsection but not a working `--animate` flag, so
 
 ### 4.6 DSO symbol cross-reference
 
-The DSO v1.0 client (`.dso-online/tools/symbols.txt`) names
-the cycle path. Offsets are DSO-relative and don't map onto
-DSUN.EXE; they're useful as anchors for shape-matching, not
-as direct lookups.
-
-| DSO offset | Symbol | Notes |
-|---|---|---|
-| `0x0009E98A` | `VGASetCycle` | Cycle-table install. |
-| `0x0009E9C9` | `VGAResetCycle` | Cycle teardown. |
-| `0x0009EAA3` | `VGAColorCycle` | Per-tick walker. The DSUN.EXE counterpart is **not** `0x23067`; §4.4 retracted that identification. |
-| `0x000BE8ED` | `cycleshow` | Higher-level "render with cycling enabled" wrapper. |
-| `0x00167C6D` | `gCycleColor` | The cycle-state global. |
-
-These names are anchors; the offsets are DSO-relative and don't
-map directly to DSUN.EXE. But the call-graph shape (4-byte
-record walker reading from a far pointer at fixed offset) is
-distinctive enough to confirm `0x23075`'s function is the
-`VGAColorCycle` counterpart once we have a caller-trace.
+Moved to [`dso-symbols.md`](dso-symbols.md), which owns the DSO
+symbol material (source, curation, the Decode\* dispatch study,
+and the curated catalogue). Summary retained here: the DSO v1.0
+client names the VGA colour-cycle path (`VGASetCycle`,
+`VGAResetCycle`, `VGAColorCycle`, `cycleshow`, the `gCycleColor`
+global); offsets are DSO-relative and do not map onto DSUN.EXE,
+only the names transfer. The DSUN.EXE counterpart identification
+at `0x23075` was retracted with §4.4 (that region is the GMAP /
+entity render loop); `0x23067` was never it either.
 
 ## 5. What we still don't know
 
