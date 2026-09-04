@@ -616,12 +616,21 @@ Four original leverage points, in order of cost:
 
 ### 5.6.3 — The bug-site census
 
-- [ ] **Stand up the census.** A table in or beside
+- [x] **Stand up the census.** A table in or beside
       `docs/known-bugs.md`: per bug, site located / site
       named / root cause / evidence chain. Today every row
       starts at no; the table makes the distance to
       "patchable" visible and is the checklist the site-
       report rule consumes.
+      (Live 2026-09-04 at known-bugs.md 3a. First content:
+      the headline mines-elevator bug's transition module is
+      anchored in BOTH engines — DS2 `ovr18+0x1132` /
+      `ovr18+0x146c` catalogued today, confirmed entry
+      stubs in the same segment as DS2's
+      `LoadGameFromDisk`, mirroring DS1's ovr21 module
+      layout — and the save-path rows carry verified named
+      anchors. No bug has a root cause yet; that is the gap
+      the table tracks.)
 - [ ] **Read SSI's own fixes.** Characterize the low-cluster
       diff segments (0, 5, 8, 9, 16, 36)
       instruction-by-instruction against the 1.02 fix list
