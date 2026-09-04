@@ -494,6 +494,24 @@ Four original leverage points, in order of cost:
       highest-value naming set in either binary; the survey's
       own threshold is "even 100 named functions". The hot
       targets (0x5cc0, 0x5810) are already known.
+      > MAJOR 2026-09-04: the DS2 GPL dispatch table is
+      > FOUND. The interpreter's per-opcode dispatcher sits
+      > at DS2 resident 0xc650 (proven: bounds-check <= 0x80,
+      > a per-opcode TRACE HOOK at DGROUP:0x2f6 — call far
+      > [0x2f6] — then `shl ax,1; call near [bx+0x30a]`), and
+      > the table is at DGROUP:0x30a (file 0x4d30a): 129
+      > segment-local code offsets, 115 distinct — matching
+      > the DSO Decode* handler count. All 15 unknown bytes
+      > share ONE entry (0x20a2, the default): **the DS2
+      > engine implements no dedicated handlers for them** —
+      > the pinning question dissolves from "which handler is
+      > it" to "they are reserved and unimplemented",
+      > provable from the table alone; any corpus chunk using
+      > one hits the illegal-op path (`syms/ds2.toml`
+      > gpl_dispatch). Remaining: pin the handler segment
+      > base (three candidates: 0x130 / 0x320 / 0x3e0) so
+      > every named opcode gains a DS2 handler address, and
+      > repeat the table read for DS1.
 - [x] **Decode\* dispatch-order study.** `.dso-online`'s
       symbols.txt names 115 `Decode*` GPL handlers in a
       contiguous, address-ordered block, and ~114/115 agree
