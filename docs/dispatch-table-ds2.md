@@ -1,0 +1,143 @@
+# DS2 GPL dispatch table (machine-generated, 2026-09-04)
+
+Resolved from the dispatch table at DGROUP:0x30a (file `0x4d30a`),
+reached by the interpreter's `shl ax,1; call near [bx+0x30a]` at
+file `0xc677`. Handler file addresses assume code segment base
+`0x6500` (paragraph `0x130`) — **probable**: it wins a
+decodability test over the other candidates (0x320 / 0x3e0) and
+satisfies every structural constraint, but is not yet confirmed
+by a semantic read. The 15 unknown bytes share the single default
+entry `0x20a2` (file `0x85a2`): reserved and unimplemented in the
+DS2 engine. See `../roadmap.md` Phase 5.6.1.
+
+| opcode | mnemonic | handler (file) |
+|---|---|---|
+| `0x00` | Zero | `0x8449` |
+| `0x01` | LongDivideEqual | `0x6f69` |
+| `0x02` | ByteDec | `0x6f99` |
+| `0x03` | WordDec | `0x6fad` |
+| `0x04` | LongDec | `0x6fc1` |
+| `0x05` | ByteInc | `0x6fd6` |
+| `0x06` | WordInc | `0x6fea` |
+| `0x07` | LongInc | `0x6ffe` |
+| `0x08` | Hunt | `0x7013` |
+| `0x09` | Getxy | `0x77d2` |
+| `0x0a` | StringCopy | `0x702e` |
+| `0x0b` | PDamage | `0x7050` |
+| `0x0c` | Changemoney | `0x843b` |
+| `0x0d` | Setvar | `0x8471` |
+| `0x0e` | ToggleAccum | `0x715f` |
+| `0x0f` | Getstatus | `0x77a3` |
+| `0x10` | Getlos | `0x71d1` |
+| `0x11` | LongTimesEqual | `0x7267` |
+| `0x12` | Jump | `0x7293` |
+| `0x13` | LocalSub | `0x72a0` |
+| `0x14` | GlobalSub | `0x72a9` |
+| `0x15` | LocalRet | `0x72c9` |
+| `0x16` | LoadVariable | `0x72cd` |
+| `0x17` | Compare | `0x72d4` |
+| `0x18` | LoadAccum | `0x73d3` |
+| `0x19` | GlobalRet | `0x73e5` |
+| `0x1a` | Nextto | `0x720b` |
+| `0x1b` | Inlostrigger | `0x76d7` |
+| `0x1c` | Notinlostrigger | `0x770c` |
+| `0x1d` | ClearLos | `0x7741` |
+| `0x1e` | Nametonum | `0x781b` |
+| `0x1f` | Numtoname | `0x7831` |
+| `0x20` | Bitsnoop | `0x718b` |
+| `0x21` | Award | `0x73e9` |
+| `0x22` | Request | `0x7484` |
+| `0x23` | SourceTrace | `0x7475` |
+| `0x24` | Shop | `0x7479` |
+| `0x25` | Clone | `0x74c2` |
+| `0x26` | gpl default (unimplemented) | `0x85a2` |
+| `0x27` | Ifcompare | `0x7331` |
+| `0x28` | TraceVar | `0x7512` |
+| `0x29` | Orelse | `0x7389` |
+| `0x2a` | Clearpic | `0x7516` |
+| `0x2b` | Continue | `0x751c` |
+| `0x2c` | Log | `0x7522` |
+| `0x2d` | Damage | `0x7057` |
+| `0x2e` | SourceLineNum | `0x7530` |
+| `0x2f` | Drop | `0x7534` |
+| `0x30` | Passtime | `0x761c` |
+| `0x31` | ExitGpl | `0x7627` |
+| `0x32` | Fetch | `0x762c` |
+| `0x33` | Search | `0x7650` |
+| `0x34` | Getparty | `0x76b5` |
+| `0x35` | Fight | `0x774c` |
+| `0x36` | Flee | `0x776d` |
+| `0x37` | Follow | `0x777f` |
+| `0x38` | Getyn | `0x77bc` |
+| `0x39` | Give | `0x77dd` |
+| `0x3a` | Go | `0x7847` |
+| `0x3b` | InputBignum | `0x786b` |
+| `0x3c` | Goxy | `0x789c` |
+| `0x3d` | Readorders | `0x78c5` |
+| `0x3e` | If | `0x7a87` |
+| `0x3f` | Else | `0x7ae2` |
+| `0x40` | Setrecord | `0x78e0` |
+| `0x41` | Setother | `0x7a1c` |
+| `0x42` | InputString | `0x7b10` |
+| `0x43` | InputNumber | `0x7b43` |
+| `0x44` | InputMoney | `0x7b5d` |
+| `0x45` | Joinparty | `0x7b77` |
+| `0x46` | Leaveparty | `0x7b92` |
+| `0x47` | Lockdoor | `0x7bad` |
+| `0x48` | Menu | `0x7bb9` |
+| `0x49` | Setthing | `0x7662` |
+| `0x4a` | gpl default (unimplemented) | `0x85a2` |
+| `0x4b` | LocalSubTrace | `0x729c` |
+| `0x4c` | gpl default (unimplemented) | `0x85a2` |
+| `0x4d` | gpl default (unimplemented) | `0x85a2` |
+| `0x4e` | gpl default (unimplemented) | `0x85a2` |
+| `0x4f` | PrintString | `0x7bbd` |
+| `0x50` | PrintNumber | `0x7be1` |
+| `0x51` | Printnl | `0x7c05` |
+| `0x52` | Rand | `0x7c0b` |
+| `0x53` | gpl default (unimplemented) | `0x85a2` |
+| `0x54` | Showpic | `0x7c42` |
+| `0x55` | gpl default (unimplemented) | `0x85a2` |
+| `0x56` | gpl default (unimplemented) | `0x85a2` |
+| `0x57` | gpl default (unimplemented) | `0x85a2` |
+| `0x58` | Skillroll | `0x7c63` |
+| `0x59` | Statroll | `0x7d04` |
+| `0x5a` | StringCompare | `0x7da5` |
+| `0x5b` | MatchString | `0x7e17` |
+| `0x5c` | Take | `0x7e89` |
+| `0x5d` | Sound | `0x7c4d` |
+| `0x5e` | Tport | `0x7f43` |
+| `0x5f` | Music | `0x7c58` |
+| `0x60` | gpl default (unimplemented) | `0x85a2` |
+| `0x61` | Cmpend | `0x73b9` |
+| `0x62` | Wait | `0x8030` |
+| `0x63` | While | `0x8042` |
+| `0x64` | Wend | `0x8065` |
+| `0x65` | Attacktrigger | `0x819d` |
+| `0x66` | Looktrigger | `0x81ca` |
+| `0x67` | Endif | `0x806e` |
+| `0x68` | MoveTiletrigger | `0x8088` |
+| `0x69` | DoorTiletrigger | `0x80c2` |
+| `0x6a` | MoveBoxtrigger | `0x80fc` |
+| `0x6b` | DoorBoxtrigger | `0x8136` |
+| `0x6c` | PickupItemtrigger | `0x8170` |
+| `0x6d` | Usetrigger | `0x81f7` |
+| `0x6e` | Talktotrigger | `0x8224` |
+| `0x6f` | Noorderstrigger | `0x8251` |
+| `0x70` | Usewithtrigger | `0x827a` |
+| `0x71` | gpl default (unimplemented) | `0x85a2` |
+| `0x72` | gpl default (unimplemented) | `0x85a2` |
+| `0x73` | gpl default (unimplemented) | `0x85a2` |
+| `0x74` | gpl default (unimplemented) | `0x85a2` |
+| `0x75` | gpl default (unimplemented) | `0x85a2` |
+| `0x76` | BytePlusEqual | `0x82a7` |
+| `0x77` | ByteMinusEqual | `0x82cf` |
+| `0x78` | ByteTimesEqual | `0x82f7` |
+| `0x79` | ByteDivideEqual | `0x8323` |
+| `0x7a` | WordPlusEqual | `0x8353` |
+| `0x7b` | WordMinusEqual | `0x837b` |
+| `0x7c` | WordTimesEqual | `0x83a3` |
+| `0x7d` | WordDivideEqual | `0x83cf` |
+| `0x7e` | LongPlusEqual | `0x83ff` |
+| `0x7f` | LongMinusEqual | `0x841d` |
+| `0x80` | GetRange | `0x7239` |
