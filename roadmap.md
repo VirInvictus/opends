@@ -673,9 +673,25 @@ Four original leverage points, in order of cost:
       > around source edits) and a literal `1.10` version
       > stamp at 0x214182. **SSI's 1.02 fixes are GPL script
       > edits, and the diff against CD 1.0 isolates them.**
-      > Next: map the edit clusters to (kind, id) via the
-      > TOC and disassemble both sides with gpl-disasm —
-      > SSI's own fixes, readable with our own tools.
+      > COMPLETED 2026-09-04 — the full SSI fix delta, all
+      > three changed files, mapped with our tools:
+      > (1) GPLDATA: all 350 chunk disassemblies diffed;
+      > after normalizing global-flag renumbering, ZERO
+      > behavioral script changes — the script band +-1
+      > shifts are GF-id renumbering from inserted globals.
+      > (2) RESOURCE: the fixes ARE here — BMP/CBMP 11001 +
+      > 11002 shrank ~30% (fix 8: the volcano overhead maps,
+      > redrawn), SPIN spell-text ids 94-114 grew from
+      > 8-byte placeholders to real text (fix 12 family),
+      > ICON 19115-19121 swapped (spell icons). (3) DSUN.EXE:
+      > behavior-free recompile rebias. Verdict: SSI fixed
+      > 1.02 via DATA (maps, spell text) — the script logic
+      > fixes in the 1.02 list were apparently delivered in
+      > the 1.02 build itself (GOG's 1.10 base differs from
+      > CD 1.0 only in data + layout), or were engine-side in
+      > the rebuilt EXE segments. Either way the delta is
+      > now fully characterized, every changed chunk named,
+      > and readable with image-extract/gff-cat.
 - [ ] **Locate the mines-elevator transition.** The
       region-transition state machine (GPL side, EXE side, or
       both) is Phase 7's site report; the investigation lives
