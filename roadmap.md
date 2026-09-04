@@ -517,7 +517,19 @@ Four original leverage points, in order of cost:
       > order places it. Every named opcode now has a
       > candidate DS2 handler address; the full resolved
       > table is generated at `docs/dispatch-table-ds2.md`.
-      > Repeat the table read for DS1.
+      > DS1 read DONE the same day, cleaner: the table is at
+      > DGROUP:0xc0 (file `0x48a20`), the dispatcher at
+      > `0x99cb` (`call near [bx+0xc0]`), and the segment
+      > base 0x7900 is the UNIQUE survivor of the
+      > tiny-vs-large filter, corroborated by the same
+      > consecutive arithmetic-family structure and the
+      > displaced Getxy. Same headline: all 15 unknown bytes
+      > share the default entry (`0x264c` → file `0x9f4c`)
+      > in BOTH engines — the GPL VMs never implemented
+      > them. Resolved table: `docs/dispatch-table-ds1.md`.
+      > Both bases remain probable until a semantic handler
+      > read confirms; ByteDec (DS2) already marshals and
+      > calls through the far-pointer table at 0xa4d4.
 - [x] **Decode\* dispatch-order study.** `.dso-online`'s
       symbols.txt names 115 `Decode*` GPL handlers in a
       contiguous, address-ordered block, and ~114/115 agree
