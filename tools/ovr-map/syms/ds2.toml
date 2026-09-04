@@ -109,3 +109,23 @@ notes = """
 Resident-image function referencing the 1.10 version banner (the \
 marker install-variants.md infers from). Rare resident-side anchor.
 """
+
+[[function]]
+name = "gpl_dispatch"
+segment = "resident"
+offset = 0x2660c
+confidence = "probable"
+evidence = "scripts/xref-string.py: pushes 'Illegal Op (gpl=%d)' (file 0x4ea1b, DGROUP offset 0x1a1b) at 0x2661a"
+notes = """
+The GPL VM's illegal-opcode handler, inside the containing dispatch function: this is the neighbourhood of the DSUN.EXE opcode dispatch table, the route the Decode* study left open for pinning the 15 unknown opcode bytes. Resident-side, rare.
+"""
+
+[[function]]
+name = "objex_item_lookup"
+segment = 35
+offset = 0x2327
+confidence = "probable"
+evidence = "scripts/xref-string.py: pushes 'Failed, Not in Objex.gff' (file 0x4f555, DGROUP offset 0x2555) at 0x8e205"
+notes = """
+Item/object lookup against OBJEX.GFF in the use-item path.
+"""

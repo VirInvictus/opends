@@ -473,10 +473,16 @@ Four original leverage points, in order of cost:
       > Second pass added four more: gpldisk iCtrl validator
       > (DS1 ovr21+0x0, the segment's first entry), MEL/DJ
       > audio init (DS2 ovr11+0x26), and the resident-side
-      > version-banner check (DS2 resident 0x1cf85). Catalogue:
-      > 14 rows. The transfer premise is validated for the
-      > persistence and status layers; ~6 more anchors to the
-      > ~20 threshold.
+      > version-banner check (DS2 resident 0x1cf85). Third
+      > pass: the GPL VM's illegal-opcode handler in the
+      > resident image (DS2 0x2660c, referencing
+      > 'Illegal Op (gpl=%d)') is the dispatch-table
+      > neighbourhood the Decode* study left open for pinning
+      > the unknown bytes; plus the OBJEX item-lookup entry
+      > (DS2 ovr35+0x2327) and the awaken path (DS1
+      > ovr04+0x165). Catalogue: 17 rows. The transfer premise
+      > holds across the persistence, status, dispatch and
+      > audio layers; ~3 more anchors to the ~20 threshold.
 - [ ] **Name the resident API surface.** The ~340 distinct
       overlay→resident call targets (survey §3.3) are the
       highest-value naming set in either binary; the survey's

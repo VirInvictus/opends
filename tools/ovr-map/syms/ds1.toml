@@ -123,3 +123,13 @@ The segment's first entry. Validates the iCtrl field when loading \
 saved games; an internal-consistency assert of the gpldisk.c \
 module.
 """
+
+[[function]]
+name = "awaken_game"
+segment = 4
+offset = 0x165
+confidence = "probable"
+evidence = "scripts/xref-string.py: pushes 'could not awaken game' (file 0x48e84, DGROUP offset 0x524) at 0x568b3"
+notes = """
+The awaken-from-save path (DARKSAVE.GFF to DARKRUN.GFF); the 'cannot reopen darkrun in awaken game' and 'GUI ERROR in awaken' strings belong to the same module.
+"""
