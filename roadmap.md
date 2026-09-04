@@ -508,10 +508,16 @@ Four original leverage points, in order of cost:
       > it" to "they are reserved and unimplemented",
       > provable from the table alone; any corpus chunk using
       > one hits the illegal-op path (`syms/ds2.toml`
-      > gpl_dispatch). Remaining: pin the handler segment
-      > base (three candidates: 0x130 / 0x320 / 0x3e0) so
-      > every named opcode gains a DS2 handler address, and
-      > repeat the table read for DS1.
+      > gpl_dispatch). Segment base pinned at probable
+      > 0x6500 (paragraph 0x130): it wins the decodability
+      > test over 0x320/0x3e0 and, decisively, opcodes
+      > 0x01-0x08 map to consecutive 0x14-0x30-byte handlers
+      > (the arithmetic family in sequence) with Getxy
+      > displaced out-of-band exactly as DSO's independent
+      > order places it. Every named opcode now has a
+      > candidate DS2 handler address; the full resolved
+      > table is generated at `docs/dispatch-table-ds2.md`.
+      > Repeat the table read for DS1.
 - [x] **Decode\* dispatch-order study.** `.dso-online`'s
       symbols.txt names 115 `Decode*` GPL handlers in a
       contiguous, address-ordered block, and ~114/115 agree
