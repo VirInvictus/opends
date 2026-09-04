@@ -659,6 +659,23 @@ Four original leverage points, in order of cost:
       > differ's signature pairing was built for. This
       > retroactively recontextualizes survey 8's 'fix-sized
       > edit' reading of segment 0.
+      > REDIRECT 2, same day, the bigger one: the verified
+      > EXE pairs contain ZERO semantic changes (all 120
+      > differing functions across 24 verified pairs are
+      > address rebias; 85 are byte-identical) — consistent
+      > with known-bugs §1's own note that the 1.02 fixes
+      > are GPL-script-driven. And the GPLDATA.GFF delta
+      > proves it: CD 1.0 vs GOG 1.10 GPLDATA is the same
+      > size (2,191,945 B, in-place edits) with 2,066,888
+      > differing bytes — a re-emitted tail plus a band of
+      > small early clusters that are ±1 script-id shifts
+      > (`5d 16 8f` -> `5e 16 8f`: local-label renumbering
+      > around source edits) and a literal `1.10` version
+      > stamp at 0x214182. **SSI's 1.02 fixes are GPL script
+      > edits, and the diff against CD 1.0 isolates them.**
+      > Next: map the edit clusters to (kind, id) via the
+      > TOC and disassemble both sides with gpl-disasm —
+      > SSI's own fixes, readable with our own tools.
 - [ ] **Locate the mines-elevator transition.** The
       region-transition state machine (GPL side, EXE side, or
       both) is Phase 7's site report; the investigation lives
