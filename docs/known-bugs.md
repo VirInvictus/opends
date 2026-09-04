@@ -141,6 +141,34 @@ community-reported issues are milder than DS2's:
 These are not as well documented as the DS2 list. We will catalog
 them as we find them during reimplementation.
 
+## 3a. The bug-site census (Phase 5.6.3)
+
+The checklist that makes the distance from "bug list" to
+"patchable bug" visible. Per bug: is the faulting code **located**
+(any addressable anchor), is it **named** (a catalogue row or DSO
+transfer), and do we have a **root cause**? Evidence chains live in
+`tools/ovr-map/syms/<game>.toml` and the dispatch tables
+(`dispatch-table-ds1.md` / `dispatch-table-ds2.md`). Updated as the
+5.6.1 naming campaign advances; a bug is Phase-6/7-ready when all
+three columns are yes plus a written site report.
+
+| Bug (§) | Game | Site located | Site named | Root cause | Evidence so far |
+|---|---|---|---|---|---|
+| Mine elevator freeze (2.1) | DS2 | **partial** | **partial** | no | The region-transition module is anchored: DS2 `ovr18+0x1132` (`gpl_disk_change_region`), DS1 `ovr21+0x1487` — the transition state machine's neighbourhood is known; the specific elevator path is not. Both are confirmed entry stubs in the same segment as each game's `LoadGameFromDisk`. |
+| Doorway/item graphics disappearance (2.2) | DS2 | no | no | no | Renderer surface only; nothing anchored yet. |
+| Charged-weapon disappearance (2.3) | DS2 | **partial** | no | no | The item path's OBJEX lookup is catalogued (`ovr35+0x2327`, pushes "Failed, Not in Objex.gff"); the charge-decrement code is not. |
+| "Saves but exits" (2.4) | DS2 | **partial** | **partial** | no | Both save-path anchors catalogued and verified: `LoadGameFromDisk` (DS2 ovr18+0xa6c, DS1 ovr21+0xdde, self-naming strings) and the slot path `SaveGameToDisk` (DS2 ovr11+0x8e5, DS1 ovr13+0x7cc). The exit-after-save sequence is not traced. |
+| Audio static (2.5) | — | n/a | n/a | n/a | Out of scope (AIL driver mismatch, not engine). |
+| MEL DSP detect fail (2.6) | — | n/a | n/a | n/a | Out of scope (DOSBox IRQ config). The MEL error path is incidentally anchored (`mel_dj_audio_init`, DS2 ovr11+0x26). |
+| DS1 issues (§3) | DS1 | partial | partial | no | The gpldisk.c module is anchored DS1-side (`ictrl_check`, `load_game_from_disk`, `gpl_disk_change_region`, `load_teleport`, `save_game_to_disk`); per-bug rows wait on §3's list being triaged. |
+
+Module-level context that shortens every dig: the GPL VM dispatch
+tables are resolved for both engines (all 15 unknown bytes proven
+unimplemented), and the handler stubs call through far-pointer
+tables — so a bug whose cause is a wrong opcode behavior can be
+traced handler-to-implementation in two hops.
+
+
 ## 4. SSI patch lineage
 
 | Game | Patch | Distribution                                  |

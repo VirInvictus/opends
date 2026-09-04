@@ -139,3 +139,24 @@ evidence = "scripts/xref-string.py: pushes 'The Darksun II CD is not in the CD d
 notes = """
 CD-presence verification; three confirmed entry stubs reference the message across ovr04 and ovr11.
 """
+
+[[function]]
+name = "gpl_disk_change_region"
+segment = 18
+offset = 0x1132
+confidence = "probable"
+evidence = "scripts/xref-string.py: pushes 'Fatal error: Region change, Invalid save' (file 0x4e75d, DGROUP offset 0x175d) at 0x71112"
+dso_source = "DSO::GplDiskChangeRegion"
+notes = """
+DS2's region-change module, same ovr18 segment as its load_game_from_disk: the gpldisk.c module layout mirrors DS1's ovr21. The headline mines-elevator bug (Phase 7) lives in this neighbourhood.
+"""
+
+[[function]]
+name = "load_teleport"
+segment = 18
+offset = 0x146c
+confidence = "probable"
+evidence = "scripts/xref-string.py: pushes 'Error : Can't load Game data in load teleport' (file 0x4e7ac, DGROUP offset 0x17ac) at 0x713d1"
+notes = """
+The teleport path of the same gpldisk.c module.
+"""

@@ -63,18 +63,26 @@ A coarse picture of what the symbol file covers, by name prefix:
 
 | Prefix    | Count | Coverage                                  |
 |-----------|-------|-------------------------------------------|
-| `Load*`   | 28    | Persistence: save/load orchestration      |
 | `Gff*`    | 27    | GFF container I/O (cross-check libgff)    |
-| `Save*`   | 24    | Persistence: save-game orchestration      |
-| `Gpl*`    | 24    | GPL bytecode lifecycle (`ExecuteGpl`, etc)|
-| `Item*`   | 15    | Item handling                             |
-| `Use*`    | 11    | Use / use-with action callbacks           |
-| `Move*`   | 11    | Movement / region transitions             |
-| `Combat*` | 11    | Combat orchestration                      |
-| `Psi*`    | 10    | Psionics                                  |
-| `Char*`   | 10    | Character management                      |
+| `Load*`   | 21    | Persistence: save/load orchestration      |
+| `Gpl*`    | 21    | GPL bytecode lifecycle (`ExecuteGpl`, etc)|
+| `Item*`   | 13    | Item handling                             |
+| `Save*`   | 12    | Persistence: save-game orchestration      |
 | `Spell*`  | 9     | Spellcasting                              |
-| `Region*` | 4     | Region loader                             |
+| `Use*`    | 9     | Use / use-with action callbacks           |
+| `Move*`   | 8     | Movement / region transitions             |
+| `Psi*`    | 8     | Psionics                                  |
+| `Char*`   | 8     | Character management                      |
+| `Combat*` | 6     | Combat orchestration                      |
+| `Region*` | 0     | (no `Region*` functions exist; region work lives under `Gpl*`/`Move*`) |
+
+> **Corrected 2026-09-04.** The first published version of this
+> table overcounted several rows (Save 24, Combat 11, Region 4,
+> among others). The counts above are measured against the actual
+> table (3,530 functions; `propose-exe-symbols.py --strings`
+> reproduces them). The audit that caught this also noted the
+> census here originally used 3-char prefixes, which fragments on
+> Watcom's runtime prefixes; these rows use whole-word prefixes.
 
 This is a partial slice; the symbol file covers UI, file I/O,
 sprite rendering, animation, sound, networking (DSO-specific),
