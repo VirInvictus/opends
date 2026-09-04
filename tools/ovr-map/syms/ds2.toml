@@ -129,3 +129,13 @@ evidence = "scripts/xref-string.py: pushes 'Failed, Not in Objex.gff' (file 0x4f
 notes = """
 Item/object lookup against OBJEX.GFF in the use-item path.
 """
+
+[[function]]
+name = "cd_drive_check"
+segment = 4
+offset = 0x85d
+confidence = "probable"
+evidence = "scripts/xref-string.py: pushes 'The Darksun II CD is not in the CD drive!' (file 0x4dac6, DGROUP offset 0xac6) at 0x5b1a0; two more refs at 0x5cd47 (ovr04+0x22c4) and 0x673e8 (ovr11+0x141)"
+notes = """
+CD-presence verification; three confirmed entry stubs reference the message across ovr04 and ovr11.
+"""

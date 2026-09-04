@@ -133,3 +133,33 @@ evidence = "scripts/xref-string.py: pushes 'could not awaken game' (file 0x48e84
 notes = """
 The awaken-from-save path (DARKSAVE.GFF to DARKRUN.GFF); the 'cannot reopen darkrun in awaken game' and 'GUI ERROR in awaken' strings belong to the same module.
 """
+
+[[function]]
+name = "find_path"
+segment = "resident"
+offset = 0x1b097
+confidence = "probable"
+evidence = "scripts/xref-string.py: pushes 'NO PATH FROM HERE' (file 0x49539, DGROUP offset 0xbd9) at 0x1b229"
+notes = """
+Pathfinding failure path, resident-side. Its 'NO LINE OF SIGHT' sibling (0x1b348) sits in the same region of the resident image.
+"""
+
+[[function]]
+name = "line_of_sight_check"
+segment = "resident"
+offset = 0x1b348
+confidence = "probable"
+evidence = "scripts/xref-string.py: pushes 'NO LINE OF SIGHT' (file 0x49558, DGROUP offset 0xbf8) at 0x1b670"
+notes = """
+Resident-side LOS check used by movement and targeting.
+"""
+
+[[function]]
+name = "combat_save_gate"
+segment = 25
+offset = 0x1383
+confidence = "probable"
+evidence = "scripts/xref-string.py: pushes the CAN'T SAVE DURING COMBAT message (file 0x4a5b8, DGROUP offset 0x1c58) at 0x714f3"
+notes = """
+Save gate inside the combat module. Segment 25 is also DS1's indirect-call dispatcher segment (survey 4.1).
+"""
