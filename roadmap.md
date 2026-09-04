@@ -600,6 +600,16 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > the string 'SAVE' and checks the save file: the
       > 'Invalid save' fatal is literally a save-validation
       > failure on region change.
+      > Transition map (same evening): GPL-81 is the mines'
+      > teleport HUB — ~75 `gpl tport` instructions in three
+      > shapes: named-region tports `NAME(-N), 255, 99i8,
+      > 99i8` (default arrival), same-region coordinate
+      > tports `32766, x, y, 0`, and GPL-80's elevator dialog
+      > riding `tport GNAME[38], 255, 99, 99`. The freeze
+      > hypothesis sharpens: an elevator tport targets a
+      > region whose level-load fails; the NAME(-N) packed
+      > references are resolvable via dialog-extract's string
+      > table, which names the exact destination regions.
 - [x] **Decode\* dispatch-order study.** `.dso-online`'s
       symbols.txt names 115 `Decode*` GPL handlers in a
       contiguous, address-ordered block, and ~114/115 agree
