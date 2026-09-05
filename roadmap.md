@@ -704,6 +704,19 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > instruction-identical 1.0 vs 1.10 after GF
       > renumbering (MAS-56: 111 ins, MAS-57: 173, MAS-58:
       > 140), so the freeze is not in the 1.10 delta.
+      > MAS-57 inventory (first read): registers Mines2's
+      > look/use triggers on entities NAME(-5801)-(-5817)
+      > and entity ids 268/287/289, a 5x2 boxtrigger at
+      > (26,90), opens with `request 5, NAME(-5835/-5836)`;
+      > the tail calls `gpl global sub 228, 27` (cross-
+      > script call), spawns entities with `gpl clone
+      > NAME(-74)/NAME(-137)`, moves a boxtrigger, and reads
+      > `GF+[604]`/`GF+[608]` — the bracket form is a NEW
+      > global-addressing mode for the disassembler's
+      > documentation. The elevator's usetrigger is among
+      > the registered triggers; identifying it needs the
+      > name-pool RE (the NAME(-58xx) block sits in the same
+      > range as the miners).
       > CLOSURE (same session): the ovr18 trio SERIALIZES
       > the flag array into save files — 0x70b66 snapshots
       > three core pointers (0x19c1, 0x67b7, 0x55b8) into
