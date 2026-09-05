@@ -605,7 +605,7 @@ entity render loop); `0x23067` was never it either.
 > ([`dsun-exe-survey.md`](dsun-exe-survey.md), 2026-08-28) adds
 > measured structure to several items below: the resident API
 > surface is ~340 functions (census in survey §3.3), the overlay
-> manager body is at file `0x466e0` (DS1) / `0x4aff0` (DS2), the
+> manager body is at file `0x466e0` (DS1) / `0x404c4` (DS2; the survey\&#x27;s 0x4aff0 was data, not code; corrected 2026-09-05), the
 > save/region module is string-anchored via `gpldisk.c` breadcrumbs,
 > and item 5 is resolved to a file offset. See survey §9 for the
 > item-by-item answers.
