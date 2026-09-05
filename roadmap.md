@@ -841,6 +841,51 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > name builder. The 'Bad iCtrl' string has NO reference
       > inside ovr18. The archive is a flat tag container, not
       > a GFF.
+      >
+      > **SECOND-AGENT FUNCTION TABLE** (boundary-scanned, the
+      > definitive version):
+      > | seg-local | file | function |
+      > |---|---|---|
+      > | 0x08E3 | 0x70713 | SAVE WRITER (tag SAVE, STXT record) |
+      > | 0x0A6C | 0x7089C | save-record writer (NOT the loader!) |
+      > | 0x0D1A | 0x70B4A | snapshot collector |
+      > | 0x0DCD | 0x70BFD | save orchestrator (disk space, SAVE%.2d.SAV) |
+      > | 0x0EBE | 0x70CEE | load orchestrator (calls 0x0A6C) |
+      > | 0x0FB7 | 0x70DE7 | region-change record creator |
+      > | 0x1132 | 0x70F62 | gpl_disk_change_region (named) |
+      > | 0x135B | 0x7118B | per-character RTGP record writer |
+      > | 0x146C | 0x7129C | load_teleport (named) |
+      >
+      > CRITICAL: 0x6874 = 0x67BB + 5*0x25. The 37-byte record
+      > array at DS:0x6874 is the NPC PORTION of a party-record
+      > array based at DGROUP:0x67BB (records 0-4 = party, 5-0x13F
+      > = NPCs). gpl_disk_change_region calls 0x70DE7 (create
+      > party records) -> 0x70713 (rewrite SAVE chunks) ->
+      > load_game_from_disk(region).
+      >
+      > CORRECTION from the gap read: the code at 0x0A6C WRITES
+      > SAVE-tagged records (it is the save writer, not the
+      > loader). The syms catalogue's "load_game_from_disk" name
+      > at ovr18+0x0A6C is WRONG — the function saves, it does
+      > not load. The actual load path is elsewhere (possibly the
+      > 0x0000-0x0A6C range, or a different segment entirely).
+      > The "Failed Uncompress in Loadgamefromdisk" string is the
+      > MODULE's error message, not a function name. The syms row
+      > needs correction.
+      >
+      > **TPORT DESTINATIONS RESOLVED** (third agent): all 13
+      > unique NAME(-N) tport targets in GPL-81 are NPCs and
+      > MONSTERS, not regions. The tports teleport the named
+      > NPC/monster OBJECT into Limbo (off-map): Melody(-74),
+      > Wren(-75), Mug(-77), Miners(-78/-79/-116/-117/-119),
+      > Zeegrat(-80), Winchester(-187), Umber Hulk(-405),
+      > Mindflayer(-416), Intellect Devourer(-526). Every RDFF
+      > record carries its own id negated as i16 at offset 14.
+      > The 32766-prefix tports teleport the PARTY to explicit
+      > region/coordinates (mostly Mines1=56). CONSEQUENCE: the
+      > party elevator ride is NOT in the NAME(-N) tports — it
+      > goes through the 32766 coordinate tports or the
+      > GNAME[38] runtime target in GPL-80.
       > CLOSURE (same session): the ovr18 trio SERIALIZES
       > the flag array into save files — 0x70b66 snapshots
       > three core pointers (0x19c1, 0x67b7, 0x55b8) into
