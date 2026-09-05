@@ -688,7 +688,13 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > clearing, the save-file persistence, and the
       > 'Invalid save' gate. The mines' records are the
       > entries for whatever ids the upper/lower levels use
-      > (two of 50-63/65-69).
+      > (two of 50-63/65-69). IDENTIFIED 2026-09-05:
+      > the mines are region ids 56/57/58 (RGN038='Mines1',
+      > RGN039='Mines2', RGN03A='Mines3' — the region files
+      > carry their own name strings). Their transition
+      > records sit at computable addresses
+      > (DGROUP:0x6874+(id-5)*37), and their scripts are
+      > GPL 76-85.
       > CLOSURE (same session): the ovr18 trio SERIALIZES
       > the flag array into save files — 0x70b66 snapshots
       > three core pointers (0x19c1, 0x67b7, 0x55b8) into
