@@ -117,7 +117,7 @@ this `GFFSEGFLAGMASK`; `chunk_count & 0x7FFFFFFF`
 Segmented types do not list per-chunk `(id, location, length)`
 records inline. Instead, the type's TOC entry carries:
 
-- `seg_loc_id` — an **index** into the chunks of the file's
+- `seg_loc_id`: an **index** into the chunks of the file's
   `GFFI` type (i.e. the `seg_loc_id`-th `gff_chunk_header_t`
   emitted by the GFFI type in the type list above).
 - A list of **segment runs**, each `(first_id, num_chunks)`,
@@ -228,7 +228,7 @@ Source: libgff's `gfftypes.h`. Categorized for readability.
 | `BMA `  | Cinematic binary file                            |
 | `ACF `  | Cinematic binary script                          |
 
-Frame layout, palette indexing, RLE encoding (if any) — to be confirmed
+Frame layout, palette indexing, RLE encoding (if any): to be confirmed
 during `opends-image` implementation against libgff's `gff_image*.c`.
 
 #### Maps and world
@@ -359,7 +359,7 @@ mistake the format. Entities (with `WALL`s) come in v0.2+.
 | `BUTN` | Button                                        |
 | `MENU` | Menu                                          |
 | `SBAR` | Scroll bar                                    |
-| `APFM` | (Likely "application form" — TBD)             |
+| `APFM` | (Likely "application form": TBD)             |
 | `ACCL` | Accelerator (keyboard shortcut table)         |
 
 #### Game data and objects
@@ -368,7 +368,7 @@ mistake the format. Entities (with `WALL`s) come in v0.2+.
 |--------|------------------------------------------------------------|
 | `IT1R` | Items                                                      |
 | `OJFF` | Object data (general)                                      |
-| `RDFF` | Record data — distinct schemas per game (DS1/DS2/DSO) for: |
+| `RDFF` | Record data: distinct schemas per game (DS1/DS2/DSO) for: |
 |        |  item, combat, char, mini, player, entity records          |
 | `FNFO` | Object data table                                          |
 | `RDAT` | Names                                                      |
@@ -406,7 +406,7 @@ format-coverage gap list). Note region 53 is absent from the
 shipped corpus and 255 is a special-scope region (`Limbo.`),
 matching its use as the same-region tport marker's neighbour.
 DS1's region files predate RNME entirely (their type list is
-GFFI/ETAB/GMAP/RMAP/TILE — no MAP, no PAL, no RNME: the DS1 palette
+GFFI/ETAB/GMAP/RMAP/TILE: no MAP, no PAL, no RNME: the DS1 palette
 comes from the RESOURCE fallback and the name chunk is absent).
 
 #### Scripting (the GPL VM, see `gpl-bytecode.md`)
@@ -436,7 +436,7 @@ comes from the RESOURCE fallback and the name chunk is absent).
 
 The `RDFF` chunk type's note in libgff calls out per-game record-schema
 variants. This means: an `IT1R` or `RDFF` chunk in DS1 is **not**
-byte-compatible with the same chunk type in DS2 — the field layouts
+byte-compatible with the same chunk type in DS2: the field layouts
 differ. OpenDS must carry a schema version per game.
 
 Practical implication for `opends-region` and `opends-rules`: load the
@@ -481,7 +481,7 @@ semantics. Known assignments (DS1 GOG 1.10):
 | `SAVE/18` | ~51 B    | Boolean array (all `0x01` in a played save)     |
 | `SAVE/2..4, 7..9, 19+` | varies | Various per-region state; not yet RE'd |
 
-### 3.3 `SAVE/5` — party combat sub-blocks
+### 3.3 `SAVE/5`: party combat sub-blocks
 
 `SAVE/5` is an array of **DS1 combat sub-blocks**, 58 bytes
 each, one per active party PC in display order. The layout
@@ -527,7 +527,7 @@ record 2 (offset 116..173): Cermak      stats 19 21 17 18 18 16
 record 3 (offset 174..231): Cilla       stats 19 21 17 18 18 16
 ```
 
-### 3.4 `SAVE/6` — party character sub-blocks
+### 3.4 `SAVE/6`: party character sub-blocks
 
 `SAVE/6` is an array of **DS1 character sub-blocks**, 71-72
 bytes each (the trailing palette byte is sometimes absent),
@@ -623,7 +623,7 @@ XMI ("eXtended MIDI") is John Miles' own MIDI dialect. Notable points:
   length), interpreted as 1/120 second ticks.
 - Includes a `TIMB` ("timbre list") chunk per song: which MT-32 patches
   the song wants pre-loaded.
-- Includes RBRN ("RhythmTRack" or similar — needs verification) chunks
+- Includes RBRN ("RhythmTRack" or similar: needs verification) chunks
   for branch points (used by adaptive music).
 
 Conversion to standard MIDI is implemented by the public-domain
@@ -631,7 +631,7 @@ Conversion to standard MIDI is implemented by the public-domain
 on a runtime library.
 
 The same XMI source is rendered into per-driver chunks (PSEQ/FSEQ/LSEQ/
-GSEQ) at content-build time — i.e., the driver-specific re-renders are
+GSEQ) at content-build time: i.e., the driver-specific re-renders are
 authored, not synthesized live. Each chunk contains the same musical
 content adapted to the target hardware's timbre map.
 

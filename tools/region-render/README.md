@@ -1,7 +1,7 @@
 # region-render
 
-Render a Dark Sun region GFF's full visual stack — background
-tiles, walls, and entity sprites — to a single palette-indexed
+Render a Dark Sun region GFF's full visual stack: background
+tiles, walls, and entity sprites: to a single palette-indexed
 PNG, optionally animated and bundled as a GIF. See what an
 in-game region actually looks like without firing up the engine.
 

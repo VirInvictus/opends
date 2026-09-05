@@ -105,10 +105,10 @@ client state, DOSBox tuning).
 
 See `docs/source-hashes/<game>-gog-1.10.toml`. Three sections:
 
-- `[meta]` — game, source, engine version, schema version.
-- `[files]` — relative-path → SHA256 mapping. Verifier requires
+- `[meta]`: game, source, engine version, schema version.
+- `[files]`: relative-path → SHA256 mapping. Verifier requires
   exact match unless overridden by `[runtime_state]`.
-- `[runtime_state].patterns` — glob patterns (fnmatchcase) for
+- `[runtime_state].patterns`: glob patterns (fnmatchcase) for
   files the verifier expects in a deployed install but whose
   contents are user-mutable. **A `[runtime_state]` pattern
   overrides a matching `[files]` entry**: an entry present in

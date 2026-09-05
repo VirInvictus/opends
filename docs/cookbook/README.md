@@ -1,7 +1,7 @@
 # Cookbook
 
 End-to-end modding walkthroughs. Each entry is a real, runnable
-workflow against the OpenDS toolkit — concrete commands,
+workflow against the OpenDS toolkit: concrete commands,
 expected output, roll-back instructions.
 
 ## Current entries
@@ -27,20 +27,20 @@ expected output, roll-back instructions.
 
 These would be useful cookbook entries but aren't written yet:
 
-- **`add-inventory-slot.md`** — using `save-inspect give-item`
+- **`add-inventory-slot.md`**: using `save-inspect give-item`
   to extend a PC's inventory beyond its existing slot count.
   Discovery loop for items.toml when no `find-empty-slots` slot
   is suitable.
-- **`replace-sprite.md`** — extract a sprite via `image-extract`,
+- **`replace-sprite.md`**: extract a sprite via `image-extract`,
   edit the PNG, pack via `image-pack`, replace via
   `gff-cat replace`. Covers the v0.4.0 round-trip.
-- **`patch-gpl-bytecode.md`** — author a `gpl-asm --patch` TOML
+- **`patch-gpl-bytecode.md`**: author a `gpl-asm --patch` TOML
   to fix a specific GPL chunk bug. End-to-end demonstration of
   the eventual darkfix authoring flow.
-- **`build-region-atlas.md`** — drive `tools/atlas/atlas.py
+- **`build-region-atlas.md`**: drive `tools/atlas/atlas.py
   build` to produce the full game's static HTML browser, then
   pick out a region to mod.
-- **`set-up-repro-fixture.md`** — author a new
+- **`set-up-repro-fixture.md`**: author a new
   `tools/repro/bugs/<id>/bug.toml` fixture so a known bug can
   be re-triggered deterministically.
 

@@ -3,7 +3,7 @@
 Resolved from the dispatch table at DGROUP:0xc0 (file `0x48a20`),
 reached by the interpreter's `shl ax,1; call near [bx+0xc0]` at
 file `0x99cb`. Handler file addresses assume code segment base
-`0x7900` (paragraph `0x250`) — the ONLY candidate surviving the
+`0x7900` (paragraph `0x250`): the ONLY candidate surviving the
 tiny-vs-large-handler filter, with corroborating structure:
 opcodes `0x01`-`0x08` map to consecutive 31-32-byte handlers (the
 arithmetic family) and Getxy is displaced out-of-band (`0x8ee8`),

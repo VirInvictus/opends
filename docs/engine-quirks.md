@@ -129,7 +129,7 @@ SAVE/5 offset 0; names are 40 bytes into each record.
 
 ## See also
 
-- [`file-formats.md`](file-formats.md) §3 — save-file layout
+- [`file-formats.md`](file-formats.md) §3: save-file layout
   details
 - [`cookbook/edit-ds1-party.md`](cookbook/edit-ds1-party.md)
-  — modder-facing workflow that touches all of these
+ : modder-facing workflow that touches all of these

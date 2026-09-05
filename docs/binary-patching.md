@@ -1,6 +1,6 @@
 # Binary Patching
 
-Some bugs do not live in GPL bytecode — they live in `DSUN.EXE`.
+Some bugs do not live in GPL bytecode: they live in `DSUN.EXE`.
 Combat AI loops, sprite culling, save/exit, sound-related bugs,
 inventory removal of charged weapons. For those, we patch the
 executable directly.
@@ -48,9 +48,9 @@ Borland-overlaid real-mode target, is documented in
 ### 3.1. Identify the bug surface
 
 GPL fixes are tried first. If the bug behaves the same regardless
-of which GPL script is at the wheel — for example, a graphics
+of which GPL script is at the wheel: for example, a graphics
 glitch, an inventory state corruption, a crash without a
-discernible quest trigger — it's likely engine-side.
+discernible quest trigger: it's likely engine-side.
 
 ### 3.2. Find the function
 
@@ -88,7 +88,7 @@ Two patterns are common:
   removing it.
 
 Anything more complex (insert new code, call a new function)
-requires a code cave — find an unused area in the binary, write
+requires a code cave: find an unused area in the binary, write
 the new logic there, redirect a JMP. Standard fare for ROM
 hackers.
 
@@ -97,7 +97,7 @@ hackers.
 The patch artifact format is specified once, in
 [`fix-format.md`](fix-format.md): a darkfix fix script
 (`fixes/NNN-<short-id>.py`) whose `EDITS` carry
-`{"offset", "expect", "replace"}` — the fingerprint-gated,
+`{"offset", "expect", "replace"}`: the fingerprint-gated,
 in-place-only byte edit this section used to sketch as a TOML
 applier that was never built. Author EXE edits against
 `ndisasm -b 16` output and `ovr-map`'s addressing; author GPL
@@ -133,7 +133,7 @@ The format disproof (no DOS/4GW; Borland/TLINK VROOM overlaid
 16-bit real mode) and the full evidence chain are in
 [`dsun-exe-re.md`](dsun-exe-re.md) §1. Practical consequence for
 patching: all code is 16-bit; `ndisasm -b 16` or `pwn disasm
-arch='i386', bits=16` is mandatory — a 32-bit decode produces
+arch='i386', bits=16` is mandatory: a 32-bit decode produces
 convincing garbage without erroring.
 
 ## 5. Risks
@@ -142,7 +142,7 @@ convincing garbage without erroring.
   not apply cleanly to DS2 1.0 or 1.02. The manifest's source
   hash check is the line of defense.
 - **Compounding patches**. Two fixes that touch nearby bytes can
-  conflict. The applier checks each `expect` independently — if
+  conflict. The applier checks each `expect` independently: if
   patch A modified bytes patch B expected, patch B refuses.
 - **Anti-debug**. None known in DSUN.EXE; if any surfaces, we
   document and route around it.

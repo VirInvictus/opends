@@ -68,7 +68,7 @@ the available evidence converges:
   independently by libgff's `GFF_DADV` chunk type comment: "AIL and .COM
   drivers (MEL version 1.x only)."
 - **Graphics**: VGA Mode 13h, 320×200, 8-bit indexed. Storage is
-  palettized 8-bit — confirmed by libgff's chunk catalog (`PAL`, `BMP`,
+  palettized 8-bit: confirmed by libgff's chunk catalog (`PAL`, `BMP`,
   `PORT`, `WALL`, `ICON`, `TILE`, `FONT`).
 
 For OpenDS planning, treat the original as: DOS C with VGA Mode 13h
@@ -100,48 +100,48 @@ and the darkfix patch-base rationale), see
 
 ### Shattered Lands
 
-- `DSUN.EXE` (611 KB) — main executable.
-- `SOUND_DS.EXE` (43 KB) — sound configurator.
-- `MIDITSR.EXE`, `ULTRAMID.EXE`, `GRAVIS.EXE` — DOS TSR drivers for
+- `DSUN.EXE` (611 KB): main executable.
+- `SOUND_DS.EXE` (43 KB): sound configurator.
+- `MIDITSR.EXE`, `ULTRAMID.EXE`, `GRAVIS.EXE`: DOS TSR drivers for
   Roland MPU-401 and Gravis Ultrasound.
-- `RESOURCE.GFF` (3.4 MB) — main resource bundle (UI, common art, etc.).
-- `CINE.GFF` (3.1 MB) — cinematic frames and scripts.
-- `GPLDATA.GFF` (1.4 MB) — compiled GPL bytecode and master index.
-- `SEGOBJEX.GFF` (5.1 MB) — segmented object data (items, entities).
-- `DARKRUN.GFF` (991 B) — runtime state stub.
+- `RESOURCE.GFF` (3.4 MB): main resource bundle (UI, common art, etc.).
+- `CINE.GFF` (3.1 MB): cinematic frames and scripts.
+- `GPLDATA.GFF` (1.4 MB): compiled GPL bytecode and master index.
+- `SEGOBJEX.GFF` (5.1 MB): segmented object data (items, entities).
+- `DARKRUN.GFF` (991 B): runtime state stub.
 - `RGN02.GFF` ... `RGN29.GFF`, `RGN0A.GFF` ... `RGN2D.GFF`, `RGNFF.GFF`
-  — region (map) files. Names are hex IDs.
-- `GM1.BNK`, `GM2.BNK` — Roland sound banks.
-- `STDPATCH.AD` — AdLib FM patch table.
-- `SSI1.INI`, `UM200.INI`, `UM206.INI`, `UM206A.INI` — config files.
-- `DARKSUN.BAT`, `SOUND.BAT`, `SOUND.CFG` — launchers.
+ : region (map) files. Names are hex IDs.
+- `GM1.BNK`, `GM2.BNK`: Roland sound banks.
+- `STDPATCH.AD`: AdLib FM patch table.
+- `SSI1.INI`, `UM200.INI`, `UM206.INI`, `UM206A.INI`: config files.
+- `DARKSUN.BAT`, `SOUND.BAT`, `SOUND.CFG`: launchers.
 
 ### Wake of the Ravager
 
-- `DSUN.EXE` (634 KB) — main executable.
-- `SOUND_DS.EXE` (205 KB) — much larger; bundles AIL drivers directly.
+- `DSUN.EXE` (634 KB): main executable.
+- `SOUND_DS.EXE` (205 KB): much larger; bundles AIL drivers directly.
 - `RESOURCE.GFF` (5.7 MB), `OBJEX.GFF` (6.8 MB), `GPLDATA.GFF` (2.2 MB).
-- `RGN001.GFF`, `RGN03A.GFF` ... — region files (note the schema is
+- `RGN001.GFF`, `RGN03A.GFF` ...: region files (note the schema is
   three hex digits in DS2 vs two in DS1).
-- `*.FLI` — five Autodesk Animator FLIC cinematics: `1.FLI` through
+- `*.FLI`: five Autodesk Animator FLIC cinematics: `1.FLI` through
   `5.FLI`.
 - `SOUND001.VOC`, `SOUND002.VOC`, ... and `SPCH50.VOC` ... `SPCH300.VOC`
-  — digital sound effects and voiced speech.
-- `game.gog` (109 MB) — CD-ROM image (Mode 2/2352 data track) mounted
+ : digital sound effects and voiced speech.
+- `game.gog` (109 MB): CD-ROM image (Mode 2/2352 data track) mounted
   as a virtual CD by DOSBox.
-- `MUSIC/Track02.ogg` ... `Track41.ogg` — 40 redbook audio tracks
+- `MUSIC/Track02.ogg` ... `Track41.ogg`: 40 redbook audio tracks
   re-encoded by GOG. The original CD shipped these as redbook audio;
   there is no MIDI music for DS2 (per the SSI 1.02 README:
   "Since there is no MIDI music (just off the CD)…").
-- `PATCH.EXE`, `PATCH.RTP` — RTPatch binary patcher leftovers.
-- `CHARTRAN.EXE` — character transfer tool from DS1 saves to DS2.
-- `SVIEW.EXE` — slideshow / FLI viewer utility.
-- `README.TXT` — official 1.02 patchnotes (preserved in
+- `PATCH.EXE`, `PATCH.RTP`: RTPatch binary patcher leftovers.
+- `CHARTRAN.EXE`: character transfer tool from DS1 saves to DS2.
+- `SVIEW.EXE`: slideshow / FLI viewer utility.
+- `README.TXT`: official 1.02 patchnotes (preserved in
   [`known-bugs.md`](known-bugs.md)).
 
 ### GFF magic
 
-All GFFs verified to start with `GFFI\0\0\x03\0\x1c\0\0\0` — magic
+All GFFs verified to start with `GFFI\0\0\x03\0\x1c\0\0\0`: magic
 "GFFI", version 3, header size 0x1C (28 bytes). The next 4 bytes are
 the offset to the table of contents. Identical magic across DS1, DS2,
 and (per other sources) DSO.
@@ -155,7 +155,7 @@ ships the 1.10 binary inside DOSBox. The state of the art for
 "play Wake of the Ravager today" is identical to the state of
 the art in 1995 modulo DOSBox conveniences.
 
-Reimplementations have been attempted — and have failed — for
+Reimplementations have been attempted: and have failed: for
 two decades:
 
 | Year       | Project                     | Outcome                                  |
@@ -182,7 +182,7 @@ standalone deliverables:
 - **Tools** (GPL disassembler, GFF editor, install verifier,
   region viewer) are independently useful and reusable.
 - **Documentation** is the artifact every prior attempt failed
-  to leave behind — meaning every new contributor has had to
+  to leave behind: meaning every new contributor has had to
   redo the same RE work from scratch.
 
 The eventual full reimplementation lives in the project's name
@@ -194,21 +194,21 @@ it possible. We do not commit to shipping it ourselves. See
 
 Primary research, with URLs:
 
-- libgff and family — https://github.com/dsoageofheroes
-- John Glassmyer's `dsun_music` — https://github.com/JohnGlassmyer/dsun_music
-- Greg Kennedy's `DarkSunOnline` — https://github.com/greg-kennedy/DarkSunOnline
-- Crimson Sands postmortem — https://www.gamedeveloper.com/design/postmortem-ssi-s-i-dark-sun-online-crimson-sands-i-
-- Wikipedia: *Dark Sun: Shattered Lands* — https://en.wikipedia.org/wiki/Dark_Sun:_Shattered_Lands
-- Wikipedia: *Dark Sun: Wake of the Ravager* — https://en.wikipedia.org/wiki/Dark_Sun:_Wake_of_the_Ravager
-- Wikipedia: *Dark Sun Online: Crimson Sands* — https://en.wikipedia.org/wiki/Dark_Sun_Online:_Crimson_Sands
-- Wikipedia: Miles Sound System — https://en.wikipedia.org/wiki/Miles_Sound_System
-- VGMPF: Audio Interface Library — https://www.vgmpf.com/Wiki/index.php/Audio_Interface_Library
-- VOGONS: WotR DSP issues — https://www.vogons.org/viewtopic.php?t=10893
-- Athas community RE thread — https://arena.athas.org/t/reviving-dark-sun-online/1901
-- GOG product database — https://www.gogdb.org/product/1432723859 (DS1),
+- libgff and family: https://github.com/dsoageofheroes
+- John Glassmyer's `dsun_music`: https://github.com/JohnGlassmyer/dsun_music
+- Greg Kennedy's `DarkSunOnline`: https://github.com/greg-kennedy/DarkSunOnline
+- Crimson Sands postmortem: https://www.gamedeveloper.com/design/postmortem-ssi-s-i-dark-sun-online-crimson-sands-i-
+- Wikipedia: *Dark Sun: Shattered Lands*: https://en.wikipedia.org/wiki/Dark_Sun:_Shattered_Lands
+- Wikipedia: *Dark Sun: Wake of the Ravager*: https://en.wikipedia.org/wiki/Dark_Sun:_Wake_of_the_Ravager
+- Wikipedia: *Dark Sun Online: Crimson Sands*: https://en.wikipedia.org/wiki/Dark_Sun_Online:_Crimson_Sands
+- Wikipedia: Miles Sound System: https://en.wikipedia.org/wiki/Miles_Sound_System
+- VGMPF: Audio Interface Library: https://www.vgmpf.com/Wiki/index.php/Audio_Interface_Library
+- VOGONS: WotR DSP issues: https://www.vogons.org/viewtopic.php?t=10893
+- Athas community RE thread: https://arena.athas.org/t/reviving-dark-sun-online/1901
+- GOG product database: https://www.gogdb.org/product/1432723859 (DS1),
   https://www.gogdb.org/product/1432903719 (DS2)
-- DOSBox compat list — https://www.dosbox.com/comp_list.php?showID=148&letter=D
-- Patches Scrolls (WotR 1.10) — https://www.patches-scrolls.de/patch/1112/7/22585
-- Internet Archive: WAKEDK11_ZIP — https://archive.org/details/WAKEDK11_ZIP
-- Internet Archive: WAKECD11_ZIP — https://archive.org/details/WAKECD11_ZIP
-- CRPG Addict on DS1 — http://crpgaddict.blogspot.com/2021/10/game-434-dark-sun-shattered-lands-1993.html
+- DOSBox compat list: https://www.dosbox.com/comp_list.php?showID=148&letter=D
+- Patches Scrolls (WotR 1.10): https://www.patches-scrolls.de/patch/1112/7/22585
+- Internet Archive: WAKEDK11_ZIP: https://archive.org/details/WAKEDK11_ZIP
+- Internet Archive: WAKECD11_ZIP: https://archive.org/details/WAKECD11_ZIP
+- CRPG Addict on DS1: http://crpgaddict.blogspot.com/2021/10/game-434-dark-sun-shattered-lands-1993.html

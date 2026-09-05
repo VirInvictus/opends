@@ -1,6 +1,6 @@
 # Cookbook: Bootstrap the items.toml catalogue
 
-How to learn what an item id represents — by giving a PC the
+How to learn what an item id represents: by giving a PC the
 mystery item and looking at it in-game. Builds
 `tools/save-inspect/syms/items.toml` one row at a time. No RE
 needed.
@@ -152,8 +152,8 @@ disassembly skill, the item table's structure is undocumented,
 and a lot of items have names assembled from multiple strings
 ("Iron" + "Sword" via two pointers in different tables).
 
-The empirical bootstrap is shallower work — anyone who can
-play the game can run it — and the catalogue gets validated
+The empirical bootstrap is shallower work: anyone who can
+play the game can run it: and the catalogue gets validated
 against the player-visible truth in one step. The two
 approaches converge to the same `items.toml` either way.
 

@@ -63,7 +63,7 @@ PC 0: Gerakis
   char   weapon: 1d1+0 (num_dice/sides/bonuses [0..2] = [1, 0, 0] / [1, 0, 0] / [0, 0, 0])
 ```
 
-Note the `weapon: 1d1+0` — Gerakis's CACHED weapon damage is
+Note the `weapon: 1d1+0`: Gerakis's CACHED weapon damage is
 `1d1` (= always 1 damage). The 2e damage bonus from STR is
 computed at attack time from the engine's table; if you set STR
 above 25 the table returns +0, so this weapon would do 1 damage
@@ -184,7 +184,7 @@ want regardless of the bonus table.
 Stats appear in BOTH SAVE-5 (combat sub-block, 58 bytes) and
 SAVE-6 (character sub-block, 71-72 bytes). The first edit
 attempt only modified SAVE-5 stats and saw the character sheet
-update visually — but combat math reads from SAVE-6. The
+update visually: but combat math reads from SAVE-6. The
 script writes to both so visual and engine stay in sync.
 
 ### 3. DARKRUN.GFF and SAVE01.SAV must match
@@ -229,10 +229,10 @@ engine reloads SAVE01 over it. The script writes to both.
 
 ## See also
 
-- [`edit-pc-hp.md`](edit-pc-hp.md) — the equivalent for DS2
+- [`edit-pc-hp.md`](edit-pc-hp.md): the equivalent for DS2
   CHARSAVE.GFF (works for DS2 active party; DS1 only for
   inactive char templates)
-- [`bootstrap-items.md`](bootstrap-items.md) — the items.toml
+- [`bootstrap-items.md`](bootstrap-items.md): the items.toml
   catalogue bootstrap loop
-- [`../file-formats.md`](../file-formats.md) §3 — the SAVE-5 /
+- [`../file-formats.md`](../file-formats.md) §3: the SAVE-5 /
   SAVE-6 layout details

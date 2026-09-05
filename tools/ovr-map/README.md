@@ -168,22 +168,22 @@ it runnable from this checkout, is in `docs/re-tooling.md`.
 
 ### Helper scripts (`scripts/`)
 
-- `propose-exe-symbols.py` — the naming-campaign worklist
+- `propose-exe-symbols.py`: the naming-campaign worklist
   generator (see the roadmap's 5.6.1): `--census` resolves every
   overlay far-call to exact `seg:off` resident targets with
   `55 8B EC` evidence marks, `--strings` finds source-file string
   anchors beside the DSO prefix census, and `--anchors` renders
   curated rows into `syms/` catalogue format. Proposals are review
   input; the script never writes `syms/`.
-- `xref-string.py` — string cross-references: given a resident
+- `xref-string.py`: string cross-references: given a resident
   string, finds the `push`/`mov` immediates that reference it
   (DS-relative against DGROUP, auto-discovered from the entry
   point). The tool behind the catalogue's verified anchors.
-- `gpl-xref.py` — the GPL↔EXE index: joins `66 68 <FOURCC>` push
+- `gpl-xref.py`: the GPL↔EXE index: joins `66 68 <FOURCC>` push
   sites (with immediate ids) and their loader calls against a
   `gpl-disasm --global-cfg --json` chunk inventory, answering
   "which EXE code loads which chunk kind".
-- `diff-official.py` — the cluster-annotated official-patch
+- `diff-official.py`: the cluster-annotated official-patch
   differ: signature-checked segment pairing, per-cluster offsets in
   both binaries, nearest-entry ndisasm excerpts (CD 1.0 vs GOG
   1.10 by default).

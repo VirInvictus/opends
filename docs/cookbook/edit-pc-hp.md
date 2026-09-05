@@ -10,7 +10,7 @@ output, real backups taken.
 ## Prerequisites
 
 - `save-inspect v0.9.0` or later. Build with `cargo build
-  --release` (Rust workspace) — the Python script itself needs
+  --release` (Rust workspace): the Python script itself needs
   no build step, but it shells to `gff-cat` for chunk-level
   writes, which is a Rust binary.
 - Your game install. This walkthrough uses
@@ -140,7 +140,7 @@ glitches.
   or rest).
 - **Class change**: not supported by `edit-pc` (touches
   `legal_class` / `real_class` / `level` arrays + recomputes
-  HP / spell tables — too easy to corrupt). Use a character-
+  HP / spell tables: too easy to corrupt). Use a character-
   generation save and re-import if you want a different class.
 - **Adding items**: `edit-pc` doesn't grow inventory. Use
   `edit-item` to overwrite an existing empty slot (`save-inspect
@@ -154,7 +154,7 @@ glitches.
 
 - `edit-item --pc N --slot K --item-id X --quantity Q`: change
   any existing slot's contents in place. Use this to bootstrap
-  the `tools/save-inspect/syms/items.toml` catalogue — set a
+  the `tools/save-inspect/syms/items.toml` catalogue: set a
   spare slot to a candidate id, load in DOSBox, see what shows
   up, tag the id with a name.
 - `list-items --pc N`: see slot indices and current ids before

@@ -3,7 +3,7 @@
 Resolved from the dispatch table at DGROUP:0x30a (file `0x4d30a`),
 reached by the interpreter's `shl ax,1; call near [bx+0x30a]` at
 file `0xc677`. Handler file addresses assume code segment base
-`0x6500` (paragraph `0x130`) — **probable**: it wins a
+`0x6500` (paragraph `0x130`): **probable**: it wins a
 decodability test over the other candidates (0x320 / 0x3e0) and
 satisfies every structural constraint, but is not yet confirmed
 by a semantic read. The 15 unknown bytes share the single default

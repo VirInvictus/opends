@@ -59,14 +59,14 @@ Build descriptors must read from `VERSION`, not duplicate it:
 Each item versions independently. Bumping one tool does not bump
 another.
 
-- **MAJOR** — breaking change to the item's public interface.
+- **MAJOR**: breaking change to the item's public interface.
   For tools, this means CLI flags or output format changed in a
   non-additive way, or the library API broke. For patches, this
   means a hash target or fix-id changed in a way that
   invalidates older user state.
-- **MINOR** — backward-compatible feature addition. For tools,
+- **MINOR**: backward-compatible feature addition. For tools,
   new flags or new subcommands. For patches, new fixes added.
-- **PATCH** — backward-compatible fixes. For tools, bugfixes
+- **PATCH**: backward-compatible fixes. For tools, bugfixes
   with no interface change. For patches, fixes-to-fixes.
 
 ## Pre-1.0
@@ -74,9 +74,9 @@ another.
 All items start at `0.1.0`. The semantic difference between
 0.x.y and 1.0.0:
 
-- **0.x.y** — the interface may still change between minor
+- **0.x.y**: the interface may still change between minor
   bumps. No strict back-compat promise.
-- **1.0.0** — maintainer commits to back-compat under semver
+- **1.0.0**: maintainer commits to back-compat under semver
   rules. We do not promise this lightly. Tools graduate to 1.0
   when they are stable enough that a downstream project can
   depend on them.

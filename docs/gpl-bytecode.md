@@ -7,14 +7,14 @@ the tools that operate on all of this are
 [`gpl-disasm`](../tools/gpl-disasm/) and
 [`gpl-asm`](../tools/gpl-asm/).*
 
-GPL — "Game Programming Language" — is the engine's embedded
+GPL: "Game Programming Language": is the engine's embedded
 scripting language. Quest logic, dialogue trees, NPC AI hooks,
 event triggers, item-use callbacks, and most of what makes the
 game "the game" are expressed in compiled GPL bytecode.
 
 For darkfix, GPL is the **primary editing surface**. The bulk of
 the SSI 1.02 fix list and the bulk of the surviving bugs are
-GPL-script bugs — flag/state bugs, missing branches, off-by-one
+GPL-script bugs: flag/state bugs, missing branches, off-by-one
 guards. Fix one GPL bug → fix one quest. Fix every GPL bug → fix
 the game.
 
@@ -30,7 +30,7 @@ In the GFF container (see [`file-formats.md`](file-formats.md)):
 | `GPLX` | GPL index file                            |
 
 Both DS1 and DS2 ship a single `GPLDATA.GFF` containing all of
-these — DS1's is 1.4 MB, DS2's is 2.2 MB. Region-specific scripts
+these: DS1's is 1.4 MB, DS2's is 2.2 MB. Region-specific scripts
 may also live inside the per-region `RGN*.GFF` files; that needs
 verification by chunk-counting once we have a reader running.
 
@@ -55,14 +55,14 @@ table.
 
 The most useful prior art:
 
-- **`soloscuro-archive`'s `src/gpl/`** — the closest thing to a
+- **`soloscuro-archive`'s `src/gpl/`**: the closest thing to a
   partial GPL VM that exists publicly. Implements some opcodes;
   many remain stubs. Worth reading before disassembly work.
-- **`libgff`'s `gff_chunk_gpl*`** — produces raw chunk bytes plus
+- **`libgff`'s `gff_chunk_gpl*`**: produces raw chunk bytes plus
   some structural metadata, but does not interpret.
-- **`the-dark-lens`** — DSO documentation; mentions GPL in
+- **`the-dark-lens`**: DSO documentation; mentions GPL in
   passing.
-- **`greg-kennedy/DarkSunOnline` wiki** — the highest-value
+- **`greg-kennedy/DarkSunOnline` wiki**: the highest-value
   cross-reference: the DSO v1.0 client shipped with debug symbols
   that include GPL function names. DSO inherited the WotR
   codebase, so those names map (with care) onto the same
@@ -109,7 +109,7 @@ extended bit is set, `{Kind}+[{id}]`. `Kind` is a two-letter tag
 per the variable's kind: `GF` (Gflag), `LF` (Lflag), `GB`
 (Gbyte), `LB` (Lbyte), `GW`/`LW` (words), `GNUM`/`LNUM` (numbers),
 `GSTR`/`LSTR` (strings), `GNAME`/`LNAME` (object handles), and
-others — see the `VarKind` tags in `tools/gpl-disasm/src/lib.rs`.
+others: see the `VarKind` tags in `tools/gpl-disasm/src/lib.rs`.
 When a curated name exists for the id (from `syms/variables.toml`
 or `syms/locals.toml`), the rendering appends the name in
 parentheses: `GF[42 (POV_FLAGS)]`.
@@ -142,7 +142,7 @@ per-chunk locals overlays and the DSO importer (v0.5.0+), and
 `render_text` round-tripping (v0.4.6+). `tools/gpl-disasm/README.md`
 is the tool's own reference.
 
-### §5a — Branch opcode semantics spike
+### §5a: Branch opcode semantics spike
 
 Before committing to a recursive-descent walker, we verified
 what the first parameter of each branch opcode actually means.
@@ -171,7 +171,7 @@ relative offset, a label id, or something else?
      comments `// Jump to addr %s in file %s`: the first is
      the address, the second is the GPL file id.
    - `gpl_lua_jump` (1524) is `lua_exit("jump not
-     implemented!\n")` — paulofthewest never lowered the
+     implemented!\n")`: paulofthewest never lowered the
      unconditional jump opcode. Not a blocker; the consistent
      unit ("bytes since chunk start") still applies.
 
@@ -271,7 +271,7 @@ Backward edges via `wend` are expected and not an error.
   ```
   All five chained mismatch-targets land on the next
   ifcompare's offset; the chain terminates at `gpl cmpend`
-  (0x61). CFG model: 2 successors — fallthrough (match) +
+  (0x61). CFG model: 2 successors: fallthrough (match) +
   param[1] (mismatch). Important: the target is **param[1]**,
   not param[0], unlike the single-param branches above.
 
@@ -296,7 +296,7 @@ End-to-end, once `gpl-disasm` exists:
 
 1. Reproduce the bug in DOSBox (saved-game library helps).
 2. Run `gpl-disasm .games/dsN/GPLDATA.GFF > /tmp/dump.gpl.s`.
-3. Locate the chunk responsible — usually by the dialog
+3. Locate the chunk responsible: usually by the dialog
    text the buggy NPC speaks (search for the string in the
    disassembly).
 4. Identify the bug (missing branch, wrong flag, etc.).
@@ -310,7 +310,7 @@ End-to-end, once `gpl-disasm` exists:
    disassembly reads correctly. Run the bug repro; bug should
    not fire.
 
-## 7. The reassembler ("`gpl-asm`") — not in v1
+## 7. The reassembler ("`gpl-asm`"): not in v1
 
 A reassembler that takes our disassembly format back to bytecode
 is desirable but not required for v1. v1 patches edit specific
@@ -338,12 +338,12 @@ If a fix requires shifting offsets, we either:
 
 ## 9. Resources to mine
 
-- soloscuro-archive — https://github.com/dsoageofheroes/soloscuro-archive
-- libgff — https://github.com/dsoageofheroes/libgff
-- the-dark-lens — https://github.com/dsoageofheroes/the-dark-lens
-- DarkSunOnline — https://github.com/greg-kennedy/DarkSunOnline
-- Crimson Sands postmortem — https://www.gamedeveloper.com/design/postmortem-ssi-s-i-dark-sun-online-crimson-sands-i-
-- dsoageofheroes Discord — https://discord.gg/W942xHN72S
+- soloscuro-archive: https://github.com/dsoageofheroes/soloscuro-archive
+- libgff: https://github.com/dsoageofheroes/libgff
+- the-dark-lens: https://github.com/dsoageofheroes/the-dark-lens
+- DarkSunOnline: https://github.com/greg-kennedy/DarkSunOnline
+- Crimson Sands postmortem: https://www.gamedeveloper.com/design/postmortem-ssi-s-i-dark-sun-online-crimson-sands-i-
+- dsoageofheroes Discord: https://discord.gg/W942xHN72S
 
 When a GPL question stalls us, ask in that Discord before
 spending days on it.

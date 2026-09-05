@@ -8,7 +8,7 @@ bug. Skim once. Refer back as needed.
 
 ## 0. Prerequisites
 
-- Fedora dev environment set up — see
+- Fedora dev environment set up: see
   [`build-environment.md`](build-environment.md).
 - Both games extracted to `.games/ds1/` and `.games/ds2/`.
 - DOSBox-Staging configured to run them.
@@ -55,7 +55,7 @@ Quick version:
 
 1. `gpl-disasm .games/dsN/GPLDATA.GFF > scratch/<bug-id>/dump.gpl.s`
 2. Locate the chunk responsible (search for dialog strings,
-   item names, NPC names — they tend to be embedded in or
+   item names, NPC names: they tend to be embedded in or
    adjacent to the relevant chunk).
 3. Read the chunk's disassembly in `nvim` or `e`.
 4. Find the bug. Often a wrong jump target, missing flag clear,
@@ -121,7 +121,7 @@ below.
 Skeleton:
 
 ```python
-"""fix.dsN.<short-id> — one-line summary"""
+"""fix.dsN.<short-id>: one-line summary"""
 
 from darkfix.patcher import apply_bytes, apply_gff_chunk
 
@@ -167,7 +167,7 @@ guards against regressions in the patch script itself.
 
 ### 5.3. Playthrough test
 
-Periodically — at minor-version boundaries — do a longer
+Periodically: at minor-version boundaries: do a longer
 playthrough with all enabled fixes on. Log anything unusual.
 This is the catch-net for "fix A interacts badly with fix B."
 
@@ -180,7 +180,7 @@ This is the catch-net for "fix A interacts badly with fix B."
 4. Update [`patchnotes.md`](../patchnotes.md) under the
    current "Unreleased" section.
 5. Commit. Suggested message:
-   `dsN: fix.dsN.<short-id> — one-line summary`.
+   `dsN: fix.dsN.<short-id>: one-line summary`.
 
 (Per house rule, see `.clinerules`: do not commit on the user's
 behalf without being asked.)
@@ -204,7 +204,7 @@ When the next minor version is ready:
 
 - **Ask in the dsoageofheroes Discord**:
   https://discord.gg/W942xHN72S
-- **Re-read** [`upstream-projects.md`](upstream-projects.md) —
+- **Re-read** [`upstream-projects.md`](upstream-projects.md) ;
   the answer is often already in libgff or soloscuro-archive's
   source.
 - **Sleep on it.** Half of the genuinely-hard bugs in projects

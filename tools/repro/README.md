@@ -98,9 +98,9 @@ a degraded-mode signal, not a hard fail.
 
 In addition to `dosbox.log`, v0.4.0 adds:
 
-- `automation.log` — per-keystroke timestamps and the
+- `automation.log`: per-keystroke timestamps and the
   recorder's lifecycle messages.
-- `repro.mp4` — captured video (only when
+- `repro.mp4`: captured video (only when
   `record_video = true` and ffmpeg succeeded).
 
 ---

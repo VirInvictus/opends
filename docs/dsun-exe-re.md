@@ -685,6 +685,6 @@ enough that hand-decoding catches it.
 
 The host RE tooling (Ghidra 12.1.2 + pinned Temurin JDK, pwntools)
 and the headless Ghidra pipeline moved to
-[`re-tooling.md`](re-tooling.md) — setup, the runnable recipe for
+[`re-tooling.md`](re-tooling.md): setup, the runnable recipe for
 this checkout, and the OSGi troubleshooting entry. `radare2`
 remains the scriptable first stop for everything in sections 1-6.

@@ -3,7 +3,7 @@
 A catalog of the engine bugs we are committing to fix. Three sources:
 
 1. **SSI's official 1.02 README** for *Wake of the Ravager*, preserved
-   verbatim in section 1 below — that's twenty bugs SSI fixed between
+   verbatim in section 1 below: that's twenty bugs SSI fixed between
    the 1.0 release and the 1.02 patch. We must not regress these.
 2. **The 1.10 → present** residual bugs documented on Wikipedia, VOGONS,
    GOG forums, the DOSBox compatibility list, and the Steam community
@@ -81,7 +81,7 @@ sprite/tile layering or culling defect.
 
 **Surface**: DSUN.EXE (renderer).
 
-**Status**: deferred — the binary fix is more invasive than other
+**Status**: deferred: the binary fix is more invasive than other
 candidates. May be addressed in DS2 v0.5 sweep.
 
 ### 2.3. Charged-weapon disappearance
@@ -125,7 +125,7 @@ DSP detect fail."
 **Origin**: SoundBlaster IRQ misconfiguration. The original expects
 IRQ 5; DOSBox defaults to IRQ 7.
 
-**Status**: out of scope — it's a DOSBox config issue, not an engine
+**Status**: out of scope: it's a DOSBox config issue, not an engine
 bug. The GOG release's bundled `.conf` already uses IRQ 5.
 
 ## 3. DS1 issues
@@ -154,18 +154,18 @@ three columns are yes plus a written site report.
 
 | Bug (§) | Game | Site located | Site named | Root cause | Evidence so far |
 |---|---|---|---|---|---|
-| Mine elevator freeze (2.1) | DS2 | **partial** | **partial** | no | The region-transition module is anchored: DS2 `ovr18+0x1132` (`gpl_disk_change_region`), DS1 `ovr21+0x1487` — the transition state machine's neighbourhood is known; the specific elevator path is not. Both are confirmed entry stubs in the same segment as each game's `LoadGameFromDisk`. |
+| Mine elevator freeze (2.1) | DS2 | **partial** | **partial** | no | The region-transition module is anchored: DS2 `ovr18+0x1132` (`gpl_disk_change_region`), DS1 `ovr21+0x1487`: the transition state machine's neighbourhood is known; the specific elevator path is not. Both are confirmed entry stubs in the same segment as each game's `LoadGameFromDisk`. |
 | Doorway/item graphics disappearance (2.2) | DS2 | no | no | no | Renderer surface only; nothing anchored yet. |
 | Charged-weapon disappearance (2.3) | DS2 | **partial** | no | no | The item path's OBJEX lookup is catalogued (`ovr35+0x2327`, pushes "Failed, Not in Objex.gff"); the charge-decrement code is not. |
 | "Saves but exits" (2.4) | DS2 | **partial** | **partial** | no | Both save-path anchors catalogued and verified: `LoadGameFromDisk` (DS2 ovr18+0xa6c, DS1 ovr21+0xdde, self-naming strings) and the slot path `SaveGameToDisk` (DS2 ovr11+0x8e5, DS1 ovr13+0x7cc). The exit-after-save sequence is not traced. |
-| Audio static (2.5) | — | n/a | n/a | n/a | Out of scope (AIL driver mismatch, not engine). |
-| MEL DSP detect fail (2.6) | — | n/a | n/a | n/a | Out of scope (DOSBox IRQ config). The MEL error path is incidentally anchored (`mel_dj_audio_init`, DS2 ovr11+0x26). |
+| Audio static (2.5) |: | n/a | n/a | n/a | Out of scope (AIL driver mismatch, not engine). |
+| MEL DSP detect fail (2.6) |: | n/a | n/a | n/a | Out of scope (DOSBox IRQ config). The MEL error path is incidentally anchored (`mel_dj_audio_init`, DS2 ovr11+0x26). |
 | DS1 issues (§3) | DS1 | partial | partial | no | The gpldisk.c module is anchored DS1-side (`ictrl_check`, `load_game_from_disk`, `gpl_disk_change_region`, `load_teleport`, `save_game_to_disk`); per-bug rows wait on §3's list being triaged. |
 
 Module-level context that shortens every dig: the GPL VM dispatch
 tables are resolved for both engines (all 15 unknown bytes proven
 unimplemented), and the handler stubs call through far-pointer
-tables — so a bug whose cause is a wrong opcode behavior can be
+tables: so a bug whose cause is a wrong opcode behavior can be
 traced handler-to-implementation in two hops.
 
 
@@ -205,10 +205,10 @@ are **off by default**, on by toggle. See [`../spec.md`](../spec.md) §5.
 
 ## 6. Sources
 
-- `.games/ds2/README.TXT` — SSI's verbatim 1.02 patchnotes.
-- Wikipedia — https://en.wikipedia.org/wiki/Dark_Sun:_Wake_of_the_Ravager
-- VOGONS thread — https://www.vogons.org/viewtopic.php?t=10893
-- DOSBox compat list — https://www.dosbox.com/comp_list.php?showID=148&letter=D
-- Internet Archive — https://archive.org/details/WAKEDK11_ZIP
-- Internet Archive — https://archive.org/details/WAKECD11_ZIP
-- Patches Scrolls — https://www.patches-scrolls.de/patch/1112/7/22585
+- `.games/ds2/README.TXT`: SSI's verbatim 1.02 patchnotes.
+- Wikipedia: https://en.wikipedia.org/wiki/Dark_Sun:_Wake_of_the_Ravager
+- VOGONS thread: https://www.vogons.org/viewtopic.php?t=10893
+- DOSBox compat list: https://www.dosbox.com/comp_list.php?showID=148&letter=D
+- Internet Archive: https://archive.org/details/WAKEDK11_ZIP
+- Internet Archive: https://archive.org/details/WAKECD11_ZIP
+- Patches Scrolls: https://www.patches-scrolls.de/patch/1112/7/22585

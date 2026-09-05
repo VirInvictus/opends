@@ -4,7 +4,7 @@
 
 # OpenDS
 
-**An open community toolkit for SSI's Dark Sun CRPGs** —
+**An open community toolkit for SSI's Dark Sun CRPGs** ;
 *Shattered Lands* (1993) and *Wake of the Ravager* (1994).
 
 Tools, patches, and documentation. Everything we learn gets
@@ -12,9 +12,9 @@ written down. Every utility we build gets published.
 
 ## What ships out of this repo
 
-In build order — **tools first, patches second**:
+In build order: **tools first, patches second**:
 
-- **Tools** — every utility built to make the digging easier.
+- **Tools**: every utility built to make the digging easier.
   Thirteen ship today, each independently with its own README
   and `VERSION`. MIT-licensed. → [`tools/`](tools/)
 
@@ -36,12 +36,12 @@ In build order — **tools first, patches second**:
 
   The [`tools/README.md`](tools/README.md) table carries current
   versions and per-tool detail.
-- **darkfix patches** — community bugfix patches for both
+- **darkfix patches**: community bugfix patches for both
   games. Distributed as zips you apply to your GOG install. The
   game still launches via DOSBox; the bugs you used to hit, you
   don't. Authoring is built on the tools above.
   → [`ds1-patch/`](ds1-patch/), [`ds2-patch/`](ds2-patch/)
-- **Documentation** — file formats, engine internals, bug
+- **Documentation**: file formats, engine internals, bug
   catalogs, reverse-engineering notes. So the next person doesn't
   have to figure it out again. → [`docs/`](docs/)
 
@@ -56,24 +56,24 @@ A full open-source engine reimplementation.
 It has been tried, repeatedly. Public attempts going back two
 decades:
 
-- **Dark Sun World** (2004–2008) — DSO revival. Inactive.
-- **A 2010s DSO emulator** — shut down by Wizards of the Coast.
-- **paulofthewest's `soloscuro-archive`** — the most serious
+- **Dark Sun World** (2004–2008): DSO revival. Inactive.
+- **A 2010s DSO emulator**: shut down by Wizards of the Coast.
+- **paulofthewest's `soloscuro-archive`**: the most serious
   attempt, ~567 commits, stalled in 2023.
 - **soloscuro (Zig rewrite)**, **soloscuro-orx**,
-  **soloscuro-oldgo**, **libsoloscuro** — half a dozen prototypes
+  **soloscuro-oldgo**, **libsoloscuro**: half a dozen prototypes
   inside the dsoageofheroes org alone, none playable end-to-end.
-- **Beamdog forums port** — a community attempt to recreate
+- **Beamdog forums port**: a community attempt to recreate
   *Shattered Lands* inside the Infinity Engine. Inactive.
 
 Every attempt has stalled before delivering a playable game. The
-problem is the GPL bytecode VM — the engine's embedded scripting
-language, with no public spec — and the volume of game logic
+problem is the GPL bytecode VM: the engine's embedded scripting
+language, with no public spec: and the volume of game logic
 expressed in it.
 
 OpenDS goes at it sideways: ship the artifacts you build *on the
-way* to an engine — disassemblers, chunk editors, format docs, bug
-patches — as standalone, useful tools. Each one is valuable on
+way* to an engine: disassemblers, chunk editors, format docs, bug
+patches: as standalone, useful tools. Each one is valuable on
 its own. Each one teaches us more about the engine. The eventual
 full reimplementation lives in the project's name as an
 aspiration, not a roadmap commitment. We get there if we get
@@ -94,9 +94,9 @@ official-patch diff, formats, the bug-site census). Phase 5.7
 the distribution format and applier already shipped as
 darkfix-ds1 v0.0.1) follow from what it produces.
 
-- [`spec.md`](spec.md) — design spec and invariants
-- [`roadmap.md`](roadmap.md) — phased plan and current status
-- [`docs/README.md`](docs/README.md) — documentation index with
+- [`spec.md`](spec.md): design spec and invariants
+- [`roadmap.md`](roadmap.md): phased plan and current status
+- [`docs/README.md`](docs/README.md): documentation index with
   reading paths (modder, engine researcher, patch author,
   contributor)
 
@@ -122,17 +122,17 @@ Standing on the shoulders of every prior attempt:
 
 - **paulofthewest** and the [dsoageofheroes](https://github.com/dsoageofheroes)
   organization (`libgff`, `soloscuro-archive`, `libsoloscuro`, and
-  family) — the deepest public GFF and GPL reverse-engineering
+  family): the deepest public GFF and GPL reverse-engineering
   work. The GFF on-disk layout, the 129-entry GPL opcode
   catalogue, the GPL_* constants, and the 7-bit packed inline
   string decoder all came from these projects. OpenDS would
   not be feasible without them.
 - **John Glassmyer** ([dsun_music](https://github.com/JohnGlassmyer/dsun_music))
-  — the GFF *writer* policy (in-place if it fits, append
+ : the GFF *writer* policy (in-place if it fits, append
   otherwise) and the GFFI segmented-chunk cross-reference
   layout (`SecondaryGffiTable`) come from `GffFile.java`.
 - **Greg Kennedy** ([DarkSunOnline](https://github.com/greg-kennedy/DarkSunOnline))
-  — DSO protocol RE; the v1.0 client's debug symbols
+ : DSO protocol RE; the v1.0 client's debug symbols
   cross-reference WotR engine internals. Future reference for
   symbol curation in `gpl-disasm`.
 
@@ -142,7 +142,7 @@ file or function it was ported from.
 [`docs/upstream-projects.md`](docs/upstream-projects.md) is the
 broader catalogue of every upstream project we read or might
 read. If you've worked on Dark Sun reverse-engineering and
-aren't listed, open an issue — we'd rather over-credit than
+aren't listed, open an issue: we'd rather over-credit than
 under-credit.
 
 ## Support

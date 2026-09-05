@@ -33,7 +33,7 @@ root cause, the fix, evidence). Python 3, stdlib-only. Live
 example: [`ds1-patch/fixes/000-noop.py`](../ds1-patch/fixes/000-noop.py).
 
 ```python
-"""fix.ds1.<short-id> — one-line summary"""
+"""fix.ds1.<short-id>: one-line summary"""
 
 from darkfix.patcher import apply_bytes, apply_gff_chunk
 
@@ -60,7 +60,7 @@ Contract:
   The per-edit fingerprints are the second, byte-level gate.
 - `EDITS` entries are `{"offset", "expect", "replace"}`: seek,
   verify `expect` byte-for-byte (refuse on mismatch:
-  `FingerprintMismatch`), write `replace`. Lengths must be equal —
+  `FingerprintMismatch`), write `replace`. Lengths must be equal ;
   **EXE edits are in-place only**; an inserted byte shifts every
   later overlay payload into garbage.
 - GPL chunk fixes use `apply_gff_chunk` (chunk replacement,
@@ -106,5 +106,5 @@ reason = "retarget the immediate after the label"
   fix-script `EDITS` above. That section now points here.
 - [`patch-workflow.md`](patch-workflow.md) §4.2's skeleton is the
   same contract; its older prose about routing GPL fixes through
-  `gff-tool` (the dsun_music Java tool) is historical — GPL fixes
+  `gff-tool` (the dsun_music Java tool) is historical: GPL fixes
   use `gff-edit` + `gpl-asm`, per spec §7a.

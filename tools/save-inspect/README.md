@@ -37,7 +37,7 @@ These work for **DS2 active party** (CHARSAVE-based) and for
 **DS1 inactive char templates**. They do **not** work for the
 DS1 active party, which lives in `DARKRUN.GFF` (see next).
 
-### `scripts/ds1-party-edit.py` — the DS1 active-party tool
+### `scripts/ds1-party-edit.py`: the DS1 active-party tool
 
 DS1's active party (the PCs Brandon plays as) is stored in
 `DARKRUN.GFF` SAVE/5 (combat sub-blocks) and SAVE/6 (character

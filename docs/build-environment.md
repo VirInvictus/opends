@@ -159,7 +159,7 @@ behavior.
   you're editing the actual game files and not the cloud-save
   shadow tree.
 - **Permissions on extracted files**: `innoextract` may emit
-  files owned by your user with `0644` — that's fine. Don't
+  files owned by your user with `0644`: that's fine. Don't
   run with `sudo`.
 - **NTFS mount**: per `~/CLAUDE.md`, `/mnt/SharedData` is NTFS
   and permissions are advisory. If you keep extracted games

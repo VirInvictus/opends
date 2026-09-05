@@ -19,9 +19,9 @@ Lead: **Paul West**. Discord: https://discord.gg/W942xHN72S.
 The reference GFF reader. Full chunk-type catalog in
 `include/gff/gfftypes.h`. Provides:
 
-- `gffmod` — library with image, palette, animation, map, window, GPL,
+- `gffmod`: library with image, palette, animation, map, window, GPL,
   character, region, item, text, audio readers
-- `gfftool` — CLI for listing and extracting chunks
+- `gfftool`: CLI for listing and extracting chunks
 - Bundled `xmi2mid` for XMI → standard MIDI conversion
 - Build via CMake, Zig, Make, or Premake5
 
@@ -47,12 +47,12 @@ The most mature engine reimplementation attempt. Stack:
 
 DS1 ("Shattered Lands") is the primary target; DS2 and DSO are stated
 goals but unimplemented. Runs as a GFF browser plus a Lua script test
-runner — no playable end-to-end yet.
+runner: no playable end-to-end yet.
 
 Includes `code-generation/powers/` directory pulling DS1, DS2, and DSO
-power tables — useful for validating our `opends-rules` data.
+power tables: useful for validating our `opends-rules` data.
 
-**darkfix strategy**: read the source for two things —
+**darkfix strategy**: read the source for two things ;
 (1) the partial GPL parser in `src/gpl/`, which is our starting point
 for `gpl-disasm`, and (2) the chunk-reading logic, useful for
 validating what we extract.
@@ -72,7 +72,7 @@ relying on.
 - URL: https://github.com/dsoageofheroes/libsoloscuro
 - Language: C + Zig + Lua
 - License: none shipped (corrected 2026-09-05; the clone carries no
-  LICENSE file — treat as all-rights-reserved until upstream adds
+  LICENSE file: treat as all-rights-reserved until upstream adds
   one; code must not be copied, only cited)
 - Status: early
 
@@ -102,7 +102,7 @@ An older Go-based DSO server/client experiment.
 
 Tiny but useful: `DSO Players e-mails.txt`, `PacketFormatDSO.txt`,
 `xmi-tracks.txt`. The XMI tracks file names DSO tracks (Slave Pens,
-Arena, Sewers, ...), not DS1 tracks — the two games share the XMI
+Arena, Sewers, ...), not DS1 tracks: the two games share the XMI
 format but not the soundtrack. Still useful as a format reference.
 Note: `DSO Players e-mails.txt` contains personal information; never
 quote or absorb its contents.
@@ -116,11 +116,11 @@ quote or absorb its contents.
 
 An independent, earlier reverse-engineering effort. Four CLI tools:
 
-- `gff-tool` — extract and **replace** GFF contents (write support
+- `gff-tool`: extract and **replace** GFF contents (write support
   exists here, unlike libgff)
-- `xmi-tool` — describe and modify PSEQ/LSEQ/GSEQ XMI sequences
-- `image-tool` — render bitmap chunks to TIFF
-- `region-tool` — render terrain to TIFF
+- `xmi-tool`: describe and modify PSEQ/LSEQ/GSEQ XMI sequences
+- `image-tool`: render bitmap chunks to TIFF
+- `region-tool`: render terrain to TIFF
 
 **darkfix strategy**: `gff-tool`'s **write support** is the keystone of
 the data-patch path. Every GPL fix flows through it: extract the
@@ -174,9 +174,9 @@ homework on what's safe to publish.
 
 URLs:
 
-- DS1 CE table — https://fearlessrevolution.com/viewtopic.php?t=23768
-- DS2 CE table — https://fearlessrevolution.com/viewtopic.php?t=23944
-- DREAD trainer — https://archive.org/details/D-SUNTRNsoftware
+- DS1 CE table: https://fearlessrevolution.com/viewtopic.php?t=23768
+- DS2 CE table: https://fearlessrevolution.com/viewtopic.php?t=23944
+- DREAD trainer: https://archive.org/details/D-SUNTRNsoftware
 
 These are reverse-engineering aides, not assets. Useful for
 identifying memory layouts and verifying our rules-engine math
@@ -184,8 +184,8 @@ against the original binary.
 
 ## 5. Inactive / dormant
 
-- **Beamdog forums Shattered Lands → Infinity Engine port** —
-  https://forums.beamdog.com/discussion/72931 — modders
+- **Beamdog forums Shattered Lands → Infinity Engine port** ;
+  https://forums.beamdog.com/discussion/72931: modders
   recreating DS1 inside BG2:EE. Not a reimplementation; a port.
   Useful as an asset-conversion reference if we want a sanity-check
   on how someone else extracted regions.
