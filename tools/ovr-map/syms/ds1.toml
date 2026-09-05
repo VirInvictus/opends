@@ -163,3 +163,915 @@ evidence = "scripts/xref-string.py: pushes the CAN'T SAVE DURING COMBAT message 
 notes = """
 Save gate inside the combat module. Segment 25 is also DS1's indirect-call dispatcher segment (survey 4.1).
 """
+
+[[function]]
+name = "gpl_handler_zero"
+segment = "resident"
+offset = 0xbcad
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x00, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x00 (Zero). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_longdivideequal"
+segment = "resident"
+offset = 0xa2ec
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x01, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x01 (LongDivideEqual). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_bytedec"
+segment = "resident"
+offset = 0xa327
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x02, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x02 (ByteDec). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_worddec"
+segment = "resident"
+offset = 0xa346
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x03, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x03 (WordDec). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_longdec"
+segment = "resident"
+offset = 0xa365
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x04, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x04 (LongDec). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_byteinc"
+segment = "resident"
+offset = 0xa385
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x05, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x05 (ByteInc). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_wordinc"
+segment = "resident"
+offset = 0xa3a4
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x06, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x06 (WordInc). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_longinc"
+segment = "resident"
+offset = 0xa3c3
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x07, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x07 (LongInc). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_hunt"
+segment = "resident"
+offset = 0xa3e3
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x08, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x08 (Hunt). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_getxy"
+segment = "resident"
+offset = 0xadb8
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x09, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x09 (Getxy). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_stringcopy"
+segment = "resident"
+offset = 0xa409
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x0a, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x0a (StringCopy). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_pdamage"
+segment = "resident"
+offset = 0xa436
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x0b, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x0b (PDamage). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_changemoney"
+segment = "resident"
+offset = 0xbc94
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x0c, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x0c (Changemoney). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_setvar"
+segment = "resident"
+offset = 0xbce0
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x0d, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x0d (Setvar). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_toggleaccum"
+segment = "resident"
+offset = 0xa56c
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x0e, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x0e (ToggleAccum). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_getstatus"
+segment = "resident"
+offset = 0xad73
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x0f, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x0f (Getstatus). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_getlos"
+segment = "resident"
+offset = 0xa5f4
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x10, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x10 (Getlos). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_longtimesequal"
+segment = "resident"
+offset = 0xa6ab
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x11, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x11 (LongTimesEqual). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_jump"
+segment = "resident"
+offset = 0xa6e2
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x12, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x12 (Jump). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_localsub"
+segment = "resident"
+offset = 0xa705
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x13, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x13 (LocalSub). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_globalsub"
+segment = "resident"
+offset = 0xa719
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x14, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x14 (GlobalSub). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_localret"
+segment = "resident"
+offset = 0xa744
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x15, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x15 (LocalRet). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_loadvariable"
+segment = "resident"
+offset = 0xa753
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x16, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x16 (LoadVariable). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_compare"
+segment = "resident"
+offset = 0xa765
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x17, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x17 (Compare). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_loadaccum"
+segment = "resident"
+offset = 0xa890
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x18, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x18 (LoadAccum). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_globalret"
+segment = "resident"
+offset = 0xa8ad
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x19, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x19 (GlobalRet). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_nextto"
+segment = "resident"
+offset = 0xa639
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x1a, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x1a (Nextto). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_inlostrigger"
+segment = "resident"
+offset = 0xac65
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x1b, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x1b (Inlostrigger). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_notinlostrigger"
+segment = "resident"
+offset = 0xaca5
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x1c, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x1c (Notinlostrigger). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_clearlos"
+segment = "resident"
+offset = 0xace5
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x1d, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x1d (ClearLos). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_nametonum"
+segment = "resident"
+offset = 0xae17
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x1e, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x1e (Nametonum). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_numtoname"
+segment = "resident"
+offset = 0xae38
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x1f, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x1f (Numtoname). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_bitsnoop"
+segment = "resident"
+offset = 0xa5a3
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x20, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x20 (Bitsnoop). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_award"
+segment = "resident"
+offset = 0xa8bc
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x21, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x21 (Award). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_request"
+segment = "resident"
+offset = 0xa978
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x22, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x22 (Request). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_sourcetrace"
+segment = "resident"
+offset = 0xa953
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x23, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x23 (SourceTrace). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_shop"
+segment = "resident"
+offset = 0xa962
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x24, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x24 (Shop). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_clone"
+segment = "resident"
+offset = 0xa9c1
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x25, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x25 (Clone). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_ifcompare"
+segment = "resident"
+offset = 0xa7cd
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x27, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x27 (Ifcompare). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_tracevar"
+segment = "resident"
+offset = 0xaa1c
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x28, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x28 (TraceVar). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_orelse"
+segment = "resident"
+offset = 0xa830
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x29, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x29 (Orelse). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_clearpic"
+segment = "resident"
+offset = 0xaa2b
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x2a, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x2a (Clearpic). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_continue"
+segment = "resident"
+offset = 0xaa3c
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x2b, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x2b (Continue). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_log"
+segment = "resident"
+offset = 0xaa4d
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x2c, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x2c (Log). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_damage"
+segment = "resident"
+offset = 0xa448
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x2d, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x2d (Damage). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_sourcelinenum"
+segment = "resident"
+offset = 0xaa66
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x2e, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x2e (SourceLineNum). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_drop"
+segment = "resident"
+offset = 0xaa75
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x2f, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x2f (Drop). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_passtime"
+segment = "resident"
+offset = 0xab68
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x30, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x30 (Passtime). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_exitgpl"
+segment = "resident"
+offset = 0xab7e
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x31, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x31 (ExitGpl). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_fetch"
+segment = "resident"
+offset = 0xab8e
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x32, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x32 (Fetch). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_search"
+segment = "resident"
+offset = 0xabbd
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x33, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x33 (Search). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_getparty"
+segment = "resident"
+offset = 0xac38
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x34, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x34 (Getparty). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_fight"
+segment = "resident"
+offset = 0xacfb
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x35, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x35 (Fight). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_flee"
+segment = "resident"
+offset = 0xad27
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x36, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x36 (Flee). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_follow"
+segment = "resident"
+offset = 0xad44
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x37, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x37 (Follow). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_getyn"
+segment = "resident"
+offset = 0xad97
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x38, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x38 (Getyn). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_give"
+segment = "resident"
+offset = 0xadce
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x39, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x39 (Give). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_go"
+segment = "resident"
+offset = 0xae59
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x3a, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x3a (Go). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_inputbignum"
+segment = "resident"
+offset = 0xae88
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x3b, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x3b (InputBignum). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_goxy"
+segment = "resident"
+offset = 0xaec4
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x3c, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x3c (Goxy). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_readorders"
+segment = "resident"
+offset = 0xaef8
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x3d, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x3d (Readorders). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_if"
+segment = "resident"
+offset = 0xb0db
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x3e, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x3e (If). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_else"
+segment = "resident"
+offset = 0xb141
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x3f, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x3f (Else). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_setrecord"
+segment = "resident"
+offset = 0xaf1e
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x40, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x40 (Setrecord). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_setother"
+segment = "resident"
+offset = 0xb065
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x41, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x41 (Setother). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_inputstring"
+segment = "resident"
+offset = 0xb17a
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x42, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x42 (InputString). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_inputnumber"
+segment = "resident"
+offset = 0xb1b8
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x43, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x43 (InputNumber). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_inputmoney"
+segment = "resident"
+offset = 0xb1dd
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x44, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x44 (InputMoney). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_joinparty"
+segment = "resident"
+offset = 0xb202
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x45, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x45 (Joinparty). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_leaveparty"
+segment = "resident"
+offset = 0xb228
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x46, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x46 (Leaveparty). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_lockdoor"
+segment = "resident"
+offset = 0xb24e
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x47, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x47 (Lockdoor). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_menu"
+segment = "resident"
+offset = 0xb265
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x48, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x48 (Menu). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_setthing"
+segment = "resident"
+offset = 0xabda
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x49, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x49 (Setthing). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_localsubtrace"
+segment = "resident"
+offset = 0xa6f6
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x4b, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x4b (LocalSubTrace). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_printstring"
+segment = "resident"
+offset = 0xb274
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x4f, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x4f (PrintString). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_printnumber"
+segment = "resident"
+offset = 0xb2a3
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x50, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x50 (PrintNumber). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_printnl"
+segment = "resident"
+offset = 0xb2d2
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x51, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x51 (Printnl). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_rand"
+segment = "resident"
+offset = 0xb2e3
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x52, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x52 (Rand). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_showpic"
+segment = "resident"
+offset = 0xb325
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x54, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x54 (Showpic). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_skillroll"
+segment = "resident"
+offset = 0xb367
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x58, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x58 (Skillroll). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_statroll"
+segment = "resident"
+offset = 0xb413
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x59, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x59 (Statroll). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_stringcompare"
+segment = "resident"
+offset = 0xb4bf
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x5a, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x5a (StringCompare). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_matchstring"
+segment = "resident"
+offset = 0xb53c
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x5b, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x5b (MatchString). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_take"
+segment = "resident"
+offset = 0xb5b9
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x5c, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x5c (Take). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_sound"
+segment = "resident"
+offset = 0xb33b
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x5d, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x5d (Sound). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_tport"
+segment = "resident"
+offset = 0xb67e
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x5e, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x5e (Tport). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_music"
+segment = "resident"
+offset = 0xb351
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x5f, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x5f (Music). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_cmpend"
+segment = "resident"
+offset = 0xa86b
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x61, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x61 (Cmpend). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_wait"
+segment = "resident"
+offset = 0xb776
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x62, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x62 (Wait). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_while"
+segment = "resident"
+offset = 0xb793
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x63, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x63 (While). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_wend"
+segment = "resident"
+offset = 0xb7c1
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x64, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x64 (Wend). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_attacktrigger"
+segment = "resident"
+offset = 0xb946
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x65, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x65 (Attacktrigger). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_looktrigger"
+segment = "resident"
+offset = 0xb97e
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x66, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x66 (Looktrigger). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_endif"
+segment = "resident"
+offset = 0xb7d5
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x67, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x67 (Endif). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_movetiletrigger"
+segment = "resident"
+offset = 0xb7fa
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x68, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x68 (MoveTiletrigger). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_doortiletrigger"
+segment = "resident"
+offset = 0xb83f
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x69, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x69 (DoorTiletrigger). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_moveboxtrigger"
+segment = "resident"
+offset = 0xb884
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x6a, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x6a (MoveBoxtrigger). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_doorboxtrigger"
+segment = "resident"
+offset = 0xb8c9
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x6b, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x6b (DoorBoxtrigger). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_pickupitemtrigger"
+segment = "resident"
+offset = 0xb90e
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x6c, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x6c (PickupItemtrigger). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_usetrigger"
+segment = "resident"
+offset = 0xb9b6
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x6d, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x6d (Usetrigger). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_talktotrigger"
+segment = "resident"
+offset = 0xb9ee
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x6e, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x6e (Talktotrigger). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_noorderstrigger"
+segment = "resident"
+offset = 0xba26
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x6f, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x6f (Noorderstrigger). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_usewithtrigger"
+segment = "resident"
+offset = 0xba5a
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x70, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x70 (Usewithtrigger). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_byteplusequal"
+segment = "resident"
+offset = 0xba92
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x76, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x76 (BytePlusEqual). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_byteminusequal"
+segment = "resident"
+offset = 0xbac5
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x77, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x77 (ByteMinusEqual). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_bytetimesequal"
+segment = "resident"
+offset = 0xbaf8
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x78, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x78 (ByteTimesEqual). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_bytedivideequal"
+segment = "resident"
+offset = 0xbb2f
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x79, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x79 (ByteDivideEqual). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_wordplusequal"
+segment = "resident"
+offset = 0xbb6a
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x7a, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x7a (WordPlusEqual). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_wordminusequal"
+segment = "resident"
+offset = 0xbb9d
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x7b, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x7b (WordMinusEqual). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_wordtimesequal"
+segment = "resident"
+offset = 0xbbd0
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x7c, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x7c (WordTimesEqual). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_worddivideequal"
+segment = "resident"
+offset = 0xbc07
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x7d, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x7d (WordDivideEqual). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_longplusequal"
+segment = "resident"
+offset = 0xbc42
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x7e, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x7e (LongPlusEqual). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_longminusequal"
+segment = "resident"
+offset = 0xbc6b
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x7f, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x7f (LongMinusEqual). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+[[function]]
+name = "gpl_handler_getrange"
+segment = "resident"
+offset = 0xa672
+confidence = "verified"
+evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x80, base 0x97d0 (reloc-confirmed)"
+notes = "The GPL VM handler for opcode 0x80 (GetRange). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
