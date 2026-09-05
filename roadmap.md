@@ -795,6 +795,34 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > handle opened against a missing/invalid region —
       > which the played-save pair will show directly (the
       > half-committed DARKRUN bytes at the freeze point).
+      >
+      > SUBAGENT RESULTS (2026-09-05, three agents returned):
+      >
+      > **Region-entry array decoded** (pointer cell 0x67b7,
+      > 8-byte entries): +0=word x, +2=word y, +4=byte,
+      > +5=flags byte (0x20=linked/active, 0x40=dirty),
+      > +6=word owner-id (positive=object index into the
+      > 37-byte array, negative=reserved). 17 accessors
+      > classified: cursor/lookup, object spawn/activation,
+      > claim/reassign, bbox/dirty-clear, dirty-tile
+      > marking, render pass, mouse pick. The array is the
+      > engine's visible-object table for the current region.
+      >
+      > **Mines quest-flag map COMPLETE** (GPL 76-79): GNUM[58]
+      > bitfield (1=wheel, 2=car, 8=lock, 16=probe, 32=gas,
+      > 128=Blink, 256=miner dead, 4096=cover-up); GNUM[59]
+      > foreman stage; GNUM[60] zone id; GNUM[61] fan bits;
+      > GF[125/126/189/191/193-198]. Every NAME(-N) object
+      > identified: -74=gate, -2962=ore, -3146=iron gate,
+      > -80=Zeegrat, -1300..1304=fans, -1315=gas,
+      > -5043/5044=orecars, -3132=wheel.
+      >
+      > **Elevator ride decoded**: GPL-79, when GNUM[58]&128:
+      > request 37 (operate), request 39 (move to 31,31),
+      > tport party to (57,8,3) = region 57 = Mines2. The
+      > gpl request semantics decoded: 5=activate, 9=set
+      > state, 11=place, 37=operate elevator, 39=move
+      > elevator, 49=set quantity.
       > CLOSURE (same session): the ovr18 trio SERIALIZES
       > the flag array into save files — 0x70b66 snapshots
       > three core pointers (0x19c1, 0x67b7, 0x55b8) into
