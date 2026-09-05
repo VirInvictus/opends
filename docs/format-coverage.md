@@ -16,7 +16,7 @@ Baseline: `gff-cat kind --list`, gff-edit v0.6.0 (68 kinds).
 |---|---|---|---|
 | `DATA` | 4 | 1292 | .games/archive-org/cd10-extracted, .games/archive-org/ds2-floppy-1.0, .games/archive-org/hotu/extracted, .games/ds2 |
 | `MAP` | 60 | 60 | .games/archive-org/ds2-floppy-1.0, .games/archive-org/hotu/extracted, .games/ds2 |
-| `RNME` | 60 | 60 | .games/archive-org/ds2-floppy-1.0, .games/archive-org/hotu/extracted, .games/ds2 |
+| `RNME` (documented 2026-09-05, see file-formats.md: region name) | 60 | 60 | .games/archive-org/ds2-floppy-1.0, .games/archive-org/hotu/extracted, .games/ds2 |
 | `PLYL` | 4 | 24 | .games/archive-org/cd10-extracted, .games/archive-org/ds2-floppy-1.0, .games/archive-org/hotu/extracted, .games/ds2 |
 | `ALL` | 3 | 15 | .games/archive-org/ds2-floppy-1.0, .games/archive-org/hotu/extracted, .games/ds2 |
 | `GREQ` | 1 | 10 | .games/ds2/__support/save |
