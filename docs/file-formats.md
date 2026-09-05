@@ -34,8 +34,8 @@ offset  size  field            notes
   8      4    data_location    First chunk data offset. Always 28 (= header size).
  12      4    toc_location     Byte offset from file start to the TOC.
  16      4    toc_length       TOC byte length.
- 20      4    file_flags       Observed: 0 on most GFFs, 8 on CHARSAVE.GFF. Semantics TBD.
- 24      4    data0            Per-file sentinel. Observed: 1, 3, 117. Likely a next-id or count; not load-bearing for read.
+ 20      4    file_flags       Pinned 2026-09-05: 0 on most GFFs, 8 on every DS2 region GFF (all 20 RGN*.GFF). DS1 regions and CHARSAVEs carry 0.
+ 24      4    data0            Per-file sentinel. Pinned: 1 on non-region files, 3 on DS1 regions, sequential 3..22 on DS2 regions (file order, not hex id). Not load-bearing for read.
 ```
 
 The chunk data area runs from `data_location` (= 28) up to
