@@ -1739,3 +1739,50 @@ compiled code).
       > 0x5756, 0x5EC4, 0x5F8B, 0x60EB (current region), 0x655E-
       > 0x6573, 0x6600, 0x6650, 0x669D, 0x67B9. file_flags and
       > data0 pinned across the full corpus (file-formats.md).
+
+      >
+      > **DS2 OVERLAY MANAGER FULLY DECODED** (agent, 2026-09-05):
+      > the survey's claim that the handler body is at 0x4aff0 is
+      > WRONG — that is a null descriptor + manager data (including
+      > the 'VDISK FAKE' string and the segment-translation table
+      > at 0x4b088). The real INT 3Fh handler is at file 0x404C4
+      > (byte-identical twin at 0x40544, iret at 0x405A9).
+      >
+      > Dispatch flow: the trap frame contains the stub's entry
+      > offset ([bp+2]) and segment ([bp+4]). The handler rewrites
+      > the return CS:IP in the interrupt frame so IRET resumes at
+      > loaded_segment:entry_offset — no far jump needed. If the
+      > stub address is nonzero it swaps the return CS with a
+      > local, calls the load routine, then swaps back.
+      >
+      > Each stub block is SELF-DESCRIBING: a 32-byte descriptor
+      > at the block base (the trap's own CS is the block base):
+      > +0 CD 3F 00 00 signature; +4 dword payload offset (overlay-
+      > area-relative); +8 word image size; +0xA word relocation-
+      > word count (relocs appended AFTER the image — resolves
+      > survey 10 item 4); +0x10 word current loaded segment (0 =
+      > not resident = cache slot); +0x1A flags; +0x1B lock count;
+      > +0x1C LRU-chain next.
+      >
+      > Disk load: seek to dword payload via int 21h AH=0x4200;
+      > chunked AH=0x3F reads of 0xFFF0 bytes into the target
+      > segment (ds += 0x1000 per chunk); reads image + 2x
+      > reloc_count bytes in one pass. Relocation pass: for each
+      > reloc word, read offset, fetch word at target, mask ~7,
+      > index the translation table at 0x45e8:0 (the 8-byte
+      > records at file 0x4b088), patch the segment value. Error:
+      > writes 'Runtime overlay error' to stderr and exits.
+      >
+      > Cache: entries track loaded/not-resident (0x10), LRU chain
+      > (0x1C), lock count (0x1B). Victim sweep follows the LRU
+      > chain discarding until enough paragraphs are free.
+      >
+      > The 'stub entries at 0x4700/0x4732' from the survey are
+      > inside the MZ relocation table (coincidental MZ bytes in
+      > reloc data, not code). Real overlay stubs are 5-byte
+      > CD 3F <entry:2> <00> records in clusters at 0x4B7C0+,
+      > each preceded by its 32-byte descriptor.
+      >
+      > Docs corrections needed: dsun-exe-survey.md 3.2 and
+      > dsun-exe-re.md (line ~608) should re-point from 0x4aff0
+      > to 0x404C4.
