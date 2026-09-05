@@ -102,6 +102,18 @@ keystone tool that everything else in this corner relies on.
   mapping known function ids to names, bootstrapped from
   greg-kennedy's DSO debug symbols.
 
+### Variable addressing
+
+Global and local variables render as `{Kind}[{id}]` or, when the
+extended bit is set, `{Kind}+[{id}]`. `Kind` is a two-letter tag
+per the variable's kind: `GF` (Gflag), `LF` (Lflag), `GB`
+(Gbyte), `LB` (Lbyte), `GW`/`LW` (words), `GNUM`/`LNUM` (numbers),
+`GSTR`/`LSTR` (strings), `GNAME`/`LNAME` (object handles), and
+others — see the `VarKind` tags in `tools/gpl-disasm/src/lib.rs`.
+When a curated name exists for the id (from `syms/variables.toml`
+or `syms/locals.toml`), the rendering appends the name in
+parentheses: `GF[42 (POV_FLAGS)]`.
+
 ### Outputs
 
 - Per-chunk text dump with:
@@ -130,7 +142,7 @@ per-chunk locals overlays and the DSO importer (v0.5.0+), and
 `render_text` round-tripping (v0.4.6+). `tools/gpl-disasm/README.md`
 is the tool's own reference.
 
-### §5a — Branch opcode semantics (v0.3.0 spike)
+### §5a — Branch opcode semantics spike
 
 Before committing to a recursive-descent walker, we verified
 what the first parameter of each branch opcode actually means.
@@ -227,7 +239,7 @@ the same GPL chunk**, parsed via the standard
 | `gpl if` (0x3E) | fallthrough target when accum is false (the matching `else` or `endif`) |
 | `gpl else` (0x3F) | fallthrough target when reaching `else` from the true branch (matching `endif`) |
 | `gpl while` (0x63) | fallthrough target when accum is false (past the matching `wend`) |
-| `gpl wend` (0x64) | backward target: matching `while` |
+| `gpl wend` (0x64; same handler as jump, see gpl-opcodes.md) | backward target: matching `while` |
 
 **Implication for v0.3.0.** The recursive-descent walker is
 unblocked. Entry points = chunk start + every observed `local
@@ -237,7 +249,7 @@ plus the fallthrough offset (next instruction) for conditional
 branches, target-only for unconditional `jump` and `wend`.
 Backward edges via `wend` are expected and not an error.
 
-**Open follow-ups (not blocking v0.3.0).**
+**Open follow-ups.**
 
 - Whether `chunk[0]` is always `gpl global ret` (0x19) as a
   one-byte epilogue placeholder, and whether the *real* entry
@@ -246,7 +258,7 @@ Backward edges via `wend` are expected and not an error.
   entries until a wider corpus confirms.
 - `gpl global sub` (0x14) crosses chunks; v0.3.0 doesn't need
   to follow those edges (the second param's GPL file id is
-  enough to *list* the call). Inter-chunk CFG is v0.4.0+ work.
+  enough to *list* the call). Inter-chunk CFG shipped in v0.4.x (see `tools/gpl-disasm/README.md`).
 - `gpl ifcompare` (0x27) **verified** in a follow-up
   hand-trace (DS1 GPLDATA GPL chunk 199): 2 parameters where
   param[0] is the comparison value (the case label) and
