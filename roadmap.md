@@ -1459,3 +1459,19 @@ compiled code).
       > 0x655E-0x6573 (heads the 0x6578 table), 0x60EB (current
       > region, 24 refs), and ~15 others. file_flags and data0
       > pinned across the full corpus (0/8 and 1/3-22).
+      >
+      > **COMPLETE -58xx VISUAL INVENTORY** (agent rendered all 12
+      > remaining sprites via the injected-palette pipeline):
+      > 5801 = cave rubble mound (6x31, organic); 5802 = gold
+      > coins/nuggets pile (38x17); 5803 = slatted timber bulkhead
+      > (59x46); 5804 = wood-and-mesh ore screen/sluice (27x32);
+      > 5805/5806 = small ore chunks (18x18, paired states);
+      > 5809 = mine cart side view (46x60); 5810 = loaded mine
+      > cart variant (48x52); 5811 = rubble/stalagmite pile
+      > (37x49); 5812 = 2x2 trigger marker (invisible); 5814 =
+      > scattered pebbles (64x64); 5815 = mine support strut or
+      > lever (64x50). The mines' complete interactive object
+      > inventory: elevator shaft (5807), door (5808), debris
+      > (5813), carts (5809/5810), rubble (5801/5811), coins
+      > (5802), bulkhead (5803), screen (5804), ore (5805/5806),
+      > pebbles (5814), strut (5815), trigger (5812).
