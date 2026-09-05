@@ -978,7 +978,7 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       opcode) is still open; settle the recipe format and
       meet it. The Decode\* study above narrows the
       candidates first.
-- [ ] **Adopt the reference catalogues into the docs.**
+- [x] **Adopt the reference catalogues into the docs.**
       libgff's `gfftypes.h` defines 83 chunk types against
       our catalogue's gaps (BVOC/FVOC/OMAP/POBJ/SJMP/FNFO/
       RDAT/CACT/STXT at minimum); correct the free-list prose
@@ -993,6 +993,12 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       (libsoloscuro ships no LICENSE file).
 
 ### 5.6.3 — The bug-site census
+      (ALL SUB-ITEMS DONE 2026-09-04/05: free-list corrected
+      and documented; file_flags pinned (0/8 pattern, all 20
+      DS2 regions); data0 ordinals pinned (sequential 3..22);
+      prefix census corrected; upstream license drift recorded;
+      RNME chunk documented as a bonus. Remaining chunk-kind
+      gaps are in docs/format-coverage.md.)
 
 - [x] **Stand up the census.** A table in or beside
       `docs/known-bugs.md`: per bug, site located / site
