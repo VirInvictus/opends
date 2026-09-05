@@ -621,6 +621,17 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > approach: nametonum (0x1E) resolves names through
       > the VM, so opcode-fuzz or a debugger trace can map
       > them empirically.
+      > Pool-location probe: GPL-81's 6,170 bytes are pure
+      > bytecode (no local pool), and the remaining candidate
+      > is **GPLI-1** (7,896 bytes at file 0x1f8f7f, one per
+      > game): binary u16-structured from byte 0 (zero head,
+      > then runs of increasing u16 values) — consistent with
+      > an index table mapping the NAME halfwords to entries.
+      > Its RE is the concrete next unit: assume u16 (or
+      > paired-u16) indexing at NAME(-187) = entry 187 and
+      > correlate against the 75 GPL-81 tports' expected
+      > destinations (mine levels are known from the dialog:
+      > 'Tyrgar Mine', levels 1-6, the Underdark door).
 - [x] **Decode\* dispatch-order study.** `.dso-online`'s
       symbols.txt names 115 `Decode*` GPL handlers in a
       contiguous, address-ordered block, and ~114/115 agree
