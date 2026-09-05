@@ -751,6 +751,23 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > 5814=958, 5815=130. The site report's trigger is
       > named; the freeze hunt continues inside the
       > region-change machine it invokes.
+      > MACHINE CORE READ (2026-09-05, fn+0x100-0x1b0):
+      > after the sweep, the machine (1) marks the OLD
+      > region's record consumed (reads the flag array at
+      > +6, negates, writes 0xFFFF to [0x67cb] slot), (2)
+      > scans the flag array for the next free 8-byte slot,
+      > (3) calls 0xaf4 (a validator; on zero, prints
+      > 'Error: Unable to close darkrun.gff' from DGROUP
+      > 0x1739), (4) calls 0x58:0x4723 twice with (0) and
+      > (1) — likely closing and reopening the save files,
+      > (5) calls 0xd31 with the region id, then (6) calls
+      > 0x5b0:0xc0 again with (1, 0, flags, region) — the
+      > RELOCATION call that performs the actual move, whose
+      > return value lands in [bp-2]. A failure AFTER the
+      > darkrun close/reopen cycle — i.e. inside 0xd31 or
+      > 0x5b0:0xc0 with the save files closed — is exactly
+      > the shape of a level-load freeze. The elevator's
+      > ride runs this same machine.
       > CLOSURE (same session): the ovr18 trio SERIALIZES
       > the flag array into save files — 0x70b66 snapshots
       > three core pointers (0x19c1, 0x67b7, 0x55b8) into
