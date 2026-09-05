@@ -390,6 +390,9 @@ Prior to this the kind was undocumented (it appeared in the
 format-coverage gap list). Note region 53 is absent from the
 shipped corpus and 255 is a special-scope region (`Limbo.`),
 matching its use as the same-region tport marker's neighbour.
+DS1's region files predate RNME entirely (their type list is
+GFFI/ETAB/GMAP/RMAP/TILE — no MAP, no PAL, no RNME: the DS1 palette
+comes from the RESOURCE fallback and the name chunk is absent).
 
 #### Scripting (the GPL VM, see `gpl-bytecode.md`)
 
