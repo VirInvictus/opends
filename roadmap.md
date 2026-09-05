@@ -610,6 +610,17 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > region whose level-load fails; the NAME(-N) packed
       > references are resolvable via dialog-extract's string
       > table, which names the exact destination regions.
+      > Prereq discovered: NAME(-N) is a raw halfword index
+      > (GPL_IMMED_NAME | 0x80, cval = h * -1 per
+      > gpl-disasm's decoder) into the chunk's inline name
+      > pool — whose layout is engine-side (the gplshell.c
+      > module) and undecoded. Resolving the tport
+      > destinations therefore needs the name-pool RE first
+      > (new 5.6.2-class work item: the chunk name-pool
+      > format, same family as SAVE/1), OR the runtime
+      > approach: nametonum (0x1E) resolves names through
+      > the VM, so opcode-fuzz or a debugger trace can map
+      > them empirically.
 - [x] **Decode\* dispatch-order study.** `.dso-online`'s
       symbols.txt names 115 `Decode*` GPL handlers in a
       contiguous, address-ordered block, and ~114/115 agree
