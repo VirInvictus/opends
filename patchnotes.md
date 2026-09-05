@@ -4,6 +4,9 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
+Tagged releases from this batch: `ovr-map-v0.3.0` and `save-inspect-v0.9.5`
+(git tags pushed; the entries below are the release notes).
+
 - **`save-inspect` v0.9.5** — the DARKRUN SAVE semantic
   differ. `scripts/save-semantic-diff.py` diffs two
   DARKRUN-shape GFFs, clusters the byte differences per SAVE

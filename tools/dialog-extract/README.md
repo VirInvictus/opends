@@ -105,7 +105,7 @@ snippet.
 ```json
 {
   "tool": "dialog-extract",
-  "version": "0.2.0",
+  "version": "0.7.1",
   "source": "/path/to/GPLDATA.GFF",
   "method": "gpl-disasm --json consumer",
   "text_source": "/path/to/RESOURCE.GFF",

@@ -1,5 +1,7 @@
 # opcode-fuzz
 
+- **Version**: see [`VERSION`](VERSION).
+
 The Phase 5 tool that closes the GPL reverse-engineering arc.
 `gpl-disasm` reads GPL bytecode; `gpl-asm` writes it; this tool
 runs swapped-in test chunks under DOSBox-Staging to **observe**

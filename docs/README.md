@@ -38,7 +38,7 @@ trove that names 3,530 engine functions.
 authoring guide (GPL edit or binary patch, and how to choose);
 [`fix-format.md`](fix-format.md) is the authoritative patch
 artifact specification (what the applier runs).
-The applier is real: [`../../ds1-patch/`](../../ds1-patch/)
+The applier is real: [`../ds1-patch/`](../ds1-patch/)
 (v0.0.1) ships `apply.py` + the `darkfix` engine that verify an
 install against the canonical hashes, back up, apply, journal,
 and unapply; `apply.py --selftest` proves the whole cycle.

@@ -1,8 +1,9 @@
 # OpenDS Tools
 
 The toolkit. Each tool is independent and shippable on its own.
-Each has its own `README.md`, `VERSION`, and tagged GitHub
-releases.
+Each has its own `README.md` and `VERSION`. Releases are tagged
+`<tool>-vX.Y.Z` (forward-only from 2026-09-04; earlier tools are
+untagged).
 
 Version history lives in [`../patchnotes.md`](../patchnotes.md)
 (newest first); this table describes each tool as it is now.

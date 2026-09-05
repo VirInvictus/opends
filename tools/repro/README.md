@@ -1,5 +1,7 @@
 # repro
 
+- **Version**: see [`VERSION`](VERSION).
+
 Drives a per-bug fixture under `bugs/<id>/` against a working
 DOS install, validates pass/fail by elapsed time and scratch-dir
 artifacts, and never writes to the game install: the "any bug
