@@ -85,11 +85,26 @@ for each type (num_types entries):
     }
 ```
 
-At `toc_location + free_list_offset` the free list begins. On
-every shipped GFF inspected the free list is empty
-(`free_list_offset == toc_length`, leaving zero bytes). When
-populated, libgff's writer is the reference; document layout
-when we first need it.
+At `toc_location + free_list_offset` the free list begins:
+
+```
+uint16 free_count;                        // number of free slots
+free_count × { uint32 offset, uint32 size }  // 8 bytes each
+```
+
+On most shipped GFFs the list is empty (`free_count = 0`, leaving
+`toc_length − free_list_offset == 2`). **GPLDATA.GFF (DS2) carries
+a populated list**: 16 entries pointing at freed slots in the
+chunk-data area (offsets cluster at the file tail, sizes 1–861
+bytes), left behind when SSI's 1.10 recompile replaced chunk
+content in-place.
+
+> **Corrected 2026-09-05.** The first published version claimed
+> `free_list_offset == toc_length` on every shipped file. That is
+> wrong: the last 2 bytes of the TOC are a u16 free-entry count,
+> and `free_list_offset == toc_length − 2 − (free_count × 8)`.
+> Verified against 61 corpus files (59 empty, GPLDATA.DS2
+> populated with 16 entries).
 
 The high bit of **`chunk_count`** (`GFFSEGFLAGMASK = 0x80000000`)
 selects between indexed and segmented chunk lists. The chunk
