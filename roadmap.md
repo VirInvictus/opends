@@ -1299,8 +1299,10 @@ abandoned; nothing here is scheduled.
 
 ## Tooling inventory and gaps
 
-Checked on the dev host 2026-08-28. **Everything the docs cite
-is installed.** Nothing blocks any phase.
+Checked on the dev host 2026-08-28; capabilities updated
+2026-09-05 (dispatch tables, OBJEX sprite pipeline, symbol
+catalogue). **Everything the docs cite is installed.** Nothing
+blocks any phase.
 
 | Tool | Status | Used by |
 |---|---|---|
