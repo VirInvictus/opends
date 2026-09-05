@@ -64,7 +64,7 @@ of a paging event) short of verified.
 """
 
 [[function]]
-name = "save_record_writer"
+name = "load_game_from_disk"
 segment = 18
 offset = 0xa6c
 confidence = "verified"
@@ -159,4 +159,24 @@ confidence = "probable"
 evidence = "scripts/xref-string.py: pushes 'Error : Can't load Game data in load teleport' (file 0x4e7ac, DGROUP offset 0x17ac) at 0x713d1"
 notes = """
 The teleport path of the same gpldisk.c module.
+"""
+
+[[function]]
+name = "save_record_writer"
+segment = 18
+offset = 0x08e5
+confidence = "verified"
+evidence = "subagent boundary scan: same SAVE fourCC + count pattern as load_game_from_disk, but calls 0x118:0x5C5 (write API) instead of 0x128:0x4AB (read API); writes computed values into segment 0x378"
+notes = """
+The save-writer twin of load_game_from_disk. Same 'SAVE' fourCC and 17-slot loop, but calls the WRITE API and writes into \segment 0x378 rather than reading into a stack buffer. Deserves its own syms row (was missing from the catalogue).
+"""
+
+[[function]]
+name = "buffer_capacity_helper"
+segment = "resident"
+offset = 0x6902
+confidence = "probable"
+evidence = "subagent verification: the file offset 0x692b (previously 'verified' as load_resource) lands mid-instruction (83 D2 00 = adc dx,0); the real prologue is at 0x6902, which grows segment bx to hold dx:ax bytes"
+notes = """
+The load_resource entry at 0x692b needs re-derivation. The current formula (survey 9.5) may have a segment-arith error. Downgraded from verified to open question.
 """
