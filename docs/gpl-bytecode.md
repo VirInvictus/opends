@@ -26,7 +26,7 @@ In the GFF container (see [`file-formats.md`](file-formats.md)):
 |--------|-------------------------------------------|
 | `GPL ` | Compiled GPL bytecode                     |
 | `MAS ` | Compiled GPL master script                |
-| `GPLI` | GPL "I" data (incompletely documented)    |
+| `GPLI` | GPL entry-point dispatch index: (global_entry_no, byte_offset, chunk_id) per record |
 | `GPLX` | GPL index file                            |
 
 Both DS1 and DS2 ship a single `GPLDATA.GFF` containing all of
