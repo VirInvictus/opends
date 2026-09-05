@@ -339,12 +339,14 @@ inherits the umbrella name: OpenDS.
 - MAJOR for breaking format / target changes.
 - MINOR for new fixes.
 - PATCH for fixes-to-fixes.
-- Repository tag is `vYYYY.MM.X` for the umbrella; per-game
-  releases are GitHub releases with their own tags.
+- There is no umbrella version and nothing ships from the repo root;
+  the only tags are per-tool / per-patch (`<item>-vX.Y.Z`), per
+  `docs/versioning.md`. *(This section previously described an
+  umbrella `vYYYY.MM.X` scheme that was never the policy.)*
 
 ## 10. Distribution
 
-Per-game GitHub releases under `github.com/virinvictus/darkfix`.
+Per-tool and per-patch releases under `github.com/VirInvictus/opends`.
 Each release is a single zip:
 
 - `darkfix-ds1-v0.1.0.zip` for DS1

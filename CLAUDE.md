@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 OpenDS is a community toolkit for SSI's Dark Sun CRPGs (Shattered Lands 1993, Wake of the Ravager 1994). Three product surfaces, ordered by priority:
 
-1. **Tools** under `tools/` (MIT, public). Each ships independently with its own `README`, `VERSION`, and tagged release.
+1. **Tools** under `tools/` (MIT, public). Each ships independently with its own `README`, `VERSION`, and tagged release. *(Tagging is forward-only from 2026-09-04 per `tools/README.md`: releases before that date are untagged by decision, and patch releases after it carry `<item>-vX.Y.Z` tags.)*
 2. **darkfix patches** under `ds1-patch/` and `ds2-patch/` (forthcoming). Applied to a player's GOG install; the game still launches via DOSBox under the original engine.
 3. **Documentation** under `docs/`. Every RE finding gets written down.
 
