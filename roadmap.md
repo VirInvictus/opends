@@ -678,6 +678,17 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > consistent with the records being reconstructed from
       > the save at load. The 37-byte record array's only
       > static accessor remains the sweep.
+      > COHERENT READING (late session): the records are
+      > INDEXED BY REGION ID. The sweep's di=5..319 range is
+      > the region-id space (RGN ids 50-69 fit inside; 0-4
+      > are reserved/permanent), record N = region N's
+      > transition record, and the +1 word is that region's
+      > index into the 0x67b7 flag array. Everything in the
+      > function now agrees: the per-region sweep, the flag
+      > clearing, the save-file persistence, and the
+      > 'Invalid save' gate. The mines' records are the
+      > entries for whatever ids the upper/lower levels use
+      > (two of 50-63/65-69).
       > CLOSURE (same session): the ovr18 trio SERIALIZES
       > the flag array into save files — 0x70b66 snapshots
       > three core pointers (0x19c1, 0x67b7, 0x55b8) into
