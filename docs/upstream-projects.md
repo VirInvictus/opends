@@ -71,7 +71,9 @@ relying on.
 
 - URL: https://github.com/dsoageofheroes/libsoloscuro
 - Language: C + Zig + Lua
-- License: MIT
+- License: none shipped (corrected 2026-09-05; the clone carries no
+  LICENSE file — treat as all-rights-reserved until upstream adds
+  one; code must not be copied, only cited)
 - Status: early
 
 Internal name "nucleo": "core rules to work with libgff and soloscuro."
@@ -99,8 +101,11 @@ An older Go-based DSO server/client experiment.
 - Status: documentation-only
 
 Tiny but useful: `DSO Players e-mails.txt`, `PacketFormatDSO.txt`,
-`xmi-tracks.txt`. The XMI tracks file is a useful cross-reference for
-naming the music in DS1.
+`xmi-tracks.txt`. The XMI tracks file names DSO tracks (Slave Pens,
+Arena, Sewers, ...), not DS1 tracks — the two games share the XMI
+format but not the soundtrack. Still useful as a format reference.
+Note: `DSO Players e-mails.txt` contains personal information; never
+quote or absorb its contents.
 
 ## 2. dsun_music (John Glassmyer)
 
