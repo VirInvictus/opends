@@ -867,6 +867,20 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > ..\RES\text\BIGBYFST.spn" — SSI's packaging script
       > leaked into the spell-text table. Full extraction in
       > scratch/spin-delta/ (dev-side).
+      > Elevator ride routing (same session): GPL-80's
+      > GNAME[38] tport is BLICK's exit (noorderstrigger on
+      > him, then 'Blick squeezes into the narrow opening'),
+      > not the party ride. The party ride is engine-routed:
+      > GPL-85 confirms the elevator is unusable until Blick
+      > is found ('You're not going to get down to the lower
+      > level without his help'), and the ride itself goes
+      > through the engine's load-teleport path — the
+      > anchored `load_teleport` (DS2 ovr18+0x146c) and the
+      > region-change machine (ovr18+0x1132). The freeze
+      > therefore happens inside the anchored module for the
+      > lower-mine-level load. Site report is one
+      > runtime-capture (or lower-level RGN read) from
+      > complete.
 - [ ] **Locate the mines-elevator transition.** The
       region-transition state machine (GPL side, EXE side, or
       both) is Phase 7's site report; the investigation lives
