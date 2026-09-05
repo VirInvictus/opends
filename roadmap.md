@@ -651,10 +651,19 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > means the record base is wrong — either cs:0x6874 is
       > not seg_start+0x6874 (CS-base derivation needs the
       > overlay's real load paragraph) or the di=5..319 loop
-      > does not start at record 0. Settling the base is the
-      > next unit: dump ovr18's exact file range and find the
-      > offset where 37-byte records produce small sane +1
-      > values (region ids < 70).
+      > does not start at record 0. RESOLVED 2026-09-05, differently than expected: the
+      > extraction was reading the right address — the array
+      > at DGROUP:0x6874 is 11,840 bytes of 100% zeros on
+      > disk. It is BSS: runtime game state, populated as the
+      > party plays. The record layout (+1 word index, +0x16
+      > one-shot field) stands, the 320-record capacity is
+      > real (the sweep's di=5..319 with records 0-4
+      > permanent), and the structure is at a KNOWN address —
+      > a debugger write-watchpoint on
+      > DGROUP:0x6874+(n*37)+0x16 will catch every
+      > transition-record creation, elevator included. The
+      > freeze hunt is now a runtime-capture job (the
+      > played-save/debugger loop), not a static dig.
 - [x] **Decode\* dispatch-order study.** `.dso-online`'s
       symbols.txt names 115 `Decode*` GPL handlers in a
       contiguous, address-ordered block, and ~114/115 agree
