@@ -1617,3 +1617,31 @@ compiled code).
       > whatever engine code processes the 32766-prefix tports
       > — a different code path with potentially different
       > state requirements.
+      >
+      > **CORRECTION: GPLI-1 is NOT the global-entry dispatch
+      > index** (agent, 2026-09-05). `gpl global sub P0, P1`
+      > means "call byte offset P0 inside GPL chunk P1" — this
+      > is already how gpl-disasm decodes it
+      > (CrossChunkCall.target_offset / target_file_id) and how
+      > gpl-bytecode.md documents it (ADDR, FILE). Evidence:
+      > 797/797 global-sub call sites land exactly on decoded
+      > instruction boundaries in chunk P1 using the offset
+      > reading; 171/797 fail with the GPLI-entry reading (and
+      > entry numbers exceed 1315). GPLI-1 maps dense entry
+      > numbers to real function starts and is probably an
+      > engine-side export table for some OTHER lookup — its
+      > purpose is still open.
+      >
+      > The earlier "GPLI-1 IS the global-entry dispatch index"
+      > block above is RETRACTED. The correct resolution path
+      > for `gpl global sub N, M` is: jump to byte offset N in
+      > GPL chunk M, directly — no GPLI table involved.
+      >
+      > **`gpl global sub 228, 27` in MAS-57** = call byte
+      > offset 0xE4 in GPL chunk 27. The handler is a bulk
+      > state reset: 26 `gpl load variable 0, VAR` stores (to
+      > zero) followed by `gpl global ret`. It zeroes GBN[3],
+      > 13 GNUMs, and 13 GFs — clearing the area's quest/dialog
+      > state on every Mines2 entry. MAS-57 calls it right
+      > after the region setup block closes, then branches on
+      > GNUM[133] < 2 for two more setup variants.
