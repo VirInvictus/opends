@@ -1516,3 +1516,29 @@ compiled code).
       > This resolves the "GPLI (incompletely documented)" note
       > in the chunk catalogue. The format is now fully under-
       > stood and can be implemented in gpl-disasm if needed.
+      >
+      > **ORCHESTRATOR READ** (ovr18+0x1E63, agent): this is a
+      > SUBROUTINE of gpl_disk_change_region, called at fn+0x18f
+      > AFTER the region id is updated. It handles PRESENTATION:
+      > speech prefetch (`%s\SPC*.VOC` via the RNME name),
+      > region map draw (BMP+PAL from the archive), and
+      > region-entry cinematics (queues FLI files 1-5 based on
+      > the region name's first character: 'C'=Crypt gets 1+2+5,
+      > 'D'=3, 'B'=4, '>'=2). Gated by [0x14E3] (master gate: 0
+      > = return immediately) and [0x55BC] (bits 0-2 gate
+      > speech/cinematics/prefetch). Three callees: 0x23E3
+      > (speech), 0x2424 (DATA chunk descriptor lookup),
+      > 0x206E (region map draw + prior-region free). The RNME
+      > name is resolved via the generic chunk chain, not a
+      > hardcoded "RNME" search — the tag doesn't appear in
+      > DSUN.EXE at all.
+      >
+      > CALL ORDER in gpl_disk_change_region: phase 1
+      > (0x5B0:0xC0 unload/load) -> sweep -> validators ->
+      > save writer -> update region id [0x140C] -> call
+      > orchestrator (presentation) -> phase 2 (0x5B0:0xC0
+      > with flags) -> cleanup -> reset globals 0x14D7-0x14DD.
+      > The orchestrator runs BETWEEN the save and the load —
+      > if it hangs (e.g. waiting for a cinematic that can't
+      > queue), the game freezes with the save already
+      > written but the new region not yet loaded.
