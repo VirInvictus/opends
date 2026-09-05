@@ -778,14 +778,23 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > (0x5f3:0x12e call), compares the region id against a
       > 14-byte-entry table at DGROUP 0x3eee (region id match
       + > a +1 check — fail = error 0xb via the 0x257 exit),
-      > then proceeds to the move. THE FREEZE CANDIDATES
-      > narrow to: the 0x5f3:0x12e validator call, the
-      > 14-entry region table lookup (a mines id MISSING from
-      > that table = error path, not hang), or code deeper in
-      > the relocation's move loop. The close/reopen cycle
-      > (0x58:0x4723) remains the other suspect: a hang with
-      > darkrun.gff closed matches the load-screen freeze
-      > exactly.
+      > then proceeds to the move. THE SUSPECTS READ (2026-09-05): (a) 0x5f3:0x12e is a trivial
+      > helper — a 32-bit pointer-arithmetic subroutine (add
+      > + overflow check, retf in 12 bytes), not a validator;
+      > its segment 0x5f3 is RESIDENT (file 0xB130). (b) The
+      > 14-entry table at DGROUP 0x3eee is BSS zeros —
+      > runtime-populated region-transition slots (the
+      > relocation validates the region id against entries
+      > filled during play). (c) 0xd31 is the save-header
+      > snapshot (pure copying). The 0x5b0:0xc0 relocation
+      > itself uses DOS int 21h AH=0x4200 (lseek) at its
+      > core — file I/O on the save files. FREEZE SHAPE
+      > final: the relocation does lseek/read/write on
+      > DARKRUN.GFF with the handle state set up by the
+      > close/reopen cycle; a hang there is file-I/O on a
+      > handle opened against a missing/invalid region —
+      > which the played-save pair will show directly (the
+      > half-committed DARKRUN bytes at the freeze point).
       > CLOSURE (same session): the ovr18 trio SERIALIZES
       > the flag array into save files — 0x70b66 snapshots
       > three core pointers (0x19c1, 0x67b7, 0x55b8) into
