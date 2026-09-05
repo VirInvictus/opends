@@ -664,6 +664,20 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > transition-record creation, elevator included. The
       > freeze hunt is now a runtime-capture job (the
       > played-save/debugger loop), not a static dig.
+      > Accessor web found (same session): the sibling
+      > 8-byte-stride array is reached through a POINTER CELL
+      > at DGROUP:0x67b7 (`mov ax,[0x67b7]` = load the
+      > array base; the array is dynamically allocated), and
+      > SEVENTEEN sites across the binary load that cell:
+      > resident engine core (0x27045, 0x27791, 0x277ec,
+      > 0x28207, 0x2af34, 0x2c94c), the gpldisk module
+      > itself (ovr18 0x709b8, 0x70b66, 0x71099), and
+      > overlay code at 0x807xx/0x809xx/0x80axx. The
+      > region-entry flag array is shared core state; the
+      > gpldisk trio sits inside the save/restore path,
+      > consistent with the records being reconstructed from
+      > the save at load. The 37-byte record array's only
+      > static accessor remains the sweep.
 - [x] **Decode\* dispatch-order study.** `.dso-online`'s
       symbols.txt names 115 `Decode*` GPL handlers in a
       contiguous, address-ordered block, and ~114/115 agree
