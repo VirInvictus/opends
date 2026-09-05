@@ -365,6 +365,31 @@ mistake the format. Entities (with `WALL`s) come in v0.2+.
 | `SCMD` | Animation script command table                             |
 | `SJMP` | Animation script jump table                                |
 | `POBJ` | Polymesh object database                                   |
+| `RNME` | Region name (per-region; see RNME section below)           |
+
+### RNME (region name)
+
+One `RNME` chunk per region GFF (id matches the region id), holding
+the region's display name as plain ASCII terminated by a period
+(e.g. `Mines1.` for RGN038, `UnderTyr.` for RGN045). Documented
+2026-09-05 from the DS2 corpus (all 20 regions carry exactly one);
+the DS2 region-id-to-name table:
+
+| id | name | id | name |
+|----|------|----|------|
+| 1 | forest. | 56 | Mines1. |
+| 50 | Tyr. | 57 | Mines2. |
+| 51 | VA Headquarters. | 58 | Mines3. |
+| 52 | Pyramid. | 59 | Jann. |
+| 54 | Yuan-ti Tunnels. | 60 | Mosaic. |
+| 55 | El's Temple. | 61/62/63 | Volcano Level 2/1/3. |
+| | | 65-69 | Silt Giants., Cloud., Crypt., Cosmos., UnderTyr. |
+| 255 | Limbo. (special) | | |
+
+Prior to this the kind was undocumented (it appeared in the
+format-coverage gap list). Note region 53 is absent from the
+shipped corpus and 255 is a special-scope region (`Limbo.`),
+matching its use as the same-region tport marker's neighbour.
 
 #### Scripting (the GPL VM, see `gpl-bytecode.md`)
 
