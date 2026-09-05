@@ -102,6 +102,33 @@ keystone tool that everything else in this corner relies on.
   mapping known function ids to names, bootstrapped from
   greg-kennedy's DSO debug symbols.
 
+### The `gpl request` opcode (0x22)
+
+`gpl request <number>, <object>, <param1>, <param2>` sends a
+numbered request to an object. The request numbers are semantic
+(operation codes), not arbitrary values. Decoded from the mines
+scripts (GPL 76-79, 2026-09-05):
+
+| Number | Operation | Example |
+|--------|-----------|---------|
+| 5 | Activate object (open gate, start fans) | `request 5, NAME(-3146), 0, 0` |
+| 9 | Set object state/parameter | `request 9, NAME(-1300), orientation, 0` |
+| 11 | Place/move object to coordinates | `request 11, GNAME[39], 122, 74` |
+| 13 | Set facing/orders at coordinates | paired with request 11 |
+| 15 | One-shot (quest acceptance) | `request 15, NAME(-3146), 0, 0` |
+| 34 | Set entity field | `request 34, GNAME[40], 1, 0` |
+| 33 | Set entity value | `request 33, GNAME[40], 0, 35030` |
+| 36 | Set entity target | `request 36, GNAME[39], 0, 0` |
+| 37 | Operate (start elevator) | `request 37, GNAME[40], 0, 0` |
+| 38 | Move entity (speed/distance) | `request 38, GNAME[40], 13, 10` |
+| 39 | Send/move to destination | `request 39, GNAME[40], 31, 31` |
+| 49 | Set stack quantity | `request 49, NAME(-2962), 1, count` |
+
+The request number dispatches through a second table inside the
+opcode 0x22 handler in DSUN.EXE's GPL VM. Full mapping of all
+request numbers requires the name-pool-free trigger identification
+(see `docs/dispatch-table-ds2.md` for the handler entry point).
+
 ### Variable addressing
 
 Global and local variables render as `{Kind}[{id}]` or, when the
