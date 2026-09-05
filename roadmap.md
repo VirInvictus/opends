@@ -43,14 +43,14 @@ understanding campaign it should have been.
 | `repro` | 0.4.0 | shipped; differential capture + bug-save curation open |
 | `gpl-disasm` | 0.6.0 | shipped; 100% corpus alignment, CFG, callgraph, symbol catalogues |
 | `dialog-extract` | 0.7.1 | shipped; path-aware caller picking queued |
-| `save-inspect` | 0.9.5 | shipped; DARKRUN SAVE chunk RE continues (semantic differ landed) |
+| `save-inspect` | 0.9.5 | shipped; DARKRUN SAVE chunk RE continues (semantic differ + field-hypotheses catalogue landed) |
 | `image-extract` | 0.4.0 | shipped; GIF/APNG sprite export deferred |
 | `region-render` | 0.7.1 | shipped; animated palette + `--annotate` deferred |
 | `atlas` | 0.1.1 | shipped |
 | `opends` | 0.1.0 | shipped |
 | `gpl-asm` | 0.9.0 | shipped; 600/600 round-trip; macros queued |
 | `opcode-fuzz` | 0.3.0 | shipped; recipe-driven fuzz + first opcode discovery open |
-| `ovr-map` | 0.3.0 | shipped; symbol catalogue, xref tools, Ghidra bridges (5.6.0 complete) |
+| `ovr-map` | 0.3.0 | shipped; symbol catalogue (125 DS1 / 127 DS2 rows), xref tools, Ghidra bridges, OBJEX sprite pipeline (5.6.0 complete, 5.6.1 complete) |
 
 What the digging surface looks like today:
 
@@ -64,13 +64,19 @@ What the digging surface looks like today:
   overlay segments with **935 (DS1) / 854 (DS2)** confirmed
   function entry points, disassembled at correct bases and
   importable into Ghidra as labelled, correctly-based memory
-  blocks. The 5.6.0 instruments are built (2026-09-04): the
-  import is re-proven and persisted (`scratch/ghidra_project/`),
-  the EXE symbol catalogue exists with its first five rows
-  (`load_resource` both games, the overlay-manager bodies),
-  the census / xref / differ / coverage tools are in place.
-  Names: 5 rows of 1,789 entry points. Structure: measured.
-  Semantics: started, barely. That gap is Phase 5.6.
+  blocks. The 5.6.0 instruments are built (2026-09-04); 5.6.1
+  is COMPLETE (2026-09-05): both dispatch tables resolved
+  (129 handlers per game, bases 0x97d0 DS1 / 0xc4c0 DS2),
+  the 15 unknown opcodes proven unimplemented in both engines,
+  the syms catalogues hold 125/127 named functions (21 verified
+  string-xref anchors + 114 dispatch-table handlers per game),
+  the gpldisk module fully mapped (~53 functions), the OBJEX
+  object database visually open (17 mines objects identified),
+  the GPLI-1 entry directory decoded, the cooperative scheduler
+  identified as the freeze mechanism, the DGROUP BSS layout
+  mapped, and the overlay manager decoded. Structure: measured.
+  Semantics: the mines-elevator site report is one runtime
+  capture from complete. That gap is Phase 5.6.2/5.6.3.
 - **The patch pipeline has its first real surface.** Bytecode
   patches author by label-relative address with fingerprint
   checks (`gpl-asm --patch`), and the darkfix package shape

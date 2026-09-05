@@ -449,6 +449,15 @@ Against `dsun-exe-re.md` 5 ("What we still don't know"):
 
 ## 10. What is still dark, and next steps
 
+> **Status 2026-09-05:** items 1 (name the API surface) is
+> substantially advanced — 125/127 syms rows, both dispatch
+> tables, the gpldisk module, the OBJEX object database, and
+> the mines quest-flag map are all catalogued. Items 4
+> (relocations) and 5 (load_resource segment) are resolved.
+> The overlay manager is decoded (roadmap has the full
+> dispatch flow). The remaining work is runtime capture and
+> the name-pool-free trigger identification.
+
 1. **Name the ~340-resident-function API surface.** The single
    highest-value pass: for each target in the section 3.3
    census, disassemble, characterize (prologue size, string
