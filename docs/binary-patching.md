@@ -11,30 +11,12 @@ years). The risk is bounded; the practice is mature.
 
 ## 1. The binaries
 
-### DS1 `DSUN.EXE`
-
-- 611 KB
-- MS-DOS MZ executable, **Borland/TLINK (VROOM) overlaid, 16-bit
-  real mode**. Watcom C/C++ compiled. Confirmed, not assumed: see
-  [`dsun-exe-re.md`](dsun-exe-re.md) §1.
-- `.games/ds1/DSUN.EXE`
-
-### DS2 `DSUN.EXE`
-
-- 634 KB
-- Same engine generation, larger codebase
-- `.games/ds2/DSUN.EXE`
-
-Canonical hashes (from [`source-hashes/`](source-hashes/), which
-[`verify-install`](../tools/verify-install/) checks against):
-
-- DS1 GOG 1.10 `DSUN.EXE` SHA256:
-  `7bbd84f105b1ebe538a4abdfccdb2bacbf5b4fa763b45fa3a84499780f1d8c96`
-- DS2 GOG 1.10 `DSUN.EXE` SHA256:
-  `ce02ee1f31c2339fc3e16926e370639af782a5ecd6c8a6081140fa23445fc92c`
-
-The patch manifest will refuse to apply if the source hash
-doesn't match the canonical 1.10 GOG build.
+The binary layout, format disproof (no DOS/4GW; Borland/TLINK
+VROOM overlaid 16-bit real mode), and hash-verification details
+are the canonical domain of [`dsun-exe-re.md`](dsun-exe-re.md) §1.
+Both games' `DSUN.EXE` hashes are pinned in
+[`source-hashes/`](source-hashes/) and enforced by the patch
+manifest.
 
 ## 2. Tooling
 
@@ -147,31 +129,12 @@ Three checks:
 
 ## 4. DOS executable specifics
 
-DOS-era executables have a few wrinkles modern tools handle but
-worth being aware of:
-
-- **MZ header**: standard DOS preamble. The MZ image at offset 0
-  **is** the program, not a stub.
-- ⚠ **No protected-mode extender.** This section previously said a
-  DOS/4GW / PMODE/W / HMI stub prepends 32-bit code. **That was
-  wrong** and it cost the palette caller-hunt a full pass. There is
-  no `LE`/`LX` header, an `FBOV` (Borland/TLINK) header sits right
-  after the MZ image, both binaries carry ~5,000 MZ relocations,
-  and there are 994 / 904 `INT 3Fh` sites (Borland's overlay-manager
-  entry point). What looked like 32-bit code is 16-bit code built
-  for a 386: `66 68 43 4d 41 54` is `push dword 'CMAT'` *in a 16-bit
-  segment*. Full evidence in [`dsun-exe-re.md`](dsun-exe-re.md) §1.
-- **Overlays, not extenders**: everything past `FBOV` is overlay
-  code the Borland manager pages in on demand. Disassemble in raw
-  mode at file offsets with 16-bit width (`ndisasm -b 16`, or
-  `r2 -e asm.bits=16`), and use §3.5's tables to map a file offset
-  to a segment and entry point. `ovr-map` (Phase 5.5) automates this.
-- **Segmented memory model**: far calls exist, but overlaid routines
-  are *not* reached by `9A` far calls to their own code, so searching
-  for those finds nothing. See §3.5 for how a caller is actually found.
-- **Self-modifying code**: rare in this era for SSI titles, but
-  possible. If r2's analysis looks wrong, check if a `MOV [seg:off], imm`
-  is rewriting the code we're reading.
+The format disproof (no DOS/4GW; Borland/TLINK VROOM overlaid
+16-bit real mode) and the full evidence chain are in
+[`dsun-exe-re.md`](dsun-exe-re.md) §1. Practical consequence for
+patching: all code is 16-bit; `ndisasm -b 16` or `pwn disasm
+arch='i386', bits=16` is mandatory — a 32-bit decode produces
+convincing garbage without erroring.
 
 ## 5. Risks
 
