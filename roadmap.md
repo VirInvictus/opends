@@ -614,13 +614,21 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > (GPL_IMMED_NAME | 0x80, cval = h * -1 per
       > gpl-disasm's decoder) into the chunk's inline name
       > pool — whose layout is engine-side (the gplshell.c
-      > module) and undecoded. Resolving the tport
-      > destinations therefore needs the name-pool RE first
-      > (new 5.6.2-class work item: the chunk name-pool
-      > format, same family as SAVE/1), OR the runtime
-      > approach: nametonum (0x1E) resolves names through
-      > the VM, so opcode-fuzz or a debugger trace can map
-      > them empirically.
+      > module) and undecoded. RESOLVED 2026-09-05, and the answer kills the pool theory:
+      > **NAME(-N) is a negative-encoded OBJEX object id.**
+      > Evidence: libgff's GPL_GNAME handling shows GNAMES
+      > are 13 runtime object-handle registers (not strings);
+      > and OBJEX.GFF's RDFF records span ids up to 32003 —
+      > exactly covering the NAME refs (up to -30028). The
+      > 'pool' was never a string table: NAME(-5814) is
+      > OBJEX object 5814. The tport destinations are
+      > likewise object/location ids in OBJEX's id space.
+      > The -58xx block decodes as 68-byte entity records
+      > whose per-object u16 (402, 951, 958...) are
+      > sprite/animation refs into OBJEX's own SCMD (max
+      > 3943) / BMP (max 3953) space — visual identification
+      > of the elevator object is one image-extract call
+      > away.
       > Pool-location probe: GPL-81's 6,170 bytes are pure
       > bytecode (no local pool), and the remaining candidate
       > is **GPLI-1** (7,896 bytes at file 0x1f8f7f, one per
