@@ -1582,3 +1582,38 @@ compiled code).
       > is in the rebuilt EXE segments we can't yet compare
       > function-by-function), or the EXE drives the tport based
       > on GF[647] at a level we haven't traced.
+      >
+      > **GPL-287 COMPLETE READ** (agent): the mines' mine-level
+      > logic chunk is 1255 lines, fully self-contained (zero
+      > `gpl global sub` calls; all engine services via `gpl
+      > request`). 13 engine entry points, 35 local subroutines.
+      >
+      > CRITICAL DISCOVERY: **the mine levels are NOT separate
+      > regions.** All floors are region 57 (Mines2). The 17
+      > `gpl tport` instructions all use the 32766 same-region
+      > sentinel with different coordinates — floor changes are
+      > intra-region tports, not inter-region loads. The "level-
+      > load screen" that freezes is the INTRA-REGION tport
+      > path, not gpl_disk_change_region.
+      >
+      > The elevator system: two call pads (east 0x03f8, west
+      > 0x0494) set GNUM[139]=floor and GNUM[140]=tick timer;
+      > the elevator-arrival tick (0x0530) counts down and
+      > dispatches to 14 floor handlers via GNUM[139]. The
+      > railhead switches (0x0d7f/0x0ea9) toggle per-switch GF
+      > flags (647-652, 643, 619) that are never read elsewhere
+      > in the corpus. The track-switch system (entry 0x0001)
+      > routes mine carts via GNUM[138] and 12 switch tiles.
+      >
+      > Other: mind flayer ambush entry (0x085f, `request 18`
+      > on 416 + `hunt` + `fight`); car-arrival chime (0x0131);
+      > fan/gas puzzle (GPL-79, not here); mind flayer tunnel
+      > cutscene `tport 264, 57, 72, 22` (GF[646]/GF[642] gate).
+      >
+      > FREEZE IMPLICATION: the elevator freeze is in the
+      > INTRA-REGION tport path (32766-prefix), not the
+      > inter-region gpl_disk_change_region path. The static
+      > analysis focus shifts from gpl_disk_change_region to
+      > whatever engine code processes the 32766-prefix tports
+      > — a different code path with potentially different
+      > state requirements.
