@@ -958,12 +958,21 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       id family, converting the speculation rows in
       `save-inspect`'s README into per-id semantics. Needs
       play sessions (Brandon's).
-- [ ] **Settle save compression.** Locate the
+- [x] **Settle save compression.** Locate the
       `Failed Uncompress in Loadgamefromdisk` caller. Today
       every on-disk save parses as a plain GFF and the survey
       string says compression exists somewhere; which is
       true under all engine paths decides whether save
       diffing can be trusted.
+      (RESOLVED 2026-09-05: the caller is the GPLI directory
+      readers at ovr18+0x1615/0x1829 — they read the GPLI
+      tag's directory (size/6 = entries) and push the error
+      on allocation failure, NOT on compression failure. The
+      'Failed Uncompress' string is the module's error
+      message for "could not read the GPLI index", not a
+      compression error. On-disk saves ARE plain GFFs — no
+      compression layer exists in the DS2 save path. The
+      save-diff loop is trustworthy as-is.)
 - [ ] **Run the opcode-fuzz recipe loop to first discovery.**
       Phase 5's done-when (discover one previously-unknown
       opcode) is still open; settle the recipe format and
