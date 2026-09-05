@@ -632,6 +632,15 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > correlate against the 75 GPL-81 tports' expected
       > destinations (mine levels are known from the dialog:
       > 'Tyrgar Mine', levels 1-6, the Underdark door).
+      > First test NEGATIVE: plain u16[N] indexing shows no
+      > consecutive-region structure at the mine-level
+      > indices (74-80 -> 30, 235, 1, 57, 347, 26, 83; the
+      > 187/416/526 entries are equally scattered). Next
+      > probes, in order: byte-shifted (+1) u16 alignment,
+      > 4-byte entries, and the RGN-file region-id space
+      > (DS2 has ~60 regions; the mine levels should be a
+      > consecutive run wherever they live) as the
+      > correlation target instead of raw GPLI values.
 - [x] **Decode\* dispatch-order study.** `.dso-online`'s
       symbols.txt names 115 `Decode*` GPL handlers in a
       contiguous, address-ordered block, and ~114/115 agree
