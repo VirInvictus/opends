@@ -1440,3 +1440,22 @@ compiled code).
       > the scheduler fails to reschedule the calling task. The
       > elevator freeze is a SCHEDULER DEADLOCK, not a code bug
       > in the transition logic.
+      >
+      > **GPLI-1 DECODED** (agent, 2026-09-05): 1316 records of
+      > (u16 global_entry_no, u16 shared_data_offset, u16
+      > owning_gpl_chunk_id), no header. Field C covers chunks
+      > 1-331 (330 distinct = our 330 GPL chunks). Field A is a
+      > permutation of 0..1315; sorting by A yields chunk ids in
+      > perfectly non-decreasing order (0 violations in 1315
+      > pairs). Each chunk owns a contiguous run of entries. Field
+      > B offsets into a shared data area (max 9100). Mines chunks
+      > present: 56 = entries 231-234, 57 = entry 235, 58 = entries
+      > 236-247, GPL 76-85 all present.
+      >
+      > **DGROUP BSS LAYOUT MAPPED** (agent, 2026-09-05): init/BSS
+      > boundary at DGROUP 0x39C4 (file 0x509C4); BSS runs
+      > 0x39C4-0xA570 (27,564 bytes). New BSS variables found:
+      > 0x19C9 (97 refs), 0x4689-0x468D (hottest cluster),
+      > 0x655E-0x6573 (heads the 0x6578 table), 0x60EB (current
+      > region, 24 refs), and ~15 others. file_flags and data0
+      > pinned across the full corpus (0/8 and 1/3-22).
