@@ -1490,3 +1490,29 @@ compiled code).
       > (5813), carts (5809/5810), rubble (5801/5811), coins
       > (5802), bulkhead (5803), screen (5804), ore (5805/5806),
       > pebbles (5814), strut (5815), trigger (5812).
+
+      >
+      > **GPLI-1 IS THE GLOBAL-ENTRY DISPATCH INDEX** (agent,
+      > 2026-09-05, definitive): 1316 records of (u16
+      > global_entry_no, u16 entry_point_byte_offset, u16
+      > owning_gpl_chunk_id), no header. Field B is NOT a shared-
+      > data offset — it is the 0-based byte offset of an entry
+      > point INSIDE the owning GPL chunk. Every B is < the
+      > chunk's size (verified for all 1316 records). Field A is
+      > a permutation of 0..1315; sorting by A yields chunk ids
+      > in perfectly non-decreasing order. Each chunk has exactly
+      > one B==1 anchor (329/331 chunks; the others start at
+      > non-1 because byte 0 is `gpl global ret` + the first
+      > entry's code). Byte-verified: chunk 1's entry at B=210
+      > starts with `31` = `gpl exit gpl` (the previous entry's
+      > terminator), then fresh code at B=210.
+      >
+      > CONSEQUENCE: `gpl global sub N` (opcode 0x14) resolves
+      > its target through this table: global sub number N ->
+      > GPLI entry with A==N -> (chunk_id=C, byte_offset=B) ->
+      > far-call that address. The global-entry dispatch chain
+      > is fully resolved.
+      >
+      > This resolves the "GPLI (incompletely documented)" note
+      > in the chunk catalogue. The format is now fully under-
+      > stood and can be implemented in gpl-disasm if needed.
