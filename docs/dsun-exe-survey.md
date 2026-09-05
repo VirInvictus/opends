@@ -33,7 +33,7 @@ inline so every number is reproducible.
    weight.
 3. **The Borland overlay manager is located.** Exactly one
    `INT 3Fh` instruction exists outside the descriptor/stub
-   region: DS1 at file `0x466e0`, DS2 at `0x4aff0`. That is the
+   region: DS1 at file `0x466e0`, DS2 at `0x404c4 (corrected 2026-09-05; see roadmap)`. That is the
    handler body of the overlay loader; the `'Runtime overlay
    error'` string rides with it in both binaries.
 4. **`load_resource` is never called from an overlay.** The
@@ -135,7 +135,7 @@ Exactly one `cd 3f` occurs outside the descriptor/stub region:
 | Game | `INT 3Fh` handler body | Nearby marker |
 |---|---|---|
 | DS1 | file `0x466e0` | `'Runtime overlay error'` at `0x56c8` |
-| DS2 | file `0x4aff0` | `'Runtime overlay error'` at `0x54c8` |
+| DS2 | file `0x404c4 (corrected 2026-09-05; see roadmap)` | `'Runtime overlay error'` at `0x54c8` |
 
 This is the function the 994 / 904 stub `INT 3Fh`s trap into.
 It has not been read instruction-by-instruction yet; when it
@@ -455,7 +455,7 @@ Against `dsun-exe-re.md` 5 ("What we still don't know"):
    refs, int usage, callees), and match against the DSO name
    list. Even 100 named functions would transform binary RE
    into lookup.
-2. **Read the overlay manager** (`0x466e0` / `0x4aff0`): cache
+2. **Read the overlay manager** (`0x466e0` / `0x404c4 (corrected 2026-09-05; see roadmap)`): cache
    policy, how many segments stay resident, eviction rules.
    Directly relevant to any region-transition race.
 3. **Read the dispatcher segments**: DS1 overlay segment 25,
