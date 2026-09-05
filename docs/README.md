@@ -61,33 +61,58 @@ attribute-everything policy; see also the repo-root
 
 ## Every document
 
-| Document | Kind | What it holds |
-|---|---|---|
-| [`cookbook/`](cookbook/) | walkthrough | Tested end-to-end modding recipes; start at its [README](cookbook/README.md). |
-| [`file-formats.md`](file-formats.md) | reference | The GFF container and every chunk layout we've locked (CHAR, SAVE, BMP, region, ...). |
-| [`engine-quirks.md`](engine-quirks.md) | reference | Surprising engine behaviors that affect modding, each with why and where it bites. |
-| [`known-bugs.md`](known-bugs.md) | reference | The bug catalog: SSI's official 1.02 fix list plus community-reported post-1.10 bugs. |
-| [`research.md`](research.md) | context | The short engine overview: lineage, architecture, GPL at a glance. Read before `dsun-exe-re.md`. |
-| [`dsun-exe-re.md`](dsun-exe-re.md) | reference | `DSUN.EXE` reverse-engineering index: functions, memory layout, segment offsets. |
-| [`dsun-exe-survey.md`](dsun-exe-survey.md) | reference | Whole-binary measured survey of both engines: resident API census, overlay int/prologue census, FOURCC vocabulary, file surface, official-patch diff verdict. |
-| [`gpl-bytecode.md`](gpl-bytecode.md) | reference | The GPL scripting language and its bytecode encoding. |
-| [`gpl-opcodes.md`](gpl-opcodes.md) | reference | The 129-entry GPL opcode table. |
-| [`dso-symbols.md`](dso-symbols.md) | reference | Index into the Dark Sun Online debug symbols and how we curate names from them. |
-| [`re-tooling.md`](re-tooling.md) | reference | Host RE tooling (Ghidra, Temurin JDK, pwntools): setup, the headless recipe, troubleshooting. |
-| [`dispatch-table-ds1.md`](dispatch-table-ds1.md) | reference | Resolved DS1 GPL dispatch table: opcode byte -> handler address. |
-| [`dispatch-table-ds2.md`](dispatch-table-ds2.md) | reference | Resolved DS2 GPL dispatch table: opcode byte -> handler address. |
-| [`patch-workflow.md`](patch-workflow.md) | walkthrough | Authoring a fix end to end: repro, locate, edit, verify, package. |
-| [`fix-format.md`](fix-format.md) | reference | The darkfix patch artifact spec: fix scripts, EDITS, the authoring TOML, superseded formats. |
-| [`binary-patching.md`](binary-patching.md) | walkthrough | The `DSUN.EXE` binary-patch path: TOML patch format, r2 workflow, risks. |
-| [`build-environment.md`](build-environment.md) | walkthrough | Dev setup on Fedora: deps, game extraction, corpus layout. |
-| [`source-hashes/`](source-hashes/) | reference | Canonical SHA256 manifests for the GOG 1.10 installs (`verify-install` checks against these). |
-| [`install-variants.md`](install-variants.md) | reference | DS1/DS2 release lineages (floppy vs CD), proof of what GOG ships, and the patch-base rationale. |
-| [`upstream-projects.md`](upstream-projects.md) | reference | Catalog of prior Dark Sun RE projects and exactly what we use from each. |
-| [`versioning.md`](versioning.md) | reference | Per-tool semver policy, `VERSION` files, tag format. |
-| [`format-coverage.md`](format-coverage.md) | reference | Machine-generated: chunk kinds present in the corpus vs documented, with the gap list. |
+### Reference (formats, opcodes, catalogs; dense, consulted)
 
-The per-tool overview lives in [`../tools/README.md`](../tools/README.md)
-(13 tools, versions, what each does). The repo root holds the
+| Document | What it holds |
+|---|---|
+| [`file-formats.md`](file-formats.md) | The GFF container and every chunk layout we've locked. |
+| [`engine-quirks.md`](engine-quirks.md) | Surprising engine behaviors that affect modding. |
+| [`gpl-bytecode.md`](gpl-bytecode.md) | The GPL scripting language and its bytecode encoding. |
+| [`gpl-opcodes.md`](gpl-opcodes.md) | The 129-entry GPL opcode table. |
+| [`dso-symbols.md`](dso-symbols.md) | Dark Sun Online debug symbols and the curation process. |
+| [`format-coverage.md`](format-coverage.md) | Machine-generated: chunk kinds present vs documented. |
+| [`source-hashes/`](source-hashes/) | Canonical SHA256 manifests for the GOG 1.10 installs. |
+| [`versioning.md`](versioning.md) | Per-tool semver policy, `VERSION` files, tag format. |
+| [`dispatch-table-ds1.md`](dispatch-table-ds1.md) | Resolved DS1 GPL dispatch table. |
+| [`dispatch-table-ds2.md`](dispatch-table-ds2.md) | Resolved DS2 GPL dispatch table. |
+| [`fix-format.md`](fix-format.md) | The darkfix patch artifact specification. |
+
+### Engine RE (reverse-engineering notes; read in order)
+
+| Document | What it holds |
+|---|---|
+| [`research.md`](research.md) | The short engine overview: lineage, architecture, GPL at a glance. |
+| [`dsun-exe-survey.md`](dsun-exe-survey.md) | Whole-binary measured survey of both engines. |
+| [`dsun-exe-re.md`](dsun-exe-re.md) | `DSUN.EXE` reverse-engineering index. |
+| [`re-tooling.md`](re-tooling.md) | Host RE tooling (Ghidra, JDK, pwntools): setup and recipes. |
+
+### Patching (authoring and applying fixes)
+
+| Document | What it holds |
+|---|---|
+| [`patch-workflow.md`](patch-workflow.md) | Authoring a fix end to end. |
+| [`fix-format.md`](fix-format.md) | The darkfix patch artifact specification. |
+| [`binary-patching.md`](binary-patching.md) | The `DSUN.EXE` binary-patch path. |
+| [`known-bugs.md`](known-bugs.md) | The bug catalog and the bug-site census. |
+| [`install-variants.md`](install-variants.md) | Release lineages and the patch-base rationale. |
+| [`upstream-projects.md`](upstream-projects.md) | Prior Dark Sun RE projects and attribution. |
+
+### Contributing (getting started)
+
+| Document | What it holds |
+|---|---|
+| [`build-environment.md`](build-environment.md) | Dev setup on Fedora: deps, game extraction, corpus layout. |
+| [`cookbook/`](cookbook/) | Tested end-to-end modding recipes; start at its README. |
+
+The repo root holds the project-level documents:
+[`spec.md`](../spec.md) (the contract; read before changing
+semantics), [`roadmap.md`](../roadmap.md) (phase status, the
+single source of planning truth), and
+[`patchnotes.md`](../patchnotes.md) (per-tool release history,
+newest first). The per-tool overview lives in
+[`../tools/README.md`](../tools/README.md).
+
+The repo root holds the
 project-level documents:
 [`spec.md`](../spec.md) (the contract; read before changing
 semantics), [`roadmap.md`](../roadmap.md) (phase status, the
