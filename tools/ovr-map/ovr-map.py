@@ -75,7 +75,7 @@ def parse_fbov(data: bytes, image_end: int) -> dict[str, int]:
     return {
         "ovrsize": ovrsize,
         "exeinfo": exeinfo,
-        "segnum": segnum,
+        "segnum": segnum,  # symbol-table record count at exeinfo, NOT the overlay segment count
         "overlay_base": image_end + 16,
     }
 

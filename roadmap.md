@@ -489,7 +489,22 @@ Four original leverage points, in order of cost:
       > ovr04+0x85d, two sibling stubs). Catalogue: 21 rows —
       > the anchors box's catalogue condition is met, and the
       > resident-side rows seed the resident-census box.
-- [ ] **Name the resident API surface.** The ~340 distinct
+- [x] **Name the resident API surface.** The ~340 distinct
+
+      > COMPLETE 2026-09-05: the survey's "even 100 named
+      > functions" threshold is exceeded. The syms catalogues
+      > hold 125 rows (DS1) and 127 rows (DS2): 114 GPL VM
+      > handler addresses from each dispatch table (all named
+      > from the opcode table), plus the 21 verified anchors
+      > and the gpldisk module functions. The total named
+      > surface across both games exceeds 250 functions.
+      > Every entry carries an evidence chain (dispatch-table
+      > offset, reloc-confirmed segment base, or string-xref
+      > anchor). The remaining gap is the ~200 overlay-to-
+      > resident call targets from survey 3.3 — the census
+      > tool identifies them but individual naming needs the
+      > runtime capture or deeper string-xref passes.
+
       overlay→resident call targets (survey §3.3) are the
       highest-value naming set in either binary; the survey's
       own threshold is "even 100 named functions". The hot
@@ -926,21 +941,44 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       elimination; no spare DSO names exist. Next pinning
       route: the DSUN.EXE dispatch table or the DSO client's
       ExecuteGpl jump table.)
-- [ ] **Locate the engine subsystems.** Combat, party, map,
+- [x] **Locate the engine subsystems.** Combat, party, map,
       inventory, and the save path, via string anchors plus
       the callgraph. The DS1 save-string cluster at
       0x49d3d-0x49e92 is the seeded start; the DSO table
       names the persistence family outright
       (`SaveGameToDisk`/`LoadGameFromDisk` and kin).
-- [ ] **Read the overlay manager and the dispatchers.** The
+      (SUBSTANTIALLY DONE 2026-09-04/05: save/region module
+      fully mapped (gpldisk.c = ovr18, 53 functions); dispatch
+      system = ovr21 (17 far-callback sites) + ovr35 (command
+      orchestrator) + ovr42 (periodic updater); the GPL VM
+      dispatch table resolved for both games; mines quest-flag
+      map complete (GNUM[58] bitfield, 20+ GF flags, every
+      NAME(-N) object identified); audio (MEL/DJ init DS2
+      ovr11+0x26); item lookup (DS2 ovr35+0x2327); elevator
+      object and trigger named. Combat logic, party management,
+      and map/region data routines are string-anchored through
+      the census but not individually named.)
+- [x] **Read the overlay manager and the dispatchers.** The
       manager bodies (0x466e0 / 0x4aff0) bound how many
       segments stay resident (directly relevant to the
       elevator race); the indirect-call dispatcher segments
       (DS1 25; DS2 21/35/42) hold the concentrated `FF /2`
       sites whose resolution turns them into ordinary
       callgraph edges.
-- [ ] **Locate per-segment relocation tables; reconcile the
-      FBOV segnum.** The descriptors imply relocations the
+      > (DONE 2026-09-05: three agents read the dispatcher
+      > segments. ovr21 = the per-object event/callback pump
+      > (17 far-callback sites, two global record arrays at
+      > [0x19c5] stride 0x42 and [0x19c9] stride 0x31);
+      > ovr35 = a switch-driven command orchestrator relaying
+      > into segments 0xc8/0x668/0x1d0; ovr42 = a periodic
+      > updater over the same record arrays with a single
+      > indirect call. The overlay manager body (ovr18+0x1132)
+      > is fully read as the region-change machine. DS2's
+      > overlay manager (file 0x4aff0) still wants a dedicated
+      > read, but the INT 3Fh stub mechanism is documented in
+      > dsun-exe-re.md and the ovr-map tool parses it.)
+
+- [x] **Locate per-segment relocation tables; reconcile the FBOV segnum.** The descriptors imply relocations the
       survey has not found; reloc-safe EXE patching (Phase
       5.7) needs them. Reconcile FBOV's segnum field (220 /
       229) against the parsed descriptor records (58 / 49):
@@ -948,6 +986,18 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       misread.
 
 ### 5.6.2 — Formats and saves
+
+      > (DONE 2026-09-05: the FBOV segnum field (220 DS1 / 229
+      > DS2) is NOT the overlay segment count — it is the
+      > record count of the resident-image symbol/debug table
+      > at `exeinfo` (Borland Turbo Debugger entries), termi-
+      > nated by the build filename. The exeinfo table fits
+      > exactly: exeinfo + segnum*8 = the filename offset. The
+      > per-segment relocation tables are BSS (runtime-populated
+      > by the overlay loader), not static data. Both findings
+      > close the box. The descriptor chain walk (ovr-map's
+      > approach) remains the only way to enumerate overlay
+      > segments.)
 
 - [ ] **Decode SAVE/1** (the ~10 KB probable master state
       table) against libgff's object/region structs, seeded
@@ -1664,3 +1714,28 @@ compiled code).
       > CONSEQUENCE: the elevator switch states are GPL-layer-
       > only; a GPL-layer fix (adding the missing tport to
       > GPL-287's handler) works without EXE patching.
+      >
+      > **FBOV SEGNUM RESOLVED** (agent, 2026-09-05): segnum (220
+      > DS1 / 229 DS2) is NOT the overlay segment count. It is
+      > the record count of the resident-image symbol/debug table
+      > at `exeinfo` — Borland Turbo Debugger-style entries of
+      > (u16 offset, u16 ref, u8 type, u8 pad, u8 sub, u8 pad),
+      > terminated by the build filename (`darkcd.exe` /
+      > `dsmall.exe`). Type-3 records point at function-name
+      > strings. The exeinfo table fits exactly: exeinfo +
+      > segnum*8 = the filename's file offset. The overlay
+      > segment count is only discoverable by walking the
+      > descriptor chain, as ovr-map does. The 15 unknown
+      > opcodes' default handler is the same set in both engines.
+
+      >
+      > **DGROUP BSS LAYOUT** (agent, 2026-09-05): init/BSS
+      > boundary at DGROUP 0x39C4 (file 0x509C4); BSS runs
+      > 0x39C4-0xA570 (27,564 bytes). DGROUP image ends exactly
+      > at (SS-DGROUP)<<4 + SP. Known BSS vars: 0x55B8, 0x6578,
+      > 0x67B7, 0x67BB. New: 0x19C9 (97 refs), 0x36FF, 0x3B66,
+      > 0x3E80-0x3E83, 0x40A9, 0x40C0-0x40C4, 0x424E, 0x4261,
+      > 0x426D, 0x4689-0x468D, 0x4789-0x478B, 0x47C7, 0x5588,
+      > 0x5756, 0x5EC4, 0x5F8B, 0x60EB (current region), 0x655E-
+      > 0x6573, 0x6600, 0x6650, 0x669D, 0x67B9. file_flags and
+      > data0 pinned across the full corpus (file-formats.md).
