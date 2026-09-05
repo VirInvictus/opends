@@ -64,16 +64,16 @@ of a paging event) short of verified.
 """
 
 [[function]]
-name = "load_game_from_disk"
+name = "save_record_writer"
 segment = 18
 offset = 0xa6c
 confidence = "verified"
-evidence = "scripts/xref-string.py: pushes 'Failed Uncompress in Loadgamefromdisk' (file 0x4e6ba, DGROUP offset 0x16ba) at 0x70975"
+evidence = "scripts/xref-string.py: pushes 'Failed Uncompress in Loadgamefromdisk' (file 0x4e6ba, DGROUP offset 0x16ba) at 0x70975. CORRECTED 2026-09-05: the function WRITES SAVE-tagged records (boundary scan + gap read), it does not load"
 dso_source = "DSO::LoadGameFromDisk"
 notes = """
-The error string names the source function itself \
-(Loadgamefromdisk) and this is the containing function: the DS2 \
-save-load path, same module structure as DS1's ovr21.
+The string names the MODULE (gpldisk.c handles both load and \
+save), but the function WRITES records: it is the save writer, \
+not the loader. The actual loader is elsewhere in ovr18.
 """
 
 [[function]]
