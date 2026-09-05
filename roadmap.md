@@ -694,7 +694,16 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > carry their own name strings). Their transition
       > records sit at computable addresses
       > (DGROUP:0x6874+(id-5)*37), and their scripts are
-      > GPL 76-85.
+      > GPL 76-85. MAPPING VERIFIED 2026-09-05: **the MAS
+      > chunk id equals the region id** — MAS runs (1),
+      > (50-52), (54-63), (65-69), (99) match the region set
+      > exactly, and MAS-57 reads as Mines2's trigger-
+      > registration surface (look/use triggers on entities
+      > NAME(-5801)-(-5817), a boxtrigger at (26,90) 5x2,
+      > opening requests). The three mines masters are
+      > instruction-identical 1.0 vs 1.10 after GF
+      > renumbering (MAS-56: 111 ins, MAS-57: 173, MAS-58:
+      > 140), so the freeze is not in the 1.10 delta.
       > CLOSURE (same session): the ovr18 trio SERIALIZES
       > the flag array into save files — 0x70b66 snapshots
       > three core pointers (0x19c1, 0x67b7, 0x55b8) into
