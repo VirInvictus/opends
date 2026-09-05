@@ -1426,3 +1426,17 @@ model was disproved, `dsun-exe-re.md` §1), decompilers beyond
 Ghidra (16-bit real-mode support elsewhere is worse), and any
 Windows-cross toolchain (patches are data + Python, not
 compiled code).
+      >
+      > **BREAKTHROUGH: 0x100:0x2 is the cooperative task
+      > scheduler's character-output function** (fourth agent).
+      > NOT a per-record operation — a per-character text-mode
+      > writer inside a COOPERATIVE MULTITASKING SCHEDULER. The
+      > sweep calls it per record to write loading-progress text.
+      > Structure: separate entry points sharing a common tail;
+      > the sweep's entry steps X toward a target in
+      > DGROUP:0x38ba; the common tail wraps/clips then yields
+      > into the scheduler (`jmp 0xFFDE` — context save against
+      > a TCB). FREEZE MECHANISM: the sweep's call blocks when
+      > the scheduler fails to reschedule the calling task. The
+      > elevator freeze is a SCHEDULER DEADLOCK, not a code bug
+      > in the transition logic.
