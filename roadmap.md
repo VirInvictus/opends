@@ -641,6 +641,20 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > (DS2 has ~60 regions; the mine levels should be a
       > consecutive run wherever they live) as the
       > correlation target instead of raw GPLI values.
+      > Probe results: P1 (byte-shifted u16) and P2 (4-byte
+      > entries) both negative. P3 measured the region-id
+      > space: DS2 ships 20 RGN files with ids {1, 50-63,
+      > 65-69} (plus 255 as the same-region tport marker,
+      > confirmed by the 32766-prefix tports' operand
+      > pattern). NEW: the sweep-record +1 extraction at
+      > cs:0x6874 yields garbage words (up to 65532), which
+      > means the record base is wrong — either cs:0x6874 is
+      > not seg_start+0x6874 (CS-base derivation needs the
+      > overlay's real load paragraph) or the di=5..319 loop
+      > does not start at record 0. Settling the base is the
+      > next unit: dump ovr18's exact file range and find the
+      > offset where 37-byte records produce small sane +1
+      > values (region ids < 70).
 - [x] **Decode\* dispatch-order study.** `.dso-online`'s
       symbols.txt names 115 `Decode*` GPL handlers in a
       contiguous, address-ordered block, and ~114/115 agree
