@@ -371,7 +371,7 @@ mistake the format. Entities (with `WALL`s) come in v0.2+.
 | `RDFF` | Record data: distinct schemas per game (DS1/DS2/DSO) for: |
 |        |  item, combat, char, mini, player, entity records          |
 | `FNFO` | Object data table                                          |
-| `RDAT` | Names                                                      |
+| `RDAT` | Per-region binary config (u16 pairs; NOT names — corrected 2026-09-05) |
 | `NAME` | Names                                                      |
 | `TEXT` | Generic text resources                                     |
 | `MERR` | Error messages                                             |

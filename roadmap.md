@@ -1645,3 +1645,22 @@ compiled code).
       > state on every Mines2 entry. MAS-57 calls it right
       > after the region setup block closes, then branches on
       > GNUM[133] < 2 for two more setup variants.
+      >
+      > **DS1 REGION NAMES: none exist** (agent): DS1 identifies
+      > regions by numeric id only. No name table ships in the
+      > game. RDAT (45 records in RESOURCE.GFF) is per-region
+      > binary config, not names (the file-formats doc's "Names"
+      > label came from libgff's guess annotation). DS1 regions
+      > contain exactly {GFFI, ETAB, GMAP, RMAP, TILE} — no MAP,
+      > PAL, or RNME (DS2-era additions). RDAT description
+      > corrected in file-formats.md.
+      >
+      > **GF[647-652] ARE GPL-ONLY STATE** (agent): the EXE never
+      > reads individual GF flags directly. GF access is a bit
+      > array (byte N/8, bit N%8) at VM-seg 0x3c13:0x33b, accessed
+      > only through the generic runtime getter/setter (index read
+      > from bytecode at runtime) or whole-array save/restore.
+      > Targeted scans for hardcoded 647-652 access: zero hits.
+      > CONSEQUENCE: the elevator switch states are GPL-layer-
+      > only; a GPL-layer fix (adding the missing tport to
+      > GPL-287's handler) works without EXE patching.
