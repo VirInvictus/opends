@@ -73,6 +73,9 @@ attribute-everything policy; see also the repo-root
 | [`gpl-bytecode.md`](gpl-bytecode.md) | reference | The GPL scripting language and its bytecode encoding. |
 | [`gpl-opcodes.md`](gpl-opcodes.md) | reference | The 129-entry GPL opcode table. |
 | [`dso-symbols.md`](dso-symbols.md) | reference | Index into the Dark Sun Online debug symbols and how we curate names from them. |
+| [`re-tooling.md`](re-tooling.md) | reference | Host RE tooling (Ghidra, Temurin JDK, pwntools): setup, the headless recipe, troubleshooting. |
+| [`dispatch-table-ds1.md`](dispatch-table-ds1.md) | reference | Resolved DS1 GPL dispatch table: opcode byte -> handler address. |
+| [`dispatch-table-ds2.md`](dispatch-table-ds2.md) | reference | Resolved DS2 GPL dispatch table: opcode byte -> handler address. |
 | [`patch-workflow.md`](patch-workflow.md) | walkthrough | Authoring a fix end to end: repro, locate, edit, verify, package. |
 | [`fix-format.md`](fix-format.md) | reference | The darkfix patch artifact spec: fix scripts, EDITS, the authoring TOML, superseded formats. |
 | [`binary-patching.md`](binary-patching.md) | walkthrough | The `DSUN.EXE` binary-patch path: TOML patch format, r2 workflow, risks. |
