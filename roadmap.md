@@ -738,9 +738,19 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > `GF+[604]`/`GF+[608]` — the bracket form is a NEW
       > global-addressing mode for the disassembler's
       > documentation. The elevator's usetrigger is among
-      > the registered triggers; identifying it needs the
-      > name-pool RE (the NAME(-58xx) block sits in the same
-      > range as the miners).
+      > the registered triggers — and it is now NAMED:
+      > `gpl usetrigger 3753, 287, NAME(-5807)` is the
+      > elevator, because NAME(-5807) = OBJEX object 5807,
+      > whose RDFF record's sprite ref (u16 at offset 4) is
+      > BMP 951 — the rendered elevator shaft (visually
+      > confirmed, scratch/spin-delta/obj951.png). The full
+      > -58xx sprite map: 5801=402, 5802=405, 5803=637,
+      > 5804=632, 5805=578, 5806=577, 5807=951 (elevator
+      > shaft), 5808=952 (mine door), 5809=953, 5810=954,
+      > 5811=955, 5812=956, 5813=957 (cave-in debris),
+      > 5814=958, 5815=130. The site report's trigger is
+      > named; the freeze hunt continues inside the
+      > region-change machine it invokes.
       > CLOSURE (same session): the ovr18 trio SERIALIZES
       > the flag array into save files — 0x70b66 snapshots
       > three core pointers (0x19c1, 0x67b7, 0x55b8) into
