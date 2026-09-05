@@ -626,9 +626,19 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > The -58xx block decodes as 68-byte entity records
       > whose per-object u16 (402, 951, 958...) are
       > sprite/animation refs into OBJEX's own SCMD (max
-      > 3943) / BMP (max 3953) space — visual identification
-      > of the elevator object is one image-extract call
-      > away.
+      > 3943) / BMP (max 3953) space.
+      > RENDERED 2026-09-05: **object 951's sprite is the
+      > elevator shaft** — a 25x64 vertical shaft with
+      > chevron bracing (scratch/spin-delta/obj951.png,
+      > PLNR-encoded, 2 frames). Technique for rendering
+      > OBJEX sprites (OBJEX ships palette-less): copy a
+      > region GFF that has a PAL, overwrite a
+      > bigger-than-target indexed chunk slot in place with
+      > the BMP bytes (fits-in-place writer policy), fix the
+      > TOC length, then image-extract with
+      > --palette-kind/--palette matching the host region.
+      > This opens the entire OBJEX object database to
+      > visual identification.
       > Pool-location probe: GPL-81's 6,170 bytes are pure
       > bytecode (no local pool), and the remaining candidate
       > is **GPLI-1** (7,896 bytes at file 0x1f8f7f, one per
