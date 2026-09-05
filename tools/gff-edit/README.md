@@ -58,6 +58,9 @@ API surface lands incrementally; see
 
 ```sh
 gff-cat info  <file> [--json]           # print header + TOC summary
+                                        # --json: {size, header: {identity,
+                                        #   version, data_location, toc_location,
+                                        #   toc_length, file_flags, data0}, types: [...]}
 gff-cat list  <file> [--json]           # one row per chunk: kind, id, offset, len
 gff-cat extract <file> <kind> <id>      # write chunk bytes to stdout (or -o <file>)
 gff-cat extract <file> --all -o <dir>   # dump every chunk to <dir>/<kind>-<id>.bin

@@ -43,6 +43,30 @@ reason = "example: retarget the immediate after the label"
 ## Usage
 
 ```sh
+gpl-asm <input> [-o <output>]           # assemble text or JSON to bytecode
+gpl-asm --patch fix.patch chunk.bin -o new.bin   # apply a patch script
+gpl-asm --patch fix.patch chunk.bin --dry-run    # validate without writing
+```
+
+`--dry-run` validates every edit in the patch script (fingerprint
+check, address resolution) and prints `dry-run: N edit(s) would
+apply cleanly` without writing any output.
+
+### Preprocessor directives
+
+`@include <file>` pastes another listing's contents at the
+directive's position (nested includes supported, depth-limited).
+Paths are relative to the including file. Shipped with the
+v0.7.0 text-parser rewrite.
+
+### Symbol catalogue lookup
+
+`--syms <dir>` overrides the default symbol-catalogue directory
+(walked up from the binary to `tools/gpl-disasm/syms/`; silently
+loads nothing if absent). `--no-syms` disables the lookup
+entirely.
+
+```sh
 # Round-trip one chunk:
 gpl-disasm GPLDATA.GFF --kind GPL --id 199 --json -o chunk.json
 gpl-asm chunk.json -o chunk.bin

@@ -90,6 +90,12 @@ and SAVE/6 (character sub-blocks) are verified via
 `scripts/ds1-party-edit.py`. DS2 shares the wire format per the
 engine's shape; treat unverified rows as questions.
 
+## Roundtrip
+
+```sh
+python3 save-inspect.py roundtrip <file>   # decode -> re-encode -> verify byte-identical
+```
+
 ## Smoke test
 
 ```sh
