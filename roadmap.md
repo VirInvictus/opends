@@ -678,6 +678,19 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > consistent with the records being reconstructed from
       > the save at load. The 37-byte record array's only
       > static accessor remains the sweep.
+      > CLOSURE (same session): the ovr18 trio SERIALIZES
+      > the flag array into save files — 0x70b66 snapshots
+      > three core pointers (0x19c1, 0x67b7, 0x55b8) into
+      > DGROUP 0x1596-0x159e (the save header), 0x709b8
+      > walks the array's 8-byte entries (+8 per iteration,
+      > the save writer), and 0x71099 (inside
+      > gpl_disk_change_region itself) walks it
+      > post-validation. CONSEQUENCE: the region-entry flags
+      > persist in DARKRUN/SAVE0N files, so the
+      > played-save pair + save-semantic-diff WILL capture
+      > the elevator's flag changes — the runtime-capture
+      > instrument is the save diff after all, no debugger
+      > required.
 - [x] **Decode\* dispatch-order study.** `.dso-online`'s
       symbols.txt names 115 `Decode*` GPL handlers in a
       contiguous, address-ordered block, and ~114/115 agree
