@@ -823,6 +823,24 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > gpl request semantics decoded: 5=activate, 9=set
       > state, 11=place, 37=operate elevator, 39=move
       > elevator, 49=set quantity.
+      >
+      > GPLDISK MODULE FULLY MAPPED (agent read of all ~53
+      > functions across ovr18's 0x2D5B bytes):
+      > Archive system: the region-change data lives in a TAG
+      > CONTAINER with 4-char tags (SAVE, GPLI, ETAB, RGTP, GAME,
+      > DATA, PMB) and helpers at segments 0x110 (find), 0x118
+      > (seek/read), 0x128 (find-tag+offset, tag-size). The
+      > region table is at 0x388:0x0C33 (3 bytes per region);
+      > current region id at [0x60EB]. Key functions named:
+      > 0x08E3=THE SAVE WRITER (tag SAVE, .SAV creation, member
+      > iteration); 0x018F=region descriptor table builder;
+      > 0x039A=core region loader; 0x1615/0x1829=GPLI directory
+      > readers; 0x1BE7=lazy archive open; 0x1E63=region-change
+      > ORCHESTRATOR (separate from gpl_disk_change_region);
+      > 0x28B3=screen-mode toggle during save; 0x2BAC=save-slot
+      > name builder. The 'Bad iCtrl' string has NO reference
+      > inside ovr18. The archive is a flat tag container, not
+      > a GFF.
       > CLOSURE (same session): the ovr18 trio SERIALIZES
       > the flag array into save files — 0x70b66 snapshots
       > three core pointers (0x19c1, 0x67b7, 0x55b8) into
