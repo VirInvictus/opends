@@ -154,7 +154,7 @@ three columns are yes plus a written site report.
 
 | Bug (§) | Game | Site located | Site named | Root cause | Evidence so far |
 |---|---|---|---|---|---|
-| Mine elevator freeze (2.1) | DS2 | **partial** | **partial** | no | The region-transition module is anchored: DS2 `ovr18+0x1132` (`gpl_disk_change_region`), DS1 `ovr21+0x1487`: the transition state machine's neighbourhood is known; the specific elevator path is not. Both are confirmed entry stubs in the same segment as each game's `LoadGameFromDisk`. |
+| Mine elevator freeze (2.1) | DS2 | **yes** | **yes** | **candidate** | COMPLETE CHAIN: trigger = `usetrigger 3753, 287, NAME(-5807)` in MAS-57 (object 5807 = elevator shaft, sprite BMP 951 visually confirmed); handler = GPL-287 toggles GF[647] + sounds; machine = gpl_disk_change_region (ovr18+0x1132, fully read); freeze = scheduler deadlock candidate OR dangling switch state (GF[647] set but never read in the 1.10 GPL corpus). Regions: 56=Mines1, 57=Mines2, 58=Mines3. |
 | Doorway/item graphics disappearance (2.2) | DS2 | no | no | no | Renderer surface only; nothing anchored yet. |
 | Charged-weapon disappearance (2.3) | DS2 | **partial** | no | no | The item path's OBJEX lookup is catalogued (`ovr35+0x2327`, pushes "Failed, Not in Objex.gff"); the charge-decrement code is not. |
 | "Saves but exits" (2.4) | DS2 | **partial** | **partial** | no | Both save-path anchors catalogued and verified: `LoadGameFromDisk` (DS2 ovr18+0xa6c, DS1 ovr21+0xdde, self-naming strings) and the slot path `SaveGameToDisk` (DS2 ovr11+0x8e5, DS1 ovr13+0x7cc). The exit-after-save sequence is not traced. |
