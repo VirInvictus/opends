@@ -853,6 +853,20 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > the rebuilt EXE segments. Either way the delta is
       > now fully characterized, every changed chunk named,
       > and readable with image-extract/gff-cat.
+      > READ 2026-09-05 (late session): the 20 SPIN entries
+      > are high-level spell names/descriptions 1.0 left as
+      > the placeholder "fooey!" — 1.10 filled them with
+      > Incendiary Cloud, Charm Person, Mind Blank, Monster
+      > Summoning VI/VII, Oteluke's Telekinetic Sphere,
+      > Otto's Irresistible Dance, Power Word Blind, Prismatic
+      > Wall/Sphere, Serten's Spell Immunity, Crystal Brittle,
+      > Level Drain, Meteor Swarm, Mordenkainen's Disjunction,
+      > Power Word Kill, Time Stop, Dome of Invulnerability,
+      > Magical Plague, Rift. Easter egg: SPIN 103 contains a
+      > shipped BUILD COMMAND — "copy c:foo.bat
+      > ..\RES\text\BIGBYFST.spn" — SSI's packaging script
+      > leaked into the spell-text table. Full extraction in
+      > scratch/spin-delta/ (dev-side).
 - [ ] **Locate the mines-elevator transition.** The
       region-transition state machine (GPL side, EXE side, or
       both) is Phase 7's site report; the investigation lives
