@@ -2,8 +2,7 @@
 
 Disassembler for SSI's **GPL** (Game Programming Language)
 bytecode, the embedded scripting language that powers every
-quest, NPC dialog branch, region transition, and combat-script
-moment in SSI's Dark Sun CRPGs. Part of the OpenDS toolkit's
+quest, NPC dialog branch, and region transition in SSI's Dark Sun CRPGs. Part of the OpenDS toolkit's
 modding stack: `gff-edit` exposes the GFF container, and
 `gpl-disasm` exposes the bytecode inside `GPL ` and `MAS `
 chunks so modders can read what a script does.

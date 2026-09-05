@@ -115,12 +115,12 @@ For each instruction, the encoder writes:
 Per `Expression` token:
 
 - `Immediate14`: 2 bytes BE (top bit clear on byte 0).
-- `ImmediateByte`: `0x8F | 0x80` marker + 1 signed byte.
-- `ImmediateBigNum`: `0x8B | 0x80` marker + 4 bytes (hi:u16 BE,
-  lo:u16 BE; value = `(hi as i32) << 16 + lo`).
-- `ImmediateName`: `0x91 | 0x80` marker + 2 bytes BE
+- `ImmediateByte`: `0x8F` (bit 7 already set) marker + 1 signed byte.
+- `ImmediateBigNum`: `0x8B` (bit 7 already set) marker + 4 bytes (hi:u16 BE,
+  lo:u16 BE; value = `((hi as i32) << 16) + lo`).
+- `ImmediateName`: `0x91` (bit 7 already set) marker + 2 bytes BE
   (`h = (-value) as u16`).
-- `ImmediateString`: `0x92 | 0x80` marker + sub-type marker
+- `ImmediateString`: `0x92` (bit 7 already set) marker + sub-type marker
   (`0x01` / `0x02` / `0x05`) + optional payload (the 7-bit
   packed bitstream terminated by `0x03`).
 - `Variable`: `0x80 | extended_bit | var_kind_tag` dispatch byte

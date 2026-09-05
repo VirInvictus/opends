@@ -60,13 +60,13 @@ Contract:
   The per-edit fingerprints are the second, byte-level gate.
 - `EDITS` entries are `{"offset", "expect", "replace"}`: seek,
   verify `expect` byte-for-byte (refuse on mismatch:
-  `FingerprintMismatch`), write `replace`. Lengths must be equal ;
+  `FingerprintMismatch`), write `replace`. Lengths must be equal;
   **EXE edits are in-place only**; an inserted byte shifts every
   later overlay payload into garbage.
 - GPL chunk fixes use `apply_gff_chunk` (chunk replacement,
   in-place if the new bytes fit, append otherwise, per the
   `gff-edit` writer policy).
-- The script is idempotent-adjacent: the applier's journal
+- The script is journal-gated: the applier's journal
   (`darkfix-applied.json`) plus `AlreadyApplied` /
   `NotApplied` bookkeeping make re-runs and `--unapply` exact.
 - The `darkfix.patcher` exception taxonomy a fix author codes
