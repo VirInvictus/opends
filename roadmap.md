@@ -768,6 +768,24 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > 0x5b0:0xc0 with the save files closed — is exactly
       > the shape of a level-load freeze. The elevator's
       > ride runs this same machine.
+      > SUSPECTS READ (2026-09-05): (a) 0xd31 is the SAVE-
+      > HEADER SNAPSHOT — twelve 32-bit stores of core state
+      > (0x1596/0x159a/0x159e = the pointer trio from 0x70b66,
+      > plus 0x19d1, and segment-0x2e8 cursor fields) into
+      > DGROUP 0x1596-0x15fa, the save-header block; pure
+      > copying, cannot hang. (b) 0x5b0:0xc0 is a REAL
+      > relocation routine with error returns: it validates
+      > (0x5f3:0x12e call), compares the region id against a
+      > 14-byte-entry table at DGROUP 0x3eee (region id match
+      + > a +1 check — fail = error 0xb via the 0x257 exit),
+      > then proceeds to the move. THE FREEZE CANDIDATES
+      > narrow to: the 0x5f3:0x12e validator call, the
+      > 14-entry region table lookup (a mines id MISSING from
+      > that table = error path, not hang), or code deeper in
+      > the relocation's move loop. The close/reopen cycle
+      > (0x58:0x4723) remains the other suspect: a hang with
+      > darkrun.gff closed matches the load-screen freeze
+      > exactly.
       > CLOSURE (same session): the ovr18 trio SERIALIZES
       > the flag array into save files — 0x70b66 snapshots
       > three core pointers (0x19c1, 0x67b7, 0x55b8) into
