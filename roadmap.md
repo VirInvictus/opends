@@ -639,6 +639,12 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > --palette-kind/--palette matching the host region.
       > This opens the entire OBJEX object database to
       > visual identification.
+      > First batch rendered (obj951-958): 952 = wooden
+      > mine door, 957 = debris/ore pile (broken beams and
+      > rock — a cave-in), alongside the elevator shaft.
+      > The mines' object set is assembling visually: shaft,
+      > door, cave-in debris — exactly the pieces the
+      > freeze story touches.
       > Pool-location probe: GPL-81's 6,170 bytes are pure
       > bytecode (no local pool), and the remaining candidate
       > is **GPLI-1** (7,896 bytes at file 0x1f8f7f, one per
