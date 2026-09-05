@@ -465,6 +465,15 @@ the rest of the entity metadata.
 
 ### 4.5 The actual palette-cycle routine remains unfound
 
+> **Summary:** the complete palette-I/O inventory is in §4.2/4.3
+> (six sites, no more). The cycle routine must call
+> `write_palette_range` (0x288a4) or `load_full_palette` (0x144dc)
+> rather than writing the DAC directly. The remaining search paths
+> are in §4.5.4 (real-mode timer hooks, cycle-table data scan,
+> DOSBox dynamic read, DS2 shape-match). The 0x23067 retraction is
+> in §4.4 above.
+
+
 The lesson from §4.4 is that VGA-port byte signatures
 (`ba c8 03`, `ba c9 03`, single-byte `ee`) tag every palette
 write site, but **none of them is unique to the cycle
