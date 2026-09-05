@@ -1542,3 +1542,43 @@ compiled code).
       > if it hangs (e.g. waiting for a cinematic that can't
       > queue), the game freezes with the save already
       > written but the new region not yet loaded.
+      >
+      > **THE FREEZE MECHANISM CANDIDATE** (three agents, convergent
+      > findings):
+      >
+      > 1. Dispatch table base CORRECTED: handler code segment is
+      >    0x72c (file 0xc4c0), confirmed by MZ relocations; the
+      >    earlier 0x6500 guess was wrong. All 129 handler
+      >    addresses in dispatch-table-ds2.md corrected.
+      >
+      > 2. The complete gpl request dispatcher mapped: 53 request
+      >    numbers with a jump table at overlay file 0x8c487
+      >    (ovl 0x6c7). Requests 16/42/43 are unimplemented.
+      >    Request 37 (elevator operate) has three modes on
+      >    (p1,p2). Request 33 is a camera/viewport setter
+      >    (packed x*1000+y coords, x16 scale, clamped to
+      >    2048x1568). Request 38 is move/scroll to tile coords.
+      >    Request 34/35 are mode-byte setters.
+      >
+      > 3. The elevator's use handler: NAME(-5807) appears in
+      >    exactly 2 chunks (MAS-57 registers it, GPL-287 handles
+      >    it). ALL 8 objects (5807-5814: elevator, door, carts,
+      >    debris) share the SAME two generic handlers in
+      >    GPL-287 — look prints 'The railhead switch is set to
+      >    UP./DOWN.' and use toggles GF[647] + plays sounds.
+      >    **NOTHING in the 1.10 GPL corpus reads GF[647-650] or
+      >    GF[652]** — the switch states are dangling.
+      >
+      > THE FREEZE CANDIDATE: the player uses the elevator ->
+      > GPL-287 toggles GF[647] and plays sounds -> the game
+      > expects the region change to happen (the elevator goes
+      > between Mines1/Mines2) -> but NO tport is issued, NO
+      > region-change call is made, and NO code reads the switch
+      > state to decide what to do next. The game waits at the
+      > load screen for a transition that is never initiated.
+      > This is not a code bug — it's a MISSING LINK between the
+      > elevator switch and the region-change machine. Either
+      > SSI fixed this in the 1.02 build's EXE code (and the fix
+      > is in the rebuilt EXE segments we can't yet compare
+      > function-by-function), or the EXE drives the tport based
+      > on GF[647] at a level we haven't traced.
