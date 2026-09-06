@@ -139,8 +139,10 @@ Each binary fix:
   (`tools/exe-patch`, Phase 5.7) enforces the same rule one step
   earlier: every edit is a same-length replacement or the script is
   rejected before anything is written.
-- Distributed as a `.bsdiff` or hand-rolled `(offset, original, replacement)`
-  triples.
+- Distributed as hand-rolled `(offset, original, replacement)`
+  triples (resolved 2026-09-06 over `.bsdiff`: triples carry
+  per-fix fingerprints, toggle per fix, and several fixes
+  compose against the same pristine file).
 
 ## 4. Patch artifact format
 
@@ -227,7 +229,7 @@ See [`docs/gpl-bytecode.md`](docs/gpl-bytecode.md).
 | `radare2` / `r2`      | Disassemble & patch DSUN.EXE             |
 | `ghidra`              | Heavier static analysis on DSUN.EXE      |
 | `bsdiff` / `bspatch`  | Distribute binary patches                |
-| `python3` (+ `bsdiff4`)| Applier script and authoring helpers    |
+| `python3`             | Applier script and authoring helpers    |
 | `flac`/`vorbis-tools` | Inspect DS2 redbook OGG tracks (rarely)  |
 
 All available on Fedora via `dnf` (or pip/cargo for niche tools).
@@ -266,11 +268,12 @@ Tool-by-tool assignment:
 
 - Python target: **3.11 or newer** (we rely on `tomllib` in
   stdlib).
-- Python tools are **stdlib-only** by default. Adding a
-  third-party dependency requires per-tool justification. The
-  single pre-approved exception is `bsdiff4` for the applier
-  (binary patches need bsdiff; we are not writing one from
-  scratch).
+- Python tools are **stdlib-only**. (This used to carry a
+  pre-approved `bsdiff4` exception for the applier; resolved
+  2026-09-06: the darkfix model is in-place offset-keyed byte
+  edits, which need no diff library, so the applier ships with
+  zero dependencies and the exception is retired. Patch-byte
+  assembly uses the system `nasm`, not a Python library.)
 - Rust target: **stable channel, edition 2024**. A minimal
   dependency tree is acceptable from the start: `clap` for CLI
   parsing, `anyhow` / `thiserror` for errors, `serde` plus

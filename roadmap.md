@@ -1291,7 +1291,8 @@ report (5.6.3). Data-surface fixes do not wait on either.
       `ovr-map --disasm` already trusts, round-trip-proven
       against `ndisasm -b 16` in the selftest. Correction
       recorded in docs/re-tooling.md. The §5.20 keystone
-      decision stays open and nothing depends on it.)
+      question closed 2026-09-06: nasm is the assembler path;
+      keystone is not adopted (see the tooling inventory).)
 - [x] Round-trip proof: a no-op EXE patch script applies and
       unapplies byte-identically; a deliberately wrong site
       (off-by-one into padding) is rejected by `--verify`.
@@ -1621,11 +1622,13 @@ Optional, only if a phase asks for it:
   races are the plausible consumers. Staging's debugger plus
   the `DARKRUN.GFF` diff loop has sufficed so far; install
   when the first bug defeats both.
-- **`keystone-engine` + `bsdiff4`** in the applier venv:
-  already named in `docs/build-environment.md` §2 as the
-  pre-approved Python non-stdlib exceptions. Install them
-  when Phase 5.7 / Phase 6 begin, not before; no tool under
-  `tools/` depends on them today.
+- ~~**`keystone-engine` + `bsdiff4`** in the applier venv.~~
+  RESOLVED 2026-09-06, neither adopted: the applier is pure
+  stdlib (in-place offset-keyed edits need no diff library),
+  and assembly goes through system nasm (`tools/exe-patch
+  --asm`, round-tripped against ndisasm; pwntools cannot
+  assemble 16-bit x86 at all). `docs/build-environment.md` §2
+  carries the full reasoning.
 
 Not needed, for the record: LE/LX Ghidra loaders (the DOS/4GW
 model was disproved, `dsun-exe-re.md` §1), decompilers beyond

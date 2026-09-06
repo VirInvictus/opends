@@ -17,7 +17,7 @@ Read [`spec.md`](spec.md) before changing semantics, and [`roadmap.md`](roadmap.
 ## Repository layout
 
 - **Cargo workspace** at the repo root. Members live under `tools/<name>/` for Rust tools (`gff-edit`, `gpl-asm`, `gpl-disasm`, `image-extract`, `opends`, `region-render`). `Cargo.toml` defines the shared dependency set (`clap`, `anyhow`, `thiserror`, `serde`, `serde_json`, `toml`, `png`); new workspace deps need per-tool justification per spec §7a.
-- **Python tools** under `tools/<name>/` are single-file scripts, stdlib-only by default. Python target is 3.11+ (uses `tomllib`). Pre-approved exceptions: `bsdiff4` for the eventual applier.
+- **Python tools** under `tools/<name>/` are single-file scripts, stdlib-only by default. Python target is 3.11+ (uses `tomllib`). Pre-approved exceptions: none (the `bsdiff4` exception was retired 2026-09-06; the applier is pure stdlib and assembly goes through system nasm).
 - **Hand-curated TOML catalogues** live alongside the tool that consumes them: `tools/gpl-disasm/syms/{opcodes,functions,variables}.toml` and `docs/source-hashes/{ds1,ds2}-gog-1.10.toml`.
 - **`docs/`** is the canonical reference for formats (`file-formats.md`), opcodes (`gpl-opcodes.md`), the bug catalog (`known-bugs.md`), and upstream attribution (`upstream-projects.md`).
 - **`CREDITS.md`** is the per-feature attribution manifest mapping each OpenDS feature to the specific upstream file or function it was ported from. Update it any time you port a new piece of logic.

@@ -24,20 +24,27 @@ direct download. Optional; r2 covers most needs.
 
 ## 2. Python tooling
 
-The applier and patch-authoring helpers are Python 3 + a small
-set of pip packages. Per `~/CLAUDE.md`, prefer `uv` for
-environment management:
+The applier and patch-authoring helpers are Python 3, stdlib
+only. No pip packages are needed; the venv sketch that used to
+live here (bsdiff4 + keystone-engine) was resolved 2026-09-06 and
+neither dependency is adopted:
 
-```sh
-cd ~/.gitrepos/opends
-uv venv .venv
-source .venv/bin/activate
-uv pip install bsdiff4 keystone-engine
-```
+- The applier applies in-place `(offset, expect, replace)` byte
+  edits and chunk replacements. That data needs no bsdiff; whole-
+  file bsdiffs would actually break the model (per-fix site
+  fingerprints, per-fix toggling, and composability of several
+  fixes against the same pristine file all assume offset-keyed
+  triples).
+- Assembly for patch bytes goes through the system `nasm`
+  (`bits 16`), the assembler half of the ndisasm toolchain the
+  repo already trusts; `tools/exe-patch --asm` shells out to it
+  and the selftest round-trips it against `ndisasm -b 16`.
+  pwntools 4.15 cannot assemble this target at all (it rejects
+  the i386/16 combination; see `re-tooling.md`). keystone would
+  be a pip dependency buying what an installed nasm already
+  provides.
 
-`bsdiff4` for binary diff/patch. `keystone-engine` for
-assembling x86 instructions on the fly when authoring code-cave
-binary fixes.
+Python 3.11+ (tomllib). Nothing else.
 
 ## 3. DOSBox-Staging
 
