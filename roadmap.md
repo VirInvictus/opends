@@ -1328,6 +1328,17 @@ authoring should feel like routine work.
       stdlib (preferred, matches spec §7a) versus the
       `bsdiff4`/`keystone` venv `build-environment.md`
       sketches.
+      > PROVEN HALF 2026-09-06 (Wine, agent-side): the full
+      > apply -> --status -> --unapply cycle ran under
+      > wine-11.0 (Staging) with Windows CPython 3.12.10
+      > (embeddable) against a SCRATCH copy of the real DS1
+      > DSUN.EXE: the no-op fix applied, the journal wrote,
+      > unapply restored the file byte-identically. The
+      > applier needed zero changes; it is pure stdlib. The
+      > scratch rig lives in scratch/wine-applier-proof/
+      > (gitignored; the embeddable Python zip is re-
+      > downloadable). Still open, Brandon's side: one run on
+      > real Windows, and the §5.20 dependency stance.
 - [ ] Pick one trivial DS1 bug (identified during Phase 2 repro
       work). Prefer a GPL-data fix if one is available: it
       exercises `gpl-asm --patch` + `gff-edit` and defers the
@@ -1335,10 +1346,32 @@ authoring should feel like routine work.
       bug whose site the Phase 5.6.3 census has already
       characterized, so the fix proves the pipeline instead
       of paying the archaeology tax.
+      > Shortlist proposal 2026-09-06 (agent; the repo's DS1
+      > bug list is three symptom-level bullets, so the honest
+      > candidates come from three cheap agent-executable
+      > sweeps of the DS1 data corpus, each targeting a bug
+      > class this repo has already proven exists in the
+      > sibling codebase): (1) dangling-state sweep: scan DS1's
+      > ~330 GPL chunks for flags/GNUMs WRITTEN but never READ
+      > anywhere in the corpus (the GF[647-652] class that is
+      > the DS2 elevator freeze candidate), (2) placeholder
+      > sweep: scan DS1 SPIN/text chunks for SSI's placeholder
+      > strings (the "fooey!" class found in DS2's 1.0) and
+      > wrong-id text refs, (3) dead-trigger sweep: look/use
+      > triggers registered in MAS chunks whose handler chunks
+      > contain empty or `exit gpl` bodies (enemies refusing to
+      > engage is plausibly this class). Each sweep is a day of
+      > tool work on existing instruments; the first concrete
+      > trivial fix picks itself from their output.
 - [ ] Repro fixture for the chosen bug
       (`tools/repro/bugs/<id>/bug.toml`) so the fix is
       verifiable. Requires ydotool installed locally; repro
       v0.4.0 already integrates the input automation.
+      (Framework note 2026-09-06: the fixture FORM is
+      established by the shipped ds1-smoke/ds2-smoke fixtures
+      plus repro v0.5.0's `--diff`; the actual fixture for the
+      chosen bug lands the day the bug is picked and cannot
+      precede it.)
 - [x] **Differential capture** (promoted from the repro
       backlog, because it is the fix's proof): a
       run-with-patch and run-without-patch side-by-side
@@ -1357,9 +1390,17 @@ authoring should feel like routine work.
 - [ ] Author the test (hash before/after, in-game repro via
       `tools/repro/`).
 - [ ] Tag `darkfix-ds1-v0.1.0`, push GitHub release.
-- [ ] Player-facing README explaining install.
-- [ ] Cookbook entry: `docs/cookbook/author-first-darkfix.md`,
+- [x] Player-facing README explaining install.
+      (Rewritten 2026-09-06 in `ds1-patch/README.md`:
+      Windows-first steps with the `py` launcher, Linux/macOS
+      equivalent, what gets backed up, how to revert/verify,
+      and the hash-mismatch refusal explained; plus the
+      platform-proof note. Rides the v0.1.0 release.)
+- [x] Cookbook entry: `docs/cookbook/author-first-darkfix.md`,
       the workflow written down while it's fresh.
+      (Skeleton shipped 2026-09-06: all eight pipeline steps
+      written with the real tool commands, worked examples
+      marked pending to fill during the first real fix.)
 
 **Done when**: a stranger could download the v0.1 zip, run
 `apply.py`, launch DS1 in DOSBox, and the bug is gone.

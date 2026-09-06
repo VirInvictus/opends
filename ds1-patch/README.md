@@ -24,23 +24,52 @@ built and proven (`v0.0.1`); no bug fixes shipped yet. See
 - `scripts/darkfix/` — the engine the applier and fix scripts
   share: byte edits, GFF chunk replacement, backup, journal.
 
-## Player install (once v0.1.0 ships)
+## Installing (players)
 
-```sh
-unzip darkfix-ds1-v0.1.0.zip
-cd darkfix-ds1-v0.1.0
-python3 apply.py /path/to/GOG/Dark\ Sun\ Shattered\ Lands
-```
+You need [Python](https://www.python.org/downloads/) 3.11 or newer
+(the Windows Store Python or the `py` launcher both work). The patch
+never touches anything but the game folder you point it at.
 
-The applier refuses to run unless every touched file matches the
-canonical GOG 1.10 hash, backs up originals to `darkfix-backup/`
-next to them, applies the enabled fixes, and writes
-`darkfix-applied.json`. To revert:
-`python3 apply.py --unapply`.
+1. Download the `darkfix-ds1-vX.Y.Z.zip` release from the
+   [releases page](https://github.com/VirInvictus/opends/releases)
+   and unzip it anywhere.
+2. Find your game folder (GOG's default is
+   `C:\GOG Games\Dark Sun\`).
+3. Open a terminal in the unzipped folder and run:
 
-Also available: `--verify` (check a patched install against its
-journal), `--status`, and `--check-all` (authoring-time full
-install check against `docs/source-hashes/ds1-gog-1.10.toml`).
+   Windows (cmd/PowerShell):
+
+   ```bat
+   py apply.py "C:\GOG Games\Dark Sun"
+   ```
+
+   Linux/macOS:
+
+   ```sh
+   python3 apply.py "/path/to/GOG Games/Dark Sun"
+   ```
+
+4. Launch the game the normal way (the GOG/DOSBox shortcut). No
+   launcher changes are needed.
+
+What it does: refuses to run unless every file it touches matches
+the canonical GOG 1.10 hash, backs up originals to `darkfix-backup/`
+inside the game folder, applies the enabled fixes, and writes
+`darkfix-applied.json` recording what was done.
+
+To revert: `py apply.py "C:\GOG Games\Dark Sun" --unapply` restores
+the originals from the backups. To re-check a patched install:
+`--verify`; to see what is applied: `--status`.
+
+If the applier refuses with a hash mismatch, the folder is not the
+GOG 1.10 build this patch targets (wrong engine version, already
+patched, or damaged install). Nothing was changed.
+
+Platform proof: the full apply/status/unapply cycle is exercised on
+every change by `--selftest`, and was proven 2026-09-06 under
+Wine 11.0 with Windows Python 3.12.10 against a scratch copy of the
+real install (applied, journaled, unapplied byte-identically). The
+applier is pure stdlib; no dependencies to install.
 
 ## Testing
 
@@ -56,7 +85,12 @@ byte-identically. Never touches the canonical install.
 
 ## Authoring a new fix
 
-See [`../docs/patch-workflow.md`](../docs/patch-workflow.md).
+See [`../docs/patch-workflow.md`](../docs/patch-workflow.md)
+and the cookbook skeleton
+[`../docs/cookbook/author-first-darkfix.md`](../docs/cookbook/author-first-darkfix.md).
+Authoring-time full-install hash check: `--check-all` (uses
+`docs/source-hashes/ds1-gog-1.10.toml`; a distributed zip does not
+ship docs/, so players never need it).
 A fix script is a small Python module next to its writeup:
 
 ```python

@@ -7,6 +7,22 @@ Released versions appear here, newest first.
 Tagged releases from this batch: `ovr-map-v0.3.0` and `save-inspect-v0.9.5`
 (git tags pushed; the entries below are the release notes).
 
+- **`ds1-patch/` + `docs/cookbook/`: Phase 6 prep** (docs, no
+  version bump). The `ds1-patch` README gains a real
+  player-facing install section: Windows-first steps with the
+  `py` launcher, Linux/macOS equivalent, what gets backed up,
+  `--unapply`/`--verify`/`--status`, and the hash-mismatch
+  refusal explained. Platform proof recorded: the full
+  apply -> status -> unapply cycle ran under Wine 11.0 with
+  Windows CPython 3.12.10 (embeddable) against a scratch copy
+  of the real DS1 `DSUN.EXE` on 2026-09-06; unapply restored
+  byte-identically, zero applier changes needed. Real-Windows
+  run and the dependency stance (§5.20) stay Brandon's.
+  `docs/cookbook/author-first-darkfix.md` is new as the
+  eight-step skeleton (pick, fixture, characterize, locate,
+  author, prove with `repro --diff`, package, release), worked
+  examples pending the first real fix.
+
 - **`tools/repro/` v0.5.0** ships **`--diff` differential
   capture**, promoted from the backlog because it is the
   Phase 6 fix's proof. One invocation runs the fixture twice
