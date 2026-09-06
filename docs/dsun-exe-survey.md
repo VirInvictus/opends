@@ -174,10 +174,12 @@ The hottest targets cluster in the first resident code segment
 (`0x5400`-`0x5e00` in DS1): the Borland runtime helpers (`rep
 movsw` block movers, long arithmetic, heap). Below that sit
 the engine's own resident services. The top targets are
-disassembly-verified but not yet behaviourally named; a
-naming pass over these ~340 functions (each is ~1-2 KB of
-code at most) is the highest-value next RE work and is what
-the DSO table should be shape-matched against first.
+disassembly-verified; the 2026-09-05/06 naming campaign
+catalogued 130+ functions per game (see
+`tools/ovr-map/syms/`), though the full ~340 set is not
+individually named yet. UPDATE 2026-09-06: the hot-target
+cluster now hosts the decoded palette subsystem
+(`dsun-exe-re.md` 4.5.5-4.5.6).
 
 `load_resource` specifically (`0001:04a4` DS1 = file `0x58b4`;
 `0128:04ab` DS2 = file `0x692b`) shows **zero** overlay

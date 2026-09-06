@@ -33,6 +33,21 @@ DSO debug-symbol import proposals: see
 `scripts/import-dso-symbols.py` (emits review-ready rename
 proposals; never writes `syms/` directly).
 
+Corpus sweeps over the `--all --json` dumps (both stdlib-only
+scripts with `--selftest`; proposals are review input, never
+commits):
+
+- `scripts/global-state-sweep.py`: classifies every
+  gflag/gnum/gbignum/gstring reference as a read or a write and
+  reports DANGLING (written, never read), SELF-CONTAINED (read
+  only by chunks that also write it), and READ-NEVER-WRITTEN
+  bands. Found DS1's GF[395] (written 19x by 13 region masters,
+  never read).
+- `scripts/dead-trigger-sweep.py`: verdicts every entity-trigger
+  registration's handler (MISSING / TRIVIAL / OFFSET-PAST-END /
+  ALIVE). Found DS1's GPL-200@0x909 stub, where five look and
+  one attack trigger fire into nothing.
+
 ## Library
 
 ```rust

@@ -16,11 +16,12 @@ toolkit).
   `[[edit]]` records to one chunk (see below), addressing by
   disassembler label or curated name instead of hand-counted
   offsets.
-- *EXE fixes*: authored by hand against `ndisasm -b 16` output and
-  `ovr-map`'s addressing (`ovr:seg+off`, `--verify`, the
-  `syms/<game>.toml` names). Phase 5.7 will give EXE edits the same
-  named, fingerprint-checked surface GPL edits have; until then the
-  byte offsets come from the fix's site report.
+- *EXE fixes*: `exe-patch` (Phase 5.7, shipped) applies a TOML
+  script of the same `[[edit]]` shape, addressing by
+  `ovr:seg+off`, catalogued symbol name, or raw offset, with a
+  mandatory `bytes_old` fingerprint and a `--verify` gate (drift,
+  segment straddle, padding, and any length change are hard
+  failures).
 
 **Distribution layer** (one format, the only one `apply.py` runs):
 the **darkfix fix script**, below.

@@ -11,6 +11,8 @@ expected output, roll-back instructions.
 | [`edit-pc-hp.md`](edit-pc-hp.md)            | Edit a DS2 PC's HP / stats / XP via `save-inspect edit-pc` (CHARSAVE-based; works for DS2 active party + DS1 inactive char templates). |
 | [`bootstrap-items.md`](bootstrap-items.md)  | Discover what an item id represents by tagging your CHARSAVE save and observing in DOSBox. Builds `syms/items.toml`. |
 | [`edit-ds1-party.md`](edit-ds1-party.md)    | Edit your **DS1 active party** (HP / stats / weapon damage) via `ds1-party-edit.py` (DARKRUN-based; the right altitude for DS1). |
+| [`author-first-darkfix.md`](author-first-darkfix.md) | The eight-step fix-authoring pipeline (pick, fixture, characterize, locate, author, prove, package, release); skeleton with the real tool commands. |
+| [`capture-sessions.md`](capture-sessions.md) | The three play-session cards: played-save pairs, the mines-elevator runtime capture, the Phase 7-10 ladder. |
 
 ## Workflow conventions across entries
 

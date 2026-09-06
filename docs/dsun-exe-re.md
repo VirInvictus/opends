@@ -733,7 +733,10 @@ and the curated catalogue). Summary retained here: the DSO v1.0
 client names the VGA colour-cycle path (`VGASetCycle`,
 `VGAResetCycle`, `VGAColorCycle`, `cycleshow`, the `gCycleColor`
 global); offsets are DSO-relative and do not map onto DSUN.EXE,
-only the names transfer. The DSUN.EXE counterpart identification
+only the names transfer. Post-decode correspondence (4.5.5-4.5.6):
+`VGAColorCycle` = the pump, `VGASetCycle` = `StartCycle`
+(DS1 `0x28707`), `VGAResetCycle` = `StopCycle` (DS1 `0x2873f`);
+both decoded bodies are byte-identical across our two engines. The DSUN.EXE counterpart identification
 at `0x23075` was retracted with §4.4 (that region is the GMAP /
 entity render loop); `0x23067` was never it either.
 
@@ -743,7 +746,7 @@ entity render loop); `0x23067` was never it either.
 > ([`dsun-exe-survey.md`](dsun-exe-survey.md), 2026-08-28) adds
 > measured structure to several items below: the resident API
 > surface is ~340 functions (census in survey §3.3), the overlay
-> manager body is at file `0x466e0` (DS1) / `0x404c4` (DS2; the survey\&#x27;s 0x4aff0 was data, not code; corrected 2026-09-05), the
+> manager body is at file `0x466e0` (DS1) / `0x404c4` (DS2; the survey's 0x4aff0 was data, not code; corrected 2026-09-05), the
 > save/region module is string-anchored via `gpldisk.c` breadcrumbs,
 > and item 5 is resolved to a file offset. See survey §9 for the
 > item-by-item answers.
@@ -763,16 +766,14 @@ order of value to the toolkit:
    how the engine consumes the buffer. The success path after
    `or ax, ax; jne` (at `0x56ae5 + 0x7b = 0x56b60`) is the
    consumer's code window.
-3. **Animated palette cycle routine**. The earlier
-   identification of `0x23067` as the cycle walker was
-   retracted in §4.4 (the walker is region GMAP / entity
-   rendering, not palette cycling). The actual cycle routine
-   remains unfound. §4.5 lists the three productive next
-   directions: a caller search against `write_palette_range`
-   (`0x288a4`), a tick-handler trace through the engine's
-   main loop, or shape-matching DS2 against DSO's
-   `VGAColorCycle` symbol if we can extract a function-table
-   dump.
+3. **RESOLVED 2026-09-06: the animated palette cycle
+   routine.** Found, decoded, and its registration API with
+   it: the pump at DS1 `0x287fc` / DS2 `0x2cfdc`, the
+   16x8-byte cycle table, and `StartCycle`/`StopCycle` with
+   DS1's four boot-time ranges (§4.5.5-§4.5.6; the earlier
+   `0x288a4` reference in this item is `0x28894`, corrected
+   in §4.3). The earlier `0x23067` identification stays
+   retracted (§4.4).
 4. **DS2's palette source**. With CMAT/CPAL gone, DS2 must select
    a region palette some other way. Cross-check the four DS2
    `'PAL '` push sites (`0x2b770`, `0x68ab5`, `0x71f94`,

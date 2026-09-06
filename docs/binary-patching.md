@@ -25,8 +25,7 @@ manifest.
 | `radare2` (`r2`) / `r2pm` | Primary disassembler, scriptable           |
 | `ghidra`                  | Heavier static analysis when r2 stalls     |
 | `dosbox-staging --debug`  | Live debugging in the original engine      |
-| `python3 + bsdiff4`       | Generate / apply binary diffs              |
-| `keystone` (Python)       | Assemble x86 instructions into bytes       |
+| `nasm` (16-bit mode)      | Assemble patch bytes (`tools/exe-patch --asm` shells out to it; pwntools/keystone are not used, see `re-tooling.md`) |
 | `xxd`, `bvi`, `hexedit`   | Manual hex inspection                      |
 
 Most on Fedora via `sudo dnf install radare2 hexedit` (or pip /
@@ -108,13 +107,15 @@ the fix script.
 
 Two options:
 
-- **Hex-pair format** (recommended for v1): the TOML format above.
-  Human-readable, easy to review in a PR, easy to apply.
-- **`bsdiff`** for larger fixes (anything over a few hundred
-  bytes). Smaller distribution; less reviewable.
+- **Hex-pair format** (the format, resolved 2026-09-06):
+  the TOML format above. Human-readable, easy to review in a
+  PR, easy to apply; per-edit fingerprints and composability
+  are load-bearing properties a whole-file diff cannot carry.
+- `bsdiff` was considered for larger fixes and is not adopted
+  (see `build-environment.md` 2). Darkfix edits are
+  bytes-to-hundreds of bytes; the size win never applies.
 
-We default to the hex-pair format; bsdiff only for code-cave
-fixes.
+We use the hex-pair format, period; and in-place only, always.
 
 ### 3.6. Verify
 

@@ -9,9 +9,13 @@ harness, so the installs are never writable (overlay mounts; see
 ## Card A: played-save pairs (SAVE-id mapping)
 
 Goal: convert `save-inspect`'s speculation rows into per-id
-semantics, one in-game action at a time. Target ids: SAVE/1 (the
-~10 KB probable master state table), SAVE/2-4 and /7-9, the u16
-scalar family at 10..17, the 51-byte SAVE/18 boolean array.
+semantics, one in-game action at a time. The big two are decoded
+structurally already (SAVE/1 = the 320-slot actor record array,
+DS1 32-byte / DS2 37-byte records; SAVE/7 = the 1050x8 visible-
+object array; `docs/engine-quirks.md` entry 12), so card-A pairs
+now fill in the per-field map inside an actor record: position,
+facing, sprite, HP. Then SAVE/2-4 and /7-9, the u16 scalar family
+at 10..17, and the 51-byte SAVE/18 boolean array.
 
 1. Launch a persistent session:
 

@@ -41,7 +41,7 @@ understanding campaign it should have been.
 | `verify-install` | 0.3.0 | shipped |
 | `gff-edit` | 0.6.0 | shipped; segmented-type builder deferred |
 | `repro` | 0.5.0 | shipped; `--diff` differential capture landed (2026-09-06); bug-triggering save curation open |
-| `gpl-disasm` | 0.7.0 | shipped; 100% corpus alignment, CFG, callgraph, symbol catalogues, global-state sweep (2026-09-06) |
+| `gpl-disasm` | 0.8.0 | shipped; 100% corpus alignment, CFG, callgraph, symbol catalogues, global-state + dead-trigger sweeps (2026-09-06) |
 | `dialog-extract` | 0.7.1 | shipped; path-aware caller picking queued |
 | `save-inspect` | 0.9.6 | shipped; SAVE/1 + SAVE/7 decoded into the field catalogue, game-scoped hypothesis rows (2026-09-06) |
 | `image-extract` | 0.5.0 | shipped; animated GIF export landed (2026-09-06); APNG deferred |
