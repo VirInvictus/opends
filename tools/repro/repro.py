@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import hashlib
+import json
 import os
 import shutil
 import signal
@@ -647,6 +649,282 @@ def list_bugs(bugs_dir: Path) -> int:
     return EXIT_PASS
 
 
+# ---------- v0.5.0: differential capture (the fix's proof) ----------
+
+
+def stage_patch_dir(patch_dir: Path, overlay_dir: Path) -> list[str]:
+    """Stage a patch directory over the C: overlay, after fixture setup.
+
+    Each file lands at the same relative path it has under
+    `patch_dir`, overriding same-named fixture/setup files. The
+    underlying game install is never touched: everything lands in
+    the overlay, exactly like `stage_setup_files`.
+    """
+    staged: list[str] = []
+    for src in sorted(patch_dir.rglob("*")):
+        if not src.is_file():
+            continue
+        dst = overlay_dir / src.relative_to(patch_dir)
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+        staged.append(str(src.relative_to(patch_dir)))
+    return staged
+
+
+def collect_run_evidence(
+    scratch_dir: Path, verdict: str, reasons: list[str], video_path: Path | None
+) -> dict:
+    """The per-run evidence the delta report carries.
+
+    Beyond the pass/fail verdict: the C: overlay's DARKRUN.GFF
+    fingerprint (world state at end of run) and the D: sentinel
+    listing (the same globs `evaluate` matched).
+    """
+    darkrun = scratch_dir / "c-overlay" / "DARKRUN.GFF"
+    darkrun_sha = darkrun_size = None
+    if darkrun.is_file():
+        darkrun_size = darkrun.stat().st_size
+        darkrun_sha = hashlib.sha256(darkrun.read_bytes()).hexdigest()
+    drive_d = scratch_dir / "d"
+    sentinels = (
+        sorted(str(p.relative_to(drive_d)) for p in drive_d.rglob("*") if p.is_file())
+        if drive_d.is_dir()
+        else []
+    )
+    return {
+        "verdict": verdict,
+        "reasons": reasons,
+        "video": str(video_path) if video_path else None,
+        "darkrun_sha256": darkrun_sha,
+        "darkrun_size": darkrun_size,
+        "sentinels": sentinels,
+    }
+
+
+def build_diff_report(
+    bug_id: str, patch_source: Path, baseline: dict, patched: dict
+) -> dict:
+    """The structured pass/fail delta the Phase 6 box asks for."""
+    delta = {
+        "verdict_change": (
+            "none"
+            if baseline["verdict"] == patched["verdict"]
+            else f"{baseline['verdict']}->{patched['verdict']}"
+        ),
+        "darkrun_differs": (
+            baseline["darkrun_sha256"] is not None
+            and patched["darkrun_sha256"] is not None
+            and baseline["darkrun_sha256"] != patched["darkrun_sha256"]
+        ),
+        "sentinels_only_in_baseline": sorted(
+            set(baseline["sentinels"]) - set(patched["sentinels"])
+        ),
+        "sentinels_only_in_patched": sorted(
+            set(patched["sentinels"]) - set(baseline["sentinels"])
+        ),
+    }
+    return {
+        "tool": "repro-diff",
+        "bug": bug_id,
+        "patch_source": str(patch_source),
+        "baseline": baseline,
+        "patched": patched,
+        "delta": delta,
+    }
+
+
+def interpret_delta(report: dict) -> tuple[int, str]:
+    """Verdict semantics for the pair of runs.
+
+    The desired shape is baseline FAIL -> patched PASS (the bug
+    fires without the fix and not with it). The inverse is a
+    regression signal and exits FAIL loudly. Identical verdicts
+    exit FAIL too: the pair proves nothing yet (the bug likely
+    did not fire in the baseline run).
+    """
+    base_v = report["baseline"]["verdict"]
+    patch_v = report["patched"]["verdict"]
+    if base_v == "FAIL" and patch_v == "PASS":
+        return EXIT_PASS, "FIX CONFIRMED (baseline FAIL, patched PASS)"
+    if base_v == "PASS" and patch_v == "FAIL":
+        return EXIT_FAIL, "REGRESSION-SHAPED (baseline PASS, patched FAIL)"
+    return (
+        EXIT_FAIL,
+        f"NO VERDICT DELTA (both {base_v}; check darkrun_differs and "
+        f"sentinel lists in the report before concluding the bug did not fire)",
+    )
+
+
+def run_diff(
+    fixture: "BugFixture",
+    config_path: Path,
+    game_dir: Path,
+    patch_source: Path,
+) -> int:
+    """Run the fixture twice against the same budget: baseline (fixture
+    as-is) vs patched (`patch_source` staged over the overlay after
+    setup), both video-recorded, then emit diff-report.json.
+
+    Both runs write only into their own overlay scratch (the same
+    mount discipline as the single-run path); the game install is
+    never writable.
+    """
+    if not patch_source.is_dir():
+        print(
+            f"harness error: --diff needs a patch directory with files to "
+            f"stage over the overlay; not found: {patch_source}",
+            file=sys.stderr,
+        )
+        return EXIT_HARNESS_ERROR
+
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    parent = state_root() / f"diff-{fixture.id}-{stamp}"
+    parent.mkdir(parents=True, exist_ok=True)
+    print(f"=== {fixture.id} (differential capture) ===")
+    print(f"  patch source : {patch_source}")
+    print(f"  output       : {parent}")
+
+    ffmpeg_bin = ffmpeg_available()
+    if ffmpeg_bin is None:
+        print("  WARN ffmpeg not found; runs proceed without video capture")
+
+    report_runs: dict[str, dict] = {}
+    for label in ("baseline", "patched"):
+        scratch_dir = parent / label
+        scratch_dir.mkdir(parents=True, exist_ok=True)
+        overlay_dir = scratch_dir / "c-overlay"
+        overlay_dir.mkdir(parents=True, exist_ok=True)
+        populate_factory_saves(game_dir, overlay_dir)
+        stage_setup_files(fixture, overlay_dir)
+        staged_patch: list[str] = []
+        if label == "patched":
+            staged_patch = stage_patch_dir(patch_source, overlay_dir)
+            if not staged_patch:
+                print(
+                    f"harness error: {patch_source} stages no files "
+                    f"(it must contain at least one file to copy)",
+                    file=sys.stderr,
+                )
+                return EXIT_HARNESS_ERROR
+
+        cmdline = build_cmdline(fixture, config_path, game_dir, scratch_dir)
+        video_path = scratch_dir / "repro.mp4" if ffmpeg_bin is not None else None
+        print(f"  [{label}] staging: patch files = {len(staged_patch) or 'none'}")
+        print(f"  [{label}] dosbox : {' '.join(cmdline)}")
+        exit_code, elapsed, timed_out = run_dosbox(
+            cmdline,
+            fixture.timeout_seconds,
+            scratch_dir / "dosbox.log",
+            keystrokes=fixture.keystrokes or None,
+            video_path=video_path,
+            automation_log_path=scratch_dir / "automation.log",
+        )
+        print(
+            f"  [{label}] finished after {elapsed:.2f}s (rc={exit_code}, "
+            f"timed_out={timed_out})"
+        )
+        result = RunResult(
+            elapsed_seconds=elapsed,
+            exit_code=exit_code,
+            timed_out=timed_out,
+            scratch_dir=scratch_dir,
+            cmdline=cmdline,
+        )
+        passed, reasons = evaluate(fixture, result)
+        verdict = "PASS" if passed else "FAIL"
+        print(f"  [{label}] verdict: {verdict}")
+        for r in reasons:
+            print(f"  [{label}]   {r}")
+        report_runs[label] = collect_run_evidence(
+            scratch_dir, verdict, reasons, video_path
+        )
+
+    report = build_diff_report(
+        fixture.id, patch_source, report_runs["baseline"], report_runs["patched"]
+    )
+    report_path = parent / "diff-report.json"
+    report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    exit_code, label = interpret_delta(report)
+    print()
+    print(f"DELTA: {label}")
+    print(f"report: {report_path}")
+    return exit_code
+
+
+def selftest() -> int:
+    """The DOSBox-free parts: patch staging over an overlay, the delta
+    report shape, and fixture loading. The DOSBox-dependent paths are
+    exercised by running a real fixture (`repro.py ds1-smoke`), not here.
+    """
+    failures: list[str] = []
+
+    def check(cond: bool, msg: str) -> None:
+        if not cond:
+            failures.append(msg)
+
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        patch_dir = root / "patched"
+        (patch_dir / "sub").mkdir(parents=True)
+        (patch_dir / "OVERLAY.GFF").write_bytes(b"P1")
+        (patch_dir / "sub" / "nested.bin").write_bytes(b"N1")
+        overlay = root / "c-overlay"
+        overlay.mkdir()
+        (overlay / "OVERLAY.GFF").write_bytes(b"OLD")
+
+        staged = stage_patch_dir(patch_dir, overlay)
+        check(
+            staged == ["OVERLAY.GFF", str(Path("sub") / "nested.bin")],
+            f"stage_patch_dir order: {staged}",
+        )
+        check(
+            (overlay / "OVERLAY.GFF").read_bytes() == b"P1",
+            "stage_patch_dir must override same-named overlay files",
+        )
+        check(
+            (overlay / "sub" / "nested.bin").read_bytes() == b"N1",
+            "stage_patch_dir must preserve relative paths",
+        )
+
+        base_run = collect_run_evidence(
+            root, "FAIL", ["require_files: no match for 'x'"], None
+        )
+        patch_run = collect_run_evidence(root, "PASS", ["require_files 'x' OK"], None)
+        report = build_diff_report("demo", patch_dir, base_run, patch_run)
+        exit_code, label = interpret_delta(report)
+        check(
+            exit_code == EXIT_PASS and "FIX CONFIRMED" in label,
+            f"interpret_delta fix shape: {exit_code} {label}",
+        )
+        report["baseline"]["verdict"], report["patched"]["verdict"] = "PASS", "FAIL"
+        exit_code, label = interpret_delta(report)
+        check(
+            exit_code == EXIT_FAIL and "REGRESSION" in label,
+            f"interpret_delta regression shape: {exit_code} {label}",
+        )
+        report["patched"]["verdict"] = "PASS"
+        exit_code, label = interpret_delta(report)
+        check(
+            exit_code == EXIT_FAIL and "NO VERDICT DELTA" in label,
+            f"interpret_delta identical shape: {exit_code} {label}",
+        )
+
+    smoke = REPRO_DIR / "bugs" / "ds1-smoke"
+    if smoke.is_dir():
+        fx = BugFixture.load(smoke)
+        fx.validate()
+        check(fx.target_game == "ds1", "ds1-smoke fixture loads and validates")
+    else:
+        print("SKIP fixture-load check (bugs/ds1-smoke not present)")
+
+    if failures:
+        for f in failures:
+            print(f"FAIL {f}", file=sys.stderr)
+        return EXIT_FAIL
+    print("repro selftest: staging, report, and delta semantics hold")
+    return EXIT_PASS
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         description="Run an OpenDS repro fixture under DOSBox-Staging.",
@@ -729,7 +1007,32 @@ def main(argv: list[str] | None = None) -> int:
             "target_game is known"
         ),
     )
+    ap.add_argument(
+        "--diff",
+        metavar="PATCH_DIR",
+        nargs="?",
+        const=None,
+        default=False,
+        help=(
+            "Differential capture (Phase 6): run the fixture twice "
+            "against the same budget, baseline (fixture as-is) vs "
+            "patched (PATCH_DIR staged over the C: overlay after "
+            "setup), both video-recorded, then emit a structured "
+            "pass/fail delta at <state>/diff-<id>-<stamp>/"
+            "diff-report.json. PATCH_DIR defaults to the fixture's "
+            "own patched/ subdirectory."
+        ),
+    )
+    ap.add_argument(
+        "--selftest",
+        action="store_true",
+        help="check the DOSBox-free parts (patch staging, delta report "
+        "semantics, fixture loading) and exit",
+    )
     args = ap.parse_args(argv)
+
+    if args.selftest:
+        return selftest()
 
     if args.list:
         return list_bugs(args.bugs_dir)
@@ -761,6 +1064,12 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return EXIT_HARNESS_ERROR
+
+    if args.diff is not False:
+        # nargs="?" with no value after --diff gives None: fall back
+        # to the fixture's own patched/ subdirectory.
+        patch_source = Path(args.diff) if args.diff else fixture.bug_dir / "patched"
+        return run_diff(fixture, config_path, game_dir, patch_source)
 
     if not shutil.which("dosbox"):
         print(

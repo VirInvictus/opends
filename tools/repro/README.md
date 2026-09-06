@@ -105,6 +105,43 @@ In addition to `dosbox.log`, v0.4.0 adds:
 - `repro.mp4`: captured video (only when
   `record_video = true` and ffmpeg succeeded).
 
+### Differential capture (`--diff`, v0.5.0)
+
+The fix's proof: run the same fixture twice against the same
+budget, once as-is and once with the patch staged, and emit a
+structured delta.
+
+```sh
+python3 tools/repro/repro.py <bug-id> --diff path/to/patched-files/
+# PATCH_DIR defaults to the fixture's own patched/ subdirectory:
+python3 tools/repro/repro.py <bug-id> --diff
+```
+
+The baseline run uses the fixture exactly as the plain harness
+would. The patched run stages `PATCH_DIR` over the C: overlay
+after the fixture's own setup (same relative paths, overriding
+same-named files; the game install is never touched). Both runs
+are video-recorded regardless of the fixture's `record_video`
+setting (degraded to no-video when ffmpeg is missing), and both
+scratch trees are kept under
+`${XDG_STATE_HOME:-~/.local/state}/opends-repro/diff-<id>-<stamp>/`
+as `baseline/` and `patched/`.
+
+`diff-report.json` carries, per run: the pass/fail verdict with
+reasons, the video path, the overlay `DARKRUN.GFF` sha256 +
+size (world state at end of run), and the D: sentinel listing.
+The `delta` block compares them: verdict change, whether the
+two `DARKRUN.GFF` fingerprints differ, and sentinel files
+unique to either side.
+
+Exit codes are verdict-shaped: `0` only for FIX CONFIRMED
+(baseline FAIL, patched PASS); `1` for the REGRESSION-SHAPED
+inverse and for NO VERDICT DELTA (both runs same verdict; check
+`darkrun_differs` and the sentinel lists before concluding the
+bug did not fire); `2` for harness errors. The DOSBox-free
+parts (staging, report shape, delta semantics) have a
+`--selftest`.
+
 ---
 
 ## Quick start

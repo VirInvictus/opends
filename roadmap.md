@@ -40,7 +40,7 @@ understanding campaign it should have been.
 |---|---|---|
 | `verify-install` | 0.3.0 | shipped |
 | `gff-edit` | 0.6.0 | shipped; segmented-type builder deferred |
-| `repro` | 0.4.0 | shipped; differential capture + bug-save curation open |
+| `repro` | 0.5.0 | shipped; `--diff` differential capture landed (2026-09-06); bug-triggering save curation open |
 | `gpl-disasm` | 0.6.0 | shipped; 100% corpus alignment, CFG, callgraph, symbol catalogues |
 | `dialog-extract` | 0.7.1 | shipped; path-aware caller picking queued |
 | `save-inspect` | 0.9.5 | shipped; DARKRUN SAVE chunk RE continues (semantic differ + field-hypotheses catalogue landed) |
@@ -1339,11 +1339,19 @@ authoring should feel like routine work.
       (`tools/repro/bugs/<id>/bug.toml`) so the fix is
       verifiable. Requires ydotool installed locally; repro
       v0.4.0 already integrates the input automation.
-- [ ] **Differential capture** (promoted from the repro
+- [x] **Differential capture** (promoted from the repro
       backlog, because it is the fix's proof): a
       run-with-patch and run-without-patch side-by-side
       helper, emitting both videos plus a structured
       pass/fail delta.
+      (Shipped 2026-09-06 in repro v0.5.0 as `--diff`: one
+      invocation runs the fixture baseline vs patched (a
+      patch directory staged over the overlay after setup),
+      both video-recorded, and writes `diff-report.json`
+      (per-run verdict + DARKRUN.GFF sha256 + sentinel
+      listing, plus the delta block). Exit codes are
+      verdict-shaped; both scratch trees are retained. The
+      DOSBox-free parts carry a `--selftest`.)
 - [ ] Author the fix using `gpl-disasm` + `gff-edit` (plus the
       Phase 5.7 surface if it turns out to be an EXE fix).
 - [ ] Author the test (hash before/after, in-game repro via

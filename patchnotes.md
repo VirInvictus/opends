@@ -7,6 +7,25 @@ Released versions appear here, newest first.
 Tagged releases from this batch: `ovr-map-v0.3.0` and `save-inspect-v0.9.5`
 (git tags pushed; the entries below are the release notes).
 
+- **`tools/repro/` v0.5.0** ships **`--diff` differential
+  capture**, promoted from the backlog because it is the
+  Phase 6 fix's proof. One invocation runs the fixture twice
+  against the same budget: baseline (fixture as-is) and
+  patched (a patch directory staged over the C: overlay after
+  the fixture's own setup, same relative paths, install never
+  written), both video-recorded, then writes
+  `diff-report.json`: per-run verdict + reasons, video path,
+  the overlay `DARKRUN.GFF` sha256 (world state at end of
+  run), and the D: sentinel listing, plus a delta block
+  (verdict change, DARKRUN differs, sentinels unique to
+  either side). Exit codes are verdict-shaped: 0 only for FIX
+  CONFIRMED (baseline FAIL, patched PASS); 1 for
+  REGRESSION-SHAPED and NO VERDICT DELTA; 2 harness errors.
+  Both scratch trees are retained under the state root for
+  post-mortem. The DOSBox-free parts (patch staging, report
+  shape, delta semantics, fixture loading) have a new
+  `--selftest`.
+
 - **`tools/exe-patch/` v0.1.0** is new: the Phase 5.7 EXE
   patch authoring surface, the EXE half of what `gpl-asm
   --patch` does for bytecode. Patch scripts address sites as
