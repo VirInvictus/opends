@@ -90,7 +90,7 @@ fn frame_sequence_assembles_into_a_gif() {
     );
 
     let bytes = std::fs::read(&out).expect("gif exists");
-    assert!(bytes.len() > 0);
+    assert!(!bytes.is_empty());
     // GIF files begin with the ASCII signature "GIF87a" or "GIF89a".
     assert!(bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a"));
     let _ = std::fs::remove_file(&palette);
