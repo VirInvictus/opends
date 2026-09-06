@@ -50,7 +50,7 @@ understanding campaign it should have been.
 | `opends` | 0.1.0 | shipped |
 | `gpl-asm` | 0.9.0 | shipped; 600/600 round-trip; macros queued |
 | `opcode-fuzz` | 0.3.0 | shipped; recipe-driven fuzz + first opcode discovery open |
-| `ovr-map` | 0.3.1 | shipped; symbol catalogue (125 DS1 / 127 DS2 rows), xref tools, Ghidra bridges, OBJEX sprite pipeline (5.6.0 complete, 5.6.1 complete) |
+| `ovr-map` | 0.3.2 | shipped; symbol catalogue (128 DS1 / 130 DS2 rows incl. the VGA colour-cycle family), xref tools, Ghidra bridges, OBJEX sprite pipeline (5.6.0 complete, 5.6.1 complete) |
 | `exe-patch` | 0.1.0 | shipped; the Phase 5.7 EXE patch authoring surface (`ovr:`/symbol addressing, mandatory fingerprints, `--verify` gate, in-place enforcement) |
 
 What the digging surface looks like today:
@@ -308,8 +308,15 @@ Four original leverage points, in order of cost:
       > mines-elevator site is located AND named: census row +
       > trigger `usetrigger 3753, 287, NAME(-5807)`, object
       > 5807 = BMP 951, the elevator shaft). The VGA
-      > colour-cycling decode is not done and keeps this box
-      > open.
+      > colour-cycling half is MECHANISM-COMPLETE: the pump is
+      > located in both engines (DS1 0x287fc / DS2 0x2cfdc,
+      > docs/dsun-exe-re.md 4.5.5), the 16x8 record layout and
+      > rotate direction decoded, and the family named
+      > (VGAColorCycle correspondence). Still open in this
+      > half: the registration source that FILLS the records
+      > per region (region-render can implement the mechanism
+      > now; game-accurate records wait on it), so the box
+      > stays open.
 
 ### 5.6.0 — Investigatory tooling (build the instruments first)
 
@@ -1534,6 +1541,16 @@ abandoned; nothing here is scheduled.
       layout. Phase 5.6 is the unblocker; candidates
       (`VGAColorCycle`, `gCycleColor`) are already named in
       the DSO symbol table.
+      > MECHANISM UNBLOCKED 2026-09-06: the cycle-table
+      > layout is decoded (16x8 records at the pump's cs:0x6:
+      > flags/reload/counter/first/count; docs/dsun-exe-re.md
+      > 4.5.5) and the rotate direction is known. What
+      > remains before this becomes real work: the
+      > registration source (which engine code fills the
+      > records per region, and from what data) so
+      > region-render can read the same values. A DOSBox
+      > write-watchpoint on the flags fields, via the
+      > `repro --diff` harness shape, is the named route.
 - [ ] **`region-render --annotate`.** Entity-name overlays on
       rendered maps; deferred for lack of an in-tree font
       without a new dep. Promote when atlas or a modder

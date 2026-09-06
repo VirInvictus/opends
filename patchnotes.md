@@ -7,6 +7,22 @@ Released versions appear here, newest first.
 Tagged releases from this batch: `ovr-map-v0.3.0` and `save-inspect-v0.9.5`
 (git tags pushed; the entries below are the release notes).
 
+- **`ovr-map` v0.3.2**: the symbol catalogue gains the VGA
+  colour-cycle family, located and decoded 2026-09-06
+  (docs/dsun-exe-re.md 4.5.5): `vga_color_cycle_pump` (DS1
+  `0x287fc` / DS2 `0x2cfdc`, instruction streams identical),
+  `vga_write_palette_range` (DS1 `0x28894` / DS2 `0x2d074`,
+  bodies byte-identical; the entry was previously quoted as
+  `0x288a4` in prose, corrected by the pump's own near-call),
+  and `vga_read_palette_range` (DS1 `0x288c4` / DS2
+  `0x2d0a4`), all verified on port-IO + call-target evidence.
+  Catalogue now 128 DS1 / 130 DS2 rows. The decode itself: the
+  pump walks 16 records of 8 bytes (flags, reload, counter,
+  first colour, count), reads each range back from the DAC,
+  rotates it by one toward higher indices, and writes it
+  back; the registration source that fills the records per
+  region is the named next unit.
+
 - **`ds1-patch/` + `docs/cookbook/`: Phase 6 prep** (docs, no
   version bump). The `ds1-patch` README gains a real
   player-facing install section: Windows-first steps with the

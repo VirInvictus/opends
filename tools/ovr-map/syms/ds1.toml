@@ -65,6 +65,41 @@ of a paging event) short of verified.
 """
 
 [[function]]
+name = "vga_color_cycle_pump"
+segment = "resident"
+offset = 0x287fc
+confidence = "verified"
+evidence = "docs/dsun-exe-re.md 4.5.5: walks 16x8-byte cycle records at cs:0x6, reads ranges via DAC 0x3c7/0x3c9, rotates by one, writes back via vga_write_palette_range (near-call at 0x28879 targets 0x28894 exactly)"
+notes = """
+The per-tick colour-cycle walker (DSO::VGAColorCycle family). \
+Record layout: flags(bit0+bit1), reload, counter, first, count. \
+No near-call callers in the image: reached through a far pointer \
+(scheduler/timer task). Registration source still open.
+"""
+
+[[function]]
+name = "vga_write_palette_range"
+segment = "resident"
+offset = 0x28894
+confidence = "verified"
+evidence = "docs/dsun-exe-re.md 4.3 (corrected 2026-09-06: entry is 0x28894, not 0x288a4; the pump's near-call pins it) + 4.5.5. Writes count RGB triples from a far buffer starting at DAC index first (out 0x3c8 at 0x288ad)"
+notes = """
+DSO::VGASetPalette correspondence. Args (*buf far, first, count). \
+6-bit DAC-domain buffer (no shift in the loop).
+"""
+
+[[function]]
+name = "vga_read_palette_range"
+segment = "resident"
+offset = 0x288c4
+confidence = "verified"
+evidence = "docs/dsun-exe-re.md 4.3 + 4.5.5: inverse of vga_write_palette_range; reads count triples into es:di via DAC 0x3c7/0x3c9 (in-loop read port at 0x288db)"
+notes = """
+DSO::VGAGETPALETTE correspondence. Byte-identical body to DS2's \
+0x2d0a4.
+"""
+
+[[function]]
 name = "load_game_from_disk"
 segment = 21
 offset = 0xdde

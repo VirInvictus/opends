@@ -402,6 +402,14 @@ These three handle full-palette loads and arbitrary range writes
 and are the obvious candidates for the consumer side of the
 CMAT/CPAL fallback (§3) and the per-tick cycle update (§4.4).
 
+> **Correction 2026-09-06:** `write_palette_range`'s entry is
+> `0x28894`, not `0x288a4`: the cycle pump's near-call targets
+> `0x28894` exactly, and that address carries the `55 8b ec`
+> prologue (`0x288a4` is past the port setup, inside the body).
+> The signature reading stands; confirmed argument roles:
+> `(*buf far, first, count)` (buffer pointer at `[bp+6]`, first
+> index at `[bp+0xa]`, count at `[bp+0xc]`).
+
 ### 4.4 The `0x23067` walker is NOT the cycle routine (correction)
 
 > **Summary for the impatient:** `0x23067`-`0x23093` is the region
@@ -469,15 +477,85 @@ bounds, since the walker preludes the GMAP draw with a
 top-of-screen sort). The remaining 6 bytes per record are
 the rest of the entity metadata.
 
-### 4.5 The actual palette-cycle routine remains unfound
+### 4.5 The palette-cycle routine, found (2026-09-06)
 
-> **Summary:** the complete palette-I/O inventory is in §4.2/4.3
-> (six sites, no more). The cycle routine must call
-> `write_palette_range` (0x288a4) or `load_full_palette` (0x144dc)
-> rather than writing the DAC directly. The remaining search paths
-> are in §4.5.4 (real-mode timer hooks, cycle-table data scan,
-> DOSBox dynamic read, DS2 shape-match). The 0x23067 retraction is
-> in §4.4 above.
+> **Summary:** the routine §4.4's correction left unfound is now
+> located and decoded in BOTH engines (§4.5.5): DS1 file
+> `0x287fc`, DS2 file `0x2cfdc`, byte-identical logic. It walks
+> a 16-slot × 8-byte cycle table and rotates each active colour
+> range by one via the DAC read/write ports and
+> `write_palette_range` (§4.3). The record layout is the part
+> `region-render`'s animated-palette backlog needed. Still
+> open: who FILLS the 16 records at runtime (the registration
+> API and the per-region data source), and the `cs:0x386` /
+> far-helper gate. §4.5.1-4.5.4 below are the historical hunt;
+> item 3 of §4.5.4 is what landed it.
+
+#### 4.5.5 FOUND: the cycle pump at `0x287fc` (DS1) / `0x2cfdc` (DS2)
+
+Located 2026-09-06 by combining the §4.3 inventory with the one
+shape the earlier searches missed: not another `0x3c8` write
+site, but the *flag-test walker* that drives them. Signature:
+`test word [si], 0x1` / `jz` / `test word [si], 0x2` / `jz`
+immediately followed by a `dec word [si+0x4]` delay counter.
+Exactly one hit per game; both prologues (`55 8b ec 83 ec 02`)
+disassemble identically.
+
+The function is a far routine (`retf`) with **no near-call
+callers in either image**: it is reached through a far pointer,
+consistent with a scheduler/timer task slot (the DSO table's
+`GCYCLEWAIT` name sits in the same family). Who schedules it is
+part of the still-open registration question.
+
+Per tick, it walks **16 records of 8 bytes at `cs:0x6`** (its
+own segment; the 768-byte RGB scratch at `cs:0x86` and the gate
+byte at `cs:0x386` are in the same static area):
+
+```
++0x00  word  flags    bit0 AND bit1 both set = cycle this record
++0x02  word  reload   value reloaded into the counter when it fires
++0x04  word  counter  decremented every pass; cycle fires at 0
++0x06  byte  first    first colour index of the cycling range
++0x07  byte  count    number of colours in the range
+```
+
+Firing sequence for one record:
+
+1. `mov ax,[si+2] / mov [si+4],ax` reloads the counter.
+2. The range's colours are read **from the DAC itself**:
+   `out 0x3c7, first`, then `count-1` RGB triples via
+   `in al,0x3c9` into scratch offset `3*first` onwards (the DAC
+   address auto-increments), then ONE more triple: the range's
+   last colour — stored at scratch offset 0.
+3. `write_palette_range` (§4.3; DS1 `0x28894`, DS2 `0x2d074`)
+   writes `count` triples from the scratch back at index
+   `first`.
+
+Net effect: **`colour[first]` gets the old `colour[last]`, and
+every other colour in the range gets its predecessor's value**:
+the range rotates toward higher indices by one step per fire.
+One direction only; the two flag bits gate enabled/in-use, not
+direction.
+
+Still open, and now precisely framed:
+
+- **The registration source.** What writes the records (flags,
+  first, count, reload): per region, per animation? The table
+  is engine-static data at the pump's segment start; the writer
+  is the next named target. A DOSBox write-watchpoint on the
+  flags fields catches it directly, and `repro` v0.5.0's
+  differential capture gives the harness shape.
+- **The `cs:0x386` gate**: when nonzero, each firing record
+  first far-calls `0x980:0x2a61` (DS1 file bytes; the segment
+  word is a pre-relocation value) before cycling. Unread.
+
+DSO correspondence (names citable per `dso-symbols.md`):
+`VGAColorCycle` = this pump; `VGASetPalette` / `VGAGETPALETTE`
+= the §4.3 range writer/reader pair; `gCycleColor` and
+`GCYCLEWAIT` = the table/gate neighbourhood this routine owns.
+`region-render` can now implement the mechanism (record layout
++ rotate direction); game-accurate per-region records wait on
+the registration source.
 
 
 The lesson from §4.4 is that VGA-port byte signatures
@@ -574,6 +652,13 @@ DAC directly.
    independently of finding the code that walks it. The
    `MAXLSTRINGS`-sized arrays in libgff's GPL VM state are
    the existing model for this kind of search.
+   ✅ **Landed 2026-09-06, inverted**: the record stride did
+   not surface the table; the WALKER surfaced the table (the
+   flag-test + delay-counter signature at §4.5.5 names `cs:0x6`
+   as the base). The static on-disk bytes there are code, not
+   records: the table's segment is only meaningful at runtime
+   (loaded/relocated), so the data-scan idea fails on disk and
+   the table needs the registration writer or a runtime read.
 4. **Dynamic analysis under DOSBox**. `opcode-fuzz v0.2.0`
    ships the chunk-swap + observe pipeline; if the engine
    writes the cycle table to a memory location that's
