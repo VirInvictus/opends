@@ -43,7 +43,7 @@ understanding campaign it should have been.
 | `repro` | 0.5.0 | shipped; `--diff` differential capture landed (2026-09-06); bug-triggering save curation open |
 | `gpl-disasm` | 0.7.0 | shipped; 100% corpus alignment, CFG, callgraph, symbol catalogues, global-state sweep (2026-09-06) |
 | `dialog-extract` | 0.7.1 | shipped; path-aware caller picking queued |
-| `save-inspect` | 0.9.5 | shipped; DARKRUN SAVE chunk RE continues (semantic differ + field-hypotheses catalogue landed) |
+| `save-inspect` | 0.9.6 | shipped; SAVE/1 + SAVE/7 decoded into the field catalogue, game-scoped hypothesis rows (2026-09-06) |
 | `image-extract` | 0.5.0 | shipped; animated GIF export landed (2026-09-06); APNG deferred |
 | `region-render` | 0.7.1 | shipped; animated palette + `--annotate` deferred |
 | `atlas` | 0.1.1 | shipped |
@@ -1030,10 +1030,20 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > approach) remains the only way to enumerate overlay
       > segments.)
 
-- [ ] **Decode SAVE/1** (the ~10 KB probable master state
+- [x] **Decode SAVE/1** (the ~10 KB probable master state
       table) against libgff's object/region structs, seeded
       by the `gpldisk.c` string anchors and the DSO
       Save*/Load* names.
+      (Structurally decoded 2026-09-06: SAVE/1 is the
+      party/NPC actor record array from DGROUP:0x67bb dumped
+      whole - DS1 320x32, DS2 320x37 (the exact 0x25 stride);
+      populated slots = the party, unfilled = 0xFF; word +1 =
+      the actor's index into the visible-object array, which
+      is SAVE/7 = 1050x8 in both games. Arbitrates the
+      dossier's competing readings: the di=5..319 sweep walks
+      actor slots, not region ids. Per-field map inside a
+      record = the card-A pairs' work. engine-quirks entry 12
+      carries the decode; save-fields.toml carries the rows.)
 - [ ] **Chunk-map played saves** via the `save-diff` loop
       (snapshot, one in-game action, snapshot) for each SAVE
       id family, converting the speculation rows in

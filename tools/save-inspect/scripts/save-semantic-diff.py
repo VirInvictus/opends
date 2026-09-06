@@ -153,6 +153,13 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="include non-SAVE chunks too (default: SAVE only)",
     )
+    ap.add_argument(
+        "--game",
+        choices=("ds1", "ds2"),
+        default=None,
+        help="scope game-tagged hypothesis rows (rows without a game "
+        "field always apply); untagged diffs still work, just noisier",
+    )
     ap.add_argument("--json", action="store_true", help="machine JSON")
     args = ap.parse_args(argv)
 
@@ -165,6 +172,8 @@ def main(argv: list[str] | None = None) -> int:
     a_map = chunk_map(si.parse_gff(args.a))
     b_map = chunk_map(si.parse_gff(args.b))
     rows = load_hypotheses(args.fields)
+    if args.game:
+        rows = [r for r in rows if r.get("game") in (None, args.game)]
 
     report: list[dict] = []
     for key in sorted(set(a_map) | set(b_map)):

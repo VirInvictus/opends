@@ -61,14 +61,54 @@ confidence = "verified"
 evidence = "tools/save-inspect/scripts/ds1-party-edit.py"
 
 # ---- Structural speculation from one played DS1 save (README) ----
+# (the SAVE/1 speculation row was promoted to decoded rows below,
+# 2026-09-06)
+
+[[field]]
+kind = "SAVE"
+id = 10
+range = [0, 2]
+meaning = "u16 counter / coord / region pointer"
+confidence = "speculative"
+evidence = "save-inspect README, one played DS1 save"
+
+[[field]]
+kind = "SAVE"
+id = 18
+range = [0, 51]
+meaning = "boolean array (all 0x01 in the one sample)"
+confidence = "speculative"
+evidence = "save-inspect README, one played DS1 save"
+
+# ---- SAVE/1 + SAVE/7 decoded (2026-09-06, structural analysis) ----
 
 [[field]]
 kind = "SAVE"
 id = 1
-range = [0, 10240]
-meaning = "party / PCs master block (largest chunk)"
-confidence = "speculative"
-evidence = "save-inspect README, one played DS1 save"
+game = "ds1"
+record_size = 32
+range = [0, 32]
+meaning = "actor record: party slot 0-3 / empty (0xFF-filled); word at +1 = index into the visible-object array (SAVE/7)"
+confidence = "probable"
+evidence = "size 10240 = 320x32; records 0-3 populated (the 4-PC party), 4+ 0xFF; +1 values 27/106/105/104 adjacent for co-spawned members"
+
+[[field]]
+kind = "SAVE"
+id = 1
+game = "ds2"
+record_size = 37
+range = [0, 37]
+meaning = "actor record: party slot 0-3 / empty (0xFF-filled); word at +1 = index into the visible-object array (SAVE/7); bytes +0x21..24 = 0xFF terminator"
+confidence = "probable"
+evidence = "size 11840 = 320x37 = the DGROUP:0x67bb actor array stride from the region-change dossier; records 0-3 populated, 4+ 0xFF; +1 values 847/874/872/873"
+
+[[field]]
+kind = "SAVE"
+id = 7
+range = [0, 8400]
+meaning = "visible-object array: 1050 records x 8 bytes (word x, word y, byte, flags byte 0x20 active/0x40 dirty, word owner = actor index into SAVE/1)"
+confidence = "probable"
+evidence = "size 8400 = 1050x8, both games; record layout from the ovr18 accessor analysis (engine-quirks dossier)"
 
 [[field]]
 kind = "SAVE"

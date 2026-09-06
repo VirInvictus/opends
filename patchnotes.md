@@ -10,6 +10,25 @@ Tagged releases from this batch: `ovr-map-v0.3.0` and
 `image-extract-v0.5.0` (all git tags pushed with GitHub Releases;
 the entries below are the release notes).
 
+- **`tools/save-inspect/` v0.9.6**: **SAVE/1 decoded**, and
+  the semantic differ gains game-scoped hypothesis rows.
+  SAVE/1 is the party/NPC actor record array dumped whole:
+  DS1 320 records x 32 bytes, DS2 320 x 37 (the exact 0x25
+  stride of the DGROUP:0x67bb array from the region-change
+  dossier); populated slots = the current party, unfilled
+  slots 0xFF; the word at record +1 is the actor's index into
+  the visible-object array. That array is **SAVE/7**:
+  1050 x 8 bytes in both games. The decode arbitrates the
+  dossier's competing readings: the region-change sweep's
+  di=5..319 walks actor slots, not region ids (retraction
+  recorded in engine-quirks entry 12). The differ's rows may
+  now carry `game = "ds1"|"ds2"` (a `--game` flag scopes
+  them), so DS1's 32-byte rows can never mis-annotate DS2
+  diffs. New rows: SAVE/1 both games (probable), SAVE/7
+  (probable). Remaining inside an actor record (position,
+  facing, sprite, HP...): the card-A play-session pairs fill
+  the map.
+
 - **`tools/gpl-disasm/` v0.8.0** ships
   **`scripts/dead-trigger-sweep.py`**: the dead-trigger sweep.
   Entity trigger registrations decode as (entry_offset,

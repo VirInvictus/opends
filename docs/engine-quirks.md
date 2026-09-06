@@ -338,6 +338,41 @@ services from GPL scripts can consult this map instead of
 guessing request numbers; unimplemented requests are a trap for
 mod authors (a script issuing 16/42/43 does nothing, silently).
 
+## 12. SAVE/1 is the actor record array; SAVE/7 is the visible-object array
+
+**What**: The two big SAVE chunks decode structurally:
+
+- **SAVE/1** = the party/NPC actor record array from DGROUP:0x67bb,
+  320 slots, dumped whole. DS1 records are 32 bytes (10240 = 320x32);
+  DS2 records are 37 bytes (11840 = 320x37, the exact 0x25 stride the
+  region-change dossier measured). Populated slots = the current
+  party (0-3 in the samples); every unfilled slot is 0xFF-filled. The
+  word at record offset +1 is the actor's index into the visible-
+  object array (SAVE/7): the ds2-fuck sample's four party members
+  carry 847/874/872/873, adjacent for co-spawned actors, all under
+  1050. DS2 records end with a 4x0xFF terminator at +0x21..24.
+- **SAVE/7** = the visible-object array behind the DGROUP:0x67b7
+  pointer cell: exactly 1050 records of 8 bytes (8400) in BOTH
+  games; record layout per the ovr18 accessor analysis (word x, word
+  y, byte, flags byte 0x20 active/0x40 dirty, word owner = actor
+  index into SAVE/1).
+
+**Consequence for the dossier**: the region-change sweep's
+`di=5..319` walks ACTOR slots 5..319 (NPC/recruit slots; 0-4 =
+party), not region ids 5..319. The earlier "records indexed by
+region id" reading is retracted; the capture recipe (write-watchpoint
+or save pair) is unchanged, only the meaning of the index changes.
+
+**Noticed**: 2026-09-06, extracting SAVE/1 from the test saves:
+the sizes land exactly on the actor-array strides, and the
+DARKRUN == SAVE01 quirk (entry 3) holds for the chunk.
+
+**Where it matters**: `save-fields.toml` carries the decoded rows
+(game-tagged, probable), so `save-semantic-diff.py` annotates
+SAVE/1/SAVE/7 clusters in future play-session diffs; the per-field
+map inside an actor record (position, facing, sprite, HP...) is the
+remaining work and is exactly what the card-A pairs will fill in.
+
 ## See also
 
 - [`file-formats.md`](file-formats.md) §3: save-file layout

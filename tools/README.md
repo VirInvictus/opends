@@ -21,7 +21,7 @@ implementation-language split.
 | [`gff-edit`](gff-edit/) | Rust | 0.6.0 | Pure-Rust GFF read/write (library `gff_edit` + CLI `gff-cat`): dump, extract, replace, text codec, JSON, catalogue, and the `gff-cat what` per-chunk describer. The foundation everything else builds on. |
 | [`gpl-disasm`](gpl-disasm/) | Rust | 0.8.0 | GPL bytecode disassembler: text or JSON, CFG labels, curated symbol catalogues (functions, variables, per-chunk locals), inter-chunk callgraph (`--global-cfg`), lossless packed-string decode. |
 | [`gpl-asm`](gpl-asm/) | Rust | 0.9.0 | GPL reassembler and patch author: consumes `gpl-disasm` text/JSON (600/600 corpus chunks round-trip byte-identical) and applies fingerprint-checked, label-relative `--patch` byte edits. |
-| [`save-inspect`](save-inspect/) | Python | 0.9.5 | Save-file inspector and editor: dump, diff, edit PCs and items, write back with round-trip verification; `save-semantic-diff` annotates save diffs with field meaning. |
+| [`save-inspect`](save-inspect/) | Python | 0.9.6 | Save-file inspector and editor: dump, diff, edit PCs and items, write back with round-trip verification; `save-semantic-diff` annotates save diffs with field meaning. |
 | [`dialog-extract`](dialog-extract/) | Python | 0.7.1 | Pulls NPC dialog out of GPL chunks as JSON, a plain-text transcript, or a single-file browsable HTML page. |
 | [`image-extract`](image-extract/) | Rust | 0.5.0 | Decodes Dark Sun bitmap chunks to palette-indexed PNG (multi-frame, spritesheets, animated GIF via ffmpeg) and packs edited PNGs back as DS1 RLE chunks: the sprite-modding loop. |
 | [`region-render`](region-render/) | Rust | 0.7.1 | Composites a region's tiles, walls and entities into a map PNG; animates entities and exports GIF (`--gif`, `--gif-fps`). |
