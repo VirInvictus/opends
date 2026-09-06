@@ -10,6 +10,23 @@ Tagged releases from this batch: `ovr-map-v0.3.0` and
 `image-extract-v0.5.0` (all git tags pushed with GitHub Releases;
 the entries below are the release notes).
 
+- **`tools/gpl-disasm/` v0.8.0** ships
+  **`scripts/dead-trigger-sweep.py`**: the dead-trigger sweep.
+  Entity trigger registrations decode as (entry_offset,
+  handler_chunk_id, NAME(-object)); the sweep checks every
+  handler: MISSING (no such chunk), TRIVIAL (the entry offset
+  holds only exit/ret: the handler was stubbed out),
+  OFFSET-PAST-END, or ALIVE, with the noorderstrigger -> chunk
+  0 sentinel counted separately as intentional. DS1: 1449
+  registrations, 6 dead, and the dead ones cluster: five
+  looktriggers plus one attacktrigger (objects NAME(-255),
+  -2263, -1209, -2248; registered by GPL-195/203/41) all
+  target GPL-200 entry 0x909, which holds only `gpl exit gpl`
+  -> a stubbed actor handler, the concrete instance of the
+  community's "enemies refuse to engage" class. DS2: 30 dead
+  (GPL-24@0x1 looktriggers and siblings). `--selftest` covers
+  the verdicts on a synthetic corpus.
+
 - **`tools/gpl-disasm/` v0.7.0** ships
   **`scripts/global-state-sweep.py`**: the dangling-state
   sweep. It consumes `gpl-disasm --all --json` dumps and

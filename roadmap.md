@@ -1370,8 +1370,24 @@ authoring should feel like routine work.
       > GNUM[19] (3 writes, GPL-8), GNUM[64] (GPL-76). Caveat:
       > the flag is read for nothing, but a FIX still needs a
       > player-visible symptom to attach to (correlate with
-      > DS1 community reports when picking). Sweeps (2) and
-      > (3) unchanged. Sweep (1) also measured DS2 precisely:
+      > DS1 community reports when picking). Sweep (2) resolved
+      > structurally empty: DS1 shipped only 1.10, so the
+      > pre-fix placeholder lineage that hit DS2 1.0 cannot
+      > exist there (raw scans: zero placeholder hits). Sweep
+      > (3) EXECUTED (gpl-disasm 0.8.0,
+      > scripts/dead-trigger-sweep.py): DS1 has 1449 entity
+      > trigger registrations; 1279 alive, 164 intentional
+      > null-handlers, 6 DEAD - five looktriggers plus one
+      > ATTACKTRIGGER (objects NAME(-255), -2263, -1209,
+      > -2248; registered by GPL-195/203/41) all pointing at
+      > GPL-200 entry 0x909, which holds only `gpl exit gpl`:
+      > a stubbed actor handler, i.e. a monster that cannot
+      > fight and has no look text. That is the concrete
+      > instance of the community's "enemies refuse to engage"
+      > class and the leading data-surface Phase 6 pick,
+      > pending symptom correlation. DS2: 30 dead triggers
+      > (GPL-24@0x1 looktriggers and siblings). Sweep (1) also
+      > measured DS2 precisely:
       > the railhead flags are NOT literally unread (the look
       > handler prints their state); they are read only inside
       > their own chunk, which engine-quirks entry 6 now
