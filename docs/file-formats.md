@@ -415,7 +415,7 @@ comes from the RESOURCE fallback and the name chunk is absent).
 |--------|------------------------------------------|
 | `GPL ` | Compiled GPL bytecode                    |
 | `MAS ` | Compiled GPL master script               |
-| `GPLI` | GPL "I" data (incompletely documented)   |
+| `GPLI` | GPL entry index: 1,316 records of (u16 entry_no, u16 offset in chunk, u16 chunk id); purpose open, see engine-quirks.md §8 |
 | `GPLX` | GPL index file                           |
 
 #### Save / character
