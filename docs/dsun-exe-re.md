@@ -526,7 +526,7 @@ Firing sequence for one record:
    `out 0x3c7, first`, then `count-1` RGB triples via
    `in al,0x3c9` into scratch offset `3*first` onwards (the DAC
    address auto-increments), then ONE more triple: the range's
-   last colour — stored at scratch offset 0.
+   last colour, stored at scratch offset 0.
 3. `write_palette_range` (§4.3; DS1 `0x28894`, DS2 `0x2d074`)
    writes `count` triples from the scratch back at index
    `first`.

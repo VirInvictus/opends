@@ -1284,7 +1284,7 @@ report (5.6.3). Data-surface fixes do not wait on either.
       `build-environment.md`, alongside `bsdiff4`); this fits
       it.
       (Shipped 2026-09-06, with a correction: the documented
-      fallback was confirmed FIRST and FAILED — pwntools 4.15
+      fallback was confirmed FIRST and FAILED: pwntools 4.15
       rejects the i386/16 combination outright, so `pwn asm`
       cannot serve. `exe-patch --asm` shells to `nasm -f
       bin` + `bits 16`, the assembler half of the toolchain
