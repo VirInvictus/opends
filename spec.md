@@ -135,7 +135,10 @@ Each binary fix:
   the file length. Every Borland overlay descriptor stores its
   payload offset as an absolute file position; one inserted byte
   anywhere before the last segment shifts every following payload,
-  and the game loads garbage as code.
+  and the game loads garbage as code. The authoring surface
+  (`tools/exe-patch`, Phase 5.7) enforces the same rule one step
+  earlier: every edit is a same-length replacement or the script is
+  rejected before anything is written.
 - Distributed as a `.bsdiff` or hand-rolled `(offset, original, replacement)`
   triples.
 
@@ -257,6 +260,7 @@ Tool-by-tool assignment:
 | `opcode-fuzz`                         | Python (drives DOSBox debugger over IPC)          |
 | Per-fix patch scripts                 | Python                                            |
 | `apply.py` (applier)                  | Python                                            |
+| `exe-patch` (EXE patch authoring)     | Python                                            |
 
 **Language defaults**
 

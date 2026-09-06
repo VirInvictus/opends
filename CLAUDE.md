@@ -111,5 +111,6 @@ The Rust tools form a stack; later tools consume earlier ones via the workspace:
 - `gpl-asm` round-trips `gpl-disasm` output back to bytecode. 600/600 corpus chunks are byte-identical; preserve that invariant.
 - `image-extract` decodes bitmap chunks; `region-render` composites tiles + walls + entity sprites and (as of v0.6.0) animates entities via `image-extract`'s multi-frame decoder.
 - Python tools (`dialog-extract`, `save-inspect`, `opcode-fuzz`) consume Rust JSON output where they interface with the disassembler.
+- `exe-patch` resolves `ovr:`/symbol addresses by consuming `ovr-map --json` (subprocess, the same contract pattern); it never parses the FBOV chain itself, so the descriptor walk keeps one implementation.
 
 When changing a Rust tool's JSON schema, expect downstream Python consumers to break. Coordinate the bump or land a compatibility shim.

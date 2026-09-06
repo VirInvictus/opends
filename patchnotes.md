@@ -7,6 +7,34 @@ Released versions appear here, newest first.
 Tagged releases from this batch: `ovr-map-v0.3.0` and `save-inspect-v0.9.5`
 (git tags pushed; the entries below are the release notes).
 
+- **`tools/exe-patch/` v0.1.0** is new: the Phase 5.7 EXE
+  patch authoring surface, the EXE half of what `gpl-asm
+  --patch` does for bytecode. Patch scripts address sites as
+  `ovr:SEG+OFF`, a curated symbol name (+ N), or a raw file
+  offset, resolved against the real segment map by consuming
+  `ovr-map --json` (one FBOV descriptor-walk implementation;
+  the schema stays shape-shared with the bytecode patch
+  format). Every edit carries a mandatory `bytes_old`
+  fingerprint; `--verify` fails a site that drifts, straddles
+  a segment payload boundary, or lands in the inter-segment
+  padding (or the FBOV header, or past EOF), and overlapping
+  edits are refused. The in-place-only rule is now
+  enforceable: a length-changing `bytes_new` is a hard error
+  quoting the one-inserted-byte-shifts-every-payload reason,
+  and the output length is re-asserted before write. The
+  round-trip proof ships as `--selftest`: on a synthetic
+  Borland-overlaid fixture (parsed by the real ovr-map) and
+  the real binaries when present, a no-op applies
+  byte-identically, an edit plus its inverse restores exactly,
+  and an off-by-one past a payload end is rejected. `--asm`
+  assembles 16-bit x86 via `nasm -f bin`, because the
+  documented `pwn asm` fallback was confirmed first and fails
+  on pwntools 4.15 (`Invalid arch/bits combination: i386/16`);
+  the selftest round-trips it against `ndisasm -b 16`, and
+  docs/re-tooling.md carries the correction. Scripts may
+  declare `game = "ds1"|"ds2"` to hash-gate the target
+  against the canonical GOG 1.10 manifest.
+
 - **`ovr-map` v0.3.1**: corrects the DS2 symbol catalogue's
   `overlay_manager` row from file `0x4aff0` to `0x404c4`,
   confidence raised probable -> verified. The 2026-09-05

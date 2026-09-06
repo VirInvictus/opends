@@ -28,6 +28,7 @@ implementation-language split.
 | [`repro`](repro/) | Shell + Python | 0.4.0 | DOSBox-Staging repro harness: per-bug fixtures under overlay mounts (the install is never written), session continuity, scheduled keystrokes, video capture. |
 | [`opcode-fuzz`](opcode-fuzz/) | Python | 0.3.0 | GPL opcode-discovery harness: chunk pack/extract/roundtrip, swap-and-run against DOSBox with world-state diffing, and `boot-chunks` to surface directly-dispatched chunks. |
 | [`ovr-map`](ovr-map/) | Python | 0.3.1 | Maps `DSUN.EXE`'s Borland overlay structure: segments, entry stubs, 16-bit disassembly, curated symbol catalogue (`syms/<game>.toml`), Ghidra bridges, and the string-xref tooling under `scripts/`. |
+| [`exe-patch`](exe-patch/) | Python | 0.1.0 | Authors, verifies, and applies in-place byte patches to `DSUN.EXE`: `ovr:`/symbol addressing resolved against ovr-map, mandatory `bytes_old` fingerprints, and hard refusals for length changes, segment straddles, and padding sites. |
 
 
 ## Planned

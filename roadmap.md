@@ -51,6 +51,7 @@ understanding campaign it should have been.
 | `gpl-asm` | 0.9.0 | shipped; 600/600 round-trip; macros queued |
 | `opcode-fuzz` | 0.3.0 | shipped; recipe-driven fuzz + first opcode discovery open |
 | `ovr-map` | 0.3.1 | shipped; symbol catalogue (125 DS1 / 127 DS2 rows), xref tools, Ghidra bridges, OBJEX sprite pipeline (5.6.0 complete, 5.6.1 complete) |
+| `exe-patch` | 0.1.0 | shipped; the Phase 5.7 EXE patch authoring surface (`ovr:`/symbol addressing, mandatory fingerprints, `--verify` gate, in-place enforcement) |
 
 What the digging surface looks like today:
 
@@ -82,8 +83,10 @@ What the digging surface looks like today:
   checks (`gpl-asm --patch`), and the darkfix package shape
   (manifest, applier, journal, unapply) shipped under
   `ds1-patch/` v0.0.1, proven with a no-op fix (Phase 6,
-  checkbox 1). The EXE patch-authoring surface does not exist
-  yet; that is Phase 5.7.
+  checkbox 1). The EXE patch-authoring surface shipped as
+  `tools/exe-patch` v0.1.0 (Phase 5.7, 2026-09-06): `ovr:`
+  and symbol-relative addressing, mandatory `bytes_old`,
+  a `--verify` gate, and the in-place-only rule enforced.
 
 Open items from the shipped phases are consolidated in the
 [Backlog](#backlog-deferred-items-with-triggers) at the end,
@@ -1207,25 +1210,50 @@ in whatever tool owns the job (decide: extend `gpl-asm
 --patch` with a second target kind, or a sibling `exe-patch`;
 decide by whether the TOML schema can stay shared).
 
+> DECIDED + SHIPPED 2026-09-06: a sibling Python tool,
+> `tools/exe-patch` v0.1.0. The script schema stays
+> shape-shared with `gpl-asm --patch` (`[[edit]]` with `at` /
+> `bytes_old` / `bytes_new` / `reason`), but the resolvers
+> differ (overlay segment map vs chunk block leaders), and a
+> Rust port of ovr-map's FBOV descriptor walk would duplicate
+> the one implementation that must never drift. `exe-patch`
+> consumes `ovr-map --json` instead (the same subprocess-JSON
+> contract the other Python tools use), and keeps authoring on
+> the Python side where the applier and per-fix scripts
+> already live (spec §7a).
+
 Ordering note (2026-09-04): the authoring tooling below may be
 built in parallel with Phase 5.6's tooling half, but an
 EXE-surface fix needs both halves of that phase: the catalogue
 (for symbol-relative addressing) and the target bug's site
 report (5.6.3). Data-surface fixes do not wait on either.
 
-- [ ] `at = "ovr:19+0x17a7"` addressing, resolved against the
+- [x] `at = "ovr:19+0x17a7"` addressing, resolved against the
       `ovr-map` segment map (file offset, segment-local
       offset, payload bounds). Symbol-relative addressing
       (`at = "<exe-symbol> + N"`) once Phase 5.6's catalogue
       exists; refuse non-block-leader bases, matching the
       bytecode resolver's rule.
-- [ ] `bytes_old` fingerprint mandatory, as on the bytecode
+      (Shipped 2026-09-06 in exe-patch v0.1.0: `ovr:SEG+OFF`,
+      bare file offsets, and syms names + N; ambiguous names
+      are a hard error naming candidates. Catalogue rows are
+      the block-leader address class; raw offsets stay legal
+      like the bytecode side's `at_offset`, gated by the
+      fingerprint.)
+- [x] `bytes_old` fingerprint mandatory, as on the bytecode
       side; refuse to apply on mismatch.
-- [ ] A `--verify` pass that fails a site which: drifts from
+      (Shipped 2026-09-06: missing `bytes_old` is a schema
+      error; a mismatch is per-edit drift with expected/found
+      hex; validation is all-or-nothing before any write.)
+- [x] A `--verify` pass that fails a site which: drifts from
       its fingerprint, straddles a segment boundary, or lands
       in the ~7% inter-segment padding. Today nothing notices
       any of these.
-- [ ] **In-place-only rule made enforceable and explained.**
+      (Shipped 2026-09-06: `--verify` runs the full gate and
+      writes nothing; `--patch` runs the identical checks
+      before writing `-o`. Also refused: FBOV-header sites,
+      runs past EOF, and overlapping edits.)
+- [x] **In-place-only rule made enforceable and explained.**
       Every overlay descriptor stores its payload offset as
       an absolute position; one inserted byte anywhere before
       the last segment shifts every following payload and the
@@ -1233,7 +1261,12 @@ report (5.6.3). Data-surface fixes do not wait on either.
       in those terms (the previous roadmap's own suggestion,
       still undone), and have `--verify` reject any script
       that changes file length.
-- [ ] Assembler for replacement bytes: `keystone-engine` is
+      (Shipped 2026-09-06: the explanation lived in spec §3.2
+      already; spec now also names the enforcing tool, and a
+      length-changing `bytes_new` is a hard error quoting the
+      reason, with the output length re-asserted before
+      write.)
+- [x] Assembler for replacement bytes: `keystone-engine` is
       already named in `docs/build-environment.md` §2 for
       exactly this (16-bit x86). Confirm it assembles
       `arch=i386, mode=16` correctly against `ndisasm -b 16`
@@ -1243,9 +1276,26 @@ report (5.6.3). Data-surface fixes do not wait on either.
       exception class for the applier (per
       `build-environment.md`, alongside `bsdiff4`); this fits
       it.
-- [ ] Round-trip proof: a no-op EXE patch script applies and
+      (Shipped 2026-09-06, with a correction: the documented
+      fallback was confirmed FIRST and FAILED — pwntools 4.15
+      rejects the i386/16 combination outright, so `pwn asm`
+      cannot serve. `exe-patch --asm` shells to `nasm -f
+      bin` + `bits 16`, the assembler half of the toolchain
+      `ovr-map --disasm` already trusts, round-trip-proven
+      against `ndisasm -b 16` in the selftest. Correction
+      recorded in docs/re-tooling.md. The §5.20 keystone
+      decision stays open and nothing depends on it.)
+- [x] Round-trip proof: a no-op EXE patch script applies and
       unapplies byte-identically; a deliberately wrong site
       (off-by-one into padding) is rejected by `--verify`.
+      (Shipped 2026-09-06 in `--selftest`: on a synthetic
+      Borland-overlaid fixture (parsed by the real ovr-map)
+      and then on the real binaries when `.games/` is
+      present: no-op applies byte-identically, edit+inverse
+      restores exactly, and an off-by-one past a payload end
+      is rejected as padding. Also proven live: a
+      `game = "ds1"` script hash-gates against the canonical
+      GOG 1.10 manifest.)
 
 **Done when**: Phase 6+ can author a two-byte EXE fix by
 symbol name and `--verify` is the last gate before packaging.

@@ -12,7 +12,7 @@ Installed 2026-08-08.
 |---|---|---|
 | **Ghidra 12.1.2** | `~/.local/share/ghidra_12.1.2_PUBLIC` | Static analysis and decompilation of `DSUN.EXE`. The heavy tool `dsun-exe-re.md` has always named as "when r2 stalls". |
 | Temurin **JDK 21** | `~/.local/share/jdk/jdk-21.0.12+8` | Ghidra requires JDK 21; Fedora 44 ships only 25/26. Pinned via `JAVA_HOME_OVERRIDE` so the system JDK is untouched. |
-| `pwntools` 4.15 | uv tool, Python 3.13 | `pwn asm` / `pwn disasm` at `arch='i386', bits=16` for authoring patch bytes. Not used for exploitation here. |
+| `pwntools` 4.15 | uv tool, Python 3.13 | ⚠ **Its 16-bit assembly path is broken for this target**: `pwn asm` at `arch='i386', bits=16` dies with `Invalid arch/bits combination: i386/16` (pwnlib rejects the combination; confirmed 2026-09-06 while confirming the Phase 5.7 assembler). The working path is `nasm -f bin` + `bits 16`, which `tools/exe-patch --asm` shells out to and round-trips against `ndisasm -b 16`. Not used for exploitation here. |
 
 ## Ghidra against these binaries: read this before importing
 
