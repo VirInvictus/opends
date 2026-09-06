@@ -16,7 +16,7 @@ Read [`spec.md`](spec.md) before changing semantics, and [`roadmap.md`](roadmap.
 
 ## Repository layout
 
-- **Cargo workspace** at the repo root. Members live under `tools/<name>/` for Rust tools (`gff-edit`, `gpl-disasm`, `gpl-asm`, `image-extract`, `region-render`). `Cargo.toml` defines the shared dependency set (`clap`, `anyhow`, `thiserror`, `serde`, `serde_json`, `toml`, `png`); new workspace deps need per-tool justification per spec §7a.
+- **Cargo workspace** at the repo root. Members live under `tools/<name>/` for Rust tools (`gff-edit`, `gpl-asm`, `gpl-disasm`, `image-extract`, `opends`, `region-render`). `Cargo.toml` defines the shared dependency set (`clap`, `anyhow`, `thiserror`, `serde`, `serde_json`, `toml`, `png`); new workspace deps need per-tool justification per spec §7a.
 - **Python tools** under `tools/<name>/` are single-file scripts, stdlib-only by default. Python target is 3.11+ (uses `tomllib`). Pre-approved exceptions: `bsdiff4` for the eventual applier.
 - **Hand-curated TOML catalogues** live alongside the tool that consumes them: `tools/gpl-disasm/syms/{opcodes,functions,variables}.toml` and `docs/source-hashes/{ds1,ds2}-gog-1.10.toml`.
 - **`docs/`** is the canonical reference for formats (`file-formats.md`), opcodes (`gpl-opcodes.md`), the bug catalog (`known-bugs.md`), and upstream attribution (`upstream-projects.md`).
@@ -85,7 +85,7 @@ Installed on Brandon's machine 2026-08-08. **None of this is a repo dependency**
 
 1. ⚠ **Do not install an LE/LX loader extension.** The top search result for "Ghidra + DOS game" is `ghidra-lx-loader`, for the linear-executable format DOS/4GW emits. `dsun-exe-re.md` §1 disproved that format for these binaries on 2026-08-08. It cannot load them, and having it installed only re-suggests the wrong model.
 2. **The MZ loader already selects `x86:LE:16:Real Mode`** (verified headless against 12.1.2), so an MZ import needs no manual language choice. ⚠ It *is* needed for a raw-binary import, and getting the width wrong does not error, it produces convincing nonsense (same class of bug as the `CS_MODE_32` line that sat in the §6 reproduce recipe until 2026-08-08).
-3. ⚠ **Ghidra does not understand Borland overlays.** A plain import leaves the overlay area as undifferentiated bytes, which is the blob problem the docs already work around by hand. `ovr-map` (Phase 5.5, shipped v0.1.0) is the bridge, and that pairing is the actual reason to install Ghidra. It maps 935 (DS1) / 854 (DS2) confirmed function entries.
+3. ⚠ **Ghidra does not understand Borland overlays.** A plain import leaves the overlay area as undifferentiated bytes, which is the blob problem the docs already work around by hand. `ovr-map` (Phase 5.5, shipped v0.3.0) is the bridge, and that pairing is the actual reason to install Ghidra. It maps 935 (DS1) / 854 (DS2) confirmed function entries.
 4. **`pwndbg` is installed on this machine and is NOT for this project.** It is a gdb plugin for live Linux ELF processes. These binaries run under DOSBox, whose debugger `opcode-fuzz` already drives over IPC. Do not reach for it here.
 
 ## Versioning

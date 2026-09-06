@@ -26,12 +26,18 @@ behavioural index, the survey stays the numbers.
 | File size | 611,408 bytes (597 KB) | 634,416 bytes (619 KB) |
 | Container | MS-DOS MZ executable | MS-DOS MZ executable |
 | `e_lfanew` | `0x10000` | `0x10000` |
-| Bytes at `e_lfanew` | `89 46 ...` | `89 46 ...` |
+| Bytes at `e_lfanew` | `00 00 ...` (zeros) | `89 46 ...` (code) |
 | MZ image ends | `0x52ea0` | `0x57570` |
 | Signature at image end | `FBOV` | `FBOV` |
 | MZ relocations | 4,853 | 4,703 |
 | `INT 3Fh` sites | 994 | 904 |
 | Overlay scheme | Borland/TLINK (VROOM), 16-bit real mode | same |
+
+Both `e_lfanew` values (0x10000) point well inside the resident
+image (the MZ image ends at 0x52ea0 / 0x57570), so the bytes at
+the pointed-to offset are ordinary image content, not a second
+header: zero padding in DS1, code in DS2 (measured 2026-09-06).
+Neither is an LE/LX signature; see the correction below.
 
 > **Correction (2026-08-08).** This table previously read
 > "Extender: DOS/4GW DPMI, 32-bit overlay" for both games, and the

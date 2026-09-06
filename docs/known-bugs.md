@@ -157,9 +157,9 @@ three columns are yes plus a written site report.
 | Mine elevator freeze (2.1) | DS2 | **yes** | **yes** | **candidate** | COMPLETE CHAIN: trigger = `usetrigger 3753, 287, NAME(-5807)` in MAS-57 (object 5807 = elevator shaft, sprite BMP 951 visually confirmed); handler = GPL-287 toggles GF[647] + sounds; machine = gpl_disk_change_region (ovr18+0x1132, fully read); freeze = scheduler deadlock candidate OR dangling switch state (GF[647] set but never read in the 1.10 GPL corpus). Regions: 56=Mines1, 57=Mines2, 58=Mines3. |
 | Doorway/item graphics disappearance (2.2) | DS2 | no | no | no | Renderer surface only; nothing anchored yet. |
 | Charged-weapon disappearance (2.3) | DS2 | **partial** | no | no | The item path's OBJEX lookup is catalogued (`ovr35+0x2327`, pushes "Failed, Not in Objex.gff"); the charge-decrement code is not. |
-| "Saves but exits" (2.4) | DS2 | **partial** | **partial** | no | Both save-path anchors catalogued and verified: `LoadGameFromDisk` (DS2 ovr18+0xa6c, DS1 ovr21+0xdde, self-naming strings) and the slot path `SaveGameToDisk` (DS2 ovr11+0x8e5, DS1 ovr13+0x7cc). The exit-after-save sequence is not traced. |
-| Audio static (2.5) |: | n/a | n/a | n/a | Out of scope (AIL driver mismatch, not engine). |
-| MEL DSP detect fail (2.6) |: | n/a | n/a | n/a | Out of scope (DOSBox IRQ config). The MEL error path is incidentally anchored (`mel_dj_audio_init`, DS2 ovr11+0x26). |
+| "Saves but exits" (2.4) | DS2 | **partial** | **partial** | no | Both save-path anchors catalogued and verified: `LoadGameFromDisk` (DS2 ovr18+0xa6c, DS1 ovr21+0xdde, self-naming strings) and the slot path `SaveGameToDisk` (DS2 ovr11+0x8e5, DS1 ovr13+0x7cc). Caveat per the syms row: the function at DS2 ovr18+0xa6c WRITES SAVE-tagged records (boundary scan + gap read), so that row is the save writer, not the loader, despite the DSO name. The exit-after-save sequence is not traced. |
+| Audio static (2.5) | DS2 | n/a | n/a | n/a | Out of scope (AIL driver mismatch, not engine). |
+| MEL DSP detect fail (2.6) | DS2 | n/a | n/a | n/a | Out of scope (DOSBox IRQ config). The MEL error path is incidentally anchored (`mel_dj_audio_init`, DS2 ovr11+0x26). |
 | DS1 issues (§3) | DS1 | partial | partial | no | The gpldisk.c module is anchored DS1-side (`ictrl_check`, `load_game_from_disk`, `gpl_disk_change_region`, `load_teleport`, `save_game_to_disk`); per-bug rows wait on §3's list being triaged. |
 
 Module-level context that shortens every dig: the GPL VM dispatch

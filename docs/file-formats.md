@@ -642,13 +642,19 @@ Resolved questions are documented inline. These remain.
 - ~~The exact layout of segmented chunk lists.~~ Resolved (see
   "Segmented chunk resolution" above). Verified on the full DS1
   and DS2 corpus.
-- The exact layout of a **non-empty free list**. Every shipped
-  GFF inspected has `free_list_offset == toc_length`, leaving
-  zero bytes. libgff's writer is the reference for when it
-  matters.
-- Semantics of `file_flags` (observed: 0 and 8) and `data0`
-  (observed: 1, 3, 117). Not load-bearing for read; document
-  when the writer needs to set them correctly.
+- ~~The exact layout of a **non-empty free list**.~~ Resolved
+  (see "The free list" section above): the TOC's last 2 bytes
+  are a u16 free-entry count and `free_list_offset ==
+  toc_length − 2 − (free_count × 8)`. Most shipped files carry
+  an empty list; GPLDATA.GFF (DS2) is the populated example
+  (16 entries).
+- ~~Semantics of `file_flags` and `data0`.~~ Pinned 2026-09-05
+  (see the header-field table above): `file_flags` is 0 on
+  most GFFs and 8 on every DS2 region GFF; `data0` is a
+  per-file sentinel (1 non-region, 3 DS1 regions, sequential
+  3..22 across the DS2 regions in file order). Both remain
+  not load-bearing for read; a future writer should match
+  the pinned per-corpus values.
 - **Compression**: is any chunk type stored compressed? The
   DOS-era expectation is "no" (disk format = in-memory format),
   but large GFFs (5.7 MB+) may have RLE bitmaps internally.

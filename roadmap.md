@@ -269,7 +269,7 @@ Four original leverage points, in order of cost:
       review-ready proposals, curated by hand into the
       catalogue; never auto-committed, matching the existing
       curation rule.
-- [ ] **Official-patch diffing.** ✅ **Unblocked and first-measured
+- [x] **Official-patch diffing.** ✅ **Unblocked and first-measured
       2026-08-28.** The CD 1.0 base exists and is hash-confirmed:
       `install-variants.md` §3 records `game.gog` carrying the
       1.0 CD tree (`DSUN.EXE = e73f79c3...`), and an
@@ -288,6 +288,12 @@ Four original leverage points, in order of cost:
       build and stays useless as a diff base; an earlier
       same-day note calling this item blocked was wrong and is
       corrected in the survey.)
+      (Ticked 2026-09-06: the differ shipped 2026-09-04 with
+      19/44 changed segments signature-verified, and the
+      "Remaining" instruction-level reading completed under
+      5.6.3's "Read SSI's own fixes" with the rebias-only
+      verdict, which also mooted the DSO cross-ref: there are
+      no behavioral EXE fixes left to name.)
 - [ ] **First named consumers.** The catalogue is real when
       something else uses it: at minimum, the VGA
       colour-cycling routine (`VGAColorCycle` /
@@ -295,6 +301,12 @@ Four original leverage points, in order of cost:
       table) decoded far enough to unblock `region-render`'s
       animated palette backlog item, and one known-bug site
       located by name as input to Phase 6 or 7.
+      > Progress 2026-09-06: the known-bug half is met (the
+      > mines-elevator site is located AND named: census row +
+      > trigger `usetrigger 3753, 287, NAME(-5807)`, object
+      > 5807 = BMP 951, the elevator shaft). The VGA
+      > colour-cycling decode is not done and keeps this box
+      > open.
 
 ### 5.6.0 — Investigatory tooling (build the instruments first)
 
@@ -453,7 +465,7 @@ Four original leverage points, in order of cost:
 
 ### 5.6.1 — The naming campaign
 
-- [ ] **Verify the first DSO→DS2 address anchors** by the
+- [x] **Verify the first DSO→DS2 address anchors** by the
       string-xref method `docs/dso-symbols.md` itself
       prescribes (about 20 verified rows before emitting a
       catalogue). This validates or kills the transfer
@@ -462,6 +474,9 @@ Four original leverage points, in order of cost:
       offsets are DSO-v1.0-client-relative (flat offsets into
       the extracted 32-bit image); only the names are claimed
       to transfer.
+      (Ticked 2026-09-06: done-but-unticked; the threshold
+      closed 2026-09-05 at 21 verified rows, per the progress
+      note.)
       > Progress 2026-09-04: the reference method is solved
       > and six new anchors are in the catalogues (10 rows
       > total). The naive seg:off pair search finds nothing;
@@ -1071,13 +1086,17 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       layout — and the save-path rows carry verified named
       anchors. No bug has a root cause yet; that is the gap
       the table tracks.)
-- [ ] **Read SSI's own fixes.** Characterize the low-cluster
+- [x] **Read SSI's own fixes.** Characterize the low-cluster
       diff segments (0, 5, 8, 9, 16, 36)
       instruction-by-instruction against the 1.02 fix list
       (`known-bugs.md` §1). The diffing checkbox above covers
       the tooling; this is the reading, and SSI's fix sites
       are the only ground truth for what an engine-code fix
       looks like in this codebase.
+      (Ticked 2026-09-06: done-but-unticked; the reading
+      completed 2026-09-04/05 with the verdict in the notes
+      below: the EXE delta is rebias-only and SSI's
+      behavioral fixes are data-side.)
       > READ 2026-09-04, with a strategy-changing verdict:
       > **the low-cluster segments contain no behavioral
       > fixes.** All 183 clusters across segments 0, 5, 8, 9,
@@ -1789,6 +1808,5 @@ compiled code).
       > CD 3F <entry:2> <00> records in clusters at 0x4B7C0+,
       > each preceded by its 32-byte descriptor.
       >
-      > Docs corrections needed: dsun-exe-survey.md 3.2 and
-      > dsun-exe-re.md (line ~608) should re-point from 0x4aff0
-      > to 0x404C4.
+      > Docs corrected 2026-09-05: dsun-exe-survey.md and
+      > dsun-exe-re.md now point at 0x404c4.
