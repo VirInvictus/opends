@@ -29,6 +29,23 @@ the entries below are the release notes).
   facing, sprite, HP...): the card-A play-session pairs fill
   the map.
 
+- **`ovr-map` v0.3.3**: the colour-cycle registration is
+  found and catalogued. `vga_start_cycle` (DS1 `0x28707` /
+  DS2 `0x2cee7`) and `vga_stop_cycle` (DS1 `0x2873f` /
+  DS2 `0x2cf1f`) sit in the pump's own segment (base file
+  `0x28380` DS1 / `0x2cb60` DS2, segment `0x22f8` / `0x2796`
+  pre-relocation), bodies byte-identical across games.
+  `StartCycle(slot, first, count, delay)` fills a cycle-table
+  record and arms it (flags=3); `StopCycle` disarms. Exactly
+  four far-calls to `StartCycle` exist in DS1, all in one
+  boot-time init sequence, registering ranges 1-5, 6-10,
+  11-15 and 240-248 with delay 2: **DS1 colour cycling is
+  four fixed global ranges active from boot; there is no
+  per-region cycle configuration**. That closes the
+  region-render animated-palette question (docs/dsun-exe-re.md
+  4.5.6) and completes the "first named consumers" box.
+  Catalogue: 130 DS1 / 132 DS2 rows.
+
 - **`tools/gpl-disasm/` v0.8.0** ships
   **`scripts/dead-trigger-sweep.py`**: the dead-trigger sweep.
   Entity trigger registrations decode as (entry_offset,

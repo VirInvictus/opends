@@ -50,7 +50,7 @@ understanding campaign it should have been.
 | `opends` | 0.1.0 | shipped |
 | `gpl-asm` | 0.9.0 | shipped; 600/600 round-trip; macros queued |
 | `opcode-fuzz` | 0.3.0 | shipped; recipe-driven fuzz + first opcode discovery open |
-| `ovr-map` | 0.3.2 | shipped; symbol catalogue (128 DS1 / 130 DS2 rows incl. the VGA colour-cycle family), xref tools, Ghidra bridges, OBJEX sprite pipeline (5.6.0 complete, 5.6.1 complete) |
+| `ovr-map` | 0.3.3 | shipped; symbol catalogue (130 DS1 / 132 DS2 rows incl. StartCycle/StopCycle), xref tools, Ghidra bridges, OBJEX sprite pipeline |
 | `exe-patch` | 0.1.0 | shipped; the Phase 5.7 EXE patch authoring surface (`ovr:`/symbol addressing, mandatory fingerprints, `--verify` gate, in-place enforcement) |
 
 What the digging surface looks like today:
@@ -297,26 +297,22 @@ Four original leverage points, in order of cost:
       5.6.3's "Read SSI's own fixes" with the rebias-only
       verdict, which also mooted the DSO cross-ref: there are
       no behavioral EXE fixes left to name.)
-- [ ] **First named consumers.** The catalogue is real when
+- [x] **First named consumers.** The catalogue is real when
       something else uses it: at minimum, the VGA
       colour-cycling routine (`VGAColorCycle` /
       `gCycleColor` candidates already located via the DSO
       table) decoded far enough to unblock `region-render`'s
       animated palette backlog item, and one known-bug site
       located by name as input to Phase 6 or 7.
-      > Progress 2026-09-06: the known-bug half is met (the
-      > mines-elevator site is located AND named: census row +
+      > COMPLETE 2026-09-06: both halves met. (1) The
+      > mines-elevator site is located AND named (census row +
       > trigger `usetrigger 3753, 287, NAME(-5807)`, object
-      > 5807 = BMP 951, the elevator shaft). The VGA
-      > colour-cycling half is MECHANISM-COMPLETE: the pump is
-      > located in both engines (DS1 0x287fc / DS2 0x2cfdc,
-      > docs/dsun-exe-re.md 4.5.5), the 16x8 record layout and
-      > rotate direction decoded, and the family named
-      > (VGAColorCycle correspondence). Still open in this
-      > half: the registration source that FILLS the records
-      > per region (region-render can implement the mechanism
-      > now; game-accurate records wait on it), so the box
-      > stays open.
+      > 5807 = BMP 951). (2) The VGA colour-cycling routine is
+      > decoded end to end: pump, record layout, rotate
+      > direction, AND the registration API with its four
+      > boot-time ranges (docs/dsun-exe-re.md 4.5.5-4.5.6,
+      > StartCycle at DS1 0x28707 / DS2 0x2cee7); the
+      > animated-palette backlog is fully unblocked.
 
 ### 5.6.0 — Investigatory tooling (build the instruments first)
 
@@ -1582,16 +1578,19 @@ abandoned; nothing here is scheduled.
       layout. Phase 5.6 is the unblocker; candidates
       (`VGAColorCycle`, `gCycleColor`) are already named in
       the DSO symbol table.
-      > MECHANISM UNBLOCKED 2026-09-06: the cycle-table
-      > layout is decoded (16x8 records at the pump's cs:0x6:
-      > flags/reload/counter/first/count; docs/dsun-exe-re.md
-      > 4.5.5) and the rotate direction is known. What
-      > remains before this becomes real work: the
-      > registration source (which engine code fills the
-      > records per region, and from what data) so
-      > region-render can read the same values. A DOSBox
-      > write-watchpoint on the flags fields, via the
-      > `repro --diff` harness shape, is the named route.
+      > FULLY UNBLOCKED 2026-09-06 (dsun-exe-re.md 4.5.6):
+      > the registration source is found and it is boot-time:
+      > StartCycle(slot, first, count, delay) at DS1 0x28707 /
+      > DS2 0x2cee7, called exactly four times at init with
+      > (0, 1, 5, 2), (1, 6, 5, 2), (2, 11, 5, 2),
+      > (3, 240, 9, 2). DS1 colour cycling is four fixed
+      > global ranges, active from boot; there is no
+      > per-region cycle configuration. region-render can now
+      > implement the mechanism plus these four ranges for a
+      > game-accurate animated palette.
+      > (Ticked 2026-09-06: both named-consumer conditions
+      > above are met; the VGA work shipped as ovr-map 0.3.2 /
+      > 0.3.3 syms rows + dsun-exe-re 4.5.5-4.5.6.)
 - [ ] **`region-render --annotate`.** Entity-name overlays on
       rendered maps; deferred for lack of an in-tree font
       without a new dep. Promote when atlas or a modder

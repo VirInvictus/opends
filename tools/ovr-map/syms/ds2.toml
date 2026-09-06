@@ -69,6 +69,26 @@ elevator race.
 """
 
 [[function]]
+name = "vga_start_cycle"
+segment = "resident"
+offset = 0x2cee7
+confidence = "verified"
+evidence = "docs/dsun-exe-re.md 4.5.6: StartCycle(slot, first, count, delay) - fills cycle-table record, sets flags=3; the four boot-time calls at 0x1cecf..0x1cf0b target it (DS1)"
+notes = """
+The registration API for the colour-cycle pump (entry 0x387 of the palette segment, base 0x28380 DS1 / 0x2cb60 DS2). Bodies byte-identical across games.
+"""
+
+[[function]]
+name = "vga_stop_cycle"
+segment = "resident"
+offset = 0x2cf1f
+confidence = "verified"
+evidence = "docs/dsun-exe-re.md 4.5.6: StopCycle(slot) - flags = 0; bodies byte-identical across games"
+notes = """
+Disables a cycle-table slot.
+"""
+
+[[function]]
 name = "vga_color_cycle_pump"
 segment = "resident"
 offset = 0x2cfdc
@@ -78,7 +98,7 @@ notes = """
 The per-tick colour-cycle walker (DSO::VGAColorCycle family). \
 Record layout: flags(bit0+bit1), reload, counter, first, count. \
 No near-call callers in the image: reached through a far pointer \
-(scheduler/timer task). Registration source still open.
+(scheduler/timer task). Registration resolved 2026-09-06: the\nboot-time StartCycle calls own all four slots (dsun-exe-re 4.5.6).
 """
 
 [[function]]

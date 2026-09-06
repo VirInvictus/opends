@@ -678,6 +678,53 @@ this surface; the attempt produced the findings in this
 subsection but not a working `--animate` flag, so
 `region-render` stays at v0.5.0.
 
+#### 4.5.6 Registration found: `StartCycle` / `StopCycle` (2026-09-06)
+
+The pump's segment base is file `0x28380` (segment `0x22f8`
+pre-relocation; `file = 0x5400 + segment*16 + offset`). The static
+data at its start is exactly as the pump addresses it: the 16x8-byte
+cycle table at `+0x6`, the 768-byte RGB scratch at `+0x86`, the gate
+byte at `+0x386`, all zero in the file (inactive by default).
+
+The **registration API** sits in the same segment:
+
+| Segment offset | File (DS1) | File (DS2) | Meaning |
+|---|---|---|---|
+| `0x387` | `0x28707` | `0x2cee7` | `StartCycle(slot, first, count, delay)`: zeroes flags, writes first/count/delay, then sets flags=3 |
+| `0x3bf` | `0x2873f` | `0x2cf1f` | `StopCycle(slot)`: flags = 0 (bodies byte-identical across games) |
+
+**The registration source is boot-time.** Exactly four
+`call far 0x22f8:0x387` sites exist in the whole DS1 image (a
+single init sequence at file `0x1cecf..0x1cf0b`), and their packed
+immediates decode as:
+
+```
+StartCycle(slot=0, first=1,   count=5, delay=2)
+StartCycle(slot=1, first=6,   count=5, delay=2)
+StartCycle(slot=2, first=11,  count=5, delay=2)
+StartCycle(slot=3, first=240, count=9, delay=2)
+```
+
+No other registration exists: no further far calls, and no static
+far pointers to `StartCycle`. **DS1 colour cycling is four fixed,
+global, boot-initialized ranges** (colours 1-15 in three five-wide
+bands, plus 240-248), every one of them active from boot with delay
+2. There is no per-region cycle configuration in DS1. DS2 ships the
+identical `StartCycle`/`StopCycle` bodies (`0x2cee7`/`0x2cf1f`) but
+has no static far calls to the API and a different task-table shape
+(one data pointer to the pump at file `0x1cf18`), so DS2's
+equivalent init site is the remaining open detail.
+
+This closes the region-render question: implement the pump
+mechanism plus these four fixed ranges and the DS1 animated
+palette is game-accurate.
+
+A static far pointer at file `0x26f8c` (`0x514:0x22f8`) exports
+`setdacrange` itself, and the scheduler's task-table entries are
+the four `0x387:0x22f8`-adjacent pointer instances at
+`0x1cec0..0x1cf10` (the init code calling them, misread earlier as
+data).
+
 ### 4.6 DSO symbol cross-reference
 
 Moved to [`dso-symbols.md`](dso-symbols.md), which owns the DSO
