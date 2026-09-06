@@ -1038,7 +1038,8 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       (snapshot, one in-game action, snapshot) for each SAVE
       id family, converting the speculation rows in
       `save-inspect`'s README into per-id semantics. Needs
-      play sessions (Brandon's).
+      play sessions (Brandon's); turnkey recipe:
+      `docs/cookbook/capture-sessions.md` card A.
 - [x] **Settle save compression.** Locate the
       `Failed Uncompress in Loadgamefromdisk` caller. Today
       every on-disk save parses as a plain GFF and the survey
@@ -1195,7 +1196,10 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       here so Phase 7 starts from a site instead of a dig.
       The DSO candidates (`GplChangeRegion`, `GplTileCheck`,
       `GplDoorCheck`) and the official-patch diff are the
-      first two levers.
+      first two levers. One runtime capture from complete;
+      turnkey recipes (save-diff route and debugger
+      watchpoint route):
+      `docs/cookbook/capture-sessions.md` card B.
 
 **Done when**: a reader can ask "what is at `ovr:NN+0x...`"
 and get a name with evidence for a meaningful fraction of the
