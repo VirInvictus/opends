@@ -32,6 +32,18 @@ struct Cli {
     /// Conflicts with `--spritesheet`.
     #[arg(long = "frames-all", conflicts_with = "spritesheet")]
     frames_all: bool,
+    /// With `--frames-all`: bundle the written frame PNGs into a
+    /// single animated GIF (`<kind>-<id>.gif` inside the output
+    /// directory) by shelling out to `ffmpeg`. The frame PNGs
+    /// stay (delete them if you only want the GIF). Requires
+    /// `ffmpeg` on `$PATH`; a missing binary is a clear error,
+    /// not a silent skip.
+    #[arg(long = "gif", requires = "frames_all")]
+    gif: bool,
+    /// With `--gif`: target frame rate in frames per second.
+    /// Default: 8.
+    #[arg(long = "gif-fps", requires = "gif", default_value_t = 8)]
+    gif_fps: u32,
     /// Composite every frame into a single horizontal-strip
     /// PNG and emit `<name>-spritesheet.png`. Single-chunk
     /// mode only (each chunk in `--all` mode gets its own
@@ -239,6 +251,18 @@ fn main() -> Result<()> {
             "wrote {written} frames ({skipped} skipped) into {}",
             out_dir.display()
         );
+        if cli.gif {
+            if written > 1 {
+                let stem = format!(
+                    "{}-{}",
+                    String::from_utf8_lossy(kind.as_bytes()).trim_end(),
+                    id
+                );
+                assemble_gif(&out_dir, &stem, cli.gif_fps)?;
+            } else {
+                eprintln!("warn: --gif needs at least 2 decodable frames; skipping");
+            }
+        }
         return Ok(());
     }
 
@@ -262,6 +286,89 @@ fn main() -> Result<()> {
         frame.frame_type
     );
     Ok(())
+}
+
+/// Bundle the `<stem>-frame-<N>.png` sequence in `frames_dir` into
+/// a single animated GIF at `frames_dir/<stem>.gif`. Shells to
+/// ffmpeg; the palette pre-pass gives noticeably better colour
+/// fidelity on pixel art than the single-pass default (the same
+/// two-pass approach `region-render --gif` uses).
+fn assemble_gif(frames_dir: &std::path::Path, stem: &str, fps: u32) -> Result<()> {
+    let ffmpeg = which::find("ffmpeg").ok_or_else(|| {
+        anyhow!("--gif requires `ffmpeg` on $PATH. Install via `dnf install ffmpeg`.")
+    })?;
+    let frame_pattern = frames_dir.join(format!("{stem}-frame-%d.png"));
+    // Park the palette in $TMPDIR so ffmpeg's image2 demuxer
+    // doesn't try to read it as part of the frame sequence.
+    let palette_path = std::env::temp_dir().join(format!(
+        "image-extract-palette-{}-{}.png",
+        stem,
+        std::process::id(),
+    ));
+
+    let pal_out = std::process::Command::new(&ffmpeg)
+        .args(["-y", "-loglevel", "error", "-framerate"])
+        .arg(fps.to_string())
+        .args(["-i"])
+        .arg(&frame_pattern)
+        .args(["-vf", "palettegen=stats_mode=diff"])
+        .arg(&palette_path)
+        .output()
+        .with_context(|| format!("running {}", ffmpeg.display()))?;
+    if !pal_out.status.success() {
+        return Err(anyhow!(
+            "ffmpeg palettegen failed (exit {}): {}",
+            pal_out.status,
+            String::from_utf8_lossy(&pal_out.stderr),
+        ));
+    }
+
+    let out_path = frames_dir.join(format!("{stem}.gif"));
+    let enc_out = std::process::Command::new(&ffmpeg)
+        .args(["-y", "-loglevel", "error", "-framerate"])
+        .arg(fps.to_string())
+        .args(["-i"])
+        .arg(&frame_pattern)
+        .args(["-i"])
+        .arg(&palette_path)
+        .args(["-filter_complex", "[0:v][1:v]paletteuse=dither=none"])
+        .arg(&out_path)
+        .output()
+        .with_context(|| format!("running {}", ffmpeg.display()))?;
+    let status = enc_out.status;
+    if !status.success() {
+        return Err(anyhow!(
+            "ffmpeg paletteuse failed (exit {}): {}",
+            status,
+            String::from_utf8_lossy(&enc_out.stderr),
+        ));
+    }
+    let _ = std::fs::remove_file(&palette_path);
+    let size = std::fs::metadata(&out_path).map(|m| m.len()).unwrap_or(0);
+    eprintln!(
+        "wrote animated GIF to {} ({} bytes, {fps} fps)",
+        out_path.display(),
+        size
+    );
+    Ok(())
+}
+
+mod which {
+    use std::path::PathBuf;
+
+    /// Stdlib-only $PATH lookup; mirrors `shutil.which`. Same
+    /// private-module approach as region-render, so the binary
+    /// needs no extra crate for one function.
+    pub fn find(name: &str) -> Option<PathBuf> {
+        let path = std::env::var_os("PATH")?;
+        for dir in std::env::split_paths(&path) {
+            let candidate = dir.join(name);
+            if candidate.is_file() {
+                return Some(candidate);
+            }
+        }
+        None
+    }
 }
 
 /// Decode every frame; emit a warn line for any per-frame

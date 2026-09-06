@@ -114,6 +114,11 @@ image-extract <file> --kind PORT --id 1 \
 
 # Bulk extract every bitmap chunk under a directory:
 image-extract <file> --all -o out-dir/
+
+# Animate a multi-frame chunk: frame PNGs plus an animated GIF
+# (via ffmpeg; --gif-fps sets the frame rate, default 8):
+image-extract RESOURCE.GFF --kind ICON --id 100 \
+    --frames-all --gif -o out-dir/
 ```
 
 CLI defaults:
@@ -130,6 +135,17 @@ Single-frame mode: `-o` is a file path (defaults to
 `--all` mode: `-o` is a directory; each frame writes as
 `<KIND>-<ID>-<FRAME>.png` under it. Errors per-frame are
 logged to stderr; the run continues.
+
+`--frames-all --gif`: after writing the frame PNGs, bundles
+them into `<KIND>-<ID>.gif` inside the output directory by
+shelling out to `ffmpeg` (two-pass palettegen/paletteuse,
+`dither=none`: the same pipeline `region-render --gif` uses, so
+pixel-art colours stay exact). `--gif-fps` sets the frame rate
+(default 8). The frame PNGs are kept; delete them if you only
+want the GIF. A missing `ffmpeg` is a clear error, not a silent
+skip. Needs at least 2 decodable frames. APNG output stays
+deferred; ffmpeg's `-f apng` muxer is the obvious route if it is
+ever wanted.
 
 ## Library
 

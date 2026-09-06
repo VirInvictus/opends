@@ -44,7 +44,7 @@ understanding campaign it should have been.
 | `gpl-disasm` | 0.6.0 | shipped; 100% corpus alignment, CFG, callgraph, symbol catalogues |
 | `dialog-extract` | 0.7.1 | shipped; path-aware caller picking queued |
 | `save-inspect` | 0.9.5 | shipped; DARKRUN SAVE chunk RE continues (semantic differ + field-hypotheses catalogue landed) |
-| `image-extract` | 0.4.0 | shipped; GIF/APNG sprite export deferred |
+| `image-extract` | 0.5.0 | shipped; animated GIF export landed (2026-09-06); APNG deferred |
 | `region-render` | 0.7.1 | shipped; animated palette + `--annotate` deferred |
 | `atlas` | 0.1.1 | shipped |
 | `opends` | 0.1.0 | shipped |
@@ -1530,13 +1530,22 @@ abandoned; nothing here is scheduled.
       placed just before the trigger, indexed by bug ID.
       Ongoing alongside every fix; promote to a focused push
       when Phase 6 picks its first bug (it needs one).
-- [ ] **`image-extract` animated sprite export (GIF / APNG).**
+- [x] **`image-extract` animated sprite export (GIF / APNG).**
       The still half shipped in v0.3.0 (`--frames-all`,
       `--spritesheet`). Needs an encoder decision first: no
       in-tree GIF/APNG writer, and a new dep needs sign-off
       per spec §7a. Note `region-render` v0.7.0 already
       shells to ffmpeg for `--gif`; the same trick applies
       here and probably settles the question.
+      (Shipped 2026-09-06 in v0.5.0: the decision went to the
+      ffmpeg shell-out, exactly as the box predicted. `--gif`
+      (with `--frames-all`) bundles the frame PNGs into
+      `<KIND>-<ID>.gif` via the same two-pass palettegen/
+      paletteuse pipeline as `region-render --gif`; no new
+      crates. APNG stays deferred; ffmpeg's `-f apng` muxer is
+      the named route. Regression test: a real two-pass encode
+      asserting the GIF signature, skipped when ffmpeg is
+      absent like the corpus tests are when .games/ is.)
 - [ ] **`region-render` animated palette colours.** VGA
       colour cycling; blocked on EXE RE of the cycle-table
       layout. Phase 5.6 is the unblocker; candidates

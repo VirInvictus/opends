@@ -7,6 +7,23 @@ Released versions appear here, newest first.
 Tagged releases from this batch: `ovr-map-v0.3.0` and `save-inspect-v0.9.5`
 (git tags pushed; the entries below are the release notes).
 
+- **`tools/image-extract/` v0.5.0** ships **animated GIF
+  export**: `--gif` (with `--frames-all`) bundles a chunk's
+  decoded frames into `<KIND>-<ID>.gif` inside the output
+  directory by shelling out to `ffmpeg`, using the same
+  two-pass palettegen/paletteuse pipeline as `region-render
+  --gif` (`dither=none`, so pixel-art colours stay exact);
+  `--gif-fps` sets the frame rate (default 8). No new crates:
+  the encoder decision went to the ffmpeg shell-out, the same
+  route the backlog box predicted, so the stdlib/Rust dep
+  rules stay untouched. The frame PNGs are kept alongside the
+  GIF. Regression test drives the identical two-pass encode
+  over lib-written frames and asserts the GIF signature,
+  skipped when ffmpeg is absent (the corpus-test pattern).
+  Proven end to end on RESOURCE.GFF ICON 100 (2 frames ->
+  valid GIF89a). APNG stays deferred; ffmpeg's `-f apng`
+  muxer is the named route if wanted.
+
 - **`ovr-map` v0.3.2**: the symbol catalogue gains the VGA
   colour-cycle family, located and decoded 2026-09-06
   (docs/dsun-exe-re.md 4.5.5): `vga_color_cycle_pump` (DS1
