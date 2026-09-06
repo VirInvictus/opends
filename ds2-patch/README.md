@@ -38,17 +38,16 @@ tooling or copied per patch.
 
 ## Player install (forthcoming)
 
-Once v0.1.0 ships:
-
-```sh
-unzip darkfix-ds2-v0.1.0.zip
-cd darkfix-ds2-v0.1.0
-python3 apply.py /path/to/GOG/Dark\ Sun\ 2\ Wake\ of\ the\ Ravager
-```
-
-The script verifies your install hash, applies fixes, and
-backs up touched files to `darkfix-backup/` next to them. To
-revert: `python3 apply.py --unapply`.
+The mechanics are identical to
+[`darkfix-ds1`](../ds1-patch/README.md); read its full
+player-facing install walkthrough (Windows-first `py` steps,
+what gets backed up, how to revert and verify). Summary: unzip
+the release, run `py apply.py "C:\GOG Games\Dark Sun 2"` from
+the unzipped folder, and launch the game normally. The applier
+verifies your install hash, backs up touched files to
+`darkfix-backup/`, applies the enabled fixes, and journals;
+`--unapply` reverts. No fix ships yet, so there is nothing to
+install today.
 
 ## Notes specific to DS2
 
@@ -64,4 +63,7 @@ revert: `python3 apply.py --unapply`.
 
 ## Authoring a new fix
 
-See [`../docs/patch-workflow.md`](../docs/patch-workflow.md).
+See [`../docs/patch-workflow.md`](../docs/patch-workflow.md),
+the cookbook
+([`../docs/cookbook/author-first-darkfix.md`](../docs/cookbook/author-first-darkfix.md)),
+and `tools/exe-patch` for the EXE-surface authoring gate.

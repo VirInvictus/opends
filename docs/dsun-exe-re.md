@@ -390,13 +390,13 @@ helpers. Earlier counts that looked like "two distinct
 palette routines" are actually one read function in two
 near/far variants.
 
-### 4.3 The DS1 bulk-palette routines at `0x144dc` and `0x288a4`
+### 4.3 The DS1 bulk-palette routines at `0x144dc` and `0x28894`
 
 | File offset | Signature | What it does |
 |---|---|---|
 | `0x144dc` | `load_full_palette(buf)` | Sets all 256 entries from a 768-byte RGB buffer. Each lobed byte is right-shifted by 2 (`shr al, 1; shr al, 1`) to convert 8-bit values to the 6-bit DAC range; the same `intensity_multiplier` divergence libgff documents in the opposite direction for CPAL parsing. |
-| `0x288a4` | `write_palette_range(start, count, *buf)` | Writes `count` entries starting at index `start`, reading RGB triples from `ds:si`. **No `>> 2` shift here**, so the buffer is already in 6-bit DAC form. Tight `lodsb / out` loop. |
-| `0x288c4` | `read_palette_range(start, count, *buf)` | Inverse of `0x288a4`: reads `count` entries into `es:di`. No shift either way. |
+| `0x28894` | `write_palette_range(start, count, *buf)` | Writes `count` entries starting at index `start`, reading RGB triples from `ds:si`. **No `>> 2` shift here**, so the buffer is already in 6-bit DAC form. Tight `lodsb / out` loop. |
+| `0x288c4` | `read_palette_range(start, count, *buf)` | Inverse of `0x28894`: reads `count` entries into `es:di`. No shift either way. |
 
 These three handle full-palette loads and arbitrary range writes
 and are the obvious candidates for the consumer side of the

@@ -1401,7 +1401,7 @@ authoring should feel like routine work.
 - [ ] Repro fixture for the chosen bug
       (`tools/repro/bugs/<id>/bug.toml`) so the fix is
       verifiable. Requires ydotool installed locally; repro
-      v0.4.0 already integrates the input automation.
+      already integrates the input automation.
       (Framework note 2026-09-06: the fixture FORM is
       established by the shipped ds1-smoke/ds2-smoke fixtures
       plus repro v0.5.0's `--diff`; the actual fixture for the
@@ -1545,7 +1545,7 @@ abandoned; nothing here is scheduled.
       release**, so patches do not inherit the ambiguity.
       (Decided 2026-09-04: tags are cut, forward-only. First
       two: `ovr-map-v0.3.0` and `save-inspect-v0.9.5` at their
-      release commits. Backfilling the 13 tools' older
+      release commits. Backfilling the 14 tools' older
       releases stays open as an optional one-off; the audit's
       §5.21 ruling is satisfied by forward-only tagging.)
 - [ ] **`gff-edit` segmented-type build.** Builder covers
