@@ -41,7 +41,7 @@ understanding campaign it should have been.
 | `verify-install` | 0.3.0 | shipped |
 | `gff-edit` | 0.6.0 | shipped; segmented-type builder deferred |
 | `repro` | 0.5.0 | shipped; `--diff` differential capture landed (2026-09-06); bug-triggering save curation open |
-| `gpl-disasm` | 0.6.0 | shipped; 100% corpus alignment, CFG, callgraph, symbol catalogues |
+| `gpl-disasm` | 0.7.0 | shipped; 100% corpus alignment, CFG, callgraph, symbol catalogues, global-state sweep (2026-09-06) |
 | `dialog-extract` | 0.7.1 | shipped; path-aware caller picking queued |
 | `save-inspect` | 0.9.5 | shipped; DARKRUN SAVE chunk RE continues (semantic differ + field-hypotheses catalogue landed) |
 | `image-extract` | 0.5.0 | shipped; animated GIF export landed (2026-09-06); APNG deferred |
@@ -1358,23 +1358,24 @@ authoring should feel like routine work.
       bug whose site the Phase 5.6.3 census has already
       characterized, so the fix proves the pipeline instead
       of paying the archaeology tax.
-      > Shortlist proposal 2026-09-06 (agent; the repo's DS1
-      > bug list is three symptom-level bullets, so the honest
-      > candidates come from three cheap agent-executable
-      > sweeps of the DS1 data corpus, each targeting a bug
-      > class this repo has already proven exists in the
-      > sibling codebase): (1) dangling-state sweep: scan DS1's
-      > ~330 GPL chunks for flags/GNUMs WRITTEN but never READ
-      > anywhere in the corpus (the GF[647-652] class that is
-      > the DS2 elevator freeze candidate), (2) placeholder
-      > sweep: scan DS1 SPIN/text chunks for SSI's placeholder
-      > strings (the "fooey!" class found in DS2's 1.0) and
-      > wrong-id text refs, (3) dead-trigger sweep: look/use
-      > triggers registered in MAS chunks whose handler chunks
-      > contain empty or `exit gpl` bodies (enemies refusing to
-      > engage is plausibly this class). Each sweep is a day of
-      > tool work on existing instruments; the first concrete
-      > trivial fix picks itself from their output.
+      > Shortlist progress 2026-09-06: sweep (1) EXECUTED as
+      > `tools/gpl-disasm/scripts/global-state-sweep.py`
+      > (gpl-disasm 0.7.0), validated by re-measuring DS2's
+      > railhead family. DS1 results: 35 written-never-read
+      > globals; the standout is **GF[395]**, written 19 times
+      > (mostly `set 1` on region entry) by 13 different region
+      > masters via the GF+[..] form and never read anywhere:
+      > a world flag whose consumer is missing from the shipped
+      > scripts. Next candidates: GF[80] (3 writes, GPL-11),
+      > GNUM[19] (3 writes, GPL-8), GNUM[64] (GPL-76). Caveat:
+      > the flag is read for nothing, but a FIX still needs a
+      > player-visible symptom to attach to (correlate with
+      > DS1 community reports when picking). Sweeps (2) and
+      > (3) unchanged. Sweep (1) also measured DS2 precisely:
+      > the railhead flags are NOT literally unread (the look
+      > handler prints their state); they are read only inside
+      > their own chunk, which engine-quirks entry 6 now
+      > reflects.
 - [ ] Repro fixture for the chosen bug
       (`tools/repro/bugs/<id>/bug.toml`) so the fix is
       verifiable. Requires ydotool installed locally; repro

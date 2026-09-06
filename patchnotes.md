@@ -10,6 +10,25 @@ Tagged releases from this batch: `ovr-map-v0.3.0` and
 `image-extract-v0.5.0` (all git tags pushed with GitHub Releases;
 the entries below are the release notes).
 
+- **`tools/gpl-disasm/` v0.7.0** ships
+  **`scripts/global-state-sweep.py`**: the dangling-state
+  sweep. It consumes `gpl-disasm --all --json` dumps and
+  classifies every global-variable reference (gflag/gnum/
+  gbignum/gstring) as a read or a write (`gpl load variable`
+  writes its destination; compound-assign mnemonics count as
+  read+write; everything else reads), then reports three
+  bands: DANGLING (written, never read), SELF-CONTAINED (read
+  only by chunks that also write it: the measured form of the
+  DS2 railhead-switch class), and READ-NEVER-WRITTEN (dead
+  checks). Validated on DS2: the railhead family shows up
+  self-contained, and the measurement sharpened the dossier's
+  claim (the flags ARE read for the UP/DOWN status print, just
+  never outside their own chunk). DS1 yields 35 dangling
+  globals; the standout is GF[395], written 19 times by 13
+  region masters and never read anywhere. `--selftest` covers
+  the classifier on synthetic instructions plus an end-to-end
+  synthetic dump.
+
 - **`tools/image-extract/` v0.5.0** ships **animated GIF
   export**: `--gif` (with `--frames-all`) bundles a chunk's
   decoded frames into `<KIND>-<ID>.gif` inside the output

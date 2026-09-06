@@ -140,8 +140,12 @@ durable dossier; the Phase 7 site report assembles from it.
 `gpl usetrigger 3753, 287, NAME(-5807)`. NAME(-5807) is OBJEX
 object 5807, sprite BMP 951: the rendered elevator shaft
 (visually confirmed). GPL-287 handles the use: toggles GF[647],
-plays sounds. Nothing in the 1.10 GPL corpus ever reads
-GF[647-650] or GF[652]: the railhead switch states are dangling.
+plays sounds. Sharpened by the global-state sweep
+(gpl-disasm 0.7.0, 2026-09-06): GF[639-652] and GF[619] ARE
+read, but only inside GPL-287 itself (the look handler's
+'switch is set to UP/DOWN' status print) and nowhere else in
+the corpus: the switch state never escapes the chunk that owns
+it, so nothing can act on it (see 1.4).
 
 **The floors are not regions**: all mine floors are ONE region
 (57, Mines2). The 17 `gpl tport` instructions in GPL-287 use the
@@ -163,7 +167,10 @@ forever: a freeze shaped exactly like the elevator's.
 
 **Candidate B, the dangling switches**: the script toggles
 GF[647]; no script issues the tport; the ride waits on a
-transition nothing initiates. The sub-theory "the EXE reads
+transition nothing initiates. (Sweep measurement 2026-09-06:
+the flags are read three times each in GPL-287, all serving
+the look handler's status print, so the precise band is
+'self-contained state', not literal unread.) The sub-theory "the EXE reads
 GF[647] and drives the tport" is DEAD (entry 7 below: the EXE
 never reads individual GF flags). Live: the intra-region tport
 path itself hanging, or the link living in the rebuilt 1.02-era
