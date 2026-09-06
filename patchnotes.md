@@ -4,8 +4,11 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
-Tagged releases from this batch: `ovr-map-v0.3.0` and `save-inspect-v0.9.5`
-(git tags pushed; the entries below are the release notes).
+Tagged releases from this batch: `ovr-map-v0.3.0` and
+`save-inspect-v0.9.5`, joined 2026-09-06 by `ovr-map-v0.3.1`,
+`ovr-map-v0.3.2`, `exe-patch-v0.1.0`, `repro-v0.5.0` and
+`image-extract-v0.5.0` (all git tags pushed with GitHub Releases;
+the entries below are the release notes).
 
 - **`tools/image-extract/` v0.5.0** ships **animated GIF
   export**: `--gif` (with `--frames-all`) bundles a chunk's
