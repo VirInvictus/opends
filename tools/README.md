@@ -27,7 +27,7 @@ implementation-language split.
 | [`region-render`](region-render/) | Rust | 0.7.1 | Composites a region's tiles, walls and entities into a map PNG; animates entities and exports GIF (`--gif`, `--gif-fps`). |
 | [`repro`](repro/) | Shell + Python | 0.4.0 | DOSBox-Staging repro harness: per-bug fixtures under overlay mounts (the install is never written), session continuity, scheduled keystrokes, video capture. |
 | [`opcode-fuzz`](opcode-fuzz/) | Python | 0.3.0 | GPL opcode-discovery harness: chunk pack/extract/roundtrip, swap-and-run against DOSBox with world-state diffing, and `boot-chunks` to surface directly-dispatched chunks. |
-| [`ovr-map`](ovr-map/) | Python | 0.3.0 | Maps `DSUN.EXE`'s Borland overlay structure: segments, entry stubs, 16-bit disassembly, curated symbol catalogue (`syms/<game>.toml`), Ghidra bridges, and the string-xref tooling under `scripts/`. |
+| [`ovr-map`](ovr-map/) | Python | 0.3.1 | Maps `DSUN.EXE`'s Borland overlay structure: segments, entry stubs, 16-bit disassembly, curated symbol catalogue (`syms/<game>.toml`), Ghidra bridges, and the string-xref tooling under `scripts/`. |
 
 
 ## Planned

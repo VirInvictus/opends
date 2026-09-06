@@ -50,7 +50,7 @@ understanding campaign it should have been.
 | `opends` | 0.1.0 | shipped |
 | `gpl-asm` | 0.9.0 | shipped; 600/600 round-trip; macros queued |
 | `opcode-fuzz` | 0.3.0 | shipped; recipe-driven fuzz + first opcode discovery open |
-| `ovr-map` | 0.3.0 | shipped; symbol catalogue (125 DS1 / 127 DS2 rows), xref tools, Ghidra bridges, OBJEX sprite pipeline (5.6.0 complete, 5.6.1 complete) |
+| `ovr-map` | 0.3.1 | shipped; symbol catalogue (125 DS1 / 127 DS2 rows), xref tools, Ghidra bridges, OBJEX sprite pipeline (5.6.0 complete, 5.6.1 complete) |
 
 What the digging surface looks like today:
 
@@ -1809,4 +1809,7 @@ compiled code).
       > each preceded by its 32-byte descriptor.
       >
       > Docs corrected 2026-09-05: dsun-exe-survey.md and
-      > dsun-exe-re.md now point at 0x404c4.
+      > dsun-exe-re.md now point at 0x404c4. The catalogue
+      > row followed 2026-09-06 (syms/ds2.toml overlay_manager
+      > hand-curated to 0x404c4, verified; shipped in ovr-map
+      > 0.3.1).

@@ -53,14 +53,19 @@ resident-side, which is what pins the segment arithmetic.
 [[function]]
 name = "overlay_manager"
 segment = "resident"
-offset = 0x4aff0
-confidence = "probable"
-evidence = "docs/dsun-exe-survey.md 3.2"
+offset = 0x404c4
+confidence = "verified"
+evidence = "docs/dsun-exe-re.md (overlay manager, corrected 2026-09-05); roadmap 5.6.1 decode: reads the INT 3Fh trap frame's entry offset at [es:bx+2] and dispatches into the stub region; byte at 0x405a9 is the handler's iret. The survey's old 0x4aff0 is a null descriptor (CD 3F 00 00 + zero payload) plus manager data, not code"
 notes = """
 The Borland VROOM overlay dispatch body (INT 3Fh handler side). \
-Bounds how many segments stay resident; directly relevant to the \
-Phase 7 elevator race. One confirming observable (a runtime trace \
-of a paging event) short of verified.
+CORRECTED 2026-09-06 from 0x4aff0: the 2026-09-05 decode proved \
+that address holds a null descriptor + manager data (the 'VDISK \
+FAKE' string and the segment-translation table at 0x4b088) and \
+the real handler is at file 0x404c4 (second entry at 0x40544, \
+iret at 0x405a9). Rewrites the interrupt frame's return CS:IP so \
+IRET resumes at loaded_segment:entry_offset. Bounds how many \
+segments stay resident; directly relevant to the Phase 7 \
+elevator race.
 """
 
 [[function]]

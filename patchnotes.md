@@ -7,6 +7,20 @@ Released versions appear here, newest first.
 Tagged releases from this batch: `ovr-map-v0.3.0` and `save-inspect-v0.9.5`
 (git tags pushed; the entries below are the release notes).
 
+- **`ovr-map` v0.3.1**: corrects the DS2 symbol catalogue's
+  `overlay_manager` row from file `0x4aff0` to `0x404c4`,
+  confidence raised probable -> verified. The 2026-09-05
+  decode proved `0x4aff0` holds a null descriptor (`CD 3F 00
+  00` + zero payload) plus manager data (the 'VDISK FAKE'
+  string, the segment-translation table at `0x4b088`), while
+  the real INT 3Fh handler at `0x404c4` reads the trap
+  frame's entry offset and dispatches into the stub region
+  (iret at `0x405a9`). Docs were corrected on 2026-09-05;
+  the catalogue row is what `--disasm` / `--callgraph` /
+  `--verify` render, so every DS2 session now reports the
+  handler at the address that actually runs. `--selftest`
+  green on both games; the old address resolves to no name.
+
 - **`save-inspect` v0.9.5** — the DARKRUN SAVE semantic
   differ. `scripts/save-semantic-diff.py` diffs two
   DARKRUN-shape GFFs, clusters the byte differences per SAVE
