@@ -63,3 +63,16 @@ jobs:
         # Stdlib-only single-file tools; no unittest/pytest suite exists,
         # so byte-compilation is the syntax gate.
         run: python -m compileall -q tools
+
+      - name: tool selftests
+        # The --selftest flag is the repo's Python test idiom (decided
+        # 2026-09-06, backlog: each tool's selftest runs its synthetic
+        # fixtures and refusal paths everywhere; corpus-dependent parts
+        # skip when .games/ is absent, by design).
+        run: |
+          python3 tools/ovr-map/ovr-map.py --selftest
+          python3 tools/exe-patch/exe-patch.py --selftest
+          python3 tools/repro/repro.py --selftest
+          python3 ds1-patch/scripts/apply.py --selftest
+          python3 tools/gpl-disasm/scripts/global-state-sweep.py --selftest
+          python3 tools/gpl-disasm/scripts/dead-trigger-sweep.py --selftest

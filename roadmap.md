@@ -1627,12 +1627,21 @@ abandoned; nothing here is scheduled.
       Deferred; `innoextract` is one command and
       `verify-install --repair` already shells out. Reinstate
       only if a contributor needs it.
-- [ ] **Python test harness decision.** The repo has none;
+- [x] **Python test harness decision.** The repo has none;
       Python tools gate on ruff + `compileall` in CI and ship
       `--selftest` flags (`ovr-map`). Options: keep the flag
       idiom, or standardise on stdlib `unittest` discovery in
       CI. Decide the next time a third Python tool grows a
       selftest.
+      (Decided 2026-09-06, trigger met: keep the flag idiom.
+      Six tools carry selftests (ovr-map, exe-patch, repro,
+      apply.py, global-state-sweep, dead-trigger-sweep); the
+      tests are heterogeneous (synthetic fixtures, refusal
+      paths, skip-when-absent corpus parts), which a unittest
+      discovery layer would wrap without adding coverage. CI
+      now RUNS all six selftests in the python job, so the
+      flags actually gate instead of living on the dev
+      machine.)
 
 ## Tooling inventory and gaps
 
