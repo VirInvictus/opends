@@ -49,15 +49,18 @@ and will waste a pass if assumed wrong.
    python3 tools/ovr-map/ovr-map.py .games/ds1/DSUN.EXE        --ghidra-rename tools/ovr-map/syms/ds1.toml -o /tmp/ovrscripts/OvrRename.java
 
    # 2. Run analyzeHeadless. Project location must also be dot-free.
-   #    Pass -postScript as absolute dot-free paths (see note 1).
+   #    Pass -postScript as absolute dot-free paths (see note 1);
+   #    OvrExport.java is checked into the repo, and a repo path is
+   #    not dot-free, so copy it next to the generated scripts first.
    rm -rf /tmp/ghidra_proj && mkdir -p /tmp/ghidra_proj
+   cp tools/ovr-map/ghidra/OvrExport.java /tmp/ovrscripts/
    ~/.local/share/ghidra_12.1.2_PUBLIC/support/analyzeHeadless \
        /tmp/ghidra_proj ds1_proj \
        -import .games/ds1/DSUN.EXE \
        -scriptPath /tmp/ovrscripts \
        -postScript /tmp/ovrscripts/OvrMap.java \
        -postScript /tmp/ovrscripts/OvrRename.java \
-       -postScript "$PWD/tools/ovr-map/ghidra/OvrExport.java" \
+       -postScript /tmp/ovrscripts/OvrExport.java \
                   /abs/path/scratch/ghidra_project/export/ds1-functions.txt \
        -overwrite
    ```
@@ -68,10 +71,17 @@ and will waste a pass if assumed wrong.
    `--ghidra-rename`) creates named functions with confidence and
    evidence comments; `OvrExport.java` (checked in at
    `tools/ovr-map/ghidra/`) writes the final function list as TSV.
-   Re-prove status 2026-09-04: import, analysis and project
-   persistence re-proven (project kept under `scratch/
-   ghidra_project/`); script execution is currently blocked by a
-   host-level Ghidra OSGi breakage, below.
+   RUN PROVEN 2026-09-10 on both games after the OSGi layer
+   recovered (below): DS1 52 blocks / 935 labels, 130/130
+   catalogue rows applied, 1,670 functions exported; DS2
+   equivalent in the same session. Three latent script bugs
+   surfaced on the way and are fixed in ovr-map 0.3.4: the
+   rename generator emitted a long where getAddress wants int
+   (caught by the manual-javac check), its row loop split on
+   `|` instead of `;` (caught at first execution), and
+   `OvrExport.java`'s header comment never closed, so it had
+   never compiled (caught by the in-Ghidra compiler, working
+   again).
 
 Temper expectations on the decompiler: Ghidra's output is much
 weaker on 16-bit segmented code than on 32/64-bit. Far pointers
@@ -79,6 +89,18 @@ and overlay thunks decompile badly. It still beats reading bytes
 by eye, but it will not hand over clean C.
 
 ## Troubleshooting: "Failed to get OSGi bundle containing script"
+
+> **RESOLVED-OBSERVED 2026-09-10.** The breakage below stopped
+> reproducing between 2026-09-04 and 2026-09-10 with no deliberate
+> host change; a trivial script now compiles and runs through the
+> normal OSGi path in both import and `-process` mode. The root
+> cause was never pinned. The 09-04 evidence retains one durable
+> lesson: the bundle cache held a freshly compiled `.class` from a
+> failing run, so compilation was never the failing stage; the
+> failure was in Felix bundle wiring. The manual-javac recipe
+> below stays as the standing syntax check for generated scripts
+> (it is what caught two latent compile bugs in the rename/export
+> scripts during the 2026-09-10 pipeline run).
 
 Ghidra compiles Java scripts through its Felix/OSGi layer, and
 that layer broke on this host between 2026-08-29 (last successful
@@ -97,11 +119,11 @@ CP=$(fd -g '*.jar' ~/.local/share/ghidra_12.1.2_PUBLIC/Ghidra | tr '\n' ':')
 ```
 
 That manual compile is also the standing syntax check for
-generated scripts while the OSGi layer is broken (cache nuking
-was tried; it did not help). Until the layer is fixed, the
-Ghidra-side function list cannot be re-exported;
-`scripts/propose-exe-symbols.py --census` is the ndisasm-based
-stand-in for a function-level worklist.
+generated scripts (cache nuking was tried during the outage; it
+did not help, and the outage self-resolved). The Ghidra-side
+function list export works again as of 2026-09-10;
+`scripts/propose-exe-symbols.py --census` remains useful as an
+ndisasm-based cross-check on the Ghidra function list.
 
 ## Not applicable
 

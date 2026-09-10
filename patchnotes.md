@@ -10,6 +10,29 @@ Tagged releases from this batch: `ovr-map-v0.3.0` and
 `image-extract-v0.5.0` (all git tags pushed with GitHub Releases;
 the entries below are the release notes).
 
+- **`ovr-map` v0.3.4**: the Ghidra pipeline runs end to end for
+  the first time, and the run fixed the three bugs that were
+  hiding behind the OSGi outage. (1) `--ghidra-rename`'s
+  generated Java never compiled: the emitted
+  `space.getAddress(linear >> 4, linear & 0xf)` passed longs to
+  the `(int, int)` overload; the generator now emits an int
+  cast. (2) The same generated row loop split the ROWS pool on
+  `|` instead of `;`, so the first real execution died with
+  `ArrayIndexOutOfBounds` at f[3]; it now splits on the row
+  joiner, and a new rename-script selftest locks both the
+  joiner and the six-fields-per-row invariant. (3) The
+  checked-in `ghidra/OvrExport.java` had an unclosed header
+  comment and has never compiled; fixed. With those in, the
+  full documented recipe (import + analysis + OvrMap +
+  OvrRename + OvrExport) ran clean on both games: DS1 52
+  overlay blocks / 935 labelled entry stubs / 130 of 130
+  catalogue rows applied / 1,670 functions exported to TSV;
+  DS2 49 / 854 / 132 rows in the same session. re-tooling.md
+  records the OSGi layer's recovery (root cause never pinned;
+  the manual-javac syntax check stays, and is what caught all
+  three bugs) and adds the copy-OvrExport-to-a-dot-free-dir
+  step the recipe was missing.
+
 - **`tools/region-render/` v0.8.0**: **the animated palette
   ships.** `--animate-palette` emits the frame sequence with the
   palette rotated per the cycle pump decoded from `DSUN.EXE`

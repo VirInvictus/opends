@@ -692,7 +692,7 @@ public class %(classname)s extends GhidraScript {
 
         int applied = 0;
         int failed = 0;
-        for (String row : ROWS.split("\\\\|", 6)) {
+        for (String row : ROWS.split(";")) {
             if (row.isEmpty()) {
                 continue;
             }
@@ -704,7 +704,7 @@ public class %(classname)s extends GhidraScript {
             try {
                 if (f[0].equals("R")) {
                     long off = Long.parseLong(f[1]);
-                    long linear = off - HEADER_SIZE;
+                    int linear = (int) (off - HEADER_SIZE);
                     addr = space.getAddress(linear >> 4, linear & 0xf);
                 } else {
                     MemoryBlock blk = currentProgram.getMemory().getBlock(
@@ -785,6 +785,12 @@ def selftest(paths: list[Path]) -> int:
     """
     checked = 0
     failures: list[str] = []
+    try:
+        selftest_rename_script()
+        checked += 1
+        print("OK   rename-script generation (row joiner and field count)")
+    except AssertionError as e:
+        failures.append(str(e))
     for path in paths:
         if not path.is_file():
             print(f"SKIP {path} (not present)")
@@ -846,6 +852,41 @@ def selftest(paths: list[Path]) -> int:
     for f in failures:
         print(f"FAIL {f}", file=sys.stderr)
     return 1 if failures else 0
+
+
+def selftest_rename_script() -> None:
+    """Regression for the 2026-09-10 pipeline run: the generated rename
+    loop must split ROWS on ';' (the row joiner; splitting on '|' crashed
+    with ArrayIndexOutOfBounds at f[3]), and every emitted row must carry
+    all six fields so f[5] always exists."""
+
+    def check(cond: bool, msg: str) -> None:
+        if not cond:
+            raise AssertionError(msg)
+
+    sample = {
+        ("resident", 0x100): {
+            "name": "load_resource",
+            "confidence": "verified",
+            "evidence": "self-naming string",
+        },
+        (3, 0x287): {
+            "name": "vga_start_cycle",
+            "confidence": "verified",
+            "evidence": "call-far init site",
+        },
+    }
+    script = ghidra_rename_script(sample, 0x200, "OvrRenameSelftest", "selftest.toml")
+    check('ROWS.split(";")' in script, "rename loop must split rows on ';'")
+    rows_str = script.split('private static final String ROWS = "', 1)[1].split(
+        '";', 1
+    )[0]
+    check(bool(rows_str), "rename-script ROWS pool is empty")
+    for row in rows_str.split(";"):
+        check(
+            row.count("|") == 5,
+            f"rename row lacks six fields: {row!r}",
+        )
 
 
 def human(report: dict[str, Any]) -> str:

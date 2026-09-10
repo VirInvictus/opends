@@ -17,7 +17,7 @@
  *   analyzeHeadless <dir> <proj> -import DSUN.EXE \
  *       -postScript OvrMap.java -postScript OvrRename.java \
  *       -postScript OvrExport.java /abs/path/functions.txt
- *
+ */
 //@category OpenDS
 import java.io.FileWriter;
 

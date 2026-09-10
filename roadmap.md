@@ -50,7 +50,7 @@ understanding campaign it should have been.
 | `opends` | 0.1.0 | shipped |
 | `gpl-asm` | 0.9.0 | shipped; 600/600 round-trip; macros queued |
 | `opcode-fuzz` | 0.3.0 | shipped; recipe-driven fuzz + first opcode discovery open |
-| `ovr-map` | 0.3.3 | shipped; symbol catalogue (130 DS1 / 132 DS2 rows incl. StartCycle/StopCycle), xref tools, Ghidra bridges, OBJEX sprite pipeline |
+| `ovr-map` | 0.3.4 | shipped; symbol catalogue (130 DS1 / 132 DS2 rows incl. StartCycle/StopCycle), xref tools, Ghidra pipeline run-proven end to end (2026-09-10), OBJEX sprite pipeline |
 | `exe-patch` | 0.1.0 | shipped; the Phase 5.7 EXE patch authoring surface (`ovr:`/symbol addressing, mandatory fingerprints, `--verify` gate, in-place enforcement) |
 
 What the digging surface looks like today:
@@ -248,7 +248,7 @@ instruments ship first.
 
 Four original leverage points, in order of cost:
 
-- [ ] **Ghidra headless workflow written down and run.** The
+- [x] **Ghidra headless workflow written down and run.** The
       `ovr-map --ghidra` script lands segments and entry-stub
       labels. What is missing is the working session recipe:
       a headless `analyzeHeadless` invocation (the binary
@@ -261,6 +261,17 @@ Four original leverage points, in order of cost:
       the decompiler is weak on 16-bit segmented code; the
       deliverable is *navigable, correctly segmented, and
       named*, not *clean C*.
+      (TICKED 2026-09-10: the recipe in `docs/re-tooling.md`
+      ran end to end on both games; the OSGi outage that had
+      blocked script execution since 08-29 stopped
+      reproducing, and the first real run exposed three
+      latent script bugs, all fixed in ovr-map 0.3.4: the
+      rename generator's getAddress cast, its row-joiner
+      split, and an unclosed comment in OvrExport.java. DS1:
+      52 blocks / 935 labels / 130 rows / 1,670 functions
+      exported; DS2: 49 / 854 / 132 / 1,294. The manual-javac
+      syntax check stays as standing procedure; it caught the
+      two compile-level bugs before the run.)
 - [x] **DSO symbol transfer.** `docs/dso-symbols.md`
       documents the 3,530-function Watcom symbol table from
       Dark Sun Online (which inherited the WotR codebase).
@@ -398,6 +409,16 @@ Four original leverage points, in order of cost:
       > `docs/re-tooling.md`. Until the host layer is
       > fixed, `propose-exe-symbols.py --census` stands in
       > for the Ghidra-side function list.
+      > (TICKED 2026-09-10: the OSGi layer recovered (see
+      > re-tooling.md; root cause never pinned), and the full
+      > pipeline ran on both games with the 0.3.4 script
+      > fixes. The proof is kept: analyzed + renamed projects
+      > under `scratch/ghidra_project/ds1_proj.rep` and
+      > `ds2_proj.rep`, exported function lists (DS1 1,670
+      > rows, DS2 1,294, catalogue names applied) under
+      > `scratch/ghidra_project/export/`. The exported TSVs
+      > are now the function-level worklist the census box
+      > wanted from Ghidra.)
 - [x] **Cluster-annotated official-patch differ.** Promote
       `diff-official.py` to a real tool: per-cluster file
       offsets, nearest entry stub, before/after `ndisasm`
