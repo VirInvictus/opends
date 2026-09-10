@@ -108,25 +108,57 @@ rather than engine.
 
 ### 2.5. Audio static / "untuned radio" noise
 
-**Symptom**: some 1994 CD pressings (and some DOSBox setups) emit static
-during music playback.
+**Symptom**: on some 1994 CD pressings, the intro music (redbook
+tracks 2-3) plays as loud static, "like an untuned radio"; some
+early reports phrase it as static during music playback generally.
 
-**Origin**: AIL driver mismatch, not an engine bug per se.
+**Origin**: a CD-mastering defect on those pressings, not an
+engine or driver bug. The static reproduces entirely outside the
+game: the same tracks play as noise in Windows Media Player and
+on a standalone CD player, and 1996 usenet posts report it on
+real hardware pre-dating DOSBox (VOGONS threads t=9726 and
+t=10893; an original unbundled copy showed it too, so more than
+one pressing may be affected). An earlier revision of this entry
+blamed an "AIL driver mismatch"; the community record
+contradicts that, and the correction is made 2026-09-10.
 
-**Status**: out of scope for darkfix. The GOG release ships
-re-encoded OGG music tracks; static is unlikely to reproduce on a
-standard install. We document for completeness.
+**DOSBox verdict (Phase 8 verify-no-op, 2026-09-10)**: no-op
+under the GOG install. GOG remaps the 40 redbook tracks to its
+own OGG re-encodes (`MUSIC/TrackNN.ogg`), so the defective
+masters never reach the player. The roadmap box's "OPL/MT-32
+emulation paths" framing was a category error and is retired:
+DS2's CD line has no MIDI music at all (see
+`docs/install-variants.md`), so those synthesis paths are never
+in the audio chain, and no DOSBox-specific static report for
+DS2 exists in the community record. Residual: one in-game ear
+test on the GOG install, which can ride the Phase 10
+playthrough.
 
 ### 2.6. MEL DSP detect fail (error #26, trap #16)
 
-**Symptom**: WotR refuses to start. "MEL fatal error #: 26 Trap #: 16
-DSP detect fail."
+**Symptom**: WotR refuses to start. "MEL fatal error #: 26 Trap
+#: 16 DSP detect fail."
 
-**Origin**: SoundBlaster IRQ misconfiguration. The original expects
-IRQ 5; DOSBox defaults to IRQ 7.
+**Origin**: SoundBlaster IRQ misconfiguration, community-confirmed
+(VOGONS t=10893 reply 11). The game's `SOUND.INI` defaults the
+SB Pro II/III and SB16-class cards to IRQ 5, while stock DOSBox
+and D-Fend-era front-ends defaulted to IRQ 7. AIL's SB probe
+does a DSP reset handshake and then verifies the configured IRQ
+by firing a test interrupt, so a mismatched IRQ fails detection
+and MEL aborts startup with this fatal.
 
-**Status**: out of scope: it's a DOSBox config issue, not an engine
-bug. The GOG release's bundled `.conf` already uses IRQ 5.
+**DOSBox verdict (Phase 8 verify-no-op, 2026-09-10)**: no-op
+under the shipped GOG configuration. The bundled
+`dosbox_darksun2.conf` pins `sbtype=sb16, sbbase=220, irq=5,
+dma=1, hdma=5` (verified against the GOG tree), matching the
+game's expectation, and the emulated SB16 implements both the
+DSP handshake and the IRQ verification, so detection succeeds.
+Scoped honestly: the bug is not unreachable under DOSBox in
+general, a hand-rolled conf with stock IRQ 7 still triggers it
+(which is exactly how the VOGONS reports happened); it is
+config-level, trivially fixable in either direction, and out of
+scope for a darkfix. Residual: one in-game launch confirm under
+the GOG conf, which can ride the Phase 10 playthrough.
 
 ## 3. DS1 issues
 
@@ -158,8 +190,8 @@ three columns are yes plus a written site report.
 | Doorway/item graphics disappearance (2.2) | DS2 | no | no | no | Renderer surface only; nothing anchored yet. |
 | Charged-weapon disappearance (2.3) | DS2 | **partial** | no | no | The item path's OBJEX lookup is catalogued (`ovr35+0x2327`, pushes "Failed, Not in Objex.gff"); the charge-decrement code is not. |
 | "Saves but exits" (2.4) | DS2 | **partial** | **partial** | no | Both save-path anchors catalogued and verified: `LoadGameFromDisk` (DS2 ovr18+0xa6c, DS1 ovr21+0xdde, self-naming strings) and the slot path `SaveGameToDisk` (DS2 ovr11+0x8e5, DS1 ovr13+0x7cc). Caveat per the syms row: the function at DS2 ovr18+0xa6c WRITES SAVE-tagged records (boundary scan + gap read), so that row is the save writer, not the loader, despite the DSO name. The exit-after-save sequence is not traced. |
-| Audio static (2.5) | DS2 | n/a | n/a | n/a | Out of scope (AIL driver mismatch, not engine). |
-| MEL DSP detect fail (2.6) | DS2 | n/a | n/a | n/a | Out of scope (DOSBox IRQ config). The MEL error path is incidentally anchored (`mel_dj_audio_init`, DS2 ovr11+0x26). |
+| Audio static (2.5) | DS2 | n/a | n/a | n/a | Out of scope (Phase 8 verdict 2026-09-10: redbook mastering defect on some pressings' tracks 2-3; GOG's OGG re-encodes bypass it; see 2.5). |
+| MEL DSP detect fail (2.6) | DS2 | n/a | n/a | n/a | Out of scope (Phase 8 verdict 2026-09-10: IRQ-5-vs-7 config mismatch; the GOG conf pins IRQ 5, verified on disk; see 2.6). The MEL error path is incidentally anchored (`mel_dj_audio_init`, DS2 ovr11+0x26). |
 | DS1 issues (§3) | DS1 | partial | partial | no | The gpldisk.c module is anchored DS1-side (`ictrl_check`, `load_game_from_disk`, `gpl_disk_change_region`, `load_teleport`, `save_game_to_disk`); per-bug rows wait on §3's list being triaged. |
 
 Module-level context that shortens every dig: the GPL VM dispatch
