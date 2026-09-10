@@ -1556,8 +1556,23 @@ explicit "won't fix" note with rationale.
 
 **Ships**: `darkfix-ds1-v0.5.0`.
 
-- [ ] Compile a more thorough DS1 bug list (DS1 is less
+- [x] Compile a more thorough DS1 bug list (DS1 is less
       documented; we will find issues during this phase).
+      (COMPILED 2026-09-10: known-bugs.md §3 now carries the
+      compiled catalogue, ~25 entries grouped into the
+      final-battle trigger family (the headline DS1
+      game-breaker, six variants, 2011-2025 reports), quest/NPC
+      scripting, engine-level items (area item limit, ghost
+      inventory slot, save-mid-event object loss, stat-boost
+      asymmetry), and minor rule deviations; every entry has
+      sources and a surface guess, and the dead-trigger finding
+      is cross-referenced as the first root-cause candidate for
+      the enemies-refuse-to-engage class. Dead ends recorded
+      for the next pass: powelltown unarchived, Reddit bodies
+      unfetchable, athas.org unreachable, no public DS1 1.1
+      fix list. One install-variants lead rode along: an
+      unverified GameFAQs claim of separate CD and floppy 1.1
+      variants.)
 - [ ] Fix each.
 
 ## Phase 10 — v1.0 for both games

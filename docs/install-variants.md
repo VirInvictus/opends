@@ -13,6 +13,12 @@ no CD image, no redbook audio, MIDI music via `GM1.BNK` /
 [`source-hashes/ds1-gog-1.10.toml`](source-hashes/ds1-gog-1.10.toml)
 describes the only base we target. No variant question arises.
 
+> Open lead (2026-09-10, unverified): a GameFAQs "Patching" board
+> thread claims separate CD and floppy DS1 1.1 variants existed.
+> No fix list is quoted anywhere in the thread and it is not
+> Wayback-archived; GOG's DS1 tree ships no patch notes. Recorded
+> so the next pass knows to look, not as an established variant.
+
 ## 2. DS2 (Wake of the Ravager): two product lines, three binaries
 
 SSI shipped DS2 twice, and the two products are different builds,

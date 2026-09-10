@@ -164,14 +164,171 @@ the GOG conf, which can ride the Phase 10 playthrough.
 
 *Shattered Lands* shipped in a "somewhat unfinished state" (Designers &
 Dragons, Appelcline 2011) but received only one patch (1.10). The
-community-reported issues are milder than DS2's:
+short list this section carried originally (region-transition screen
+blanking, "enemies refuse to engage", rare save corruption) is below,
+expanded into a compiled catalogue (Phase 9 list compile, 2026-09-10).
+Every entry is a community report against GOG's 1.10 build unless
+noted; sources are cited, and the "surface" column is the repo's
+guess (GPL script/data vs `DSUN.EXE`), not a finding.
 
-- Occasional region-transition delay where the screen briefly blanks.
-- A handful of combat-AI issues where enemies refuse to engage.
-- Rare save-corruption around region edge tiles.
+### 3.1. The final battle fails to trigger (the headline family)
 
-These are not as well documented as the DS2 list. We will catalog
-them as we find them during reimplementation.
+Multiple independent reports over 14 years (2011 to 2025) converge on
+this as the DS1 game-breaker: after the third genie wish the party is
+teleported out of the buried city, the final battle never fires, and
+the game is unwinnable. Known trigger conditions and variants:
+
+1. **The messenger's scroll is not carried.** If the scroll from the
+   dead body at White Sands (game start) is left on the ground or
+   dropped, the final battle does not trigger; it must be in inventory
+   before returning to Teaquetzl after the last alliance.
+   Sources: GameFAQs board "Solution to final battle not triggering",
+   Steam "Final battle not loading?", the kibbitz walkthrough 3.6/3.34.
+   Surface guess: GPL; the final-battle transition script reads an
+   inventory quest item.
+2. **An ally NPC left the region too early.** Leaving before the
+   ssurran quest-giver finishes walking off-screen skips her exit
+   script and locks the Final Battle; her scripted defeat (an intended
+   party wipe) must play out first. Documented with unusual precision
+   in GOG forum threads and the kibbitz walkthrough. Surface guess:
+   GPL NPC-exit script plus region-transition race; structurally the
+   DS1 sibling of the DS2 mines-elevator transition bug.
+3. **Statue Wyrmias in Gedron mishandled.** Striking him without
+   killing him (or without letting him walk off the map) breaks the
+   final battle; letting him flee properly adds him to it. Sources:
+   GOG threads, kibbitz 3.31. Surface guess: GPL quest flag.
+4. **Enemies never load in the final battle arena.** The party
+   arrives to an empty area with one character stuck in the corner.
+   Workaround, multiply verified: start any combat, then use the
+   genie bottle's "help me defeat an army" wish mid-combat; the
+   battle initializes after the next turn. Sources: Steam thread,
+   kibbitz 3.32, GOG "trigger the final battle". Surface guess: GPL
+   teleport/encounter script or the engine's combat-init state
+   machine (a combat-active flag suppressing the scripted encounter).
+5. **A stage cleared too quickly breaks the next stage.** Dragging
+   out each fight works around it. Source: kibbitz 3.33. Surface
+   guess: GPL sequencing or GPL-VM scheduling.
+6. **"Army still gathering" with all alliances formed.** Recent
+   report, same family; the thread also warns against wandering back
+   and forth at the well quest after the sands shift. Source:
+   r/DarkSun "Shattered Lands bug". Confidence low on detail, high on
+   family.
+
+### 3.2. Quest and NPC scripting
+
+1. **Escort/follower NPCs break when the player leaves the region
+   first**, the walkthrough authors' general rule for "breaking the
+   scripting": the Fields of Draj serf escort resets (duplicate
+   obelisk gem), the Battlefield rescued slave stops following across
+   zones, and the "Dagger" event apparently never fires for some
+   players. Sources: kibbitz quick notes and 3.10/3.24, the 2009
+   GameFAQs FAQ. Surface guess: GPL NPC-walk scripts keyed to region
+   state.
+2. **Alhena never appears at the Elven Caravan campfire**; the
+   sorcerers.net walkthrough author reports the event "has never
+   materialized" across GOG playthroughs, corroborated by the 2009
+   FAQ's "a great number of events which do not seem to trigger with
+   any reliability". Surface guess: GPL event script with an
+   unreachable condition.
+3. **Semyon (Slave Pens) bugs out if freed before being given water.**
+   Source: kibbitz 3.1. Surface: GPL dialog/flag order.
+4. **Rebel Mindhome quest state regresses**: NPCs re-ask the spider
+   quest after completion. Source: kibbitz 3.21. Surface: GPL quest
+   flags.
+5. **Linara/Jasmine spellbook event (Gedron) breaks** after visiting
+   Linara first; the topic never becomes discussable again. Source:
+   kibbitz 3.15/3.17. Surface: GPL dialog tree/flag order.
+6. **Elven slaver leader conversation jumps to the wrong branch**
+   (the "allow yourself to be enslaved" path). Source: kibbitz 3.11.
+   Surface: GPL dialog tree.
+7. **The Undermountain prince body-blocks the exit; asking him to
+   move may not work**, a soft-lock (save-before warning). Source:
+   kibbitz 3.21. Surface: GPL NPC script or engine collision.
+8. **Teaquetzl alliance rewards spawn into the Swiftbite chest** and
+   can wipe items stored there. Source: kibbitz 3.7. Surface: GPL
+   reward-placement script with a fixed container reference.
+9. **Wyrm Temple healing chamber spawner misfires**: slave Magera
+   spawns out of context talking about the chamber. Source: kibbitz
+   3.27. Surface: GPL spawner.
+10. **Hound Necklaces kill prisoners when talked to** (scripted
+   damage applies without checking its source). Source: kibbitz 3.4.
+    Surface: GPL dialog-triggered damage.
+11. **The Keldar fight sometimes drags in Dagolar and ten slimes**
+    (suspected positioning-after-combat cause). Source: kibbitz 3.4.
+    Surface: GPL encounter trigger.
+12. **Hermit/ranger dialog loop (Lava Rifts)**: approaching the
+    ranger plays the hermit's dialog endlessly (escape by clicking
+    west), and yields a duplicate Iron Necklace. Source: kibbitz
+    3.29. Surface: GPL dialog loop plus wrong NPC association.
+13. **Charm re-entry**: a charmed enemy that triggered a battle
+    script stays alive and can re-trigger the same script by talking
+    again. Source: 2009 FAQ. Surface: GPL combat-script dispatch.
+14. **Slaver-camp alarm glitch**: followers fighting near the camp
+    raise the alarm, "just about everywhere". Source: 2009 FAQ.
+    Surface: GPL.
+
+### 3.3. Engine-level items
+
+1. **An area item limit makes items disappear**: Gem Fields reports
+   of six opened lava domes yielding only three gems; some domes look
+   intact and ignore picks (workaround: inspect directly for the gem).
+   Sources: 2009 FAQ, kibbitz 3.30. Surface guess: `DSUN.EXE`
+   map-object list cap; structurally parallel to DS2's §2.2/§2.3
+   disappearance bugs.
+2. **Inventory/chest items vanish, or a blank "ghost" inventory slot
+   with an odd price appears**; worst case "can make the game
+   unwinnable" (community advice: box and abandon the ghost item,
+   never equip or sell it). Source: 2009 FAQ. Surface:
+   `DSUN.EXE` inventory/object code; possibly the same root as the
+   item limit above.
+3. **Saving mid-event deletes objects needed to progress** (the
+   Sewers example makes key items uncollectable). Source: 2009 FAQ.
+   This refines the old "rare save-corruption" one-liner: the
+   reported mechanism is save timing during scripted activity, not
+   region-edge tiles. Surface: the save writer serializing live
+   object state; DS1 save-path anchors are already catalogued (3a).
+4. **Stat-boost gear applies permanently while carried, unequipped**
+   (the +3 CON ring excepted: Dagolar's Dagger), and resting via the
+   genie can erase all gear buffs until re-equip. Sources: kibbitz
+   2.10 tip 9 and Nazca Lines section, sorcerers.net War page.
+   Surface guess: `DSUN.EXE` item-effect apply/remove asymmetry.
+5. **Random crashes/lockups**, reduced but not eliminated by 1.10
+   ("properly patched versions should not experience this as often").
+   Source: 2009 FAQ. Surface: unknown/engine.
+
+### 3.4. Minor rule and implementation deviations
+
+Lava Rifts lesser fire elementals immune to +1 weapons though the
+cluebook says +1 suffices; Psionic Blast removes real HP instead of
+temporary HP; the Gladiator AC bonus applies without armor; entering
+a firewall twice in one move takes the damage twice; the difficulty
+setting only affects not-yet-spawned creatures; bodies vanish on map
+reload (breaking wand-of-metal-detection use); Silt Sea North guards
+inconsistently pull one-by-one vs going hostile as a group. Sources:
+kibbitz 2.5-2.8/3.29, sorcerers.net (Hot Springs, War, Silt Sea
+North). Surface: mixed engine/data; low severity each.
+
+### 3.5. Cross-references to the static work
+
+- The original "enemies refuse to engage" line now has a concrete
+  static candidate: the dead-trigger sweep (gpl-disasm 0.8.0) found
+  five looktriggers plus one ATTACKTRIGGER pointed at GPL-200 entry
+  0x909, which holds only `gpl exit gpl`: a stubbed actor handler.
+  That is the leading Phase 6 pick's evidence chain (roadmap, Phase 6
+  bug-pick box), and it is plausibly the same class as final-battle
+  variant 4 above.
+- The region-transition screen-blanking line has no independent
+  community trail; it predates the compiled list and stays untriaged
+  until a report or a repro catches it.
+
+Primary sources for the compiled list: the kibbitz GameFAQs
+walkthrough (faqs/80958), the 2009 GameFAQs FAQ (faqs/58639), GOG
+forum threads on the final battle, the Steam "Final battle not
+loading?" thread, and the sorcerers.net DS1 walkthrough. Dead ends
+recorded for the next pass: dsun.powelltown.com has no Wayback
+snapshots; Reddit bodies are unfetchable (search snippets only);
+athas.org timed out; no public DS1 1.1 fix list exists (GOG's DS1
+tree ships no patch notes).
 
 ## 3a. The bug-site census (Phase 5.6.3)
 
@@ -192,7 +349,7 @@ three columns are yes plus a written site report.
 | "Saves but exits" (2.4) | DS2 | **partial** | **partial** | no | Both save-path anchors catalogued and verified: `LoadGameFromDisk` (DS2 ovr18+0xa6c, DS1 ovr21+0xdde, self-naming strings) and the slot path `SaveGameToDisk` (DS2 ovr11+0x8e5, DS1 ovr13+0x7cc). Caveat per the syms row: the function at DS2 ovr18+0xa6c WRITES SAVE-tagged records (boundary scan + gap read), so that row is the save writer, not the loader, despite the DSO name. The exit-after-save sequence is not traced. |
 | Audio static (2.5) | DS2 | n/a | n/a | n/a | Out of scope (Phase 8 verdict 2026-09-10: redbook mastering defect on some pressings' tracks 2-3; GOG's OGG re-encodes bypass it; see 2.5). |
 | MEL DSP detect fail (2.6) | DS2 | n/a | n/a | n/a | Out of scope (Phase 8 verdict 2026-09-10: IRQ-5-vs-7 config mismatch; the GOG conf pins IRQ 5, verified on disk; see 2.6). The MEL error path is incidentally anchored (`mel_dj_audio_init`, DS2 ovr11+0x26). |
-| DS1 issues (§3) | DS1 | partial | partial | no | The gpldisk.c module is anchored DS1-side (`ictrl_check`, `load_game_from_disk`, `gpl_disk_change_region`, `load_teleport`, `save_game_to_disk`); per-bug rows wait on §3's list being triaged. |
+| DS1 issues (§3) | DS1 | partial | partial | no | The compiled §3 catalogue (2026-09-10) supplies per-bug candidates with sources; the gpldisk.c module is anchored DS1-side (`ictrl_check`, `load_game_from_disk`, `gpl_disk_change_region`, `load_teleport`, `save_game_to_disk`), and the dead-trigger finding (GPL-200@0x909 stubbed actor handler) is the first concrete root-cause candidate, for the enemies-refuse-to-engage class. |
 
 Module-level context that shortens every dig: the GPL VM dispatch
 tables are resolved for both engines (all 15 unknown bytes proven
