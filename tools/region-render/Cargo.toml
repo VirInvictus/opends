@@ -1,7 +1,7 @@
 [package]
 name = "region-render"
-version = "0.7.1"
-description = "Render Dark Sun region GFFs (background tile layer) as palette-indexed PNG."
+version = "0.8.0"
+description = "Render Dark Sun region GFFs (tiles, walls, entities) as palette-indexed PNG, with animated entities and palette."
 readme = "README.md"
 edition.workspace = true
 license.workspace = true

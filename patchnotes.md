@@ -10,6 +10,28 @@ Tagged releases from this batch: `ovr-map-v0.3.0` and
 `image-extract-v0.5.0` (all git tags pushed with GitHub Releases;
 the entries below are the release notes).
 
+- **`tools/region-render/` v0.8.0**: **the animated palette
+  ships.** `--animate-palette` emits the frame sequence with the
+  palette rotated per the cycle pump decoded from `DSUN.EXE`
+  (docs/dsun-exe-re.md 4.5.5-4.5.6): a `PaletteCycle` of 16
+  8-byte records (flags, reload, counter, first, count), one
+  rendered frame = one pump pass, active ranges rotating toward
+  higher indices with the range's last colour wrapping to its
+  first slot. Default registration is DS1's decoded boot-time
+  set (four `StartCycle` calls: colours 1-5, 6-10, 11-15,
+  240-248, all delay 2; a full rotation of the slowest range is
+  the default 18-frame sequence). The flag composes with
+  `--animate-entities` and `--gif`; `--frame-count` now works in
+  either animated mode. DS2's cycle-registration init site is
+  still undecoded, so DS2 regions approximate with the DS1
+  ranges (documented). Library additions: `PaletteCycle`,
+  `CycleRecord`, `rotate_palette_range`,
+  `RegionMap::write_png_frame_with_palette`; regression tests
+  cover the rotate semantics, the delay-counter firing
+  schedule, the DS1 default set, and per-frame PLTE output.
+  Also repairs the README palette-precedence table (it predated
+  the v0.5.0 preset flag and the CPAL:200-first fallback).
+
 - **`tools/save-inspect/` v0.9.6**: **SAVE/1 decoded**, and
   the semantic differ gains game-scoped hypothesis rows.
   SAVE/1 is the party/NPC actor record array dumped whole:

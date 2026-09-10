@@ -45,7 +45,7 @@ understanding campaign it should have been.
 | `dialog-extract` | 0.7.1 | shipped; path-aware caller picking queued |
 | `save-inspect` | 0.9.6 | shipped; SAVE/1 + SAVE/7 decoded into the field catalogue, game-scoped hypothesis rows (2026-09-06) |
 | `image-extract` | 0.5.0 | shipped; animated GIF export landed (2026-09-06); APNG deferred |
-| `region-render` | 0.7.1 | shipped; animated palette + `--annotate` deferred |
+| `region-render` | 0.8.0 | shipped; animated palette (`--animate-palette`, 2026-09-10); `--annotate` deferred |
 | `atlas` | 0.1.1 | shipped |
 | `opends` | 0.1.0 | shipped |
 | `gpl-asm` | 0.9.0 | shipped; 600/600 round-trip; macros queued |
@@ -1573,7 +1573,7 @@ abandoned; nothing here is scheduled.
       the named route. Regression test: a real two-pass encode
       asserting the GIF signature, skipped when ffmpeg is
       absent like the corpus tests are when .games/ is.)
-- [ ] **`region-render` animated palette colours.** VGA
+- [x] **`region-render` animated palette colours.** VGA
       colour cycling; blocked on EXE RE of the cycle-table
       layout. Phase 5.6 is the unblocker; candidates
       (`VGAColorCycle`, `gCycleColor`) are already named in
@@ -1591,6 +1591,19 @@ abandoned; nothing here is scheduled.
       > (Ticked 2026-09-06: both named-consumer conditions
       > above are met; the VGA work shipped as ovr-map 0.3.2 /
       > 0.3.3 syms rows + dsun-exe-re 4.5.5-4.5.6.)
+      > (IMPLEMENTATION SHIPPED 2026-09-10, region-render
+      > 0.8.0: `--animate-palette` renders one frame per pump
+      > pass with the decoded 16x8 record semantics
+      > (`PaletteCycle`, rotate-toward-higher-indices, delay
+      > counters), defaulting to DS1's four boot-time ranges;
+      > composes with `--animate-entities` and `--gif`.
+      > DS2's init site stays open, so DS2 approximates with
+      > the DS1 set, documented in the README. Proven on
+      > RGN02: frames 0/1 pixel-identical (delay 2), 236,783
+      > pixels shift at the frame-2 first rotation. Rider:
+      > the README palette-precedence table, stale since the
+      > v0.5.0 preset flag and CPAL:200-first fallback, is
+      > repaired in the same release.)
 - [ ] **`region-render --annotate`.** Entity-name overlays on
       rendered maps; deferred for lack of an in-tree font
       without a new dep. Promote when atlas or a modder

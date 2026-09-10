@@ -22,9 +22,11 @@
 //! observed in any DS2 GFF as of the GOG 1.10 corpus), so the
 //! wall pass is currently a no-op on DS2 regions.
 //!
-//! Out of scope for v0.2: entities (`ETAB` + `OJFF` + `BMP `),
-//! animated palette colors, GMAP flag visualisation, DS2 wall
-//! discovery, per-region DS1 palette selection.
+//! Out of scope for v0.2 were entities (`ETAB` + `OJFF` + `BMP `)
+//! and animated palette colors; both shipped later (v0.6.0 and
+//! v0.8.0). Still out of scope: GMAP flag visualisation, DS2 wall
+//! discovery, per-region DS1 palette selection, and DS2's
+//! palette-cycle registration site (only DS1's is decoded).
 //!
 //! See `docs/file-formats.md` "Maps and world > Region geometry"
 //! for the layout this implements, ported from
@@ -170,6 +172,126 @@ pub struct EntityRecord {
     pub y_offset: i8,
     pub mirrored: bool,
     pub ojff_number: i16,
+}
+
+/// Slot count of the engine's VGA colour-cycle table
+/// (`docs/dsun-exe-re.md` 4.5.5: 16 records of 8 bytes at the
+/// pump's `cs:0x6`).
+pub const CYCLE_SLOTS: usize = 16;
+
+/// One 8-byte VGA colour-cycle record, layout decoded from the
+/// cycle pump (`docs/dsun-exe-re.md` 4.5.5). `flags` bit0 AND
+/// bit1 both set = the record cycles; `reload` is the value
+/// reloaded into `counter` each time it fires; `first`/`count`
+/// bound the rotating colour range.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CycleRecord {
+    pub flags: u16,
+    pub reload: u16,
+    pub counter: u16,
+    pub first: u8,
+    pub count: u8,
+}
+
+impl CycleRecord {
+    /// The pump cycles a record only while both flag bits are set.
+    pub fn is_active(&self) -> bool {
+        self.flags & 0b11 == 0b11
+    }
+}
+
+/// The engine's VGA colour-cycle state: [`CYCLE_SLOTS`] records
+/// walked once per pump pass. Modelled on the pump at DS1 file
+/// `0x287fc` / DS2 `0x2cfdc` and its `StartCycle`/`StopCycle`
+/// registration API (`docs/dsun-exe-re.md` 4.5.5-4.5.6).
+///
+/// Each [`tick`](PaletteCycle::tick) is one pump pass: every
+/// active record's counter decrements, and at zero the record's
+/// colour range rotates toward higher indices by one step
+/// (`colour[first]` receives the old `colour[last]`, every other
+/// colour its predecessor's value).
+#[derive(Debug, Clone)]
+pub struct PaletteCycle {
+    pub records: [CycleRecord; CYCLE_SLOTS],
+}
+
+impl PaletteCycle {
+    /// DS1's decoded boot-time registration: `StartCycle` is
+    /// called exactly four times at init, arming slots 0-3 with
+    /// the ranges 1-5, 6-10, 11-15 and 240-248, all at delay 2
+    /// (`docs/dsun-exe-re.md` 4.5.6). Active from boot; DS1 has
+    /// no per-region cycle configuration. `counter` is armed
+    /// with the delay so the first rotation lands `delay` ticks
+    /// in: the decode pins `reload`; the initial counter value is
+    /// not statically observable, and reload is the only
+    /// game-accurate choice.
+    pub fn ds1_boot_defaults() -> Self {
+        let mut records = [CycleRecord {
+            flags: 0,
+            reload: 0,
+            counter: 0,
+            first: 0,
+            count: 0,
+        }; CYCLE_SLOTS];
+        for (slot, first, count) in [(0u16, 1u8, 5u8), (1, 6, 5), (2, 11, 5), (3, 240, 9)] {
+            records[slot as usize] = CycleRecord {
+                flags: 0b11,
+                reload: 2,
+                counter: 2,
+                first,
+                count,
+            };
+        }
+        Self { records }
+    }
+
+    /// One pump pass over every active record.
+    pub fn tick(&mut self, palette: &mut Palette) {
+        for rec in &mut self.records {
+            if !rec.is_active() {
+                continue;
+            }
+            rec.counter = rec.counter.wrapping_sub(1);
+            if rec.counter == 0 {
+                rec.counter = rec.reload;
+                rotate_palette_range(palette, rec.first, rec.count);
+            }
+        }
+    }
+
+    /// Ticks needed for the slowest active range to complete one
+    /// full rotation (`reload * count`: each rotation takes
+    /// `reload` ticks and a range returns to its start after
+    /// `count` rotations). 1 when nothing is active; the natural
+    /// default frame count for a palette-only animation.
+    pub fn period(&self) -> usize {
+        self.records
+            .iter()
+            .filter(|r| r.is_active())
+            .map(|r| r.reload as usize * r.count as usize)
+            .max()
+            .unwrap_or(1)
+            .max(1)
+    }
+}
+
+/// Rotate the `count`-entry palette range starting at `first`
+/// toward higher indices by one step: the range's last colour
+/// moves to `first`, every other colour shifts one slot up. This
+/// is the pump's firing sequence (`docs/dsun-exe-re.md` 4.5.5).
+/// `count < 2` is the identity.
+pub fn rotate_palette_range(palette: &mut Palette, first: u8, count: u8) {
+    let first = first as usize;
+    let count = count as usize;
+    if count < 2 {
+        return;
+    }
+    let last = (first + count - 1).min(image_extract::PALETTE_SIZE - 1);
+    let wrapped = palette.colors[last];
+    for i in (first + 1..=last).rev() {
+        palette.colors[i] = palette.colors[i - 1];
+    }
+    palette.colors[first] = wrapped;
 }
 
 /// One decoded sprite, used for both walls and entities.
@@ -680,6 +802,33 @@ impl RegionMap {
         Ok(())
     }
 
+    /// Like [`write_png_frame`], but encodes with an explicit
+    /// palette instead of the region's own. The animated-palette
+    /// path steps a [`PaletteCycle`] between frames and writes
+    /// each frame with its rotated palette; the indexed pixel
+    /// data is unchanged (palette cycling recolours, it does not
+    /// re-index).
+    ///
+    /// [`write_png_frame`]: RegionMap::write_png_frame
+    pub fn write_png_frame_with_palette(
+        &self,
+        path: &Path,
+        frame_idx: usize,
+        palette: &Palette,
+    ) -> Result<()> {
+        let pixels = self.render_indexed_frame(frame_idx);
+        let file = std::fs::File::create(path)?;
+        let w = std::io::BufWriter::new(file);
+        let mut encoder =
+            png::Encoder::new(w, REGION_PIXEL_WIDTH as u32, REGION_PIXEL_HEIGHT as u32);
+        encoder.set_color(png::ColorType::Indexed);
+        encoder.set_depth(png::BitDepth::Eight);
+        encoder.set_palette(palette.as_rgb_bytes().to_vec());
+        let mut writer = encoder.write_header()?;
+        writer.write_image_data(&pixels)?;
+        Ok(())
+    }
+
     /// Write the rendered tile layer to a PNG file at `path`. Output
     /// is 8-bit palette-indexed, matching `image-extract`'s policy
     /// for the per-tile bitmaps.
@@ -1047,5 +1196,159 @@ mod tests {
         for ty in 0..TILE_PIXEL_SIZE {
             assert_eq!(buf[ty * REGION_PIXEL_WIDTH], ty as u8, "row {ty}");
         }
+    }
+
+    // ---- VGA colour-cycle mechanism (docs/dsun-exe-re.md 4.5.5-4.5.6)
+
+    fn greyscale_palette() -> Palette {
+        let mut colors = [Color { r: 0, g: 0, b: 0 }; image_extract::PALETTE_SIZE];
+        for (i, color) in colors.iter_mut().enumerate() {
+            *color = Color {
+                r: i as u8,
+                g: i as u8,
+                b: i as u8,
+            };
+        }
+        Palette { colors }
+    }
+
+    fn one_record_cycle(first: u8, count: u8, delay: u16) -> PaletteCycle {
+        let mut records = [CycleRecord {
+            flags: 0,
+            reload: 0,
+            counter: 0,
+            first: 0,
+            count: 0,
+        }; CYCLE_SLOTS];
+        records[0] = CycleRecord {
+            flags: 0b11,
+            reload: delay,
+            counter: delay,
+            first,
+            count,
+        };
+        PaletteCycle { records }
+    }
+
+    #[test]
+    fn ds1_boot_defaults_match_the_decoded_registration() {
+        let cycle = PaletteCycle::ds1_boot_defaults();
+        for (slot, first, count) in [(0usize, 1u8, 5u8), (1, 6, 5), (2, 11, 5), (3, 240, 9)] {
+            let rec = cycle.records[slot];
+            assert!(rec.is_active(), "slot {slot} should be armed");
+            assert_eq!(rec.reload, 2, "slot {slot} delay");
+            assert_eq!(rec.counter, 2, "slot {slot} initial counter");
+            assert_eq!(rec.first, first, "slot {slot} first");
+            assert_eq!(rec.count, count, "slot {slot} count");
+        }
+        for slot in 4..CYCLE_SLOTS {
+            assert!(!cycle.records[slot].is_active(), "slot {slot} unarmed");
+        }
+        // Slowest range: 9 colours x delay 2 = 18 ticks per rotation.
+        assert_eq!(cycle.period(), 18);
+    }
+
+    #[test]
+    fn rotate_range_shifts_toward_higher_indices() {
+        let mut pal = greyscale_palette();
+        let original = pal.clone();
+        rotate_palette_range(&mut pal, 1, 5);
+        // colours[1] receives the old colours[5]; the rest shift up.
+        assert_eq!(pal.colors[1], original.colors[5]);
+        assert_eq!(pal.colors[2], original.colors[1]);
+        assert_eq!(pal.colors[3], original.colors[2]);
+        assert_eq!(pal.colors[4], original.colors[3]);
+        assert_eq!(pal.colors[5], original.colors[4]);
+        // Outside the range: untouched.
+        assert_eq!(pal.colors[0], original.colors[0]);
+        assert_eq!(pal.colors[6], original.colors[6]);
+    }
+
+    #[test]
+    fn rotate_range_is_identity_below_two_colours() {
+        let mut pal = greyscale_palette();
+        let original = pal.clone();
+        rotate_palette_range(&mut pal, 10, 1);
+        rotate_palette_range(&mut pal, 10, 0);
+        assert_eq!(pal.colors, original.colors);
+    }
+
+    #[test]
+    fn tick_fires_every_delay_ticks_until_full_rotation() {
+        let mut pal = greyscale_palette();
+        let original = pal.clone();
+        let mut cycle = one_record_cycle(1, 3, 2);
+        cycle.tick(&mut pal); // counter 2 -> 1: no fire yet
+        assert_eq!(pal.colors[1], original.colors[1]);
+        cycle.tick(&mut pal); // counter 1 -> 0: fire, reload to 2
+        assert_eq!(pal.colors[1], original.colors[3]);
+        assert_eq!(pal.colors[2], original.colors[1]);
+        assert_eq!(pal.colors[3], original.colors[2]);
+        assert_eq!(cycle.records[0].counter, 2);
+        // Two more rotations (4 ticks) bring the range back around.
+        for _ in 0..4 {
+            cycle.tick(&mut pal);
+        }
+        assert_eq!(pal.colors, original.colors);
+    }
+
+    #[test]
+    fn inactive_records_never_fire() {
+        let mut pal = greyscale_palette();
+        let original = pal.clone();
+        let mut cycle = one_record_cycle(1, 3, 2);
+        for half_armed in [0b01u16, 0b10, 0b00] {
+            cycle.records[0].flags = half_armed;
+            for _ in 0..4 {
+                cycle.tick(&mut pal);
+            }
+        }
+        assert_eq!(pal.colors, original.colors);
+    }
+
+    #[test]
+    fn period_matches_slowest_active_range() {
+        // 5-colour ranges at delay 2 -> 10; the 9-colour range -> 18.
+        assert_eq!(PaletteCycle::ds1_boot_defaults().period(), 18);
+        assert_eq!(one_record_cycle(1, 5, 2).period(), 10);
+        // Nothing active: degenerate 1.
+        assert_eq!(
+            PaletteCycle {
+                records: [CycleRecord {
+                    flags: 0,
+                    reload: 0,
+                    counter: 0,
+                    first: 0,
+                    count: 0,
+                }; CYCLE_SLOTS]
+            }
+            .period(),
+            1
+        );
+    }
+
+    #[test]
+    fn png_frame_encodes_the_given_palette() {
+        // The animated-palette path relies on per-frame palettes
+        // landing in the PNG PLTE chunk, not the region's own.
+        let region = empty_region(greyscale_palette());
+        let mut rotated = greyscale_palette();
+        rotate_palette_range(&mut rotated, 1, 5);
+        let dir =
+            std::env::temp_dir().join(format!("region-render-paltest-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        for (name, palette) in [("plain", greyscale_palette()), ("rotated", rotated)] {
+            let path = dir.join(format!("{name}.png"));
+            region
+                .write_png_frame_with_palette(&path, 0, &palette)
+                .unwrap();
+            let file = std::fs::File::open(&path).unwrap();
+            let reader = png::Decoder::new(file).read_info().unwrap();
+            assert_eq!(
+                reader.info().palette.as_deref(),
+                Some(palette.as_rgb_bytes().as_slice())
+            );
+        }
+        std::fs::remove_dir_all(&dir).ok();
     }
 }

@@ -4,7 +4,7 @@ use anyhow::{Context, Result, anyhow};
 use clap::Parser;
 use gff_edit::{FourCC, Gff};
 use image_extract::{PALETTE_CHUNK_LEN, Palette};
-use region_render::{RegionMap, inline_palette};
+use region_render::{PaletteCycle, RegionMap, inline_palette};
 
 #[derive(Parser)]
 #[command(
@@ -68,19 +68,31 @@ struct Cli {
     /// unchanged.
     #[arg(long = "animate-entities", conflicts_with = "no_entities")]
     animate_entities: bool,
-    /// Number of frames to render in `--animate-entities`
-    /// mode. Default: the max frame_count across all entity
-    /// sprites loaded for this region (every entity cycles
-    /// through at least once). Pass an explicit value to
-    /// cap or extend the sequence.
-    #[arg(long = "frame-count", requires = "animate_entities")]
+    /// Animate the VGA colour-cycle palette: emit the frame
+    /// sequence with the palette rotated per the decoded engine
+    /// cycle mechanism (docs/dsun-exe-re.md 4.5.5-4.5.6: DS1
+    /// arms four boot-time ranges, colours 1-5 / 6-10 / 11-15 /
+    /// 240-248, delay 2). One rendered frame is one pump pass,
+    /// so a delay-2 range rotates every 2 frames; `--gif-fps`
+    /// controls playback speed. The decoded registration set is
+    /// DS1's (DS2's init site is not yet decoded), so on a DS2
+    /// region this approximates with the DS1 ranges. Composes
+    /// with `--animate-entities`; implies the frame-sequence
+    /// output path like `--animate-entities` does.
+    #[arg(long = "animate-palette")]
+    animate_palette: bool,
+    /// Number of frames to render in an animated mode. Default:
+    /// with `--animate-entities`, the max frame_count across all
+    /// entity sprites; with `--animate-palette`, the slowest
+    /// range's full-rotation period; with both, the larger.
+    #[arg(long = "frame-count")]
     frame_count: Option<usize>,
-    /// With --animate-entities: bundle the PNG sequence into a
+    /// With an animated mode: bundle the PNG sequence into a
     /// single animated GIF via `ffmpeg`. The output path passed
     /// to `-o` becomes the GIF file (the per-frame PNGs land in
     /// a sibling `<output>-frames/` directory you can keep or
     /// delete). Requires `ffmpeg` on `$PATH`.
-    #[arg(long = "gif", requires = "animate_entities")]
+    #[arg(long = "gif")]
     gif: bool,
     /// With --gif: target frame rate in frames per second.
     /// Default: 8 (slow enough to read; fast enough that wallpaper
@@ -234,13 +246,34 @@ fn main() -> Result<()> {
         }
     }
 
-    if cli.animate_entities {
-        let n_frames = cli
-            .frame_count
-            .unwrap_or_else(|| region.max_entity_frame_count());
+    if cli.frame_count.is_some() && !(cli.animate_entities || cli.animate_palette) {
+        return Err(anyhow!(
+            "--frame-count requires --animate-entities or --animate-palette"
+        ));
+    }
+    if cli.gif && !(cli.animate_entities || cli.animate_palette) {
+        return Err(anyhow!(
+            "--gif requires --animate-entities or --animate-palette"
+        ));
+    }
+
+    if cli.animate_entities || cli.animate_palette {
+        let mut cycle = cli.animate_palette.then(PaletteCycle::ds1_boot_defaults);
+        let palette_period = cycle.as_ref().map_or(1, |c| c.period());
+        let n_frames = cli.frame_count.unwrap_or_else(|| {
+            if cli.animate_entities {
+                region.max_entity_frame_count().max(palette_period)
+            } else {
+                palette_period
+            }
+        });
         if n_frames == 0 {
             return Err(anyhow!("--frame-count must be at least 1"));
         }
+        // Working palette for the frame sequence: frame 0 is the
+        // unrotated (boot) palette; each palette-cycled frame is
+        // one pump pass later.
+        let mut palette = region.palette.clone();
         // GIF mode: output path is the .gif file; PNG frames
         // land in a sibling `<gif-path>-frames/` directory so
         // the user can keep or delete them. Non-GIF mode keeps
@@ -268,10 +301,13 @@ fn main() -> Result<()> {
         for frame_idx in 0..n_frames {
             let frame_path = frames_dir.join(format!("{stem}-frame-{frame_idx}.png"));
             region
-                .write_png_frame(&frame_path, frame_idx)
+                .write_png_frame_with_palette(&frame_path, frame_idx, &palette)
                 .with_context(|| {
                     format!("writing frame {} to {}", frame_idx, frame_path.display())
                 })?;
+            if let Some(c) = cycle.as_mut() {
+                c.tick(&mut palette);
+            }
         }
         eprintln!(
             "wrote {n_frames} frame(s) ({}x{}, source map: {}) into {}",
@@ -289,6 +325,28 @@ fn main() -> Result<()> {
             region.missing_entity_ids.len(),
             region.entity_decode_failures.len(),
         );
+        if let Some(ref c) = cycle {
+            let ranges = c
+                .records
+                .iter()
+                .enumerate()
+                .filter(|(_, r)| r.is_active())
+                .map(|(i, r)| {
+                    format!(
+                        "slot {} colours {}-{} delay {}",
+                        i,
+                        r.first,
+                        r.first as u16 + r.count as u16 - 1,
+                        r.reload
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("; ");
+            eprintln!(
+                "  palette cycles: rotation period {} frame ticks; {ranges}",
+                c.period()
+            );
+        }
         if cli.gif {
             assemble_gif(&frames_dir, stem, &cli.output, cli.gif_fps)?;
         }

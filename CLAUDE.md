@@ -109,7 +109,7 @@ The Rust tools form a stack; later tools consume earlier ones via the workspace:
 - `gff-edit` is the foundation; every GFF read/write goes through it.
 - `gpl-disasm` reads GPL/MAS chunks via `gff-edit` and emits JSON or annotated text. Its `--json` output is the contract that `gpl-asm`, `dialog-extract`, and `opcode-fuzz` consume.
 - `gpl-asm` round-trips `gpl-disasm` output back to bytecode. 600/600 corpus chunks are byte-identical; preserve that invariant.
-- `image-extract` decodes bitmap chunks; `region-render` composites tiles + walls + entity sprites and (as of v0.6.0) animates entities via `image-extract`'s multi-frame decoder.
+- `image-extract` decodes bitmap chunks; `region-render` composites tiles + walls + entity sprites and (as of v0.6.0) animates entities via `image-extract`'s multi-frame decoder; as of v0.8.0 it also animates the VGA colour-cycle palette (`--animate-palette`, the decoded DS1 boot ranges).
 - Python tools (`dialog-extract`, `save-inspect`, `opcode-fuzz`) consume Rust JSON output where they interface with the disassembler.
 - `exe-patch` resolves `ovr:`/symbol addresses by consuming `ovr-map --json` (subprocess, the same contract pattern); it never parses the FBOV chain itself, so the descriptor walk keeps one implementation.
 
