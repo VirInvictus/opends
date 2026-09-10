@@ -261,7 +261,7 @@ Four original leverage points, in order of cost:
       the decompiler is weak on 16-bit segmented code; the
       deliverable is *navigable, correctly segmented, and
       named*, not *clean C*.
-- [ ] **DSO symbol transfer.** `docs/dso-symbols.md`
+- [x] **DSO symbol transfer.** `docs/dso-symbols.md`
       documents the 3,530-function Watcom symbol table from
       Dark Sun Online (which inherited the WotR codebase).
       The offsets do not map directly onto our binaries; the
@@ -272,6 +272,24 @@ Four original leverage points, in order of cost:
       review-ready proposals, curated by hand into the
       catalogue; never auto-committed, matching the existing
       curation rule.
+      (TICKED-AS-ABSORBED 2026-09-10. The deliverable this box
+      was after, a curated hand-reviewed EXE symbol catalogue,
+      exists and outgrew the DSO-matching method that was to
+      fill it. What landed instead, all hand-curated with
+      evidence chains: `scripts/propose-exe-symbols.py` (the
+      review-ready proposal generator: census, string anchors,
+      catalogue rendering), `scripts/xref-string.py` (the
+      matching method that worked, automated), 21 verified
+      DSO-named string-xref anchors, and the dispatch-table
+      decodes naming 114 handlers per game. Catalogues stand
+      at 130 DS1 / 132 DS2 rows. The large-scale byte-pattern
+      matcher was never built and no longer pays: the Decode*
+      study corrected its premise (the DSO handler block is
+      not address-ordered, so elimination pinning fails), and
+      the dispatch tables named the bulk surface outright.
+      The residual unnamed targets, the ~200 overlay-to-
+      resident call sites, need runtime capture or deeper
+      string-xref passes, not DSO byte matching.)
 - [x] **Official-patch diffing.** ✅ **Unblocked and first-measured
       2026-08-28.** The CD 1.0 base exists and is hash-confirmed:
       `install-variants.md` §3 records `game.gog` carrying the
@@ -1486,8 +1504,30 @@ explicit "won't fix" note with rationale.
 - [ ] Charged-weapon disappearance.
 - [ ] Doorway / item graphics layering.
 - [ ] Save/exit bug.
-- [ ] Audio static (verify no-op for OPL/MT-32 emulation paths).
-- [ ] MEL DSP detect (verify no-op for DOSBox).
+- [x] Audio static (verify no-op for OPL/MT-32 emulation paths).
+      (VERDICT 2026-09-10, won't fix / no-op under the GOG
+      install: the static is a redbook mastering defect on some
+      pressings' tracks 2-3, reproducible outside the game and
+      documented on real hardware in 1996 (VOGONS t=9726 /
+      t=10893); GOG's OGG re-encodes bypass the defective
+      masters. The box's OPL/MT-32 framing was a category
+      error: the DS2 CD line has no MIDI music, so those
+      synthesis paths are never in the chain. known-bugs.md
+      2.5 rewritten with the corrected origin (the old "AIL
+      driver mismatch" note was wrong). Residual: one in-game
+      ear test, which rides the Phase 10 playthrough.)
+- [x] MEL DSP detect (verify no-op for DOSBox).
+      (VERDICT 2026-09-10, won't fix / config, not engine:
+      community-confirmed IRQ mismatch; the game's SOUND.INI
+      defaults the SB Pro II/III and SB16-class cards to IRQ 5,
+      stock DOSBox defaults 7, and AIL's probe verifies the IRQ
+      with a test interrupt, so a mismatch aborts startup with
+      the MEL fatal. The GOG conf pins irq=5, verified against
+      the real file, so the shipped path cannot trigger it; a
+      hand-rolled IRQ-7 conf still can, which is exactly how
+      the VOGONS reports happened. known-bugs.md 2.6 carries
+      the full rationale. Residual: one in-game launch
+      confirm, rides the Phase 10 playthrough.)
 
 ## Phase 9 — DS1 sweep
 
