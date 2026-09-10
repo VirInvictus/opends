@@ -1431,12 +1431,37 @@ authoring should feel like routine work.
       > instance of the community's "enemies refuse to engage"
       > class and the leading data-surface Phase 6 pick,
       > pending symptom correlation. DS2: 30 dead triggers
-      > (GPL-24@0x1 looktriggers and siblings). Sweep (1) also
-      > measured DS2 precisely:
-      > the railhead flags are NOT literally unread (the look
-      > handler prints their state); they are read only inside
-      > their own chunk, which engine-quirks entry 6 now
-      > reflects.
+> (GPL-24@0x1 looktriggers and siblings). Sweep (1) also
+> measured DS2 precisely:
+> the railhead flags are NOT literally unread (the look
+> handler prints their state); they are read only inside
+> their own chunk, which engine-quirks entry 6 now
+> reflects.
+> CORRELATED 2026-09-10 (agent-side dig, decision
+> evidence for the pick): all six dead triggers are
+> Darkhold endgame, main-quest, normal-playthrough
+> content. Regions: 30 (RGN1E; objects -255, -2263,
+> -1209; the portcullis/queen's-chamber cluster) and 31
+> (RGN1F; -2248, the wyvern scene). GPL-200@0x909 is a
+> single orphan `exit gpl` byte that is not a discovered
+> entry, targeted identically from three independently
+> written chunks: a deliberately emptied handler. The
+> picture is richer than "no handler": -2263/-1209 carry
+> ALIVE looktrigger registrations at GPL-203@0x378/0x380
+> and then dead re-registrations at 0x3fe/0x406 (so the
+> stub either clobbers working look text or is a no-op,
+> per the engine's first/last-wins rule, an EXE-side
+> question); -255 fights early via an alive attacktrigger
+> (MAS-30 -> GPL-200@0x33b) and its later re-registration
+> (GPL-195@0x2b, story-gated) lands in the stub; two of
+> the six rows pass GNAME[39], a runtime-variable
+> object, so a fix must cover the handler or the
+> registering instructions, not just the four static
+> ids. Fix shapes, in preference order: repoint/remove
+> the five dead registering instructions (all six rows),
+> or restore handler content at 0x909. Also rode along:
+> file-formats.md's ETAB `ojff_number` row now records
+> the negative encoding (measured on RGN1E/RGN1F).
 - [ ] Repro fixture for the chosen bug
       (`tools/repro/bugs/<id>/bug.toml`) so the fix is
       verifiable. Requires ydotool installed locally; repro

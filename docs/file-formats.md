@@ -324,12 +324,18 @@ DS1 and DS2 differ in where the palette ships:
 | 2      | s16    | `y`             |
 | 4      | s8     | `y_offset`      |
 | 5      | u8     | `byte5` (bit 7 = `mirrored`) |
-| 6      | s16    | `ojff_number`   |
+| 6      | s16    | `ojff_number` (negative-encoded object id, see below) |
 
 Each record places an `OJFF`-defined sprite at `(x, y - yOffset)`
-with optional horizontal mirroring. v0.1 of `region-render` does
-not draw entities; this row is here so future readers do not
-mistake the format. Entities (with `WALL`s) come in v0.2+.
+with optional horizontal mirroring; `region-render` draws the
+entity layer (since v0.5.0) and animates it (since v0.6.0).
+Measured 2026-09-10 on DS1's `RGN1E`/`RGN1F` ETABs:
+`ojff_number` values are negative (range observed -30106..-39),
+and the entity's `OJFF` chunk id is the absolute value: the
+field carries `NAME(-N)`, GPL's negative object-id encoding (the
+same encoding the tport and trigger operands use).
+`region-render` has always resolved it by negating when
+negative; this prose now says so too.
 
 #### Audio
 

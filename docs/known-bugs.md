@@ -311,12 +311,16 @@ North). Surface: mixed engine/data; low severity each.
 ### 3.5. Cross-references to the static work
 
 - The original "enemies refuse to engage" line now has a concrete
-  static candidate: the dead-trigger sweep (gpl-disasm 0.8.0) found
-  five looktriggers plus one ATTACKTRIGGER pointed at GPL-200 entry
-  0x909, which holds only `gpl exit gpl`: a stubbed actor handler.
-  That is the leading Phase 6 pick's evidence chain (roadmap, Phase 6
-  bug-pick box), and it is plausibly the same class as final-battle
-  variant 4 above.
+  static candidate, correlated 2026-09-10: the dead-trigger sweep
+  (gpl-disasm 0.8.0) found five looktriggers plus one ATTACKTRIGGER
+  pointed at GPL-200 entry 0x909, which holds only `gpl exit gpl`: a
+  stubbed actor handler. The correlation dig places all six in the
+  Darkhold endgame (regions 30/31, `RGN1E`/`RGN1F`): the queen's
+  chamber creatures (-2263, -1209), the portcullis guard (-255), and
+  the wyvern-scene creature (-2248), all main-quest, normal-
+  playthrough content. That is the leading Phase 6 pick's evidence
+  chain (roadmap, Phase 6 bug-pick box), and it is plausibly the
+  same class as final-battle variant 4 above.
 - The region-transition screen-blanking line has no independent
   community trail; it predates the compiled list and stays untriaged
   until a report or a repro catches it.
