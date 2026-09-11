@@ -1548,11 +1548,15 @@ authoring should feel like routine work.
       world-state fingerprints identical, no sentinel
       delta: the scene-level behavioral proof rides the
       played-save gate per the fixture box).)
-- [ ] Tag `darkfix-ds1-v0.1.0`, push GitHub release.
+- [x] Tag `darkfix-ds1-v0.1.0`, push GitHub release.
       (REQUESTED 2026-09-11: the fix is proven and the verbatim
       message file is prepared at `scratch/tags/
       darkfix-ds1-v0.1.0.txt`, anchor commit 975bc39; cut via
-      the standard procedure on Brandon's go.)
+      the standard procedure on Brandon's go.
+      SHIPPED 2026-09-11 on his go: tag cut verbatim against
+      975bc39, pushed, GitHub Release created; the tag sweep
+      reads 15/15 proper title lines. Phase 6's remaining open
+      box is only the real-Windows half of the applier box.)
 - [x] Player-facing README explaining install.
       (Rewritten 2026-09-06 in `ds1-patch/README.md`:
       Windows-first steps with the `py` launcher, Linux/macOS
