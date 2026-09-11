@@ -89,11 +89,12 @@ written back with verification. Roadmap Phases 0-5.7 have
 shipped: the toolkit phases (documentation, GFF foundation,
 repro harness, disassembler, exploration tools, assembler, the
 overlay map, the naming campaign, the bug-site census, and the
-EXE patch authoring surface). The front is now Phase 6: the
-first darkfix, for which the candidate bug list is already
-produced by the sweeps (see the roadmap). Phase 7 is the DS2
-mines-elevator fix, one runtime capture from a complete site
-report.
+EXE patch authoring surface). Phase 6 has now shipped its first
+fix: darkfix-ds1 0.1.0 (`fix.ds1.deadtriggers`, the Darkhold
+dead-trigger family) with its repro fixture and differential
+capture; the v0.1.0 tag lands on the maintainer's go. Phase 7 is
+the DS2 mines-elevator fix, one runtime capture from a complete
+site report.
 
 - [`spec.md`](spec.md): design spec and invariants
 - [`roadmap.md`](roadmap.md): phased plan and current status
