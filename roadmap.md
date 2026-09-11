@@ -1484,7 +1484,7 @@ authoring should feel like routine work.
 > statically provable correct handler, and their stub is
 > already inert. Fix = `fix.ds1.deadtriggers` (the
 > author box below).
-- [ ] Repro fixture for the chosen bug
+- [x] Repro fixture for the chosen bug
       (`tools/repro/bugs/<id>/bug.toml`) so the fix is
       verifiable. Requires ydotool installed locally; repro
       already integrates the input automation.
@@ -1493,6 +1493,15 @@ authoring should feel like routine work.
       plus repro v0.5.0's `--diff`; the actual fixture for the
       chosen bug lands the day the bug is picked and cannot
       precede it.)
+      (Shipped 2026-09-11: `tools/repro/bugs/ds1-deadtriggers/`,
+      the harness-level leg of the deadtriggers proof; `--diff`
+      stages the patched GPLDATA.GFF and both boots pass with
+      identical DARKRUN fingerprints. The scene leg (look at
+      the queen's-chamber creatures, engage the portcullis
+      guard post-flee) needs a played DARKSAVE.GFF from the
+      Darkhold endgame and a keystroke load-save schedule; the
+      fixture documents the promotion path and rides the
+      played-save gate, roadmap 5.6.2 / :1043.)
 - [x] **Differential capture** (promoted from the repro
       backlog, because it is the fix's proof): a
       run-with-patch and run-without-patch side-by-side

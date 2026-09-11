@@ -1,0 +1,37 @@
+# OpenDS repro harness: bug fixture
+#
+# Schema notes: see bugs/ds1-smoke/bug.toml and tools/repro/README.md.
+
+id          = "ds1-deadtriggers"
+target_game = "ds1"
+description = """
+Harness-level leg of the fix.ds1.deadtriggers proof (darkfix-ds1
+0.1.0). DS1 boots and runs its full budget from a tree whose
+GPLDATA.GFF carries the repointed trigger registrations, with the
+run recorded for side-by-side comparison. `repro.py --diff` stages
+the patched GPLDATA.GFF over the overlay for the patched leg, so
+baseline and patched boots share one fixture and one delta report.
+
+The in-game scene leg (look at the queen's-chamber creatures after
+the 'Worms!' block, engage the portcullis guard after it is driven
+off) needs a played DARKSAVE.GFF from the Darkhold endgame; drop
+one in this directory and add a [[trigger.keystrokes]] load-save
+schedule to promote this fixture to the full behavioral proof.
+Rides the played-save gate (roadmap Phase 5.6.2).
+"""
+
+[setup]
+copy_files = [
+  { src = "SOUND.CFG", dst = "SOUND.CFG" },
+]
+
+[trigger]
+commands = [
+  "DSUN.EXE > d:\\dsun.log",
+]
+
+[expected]
+timeout_seconds     = 30
+min_runtime_seconds = 25
+require_files       = []
+forbid_files        = []
