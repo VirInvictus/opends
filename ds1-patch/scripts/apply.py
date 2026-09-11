@@ -433,9 +433,10 @@ def _make_patch(
 def selftest() -> int:
     """Exercise the full apply/verify/unapply cycle in temp dirs.
 
-    Synthetic-file cycle plus refusal paths, then the roadmap's
-    no-op proof: an empty-EDITS fix applied to a copy of the real
-    DSUN.EXE must round-trip byte-identically. Never touches the
+    Synthetic-file cycle plus refusal paths, the roadmap's no-op
+    proof (an empty-EDITS fix applied to a copy of the real DSUN.EXE
+    round-trips byte-identically), and a real-install cycle for the
+    shipped fixes against install copies. Never touches the
     canonical install or the repo patch tree.
     """
     failures = 0
@@ -531,6 +532,48 @@ def selftest() -> int:
     else:
         print(
             "  SKIP: .games/ds1/DSUN.EXE not present; real-binary no-op cycle not run"
+        )
+
+    # Real-install cycle for the shipped fixes: apply the actual
+    # repo patch tree (every enabled fix) against a temp install
+    # holding copies of every [target.files] entry, then verify the
+    # journaled patched hashes and unapply byte-identically. This is
+    # the regression test for fix.ds1.deadtriggers: the GPLDATA.GFF
+    # patched hash below pins the eleven repoint bytes; any
+    # accidental EDITS change fails here. (fix-workflow 5.1 hash
+    # test; the recorded value lives in fixes/001-deadtriggers.md.)
+    gamedir = DEFAULT_PATCH_ROOT.parent / ".games" / "ds1"
+    real_files = {"DSUN.EXE", "GPLDATA.GFF"}
+    if all((gamedir / f).is_file() for f in real_files):
+        with tempfile.TemporaryDirectory(prefix="darkfix-real-") as td:
+            tmp = Path(td)
+            install = tmp / "ds1"
+            install.mkdir()
+            for f in real_files:
+                shutil.copy2(gamedir / f, install / f)
+            rc = run([str(install)], patch_root=DEFAULT_PATCH_ROOT)
+            ok("real patch tree applies to install copies", rc == 0)
+            patched = P.sha256_file(install / "GPLDATA.GFF")
+            ok(
+                "patched GPLDATA.GFF matches the recorded deadtriggers hash",
+                patched
+                == "e6b163bd446637c6c68f6897c01b59518b513054c90b4a7d7439d900e14142f0",
+            )
+            rc = run([str(install), "--verify"], patch_root=DEFAULT_PATCH_ROOT)
+            ok("verify passes on the real patched install", rc == 0)
+            rc = run([str(install), "--unapply"], patch_root=DEFAULT_PATCH_ROOT)
+            ok("real patch tree unapplies", rc == 0)
+            ok(
+                "real install restored byte-identically",
+                all(
+                    P.sha256_file(install / f) == P.sha256_file(gamedir / f)
+                    for f in real_files
+                ),
+            )
+    else:
+        print(
+            "  SKIP: .games/ds1/ install files not present;"
+            " real-fix deadtriggers cycle not run"
         )
 
     print()

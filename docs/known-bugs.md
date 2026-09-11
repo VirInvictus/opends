@@ -321,6 +321,15 @@ North). Surface: mixed engine/data; low severity each.
   playthrough content. That is the leading Phase 6 pick's evidence
   chain (roadmap, Phase 6 bug-pick box), and it is plausibly the
   same class as final-battle variant 4 above.
+  FIXED 2026-09-11 in darkfix-ds1 0.1.0 (`fix.ds1.deadtriggers`)
+  for the four static rows: each occluding registration is
+  repointed to the object's own working handler (guard combat ->
+  `GPL-200@0x33b`, chamber looks -> `GPL-203@0x389`, wyvern look
+  -> `GPL-41` entry 1), a no-op-or-restoration under either
+  registration semantics. The two `GNAME[39]` rows stay as
+  shipped (runtime-variable object, inert stub); see
+  `ds1-patch/fixes/001-deadtriggers.md`. In-game scene
+  confirmation rides the played-save sessions.
 - The region-transition screen-blanking line has no independent
   community trail; it predates the compiled list and stays untriaged
   until a report or a repro catches it.

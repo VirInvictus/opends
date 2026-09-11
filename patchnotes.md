@@ -7,8 +7,42 @@ Released versions appear here, newest first.
 Tagged releases from this batch: `ovr-map-v0.3.0` and
 `save-inspect-v0.9.5`, joined 2026-09-06 by `ovr-map-v0.3.1`,
 `ovr-map-v0.3.2`, `exe-patch-v0.1.0`, `repro-v0.5.0` and
-`image-extract-v0.5.0` (all git tags pushed with GitHub Releases;
-the entries below are the release notes).
+`image-extract-v0.5.0`, joined 2026-09-11 by
+`region-render-v0.8.0` and `ovr-map-v0.3.4` (all git tags pushed
+with GitHub Releases; the entries below are the release notes).
+
+- **`darkfix-ds1` v0.1.0**: **the first real fix ships.**
+  `fix.ds1.deadtriggers` repoints the four static dead-trigger
+  registrations in `GPLDATA.GFF` from the emptied
+  `GPL-200@0x909` handler (a single orphan `gpl exit gpl` byte)
+  to each object's own working handler: the portcullis guard's
+  combat registration (-255) returns to `GPL-200@0x33b`, the
+  queen's-chamber creatures' look registrations (-2263, -1209)
+  return to `GPL-203@0x389`, and the wyvern-scene creature's
+  look registration (-2248) returns to `GPL-41` entry 1. Each
+  occluding re-registration now re-registers the same working
+  handler, so the fix restores the pre-registration behavior if
+  the engine keeps last registrations and changes nothing if it
+  keeps first: it cannot regress either semantics. This is the
+  concrete DS1 instance of the community's "enemies refuse to
+  engage" class (Darkhold endgame, regions 30/31). Eleven bytes
+  change across three chunks; chunk lengths are untouched. The
+  two further dead registrations that name their object through
+  the runtime variable `GNAME[39]` are deliberately left: no
+  static analysis can pin their object, and their stub is
+  already inert. Authoring ran the full data-surface pipeline
+  (extract via `gff-edit`, label-anchored `gpl-asm --patch`,
+  reinsert via `gff-cat replace`); the shipped EDITS are the
+  verified bytes at absolute offsets, fingerprint-checked by
+  the applier. Proof: re-disassembly of the patched file keeps
+  all 250 chunks aligned with only the two GNAME[39] rows left
+  on the dead-trigger sweep (down from six); `apply.py
+  --selftest` gains a real-install cycle that pins the patched
+  GPLDATA.GFF hash and round-trips byte-identically; the
+  `repro --diff` capture (`bugs/ds1-deadtriggers/`) passes both
+  legs with identical DARKRUN world-state fingerprints. The
+  in-game scene confirmation rides the played-save sessions
+  (roadmap gate).
 
 - **`ovr-map` v0.3.4**: the Ghidra pipeline runs end to end for
   the first time, and the run fixed the three bugs that were

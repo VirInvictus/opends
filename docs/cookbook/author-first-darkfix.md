@@ -2,10 +2,11 @@
 
 The workflow for taking a Dark Sun bug from "it reproduces" to
 "shipped fix in a `darkfix-<game>` release", written as steps you
-can follow. This file is a skeleton: the pipeline pieces below all
-exist and are linked; the narrative walk-through gets filled in as
-Phase 6 authors the first real fix (each step then gains a worked
-example with real commands and real output).
+can follow. Each step carries a worked example from the first real
+fix, `fix.ds1.deadtriggers` (darkfix-ds1 0.1.0, 2026-09-11): the
+Darkhold dead-trigger family. The full analysis lives in
+[`../../ds1-patch/fixes/001-deadtriggers.md`](../../ds1-patch/fixes/001-deadtriggers.md);
+the examples here are the command-level trail.
 
 ## The pipeline at a glance
 
@@ -34,7 +35,13 @@ example with real commands and real output).
 - Record the choice: the bug gets a stable id
   (`fix.dsN.<short-name>`) the day it is picked.
 
-*Worked example: pending the first Phase 6 fix.*
+*Worked example (fix.ds1.deadtriggers):* picked from the sweep
+evidence, not a community report: `dead-trigger-sweep.py` over the
+DS1 dump showed six trigger registrations pointing at one emptied
+handler (`GPL-200@0x909`), and the correlation dig tied all six to
+Darkhold endgame content. Id assigned on pick day; the pick is
+recorded in the Phase 6 pick box of `roadmap.md` with the decision
+provenance.
 
 ## 2. Build the repro fixture
 
@@ -51,7 +58,14 @@ example with real commands and real output).
 python3 tools/repro/repro.py <bug-id>
 ```
 
-*Worked example: pending.*
+*Worked example (fix.ds1.deadtriggers):* the bug scene is
+endgame-only, so the fixture ships in two legs: the harness leg
+(`bugs/ds1-deadtriggers/bug.toml`: boot, run the budget, no scene)
+proves the patched tree boots clean under `--diff` today, and the
+scene leg (a played DARKSAVE.GFF plus a keystroke load-save
+schedule) is documented in the fixture for when the played-save
+gate opens. Ship the leg you can prove; document the one you
+cannot.
 
 ## 3. Characterize it
 
@@ -73,6 +87,15 @@ site report in `docs/dsun-exe-re.md` (or the fix writeup) is
 mandatory before authoring. `ovr-map --syms` catalogue names and
 string-xref anchors (via `scripts/xref-string.py`) are the
 evidence chain.
+
+*Worked example (fix.ds1.deadtriggers):* site location was
+corpus-wide, not single-chunk: dump the whole file
+(`gpl-disasm .games/ds1/GPLDATA.GFF --all -o dump/ --json`), run
+`dead-trigger-sweep.py dump/` for the dead rows, then sweep every
+chunk for other registrations of the same objects to find each
+object's working handler. The registration map (who registers
+what, alive vs dead) is what turns "this handler is empty" into
+"this registration occludes that one".
 
 ## 5. Author the fix
 
@@ -101,6 +124,17 @@ GFF data: `gff-edit`'s write path (`gff-cat replace`) for whole
 chunks; the fix script wraps it
 (`darkfix.patcher.apply_gff_chunk`).
 
+*Worked example (fix.ds1.deadtriggers):* all three tools in one
+pass. Extract each owning chunk (`gff-cat extract .games/ds1/GPLDATA.GFF GPL 195 -o gpl-195.bin`),
+edit with a label-anchored patch script (`gpl-asm --patch
+fix-gpl195.patch gpl-195.bin --dry-run`, then `-o`), reinsert
+(`gff-cat replace ... GPL 195 gpl-195.patched.bin -o ...`), and
+byte-diff the result: the authored file must differ from the
+original at exactly the intended bytes (here: eleven, across
+three chunks). The shipped fix script then embeds the same bytes
+as absolute-offset EDITS so the player-side applier needs no
+tools.
+
 ## 6. Prove it
 
 `repro --diff` runs the fixture twice (baseline vs patched) and
@@ -110,6 +144,15 @@ PASS) is the shape you want.
 ```sh
 python3 tools/repro/repro.py <bug-id> --diff path/to/patched-files/
 ```
+
+*Worked example (fix.ds1.deadtriggers):* the scene is not
+reachable from a cold boot, so the capture proves the
+non-regression half: both legs PASS with identical DARKRUN.GFF
+world-state fingerprints and no sentinel delta. The behavioral
+half is claimed by the static proofs instead (re-disassembly +
+sweep delta, the hash-pinned selftest cycle) and is documented as
+riding the played-save gate. Say plainly which half your capture
+proves; do not let NO VERDICT DELTA read as a pass it is not.
 
 ## 7. Package it
 
@@ -133,4 +176,9 @@ In `dsN-patch/`:
 - The player README install section in `dsN-patch/README.md`
   stays true to what shipped.
 
-*Worked example: pending.*
+*Worked example (fix.ds1.deadtriggers):* releasing as
+darkfix-ds1 0.1.0: VERSION bumped, patchnotes entry added,
+roadmap Phase 6 boxes ticked with the evidence; the
+`darkfix-ds1-v0.1.0` tag is cut by the verbatim procedure
+(message = the patchnotes entry) on Brandon's go, per the
+tag-approval habit.

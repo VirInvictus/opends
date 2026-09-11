@@ -24,8 +24,14 @@ reference_manifest = "docs/source-hashes/ds1-gog-1.10.toml"
 # The applier refuses to run when any of these differ: wrong engine
 # build, already-patched file, or damaged install.
 "DSUN.EXE" = "7bbd84f105b1ebe538a4abdfccdb2bacbf5b4fa763b45fa3a84499780f1d8c96"
+"GPLDATA.GFF" = "405fdadcf703b9ac15d05735e0a74cb41419e9178c6aced9f02538314dd6eb04"
 
 [[fixes]]
 id = "fix.ds1.noop"
 path = "fixes/000-noop.py"
+enabled = true
+
+[[fixes]]
+id = "fix.ds1.deadtriggers"
+path = "fixes/001-deadtriggers.py"
 enabled = true

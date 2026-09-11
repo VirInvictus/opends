@@ -1506,10 +1506,39 @@ authoring should feel like routine work.
       listing, plus the delta block). Exit codes are
       verdict-shaped; both scratch trees are retained. The
       DOSBox-free parts carry a `--selftest`.)
-- [ ] Author the fix using `gpl-disasm` + `gff-edit` (plus the
+- [x] Author the fix using `gpl-disasm` + `gff-edit` (plus the
       Phase 5.7 surface if it turns out to be an EXE fix).
-- [ ] Author the test (hash before/after, in-game repro via
+      (Shipped 2026-09-11 as `fix.ds1.deadtriggers`,
+      darkfix-ds1 0.1.0: GPL-data surface as the pick box
+      preferred. Authoring went extract (`gff-edit`) ->
+      label-anchored `gpl-asm --patch` (fingerprint-checked
+      per chunk) -> reinsert (`gff-cat replace`); the shipped
+      EDITS are those verified bytes at absolute GPLDATA.GFF
+      offsets, so the applier needs no tools at apply time.
+      Eleven bytes across three chunks (GPL-41, GPL-195,
+      GPL-203); chunk lengths untouched. The four static rows
+      repoint to each object's own working handler; the two
+      GNAME[39] rows stay (see the pick note). Re-disassembly
+      of the patched file: 250/250 chunks aligned; the
+      dead-trigger sweep reports only the two GNAME[39] rows,
+      down from six. No EXE surface touched, so the Phase 5.7
+      trio (ovr-map --verify / exe-patch) does not apply here;
+      the agreement proof for this surface is gpl-disasm
+      re-read + the gpl-asm/gff-cat round-trip + repro --diff.)
+- [x] Author the test (hash before/after, in-game repro via
       `tools/repro/`).
+      (Shipped 2026-09-11: `apply.py --selftest` gains a
+      real-install cycle that applies the shipped fix set to
+      copies of every `[target.files]` entry, asserts the
+      patched GPLDATA.GFF hash recorded in
+      `fixes/001-deadtriggers.md` (any EDITS drift fails),
+      verifies, and unapplies byte-identically; skips when
+      `.games/` is absent. Hash test 5.1 = the recorded hash
+      e6b163bd...; in-game repro = the ds1-deadtriggers
+      fixture's `--diff` capture (both legs PASS, DARKRUN
+      world-state fingerprints identical, no sentinel
+      delta: the scene-level behavioral proof rides the
+      played-save gate per the fixture box).)
 - [ ] Tag `darkfix-ds1-v0.1.0`, push GitHub release.
 - [x] Player-facing README explaining install.
       (Rewritten 2026-09-06 in `ds1-patch/README.md`:
@@ -1521,7 +1550,11 @@ authoring should feel like routine work.
       the workflow written down while it's fresh.
       (Skeleton shipped 2026-09-06: all eight pipeline steps
       written with the real tool commands, worked examples
-      marked pending to fill during the first real fix.)
+      marked pending to fill during the first real fix.
+      Examples filled 2026-09-11 from fix.ds1.deadtriggers:
+      each step now carries the real commands, outputs, and
+      the honesty notes (prove the leg you can; say which
+      half a capture proves).)
 
 **Done when**: a stranger could download the v0.1 zip, run
 `apply.py`, launch DS1 in DOSBox, and the bug is gone.

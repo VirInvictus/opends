@@ -7,9 +7,12 @@ Part of the [OpenDS](../README.md) community toolkit. The patch
 ships as `darkfix-ds1` releases; the rest of OpenDS provides the
 tools used to author them.
 
-Status: pre-release. The distribution format and applier are
-built and proven (`v0.0.1`); no bug fixes shipped yet. See
-[`../roadmap.md`](../roadmap.md).
+Status: v0.1.0 ships the first real fix (`fix.ds1.deadtriggers`,
+the Darkhold dead-trigger family: enemies in the endgame that
+refuse to engage and look text that stops working). The
+distribution format and applier were proven in `v0.0.1`. See
+[`../roadmap.md`](../roadmap.md) and `fixes/` for per-fix
+writeups.
 
 ## Layout
 
@@ -81,7 +84,9 @@ Exercises the full apply/verify/unapply cycle in temp dirs: a
 synthetic byte edit, both refusal paths (tampered target, wrong
 site fingerprint), and, when `.games/ds1/` is present, the
 no-op fix round-tripping a copy of the real `DSUN.EXE`
-byte-identically. Never touches the canonical install.
+byte-identically plus the shipped fix set applied to copies of
+every file the manifest touches (the deadtriggers cycle pins the
+patched `GPLDATA.GFF` hash). Never touches the canonical install.
 
 ## Authoring a new fix
 
