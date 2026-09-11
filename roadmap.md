@@ -1396,13 +1396,17 @@ authoring should feel like routine work.
       > (gitignored; the embeddable Python zip is re-
       > downloadable). Still open, Brandon's side: one run on
       > real Windows, and the §5.20 dependency stance.
-- [ ] Pick one trivial DS1 bug (identified during Phase 2 repro
+- [x] Pick one trivial DS1 bug (identified during Phase 2 repro
       work). Prefer a GPL-data fix if one is available: it
       exercises `gpl-asm --patch` + `gff-edit` and defers the
       EXE surface until Phase 5.7 exists. Prefer, second, a
       bug whose site the Phase 5.6.3 census has already
       characterized, so the fix proves the pipeline instead
       of paying the archaeology tax.
+      (PICKED 2026-09-11: candidate A, the dead-trigger
+      stubbed-actor handler; full provenance in the note
+      below. Brandon's nod landed pre-blitz; the fix is
+      GPL-data and shipped in the same pass.)
       > Shortlist progress 2026-09-06: sweep (1) EXECUTED as
       > `tools/gpl-disasm/scripts/global-state-sweep.py`
       > (gpl-disasm 0.7.0), validated by re-measuring DS2's
@@ -1462,6 +1466,24 @@ authoring should feel like routine work.
 > or restore handler content at 0x909. Also rode along:
 > file-formats.md's ETAB `ojff_number` row now records
 > the negative encoding (measured on RGN1E/RGN1F).
+> PICKED 2026-09-11 (Brandon, pre-blitz): **candidate A**,
+> the dead-trigger stubbed-actor handler. Decision
+> provenance: recommended here over GF[395] because
+> Phase 6's own preference order (data surface, census-
+> characterized site, player-visible symptom) favors it,
+> and the 2026-09-10 correlation dig supplied the
+> symptom evidence; GF[395] has no attachable symptom.
+> Count correction from the sweep output: SIX dead
+> registering instructions, not five (GPL-41@0x1d,
+> GPL-195@0x2b, GPL-203@0x3a2/0x3fe/0x406/0x40e). The
+> shipped fix repoints the four STATIC rows to each
+> object's own working handler (semantics-proof: a no-op
+> if the engine keeps first registrations, a restoration
+> if it keeps last) and leaves the two GNAME[39] rows
+> untouched: their object is a runtime variable with no
+> statically provable correct handler, and their stub is
+> already inert. Fix = `fix.ds1.deadtriggers` (the
+> author box below).
 - [ ] Repro fixture for the chosen bug
       (`tools/repro/bugs/<id>/bug.toml`) so the fix is
       verifiable. Requires ydotool installed locally; repro
