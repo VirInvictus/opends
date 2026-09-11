@@ -380,7 +380,7 @@ Four original leverage points, in order of cost:
       names in `--verify` / `--disasm` / `--callgraph`,
       selftest bound-checks rows; seeded with `load_resource`
       both games and the two overlay-manager bodies.)
-- [ ] **Ghidra pipeline made real and persisted.** Re-run the
+- [x] **Ghidra pipeline made real and persisted.** Re-run the
       headless import and keep the project plus exported
       function lists under `scratch/` (gitignored), with the
       `analyzeHeadless` recipe checked into `docs/`; add the
