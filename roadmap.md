@@ -1400,9 +1400,9 @@ authoring should feel like routine work.
       > applier needed zero changes; it is pure stdlib. The
       > scratch rig lives in scratch/wine-applier-proof/
       > (gitignored; the embeddable Python zip is re-
-      > downloadable). Still open, Brandon's side: one run on
-      > real Windows, and the §5.20 dependency stance.
-- [x] Pick one trivial DS1 bug (identified during Phase 2 repro
+      > downloadable). Still open, Brandon's side: one run on a real
+      > Windows. (The §5.20 dependency stance closed 2026-09-06:
+      > nasm, no keystone.)
       work). Prefer a GPL-data fix if one is available: it
       exercises `gpl-asm --patch` + `gff-edit` and defers the
       EXE surface until Phase 5.7 exists. Prefer, second, a
@@ -1706,6 +1706,7 @@ that makes it possible. If someone else picks up the toolkit
 and ships an engine first, that is a successful outcome.
 
 ## Backlog (deferred items with triggers)
+  *(RATIFIED 2026-09-12 (Brandon): the 2026-09-10 disposition drafts stand as drafted: six keep-deferred with their triggers, the repro save-curation folds into the shipped bug pick, opcode-fuzz reframes to JSON recipes, and extract.sh stays deferred (its deletion declined).)*
 
 Everything still open from the shipped phases, each with the
 condition that promotes it into scheduled work. Nothing here is
