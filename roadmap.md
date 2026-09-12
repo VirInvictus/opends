@@ -24,9 +24,12 @@ authoring fixes is plumbing, not archaeology.
 Each phase ships a deliverable that is useful on its own,
 independent of whether later phases happen.
 
-## Where we are (snapshot 2026-09-04)
+## Where we are (snapshot 2026-09-12)
 
-Phases 0 through 5.5 are shipped. The toolkit reads, writes,
+Phases 0 through 5.7 are shipped, and Phase 6 shipped its first
+fix on 2026-09-11: darkfix-ds1 0.1.0 (`fix.ds1.deadtriggers`),
+tagged and released; only the real-Windows half of its applier
+box stays open. The toolkit reads, writes,
 round-trips, renders, and reassembles the games' data, and the
 engine binary is segmented and addressable. Revised 2026-09-04
 after a four-agent deep-dive of the whole collection (tooling,
@@ -87,6 +90,9 @@ What the digging surface looks like today:
   `tools/exe-patch` v0.1.0 (Phase 5.7, 2026-09-06): `ovr:`
   and symbol-relative addressing, mandatory `bytes_old`,
   a `--verify` gate, and the in-place-only rule enforced.
+  Phase 6 then shipped the first real fix through the pipeline:
+  darkfix-ds1 0.1.0 (`fix.ds1.deadtriggers`), tagged and
+  released 2026-09-11.
 
 Open items from the shipped phases are consolidated in the
 [Backlog](#backlog-deferred-items-with-triggers) at the end,
