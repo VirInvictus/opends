@@ -103,9 +103,14 @@ event, missing branch, off-by-one) and some are item/region/
 dialogue data bugs. These live in `GPLDATA.GFF`, `RESOURCE.GFF`,
 `SEGOBJEX.GFF`/`OBJEX.GFF`, and the various `RGN*.GFF` files.
 
-Authoring tool: **`gff-tool`** from
-[`JohnGlassmyer/dsun_music`](https://github.com/JohnGlassmyer/dsun_music)
-— the only public GFF *writer*. We extract a chunk, edit, replace.
+Authoring tool: our own **`gff-edit`** (`gff-cat replace` for
+chunk reinsertion). When this section was first written, the only
+public GFF *writer* was `gff-tool` from
+[`JohnGlassmyer/dsun_music`](https://github.com/JohnGlassmyer/dsun_music);
+OpenDS now ships its own writer, with `replaceResource`'s
+in-place-or-append policy ported from `GffFile.java` (see
+[`CREDITS.md`](CREDITS.md)). The loop is unchanged: extract a
+chunk, edit, replace.
 
 Each fix produces:
 
@@ -146,27 +151,40 @@ Each binary fix:
 
 ## 4. Patch artifact format
 
+*(Updated 2026-09-12 to the shape darkfix-ds1 0.1.0 actually
+ships; the authoritative artifact specification is
+[`docs/fix-format.md`](docs/fix-format.md), which absorbs the
+earlier sketches in `binary-patching.md` and here.)*
+
 A darkfix patch is a directory tree:
 
 ```
-darkfix-ds2-v0.1.0/
-├── manifest.toml         # version, target hashes, fix list
-├── fixes/
-│   ├── data/
-│   │   ├── 001-mines-elevator.bin    # patched GFF chunk
-│   │   └── ...
-│   └── binary/
-│       ├── 042-combat-ai.bsdiff
-│       └── ...
-└── apply.py              # the applier
+darkfix-ds1-v0.1.0/            # the release zip, flattened
+├── manifest.toml         # target hashes and the fix list
+├── apply.py              # the applier
+│                         #   (repo path: ds1-patch/scripts/apply.py)
+├── darkfix/              # the engine the applier and fixes share
+│                         #   (repo path: ds1-patch/scripts/darkfix/)
+└── fixes/
+    ├── 001-deadtriggers.md    # per-fix writeup: symptom, cause, fix
+    ├── 001-deadtriggers.py    # the fix script the applier runs
+    └── ...
 ```
 
-`manifest.toml` declares:
+In the repo the patch lives under `ds1-patch/` with `apply.py`
+under `scripts/`; the release zip flattens it so the player can
+run `python3 apply.py <game folder>` from the unzipped root.
+
+`manifest.toml` (schema version 1) declares:
 
 - Target game (`ds1` or `ds2`)
-- Required source hashes (rejects mismatched installs)
+- Required source hashes (rejects mismatched installs): every
+  file at least one enabled fix touches, hashed on the canonical
+  install
 - Ordered list of fixes with on/off state
-- Version, license, contact info
+- License and homepage; the patch version lives in the
+  directory's `VERSION` file and is never duplicated in the
+  manifest
 
 `apply.py`:
 
@@ -223,17 +241,20 @@ See [`docs/gpl-bytecode.md`](docs/gpl-bytecode.md).
 | Tool                  | Purpose                                  |
 |-----------------------|------------------------------------------|
 | `innoextract`         | Unpack GOG installer EXE                 |
-| `dsun_music gff-tool` | Read/write GFF chunks                    |
+| `gff-edit` / `gff-cat`| Read/write GFF chunks (our own writer)   |
 | `libgff gfftool`      | Reference reader, extraction sanity      |
 | `dosbox-staging`      | Run the original game for repro/testing  |
 | `radare2` / `r2`      | Disassemble & patch DSUN.EXE             |
 | `ghidra`              | Heavier static analysis on DSUN.EXE      |
-| `bsdiff` / `bspatch`  | Distribute binary patches                |
+| `nasm`                | Assemble 16-bit patch bytes (`exe-patch --asm`) |
 | `python3`             | Applier script and authoring helpers    |
 | `flac`/`vorbis-tools` | Inspect DS2 redbook OGG tracks (rarely)  |
 
-All available on Fedora via `dnf` (or pip/cargo for niche tools).
-See [`docs/build-environment.md`](docs/build-environment.md).
+`bsdiff`/`bspatch` were dropped 2026-09-06: fixes are in-place
+offset-keyed byte edits, so no diff format is needed.
+
+All available on Fedora via `dnf`. See
+[`docs/build-environment.md`](docs/build-environment.md).
 
 ## 7a. Implementation languages
 
@@ -257,7 +278,7 @@ Tool-by-tool assignment:
 | `gpl-disasm`                          | Rust                                              |
 | `dialog-extract`                      | Python                                            |
 | `save-inspect`                        | Python                                            |
-| `region-view`                         | Rust                                              |
+| `region-render`                       | Rust                                              |
 | `gpl-asm`                             | Rust                                              |
 | `opcode-fuzz`                         | Python (drives DOSBox debugger over IPC)          |
 | Per-fix patch scripts                 | Python                                            |
@@ -284,7 +305,7 @@ Tool-by-tool assignment:
 
 A single-language toolkit was considered. Python-only loses the
 engine-inheritable foundation Rust gives (`gff-edit`,
-`gpl-disasm`, `gpl-asm`, `region-view`): those crates are
+`gpl-disasm`, `gpl-asm`, `region-render`): those crates are
 exactly the artifacts a future engine project would want to
 absorb without rewriting. Rust-only adds build complexity to
 tools that don't need it (verify-install, per-fix scripts, the
@@ -302,6 +323,8 @@ opends/
 ├── spec.md                 # this file
 ├── roadmap.md
 ├── patchnotes.md
+├── CREDITS.md              # per-feature upstream attribution
+├── LICENSE
 ├── logo.svg
 ├── .gitignore              # .games/, scratch/
 ├── docs/
