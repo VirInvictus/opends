@@ -122,10 +122,14 @@ An independent, earlier reverse-engineering effort. Four CLI tools:
 - `image-tool`: render bitmap chunks to TIFF
 - `region-tool`: render terrain to TIFF
 
-**darkfix strategy**: `gff-tool`'s **write support** is the keystone of
-the data-patch path. Every GPL fix flows through it: extract the
-chunk, edit, replace. We may eventually fork or rewrite it in Python
-to drop the JVM dependency, but for v1 it's our primary editor.
+**Historical role**: `gff-tool`'s **write support** was the
+original keystone of the data-patch path, back when it was the
+only public GFF writer. Superseded by our own `gff-edit`
+(spec §3.1): its in-place-or-append `replaceResource` policy is
+what `gff-edit` ports (credited in [`../CREDITS.md`](../CREDITS.md)),
+and every GPL fix now flows through `gff-edit` + `gpl-asm`, no
+JVM required. `gff-tool` remains the reference implementation of
+the writer policy.
 
 ## 3. DarkSunOnline (Greg Kennedy)
 

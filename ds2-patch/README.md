@@ -18,8 +18,9 @@ Status: pre-release. No fixes shipped yet. See
 section 2.1).
 
 The applier machinery is proven on the DS1 side
-([`../ds1-patch/`](../ds1-patch/) v0.0.1: manifest schema,
-`apply.py`, the `darkfix` engine, no-op round-trip). The scripts
+([`../ds1-patch/`](../ds1-patch/): the distribution format and
+no-op round-trip landed in v0.0.1, and v0.1.0 shipped the first
+real fix, `fix.ds1.deadtriggers`, 2026-09-11). The scripts
 below get populated from that proven shape when Phase 7 starts;
 decide then whether `scripts/darkfix/` is promoted to shared
 tooling or copied per patch.
