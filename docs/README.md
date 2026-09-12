@@ -39,9 +39,11 @@ authoring guide (GPL edit or binary patch, and how to choose);
 [`fix-format.md`](fix-format.md) is the authoritative patch
 artifact specification (what the applier runs).
 The applier is real: [`../ds1-patch/`](../ds1-patch/)
-(v0.0.1) ships `apply.py` + the `darkfix` engine that verify an
-install against the canonical hashes, back up, apply, journal,
-and unapply; `apply.py --selftest` proves the whole cycle.
+(darkfix-ds1, now at 0.1.0) ships `apply.py` + the `darkfix`
+engine that verify an install against the canonical hashes, back
+up, apply, journal, and unapply; `apply.py --selftest` proves the
+whole cycle, and v0.1.0 shipped the first real fix
+(`fix.ds1.deadtriggers`, 2026-09-11).
 [`binary-patching.md`](binary-patching.md) covers the
 EXE-patching path in detail. [`known-bugs.md`](known-bugs.md) is
 the target list. [`source-hashes/`](source-hashes/) holds the
@@ -111,11 +113,3 @@ single source of planning truth), and
 [`patchnotes.md`](../patchnotes.md) (per-tool release history,
 newest first). The per-tool overview lives in
 [`../tools/README.md`](../tools/README.md).
-
-The repo root holds the
-project-level documents:
-[`spec.md`](../spec.md) (the contract; read before changing
-semantics), [`roadmap.md`](../roadmap.md) (phase status, the
-single source of planning truth), and
-[`patchnotes.md`](../patchnotes.md) (per-tool release history,
-newest first).
