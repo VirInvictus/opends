@@ -34,11 +34,29 @@ from pathlib import Path
 import tomllib
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
-DEFAULT_PATCH_ROOT = SCRIPTS_DIR.parent
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
-from darkfix import patcher as P
+from darkfix import patcher as P  # noqa: E402 (after the sys.path setup)
+
+
+def _default_patch_root() -> Path:
+    """Patch root for direct CLI runs, in either shipped shape.
+
+    Repo layout: apply.py lives in <patch>/scripts/, so the root is
+    the parent directory. Release zips flatten per spec.md section 4:
+    apply.py sits beside manifest.toml, so the root is the script's
+    own directory.
+    """
+    for candidate in (SCRIPTS_DIR.parent, SCRIPTS_DIR):
+        if (candidate / "manifest.toml").is_file():
+            return candidate
+    # Neither shape found: keep the repo-layout default so the
+    # manifest error is the one the player sees.
+    return SCRIPTS_DIR.parent
+
+
+DEFAULT_PATCH_ROOT = _default_patch_root()
 
 
 @dataclass
@@ -124,6 +142,12 @@ def cmd_apply(layout: Layout, install: Path, *, check_all: bool = False) -> int:
     disabled = [e for e in manifest["fixes"] if not e.get("enabled", True)]
     journal = P.read_journal(install)
     if journal is not None:
+        if journal.get("status", "applied") == "pending":
+            raise P.PatchError(
+                f"an interrupted apply left a pending {P.JOURNAL_NAME} in"
+                f" {install}; darkfix-backup/ holds the pristine copies of"
+                f" the files it reached; run --unapply to restore them"
+            )
         applied_ids = [f.get("id") for f in journal.get("fixes", [])]
         if applied_ids == [e["id"] for e in enabled]:
             print(
@@ -142,9 +166,20 @@ def cmd_apply(layout: Layout, install: Path, *, check_all: bool = False) -> int:
     print(f"darkfix: {name} {version}")
     print(f"install: {install}")
     prepared = []
+    records = []
+    seen_targets: dict[str, str] = {}
     for entry in enabled:
         module = load_fix_module(layout.patch_root / entry["path"])
         target_rel = check_fix_contract(module, entry, target_files)
+        other = seen_targets.get(target_rel)
+        if other is not None:
+            raise P.ManifestError(
+                f"{module.ID} and {other} both target {target_rel}: two"
+                f" fix scripts cannot compose against one file, so the"
+                f" second write would corrupt the first fix; disable one"
+                f" of them in the manifest"
+            )
+        seen_targets[target_rel] = module.ID
         target = install / target_rel
         if not target.is_file():
             raise P.PatchError(f"{module.ID}: target file not found: {target}")
@@ -154,7 +189,10 @@ def cmd_apply(layout: Layout, install: Path, *, check_all: bool = False) -> int:
                 f"{module.ID}: {target_rel} does not match the canonical"
                 f" GOG 1.10 hash.\n  expected: {module.SOURCE_SHA256}\n"
                 f"  actual:   {current}\n"
-                f"  (already patched? wrong build? damaged install?)"
+                f"  (already patched? wrong build? damaged install?)\n"
+                f"  (an apply that was interrupted before it finished"
+                f" leaves the originals in {P.BACKUP_DIR}/ inside the"
+                f" game folder)"
             )
         edits = [
             P.Edit.from_dict(d, what=f"{module.ID} edit {i}")
@@ -163,25 +201,6 @@ def cmd_apply(layout: Layout, install: Path, *, check_all: bool = False) -> int:
         source_bytes = target.read_bytes()
         patched = P.apply_edits(source_bytes, edits, what=module.ID)
         prepared.append((module, target_rel, source_bytes, patched))
-        print(f"  checked {module.ID} ({target_rel}, {len(edits)} site(s))")
-    for entry in disabled:
-        print(f"  skipped {entry['id']} (disabled in manifest)")
-
-    # Write phase.
-    backed_up: set[str] = set()
-    records = []
-    for module, target_rel, source_bytes, patched in prepared:
-        target = install / target_rel
-        if P.sha256_file(target) != module.SOURCE_SHA256:
-            raise P.HashMismatch(
-                f"{module.ID}: {target_rel} changed during apply; aborting"
-            )
-        if target_rel not in backed_up:
-            P.backup_file(install, target_rel)
-            backed_up.add(target_rel)
-        tmp = target.with_name(target.name + ".darkfix-tmp")
-        tmp.write_bytes(patched)
-        os.replace(tmp, target)
         records.append(
             {
                 "id": module.ID,
@@ -194,14 +213,40 @@ def cmd_apply(layout: Layout, install: Path, *, check_all: bool = False) -> int:
                 ],
             }
         )
-        print(f"  applied {module.ID} -> {target_rel}")
+        print(f"  checked {module.ID} ({target_rel}, {len(edits)} site(s))")
+    for entry in disabled:
+        print(f"  skipped {entry['id']} (disabled in manifest)")
 
+    # Pending journal first: if the write phase dies between the
+    # first write and the last, what is on disk says so, and
+    # --unapply can recover from darkfix-backup/ instead of leaving
+    # a half-apply nothing will talk about.
     journal = {
         "tool": name,
         "version": version,
         "applied_at": P.utc_now_iso(),
+        "status": "pending",
         "fixes": records,
     }
+    P.write_journal(install, journal)
+
+    # Write phase.
+    backed_up: set[str] = set()
+    for module, target_rel, source_bytes, patched in prepared:
+        target = install / target_rel
+        if P.sha256_file(target) != module.SOURCE_SHA256:
+            raise P.HashMismatch(
+                f"{module.ID}: {target_rel} changed during apply; aborting"
+            )
+        if target_rel not in backed_up:
+            P.backup_file(install, target_rel)
+            backed_up.add(target_rel)
+        tmp = target.with_name(target.name + P.STAGED_SUFFIX)
+        tmp.write_bytes(patched)
+        os.replace(tmp, target)
+        print(f"  applied {module.ID} -> {target_rel}")
+
+    journal["status"] = "applied"
     P.write_journal(install, journal)
     print(f"\nOK: {len(records)} fix(es) applied.")
     print(f"Journal: {install / P.JOURNAL_NAME}")
@@ -216,12 +261,35 @@ def cmd_unapply(layout: Layout, install: Path) -> int:
     name = manifest["meta"]["name"]
     journal = P.read_journal(install)
     if journal is None:
-        raise P.NotApplied(f"no {P.JOURNAL_NAME} in {install}; nothing to unapply")
-    restored = P.restore_from_backup(install, journal)
+        message = f"no {P.JOURNAL_NAME} in {install}; nothing to unapply"
+        if P.backup_root(install).is_dir():
+            message += (
+                f"\n  {P.BACKUP_DIR}/ exists without a journal; if an"
+                f" apply was interrupted before it wrote anything,"
+                f" restore manually by copying those files back over"
+                f" the game files"
+            )
+        raise P.NotApplied(message)
+    pending = journal.get("status", "applied") == "pending"
+    restored = P.restore_from_backup(install, journal, pending=pending)
+    skipped = []
+    if pending:
+        journaled = [
+            f["path"] for fix in journal["fixes"] for f in fix.get("files", [])
+        ]
+        skipped = [rel for rel in journaled if rel not in restored]
     (install / P.JOURNAL_NAME).unlink()
-    print(f"{name} {layout.version}: unapplied")
+    if pending:
+        print(f"{name} {layout.version}: recovered from an interrupted apply")
+    else:
+        print(f"{name} {layout.version}: unapplied")
     for rel in restored:
         print(f"  restored {rel}")
+    for rel in skipped:
+        print(
+            f"  untouched {rel} (no backup: the interrupted apply never"
+            f" reached this file)"
+        )
     print("\nOK: install restored to its pre-patch state.")
     return 0
 
@@ -370,43 +438,60 @@ def _make_patch(
     target_hash: str,
     edits: list[P.Edit],
 ) -> tuple[Path, str]:
-    """Generate a minimal self-contained patch tree in tmp.
+    """Single-target form of _make_multi_patch."""
+    root = _make_multi_patch(tmp, name, [(target, target_hash, edits)])
+    return root, f"fix.selftest.{name}.0"
 
-    Returns (patch_root, fix_id). The generated fix script goes
-    through the real load path, not a shortcut.
+
+def _make_multi_patch(
+    tmp: Path,
+    name: str,
+    targets: list[tuple[str, str, list[P.Edit]]],
+) -> Path:
+    """Generate a self-contained patch tree in tmp with one fix per
+    (target, hash, edits) entry. The same target may appear twice:
+    that is how the composition refusal is exercised. The generated
+    fix scripts go through the real load path, not a shortcut.
     """
     root = tmp / name
     (root / "fixes").mkdir(parents=True)
-    fid = f"fix.selftest.{name}"
-    lines = [
-        '"""Selftest fix: generated by apply.py --selftest."""',
-        "",
-        "from darkfix.patcher import apply_bytes",
-        "",
-        f'ID = "{fid}"',
-        f'TARGET = "{target}"',
-        f'SOURCE_SHA256 = "{target_hash}"',
-    ]
-    if edits:
-        lines.append("EDITS = [")
-        for e in edits:
-            lines.append(
-                f'    {{"offset": {e.offset},'
-                f' "expect": "{e.expect.hex()}",'
-                f' "replace": "{e.replace.hex()}"}},'
-            )
-        lines.append("]")
-    else:
-        lines.append("EDITS = []")
-    lines += [
-        "",
-        "",
-        "def apply(source_path, dest_path):",
-        "    apply_bytes(source_path, dest_path, EDITS)",
-        "",
-    ]
-    (root / "fixes" / "000-selftest.py").write_text("\n".join(lines))
+    entries = []
+    for i, (target, target_hash, edits) in enumerate(targets):
+        fid = f"fix.selftest.{name}.{i}"
+        lines = [
+            '"""Selftest fix: generated by apply.py --selftest."""',
+            "",
+            "from darkfix.patcher import apply_bytes",
+            "",
+            f'ID = "{fid}"',
+            f'TARGET = "{target}"',
+            f'SOURCE_SHA256 = "{target_hash}"',
+        ]
+        if edits:
+            lines.append("EDITS = [")
+            for e in edits:
+                lines.append(
+                    f'    {{"offset": {e.offset},'
+                    f' "expect": "{e.expect.hex()}",'
+                    f' "replace": "{e.replace.hex()}"}},'
+                )
+            lines.append("]")
+        else:
+            lines.append("EDITS = []")
+        lines += [
+            "",
+            "",
+            "def apply(source_path, dest_path):",
+            "    apply_bytes(source_path, dest_path, EDITS)",
+            "",
+        ]
+        script = f"{i:03d}-selftest.py"
+        (root / "fixes" / script).write_text("\n".join(lines))
+        entries.append((fid, script, target, target_hash))
     (root / "VERSION").write_text("0.0.1\n")
+    file_hashes: dict[str, str] = {}
+    for _fid, _script, target, target_hash in entries:
+        file_hashes[target] = target_hash
     manifest = (
         "[meta]\n"
         "schema_version = 1\n"
@@ -419,15 +504,15 @@ def _make_patch(
         'engine_version = "1.10"\n'
         "\n"
         "[target.files]\n"
-        f'"{target}" = "{target_hash}"\n'
-        "\n"
-        "[[fixes]]\n"
-        f'id = "{fid}"\n'
-        'path = "fixes/000-selftest.py"\n'
-        "enabled = true\n"
+        + "".join(f'"{t}" = "{h}"\n' for t, h in file_hashes.items())
+        + "\n"
+        + "".join(
+            f'[[fixes]]\nid = "{fid}"\npath = "fixes/{script}"\nenabled = true\n\n'
+            for fid, script, _t, _h in entries
+        )
     )
     (root / "manifest.toml").write_text(manifest)
-    return root, fid
+    return root
 
 
 def selftest() -> int:
@@ -507,6 +592,153 @@ def selftest() -> int:
         rc = run([str(install)], patch_root=bad_root)
         ok("apply refuses a wrong fingerprint", rc == 1)
         ok("wrong-fingerprint site left untouched", target.read_bytes() == tampered)
+
+        # Interrupted-write recovery: a crash between the first file
+        # write and the completed journal leaves a patched file, a
+        # pristine backup, and a pending journal. Stage exactly that
+        # by hand, then prove the refusal and the --unapply recovery.
+        inst2 = tmp / "inst2"
+        inst2.mkdir()
+        data2 = _synth_bytes(2048)
+        t2 = inst2 / "TEST.DAT"
+        t2.write_bytes(data2)
+        h2 = P.sha256_bytes(data2)
+        e2 = P.Edit(offset=0x8, expect=data2[0x8:0xA], replace=b"\x11\x22")
+        p2 = P.apply_edits(data2, [e2])
+        root2, _ = _make_patch(tmp, "interrupted", "TEST.DAT", h2, [e2])
+        P.backup_file(inst2, "TEST.DAT")
+        t2.write_bytes(p2)
+        P.write_journal(
+            inst2,
+            {
+                "tool": "interrupted",
+                "version": "0.0.1",
+                "applied_at": P.utc_now_iso(),
+                "status": "pending",
+                "fixes": [
+                    {
+                        "id": "fix.selftest.interrupted.0",
+                        "files": [
+                            {
+                                "path": "TEST.DAT",
+                                "original_sha256": h2,
+                                "patched_sha256": P.sha256_bytes(p2),
+                            }
+                        ],
+                    }
+                ],
+            },
+        )
+        rc = run([str(inst2)], patch_root=root2)
+        ok("apply refuses while a pending journal is present", rc == 1)
+        ok(
+            "pending-journal install left untouched by the refusal",
+            t2.read_bytes() == p2,
+        )
+        rc = run([str(inst2), "--unapply"], patch_root=root2)
+        ok("unapply recovers a pending-journal install", rc == 0)
+        ok("recovered install is byte-identical", t2.read_bytes() == data2)
+        ok("pending journal consumed", P.read_journal(inst2) is None)
+        ok(
+            "recovery consumed the backup",
+            not (P.backup_root(inst2) / "TEST.DAT").exists(),
+        )
+
+        # Partial state: two fixes on two targets, only the first
+        # written before the crash. --unapply restores the written
+        # file, leaves the never-reached file alone, and clears the
+        # stray staged tmp from the interrupted rename.
+        inst3 = tmp / "inst3"
+        inst3.mkdir()
+        data_a = _synth_bytes(1024)
+        data_b = _synth_bytes(1024)
+        t_a = inst3 / "A.DAT"
+        t_b = inst3 / "B.DAT"
+        t_a.write_bytes(data_a)
+        t_b.write_bytes(data_b)
+        h_a = P.sha256_bytes(data_a)
+        h_b = P.sha256_bytes(data_b)
+        e_a = P.Edit(offset=0x4, expect=data_a[0x4:0x6], replace=b"\x55\x66")
+        e_b = P.Edit(offset=0x10, expect=data_b[0x10:0x12], replace=b"\x33\x44")
+        p_a = P.apply_edits(data_a, [e_a])
+        p_b = P.apply_edits(data_b, [e_b])
+        root3 = _make_multi_patch(
+            tmp, "partial", [("A.DAT", h_a, [e_a]), ("B.DAT", h_b, [e_b])]
+        )
+        P.backup_file(inst3, "A.DAT")
+        t_a.write_bytes(p_a)
+        (inst3 / "B.DAT.darkfix-tmp").write_bytes(p_b)
+        P.write_journal(
+            inst3,
+            {
+                "tool": "partial",
+                "version": "0.0.1",
+                "applied_at": P.utc_now_iso(),
+                "status": "pending",
+                "fixes": [
+                    {
+                        "id": "fix.selftest.partial.0",
+                        "files": [
+                            {
+                                "path": "A.DAT",
+                                "original_sha256": h_a,
+                                "patched_sha256": P.sha256_bytes(p_a),
+                            }
+                        ],
+                    },
+                    {
+                        "id": "fix.selftest.partial.1",
+                        "files": [
+                            {
+                                "path": "B.DAT",
+                                "original_sha256": h_b,
+                                "patched_sha256": P.sha256_bytes(p_b),
+                            }
+                        ],
+                    },
+                ],
+            },
+        )
+        rc = run([str(inst3)], patch_root=root3)
+        ok("apply refuses the partial interrupted state", rc == 1)
+        rc = run([str(inst3), "--unapply"], patch_root=root3)
+        ok("unapply recovers the partial interrupted state", rc == 0)
+        ok("written file restored", t_a.read_bytes() == data_a)
+        ok("unreached file untouched", t_b.read_bytes() == data_b)
+        ok("stray staged tmp removed", not (inst3 / "B.DAT.darkfix-tmp").exists())
+        ok("partial journal removed", P.read_journal(inst3) is None)
+        ok(
+            "partial A backup consumed",
+            not (P.backup_root(inst3) / "A.DAT").exists(),
+        )
+
+        # Two enabled fixes sharing one target refuse at check time,
+        # before anything is written or journaled.
+        inst4 = tmp / "inst4"
+        inst4.mkdir()
+        data4 = _synth_bytes(2048)
+        t4 = inst4 / "TEST.DAT"
+        t4.write_bytes(data4)
+        h4 = P.sha256_bytes(data4)
+        e4a = P.Edit(offset=0x8, expect=data4[0x8:0xA], replace=b"\x11\x22")
+        e4b = P.Edit(offset=0x20, expect=data4[0x20:0x22], replace=b"\x33\x44")
+        root4 = _make_multi_patch(
+            tmp, "compose", [("TEST.DAT", h4, [e4a]), ("TEST.DAT", h4, [e4b])]
+        )
+        rc = run([str(inst4)], patch_root=root4)
+        ok("apply refuses two fixes on one target", rc == 1)
+        ok("composition refusal left the target untouched", t4.read_bytes() == data4)
+        ok("composition refusal wrote no journal", P.read_journal(inst4) is None)
+
+        # A negative edit offset is refused instead of wrapping
+        # around Python's slice semantics into the wrong bytes.
+        try:
+            P.Edit.from_dict(
+                {"offset": -4, "expect": "aa", "replace": "bb"}, what="guard"
+            )
+            ok("negative edit offset refused", False)
+        except P.PatchError:
+            ok("negative edit offset refused", True)
 
     exe = DEFAULT_PATCH_ROOT.parent / ".games" / "ds1" / "DSUN.EXE"
     if exe.is_file():

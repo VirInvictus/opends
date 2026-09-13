@@ -192,7 +192,11 @@ run `python3 apply.py <game folder>` from the unzipped root.
 - Backs up touched files to `darkfix-backup/` next to them.
 - Applies each enabled fix.
 - Writes a `darkfix-applied.json` next to the game files for
-  later un-applying or upgrading.
+  later un-applying or upgrading. The journal is written as
+  *pending* before the first write and completed after the last:
+  an apply interrupted partway is refused on the next run, and
+  `--unapply` restores what the interrupted run reached from
+  `darkfix-backup/` instead of stranding a half-apply.
 
 Reverse step (`apply.py --unapply`) restores from `darkfix-backup/`.
 
@@ -213,7 +217,10 @@ Each fix:
    and the bug is gone on a patched install.
 
 Fixes are not bundled into one giant patch. Each fix is independent
-and can be enabled or disabled.
+and can be enabled or disabled. Two enabled fixes must not target
+the same file: no fix script knows another's edits, so the applier
+refuses that manifest at check time (before any write) rather than
+letting the second write corrupt the first fix.
 
 ## 6. GPL bytecode
 

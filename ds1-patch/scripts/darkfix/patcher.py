@@ -27,6 +27,9 @@ import tomllib
 # Written inside the game install, next to the patched files.
 BACKUP_DIR = "darkfix-backup"
 JOURNAL_NAME = "darkfix-applied.json"
+# Apply writes each patched file through <name>.darkfix-tmp before
+# the atomic rename onto the target.
+STAGED_SUFFIX = ".darkfix-tmp"
 
 
 class PatchError(Exception):
@@ -138,8 +141,16 @@ class Edit:
         missing = [k for k in ("offset", "expect", "replace") if k not in d]
         if missing:
             raise PatchError(f"{what}: missing keys {missing}")
+        offset = int(d["offset"])
+        if offset < 0:
+            # A negative offset must not reach the slicing in
+            # apply_edits: Python would wrap it around from the end
+            # of the file and patch the wrong bytes silently.
+            raise PatchError(
+                f"{what}: offset must be a non-negative integer, got {offset}"
+            )
         return cls(
-            offset=int(d["offset"]),
+            offset=offset,
             expect=_coerce_bytes(d["expect"], f"{what}.expect"),
             replace=_coerce_bytes(d["replace"], f"{what}.replace"),
         )
@@ -292,12 +303,20 @@ def read_journal(install: Path) -> dict | None:
         ) from None
 
 
-def restore_from_backup(install: Path, journal: dict) -> list[str]:
+def restore_from_backup(
+    install: Path, journal: dict, *, pending: bool = False
+) -> list[str]:
     """Restore every journaled file from darkfix-backup/.
 
     All backups are hash-verified against the journal before any
     restore begins; consumed backups are deleted and empty
     directories pruned. Returns the restored relative paths.
+
+    With pending=True (an interrupted apply: the journal was written
+    before the first file), entries without a backup are skipped
+    rather than refused: a file whose backup is absent was never
+    written, so it needs no restore. Leftover staged
+    <name>.darkfix-tmp files from the interrupted write are removed.
     """
     wanted: list[tuple[str, str]] = []
     for fix in journal.get("fixes", []):
@@ -305,9 +324,12 @@ def restore_from_backup(install: Path, journal: dict) -> list[str]:
             wanted.append((f["path"], f["original_sha256"]))
     if not wanted:
         raise PatchError("journal records no files; nothing to restore")
+    verified: list[tuple[str, str]] = []
     for rel, want in wanted:
         src = backup_root(install) / rel
         if not src.is_file():
+            if pending:
+                continue
             raise PatchError(
                 f"backup missing: {src}; the install cannot be reverted automatically"
             )
@@ -316,12 +338,20 @@ def restore_from_backup(install: Path, journal: dict) -> list[str]:
             raise HashMismatch(
                 f"backup {src} does not match the journaled original hash"
             )
+        verified.append((rel, want))
     restored: list[str] = []
-    for rel, _ in wanted:
+    for rel, _ in verified:
         src = backup_root(install) / rel
         shutil.copy2(src, install / rel)
         src.unlink()
         restored.append(rel)
+    if pending:
+        for rel, _ in wanted:
+            staged = (install / rel).with_name(Path(rel).name + STAGED_SUFFIX)
+            try:
+                staged.unlink()
+            except FileNotFoundError:
+                pass
     root = backup_root(install)
     for dirpath, _dirnames, _filenames in sorted(os.walk(root, topdown=False)):
         try:

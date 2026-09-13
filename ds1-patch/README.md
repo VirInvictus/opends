@@ -27,6 +27,13 @@ writeups.
 - `scripts/darkfix/` — the engine the applier and fix scripts
   share: byte edits, GFF chunk replacement, backup, journal.
 
+A release zip flattens those last two to the zip root
+(`apply.py`, `darkfix/`; spec.md section 4 defines the shape), so
+the install steps below run from the unzipped folder itself. The
+`../` links in this file point into the full repo; in an unzipped
+release they resolve online at
+https://github.com/VirInvictus/opends.
+
 ## Installing (players)
 
 You need [Python](https://www.python.org/downloads/) 3.11 or newer
@@ -68,6 +75,12 @@ If the applier refuses with a hash mismatch, the folder is not the
 GOG 1.10 build this patch targets (wrong engine version, already
 patched, or damaged install). Nothing was changed.
 
+If an apply was interrupted partway (power loss, Ctrl-C during the
+write phase), the next run refuses with a pending-journal message
+instead of touching anything, and `apply.py --unapply` restores
+every file the interrupted run reached from `darkfix-backup/`
+(files it never reached need no restore).
+
 Platform proof: the full apply/status/unapply cycle is exercised on
 every change by `--selftest`, and was proven 2026-09-06 under
 Wine 11.0 with Windows Python 3.12.10 against a scratch copy of the
@@ -81,8 +94,10 @@ python3 scripts/apply.py --selftest
 ```
 
 Exercises the full apply/verify/unapply cycle in temp dirs: a
-synthetic byte edit, both refusal paths (tampered target, wrong
-site fingerprint), and, when `.games/ds1/` is present, the
+synthetic byte edit, the refusal paths (tampered target, wrong
+site fingerprint, two fixes on one target, negative edit offset),
+interrupted-write recovery from a pending journal, and, when
+`.games/ds1/` is present, the
 no-op fix round-tripping a copy of the real `DSUN.EXE`
 byte-identically plus the shipped fix set applied to copies of
 every file the manifest touches (the deadtriggers cycle pins the
