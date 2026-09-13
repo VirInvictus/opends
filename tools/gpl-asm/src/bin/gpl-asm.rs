@@ -218,11 +218,16 @@ fn resolve_at(
 }
 
 fn parse_hex_bytes(s: &str, ctx: &str) -> Result<Vec<u8>> {
+    // One 0x prefix per whitespace-separated group is allowed; a 0x
+    // anywhere else must survive, so it fails loudly as bad hex
+    // instead of silently vanishing ("120x34" is not "1234").
     let cleaned: String = s
-        .replace("0x", "")
-        .replace("0X", "")
-        .chars()
-        .filter(|c| !c.is_whitespace())
+        .split_whitespace()
+        .map(|word| {
+            word.strip_prefix("0x")
+                .or_else(|| word.strip_prefix("0X"))
+                .unwrap_or(word)
+        })
         .collect();
     if !cleaned.len().is_multiple_of(2) {
         return Err(anyhow!(
@@ -720,5 +725,38 @@ mod at_expr_tests {
         });
         let err = resolve_at("edit[0]", "my_fn", 0, &labels(), Some(&syms)).unwrap_err();
         assert!(err.to_string().contains("ambiguous"));
+    }
+}
+
+#[cfg(test)]
+mod hex_bytes_tests {
+    use super::*;
+
+    #[test]
+    fn parses_plain_hex() {
+        assert_eq!(parse_hex_bytes("6609", "t").unwrap(), vec![0x66, 0x09]);
+    }
+
+    #[test]
+    fn parses_one_prefix_per_group() {
+        assert_eq!(
+            parse_hex_bytes(" 0xDE 0xAD ", "t").unwrap(),
+            vec![0xDE, 0xAD]
+        );
+        assert_eq!(parse_hex_bytes("0XAB", "t").unwrap(), vec![0xAB]);
+    }
+
+    #[test]
+    fn parses_single_prefixed_run() {
+        assert_eq!(
+            parse_hex_bytes("0xdeadbeef", "t").unwrap(),
+            vec![0xDE, 0xAD, 0xBE, 0xEF]
+        );
+    }
+
+    #[test]
+    fn interior_0x_fails_loudly() {
+        // "120x34" used to strip to "1234" and parse silently.
+        assert!(parse_hex_bytes("120x34", "t").is_err());
     }
 }
