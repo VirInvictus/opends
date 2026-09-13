@@ -1904,3 +1904,40 @@ The elevator site-report narrative inside the 5.6.1 box is the
 Phase 7 site report's draft; it assembles into
 `ds2-patch/fixes/fix.ds2.mines-elevator.md` when Phase 7 opens,
 from this ledger, `docs/engine-quirks.md` 6, and the census row.
+
+## New findings 2026-09-12 (six-lens full audit; detail: audit/FULL-AUDIT-2026-09-12.md, Wave 26)
+
+- [ ] **HIGH: every release ships with zero assets - the player the
+      pipeline was built for cannot install darkfix-ds1.** ds1-patch's
+      README says "download the darkfix-ds1-vX.Y.Z.zip release"; spec 10
+      defines the release AS the zip; build-release.sh was promised in
+      patch-workflow and never landed. Write it (flatten manifest/VERSION/
+      apply.py/darkfix/fixes + the player README), attach to the existing
+      darkfix-ds1-v0.1.0 release.
+- [ ] **Applier hardening (before a second fix shares a target):** an
+      interrupted write phase (crash between first write and the journal)
+      strands a half-apply with no recovery path (--unapply refuses,
+      re-apply refuses, and the error never names darkfix-backup/ as the
+      manual route) - write a pending journal and teach --unapply to
+      restore from it, or at minimum name the manual route in the errors;
+      two enabled fixes sharing one TARGET abort mid-write (compose
+      per-file or refuse at check time with an explicit error).
+- [ ] **Docs sweep:** patch-workflow.md still teaches the superseded
+      manifest version bump (step 1 is dsN-patch/VERSION per spec 4);
+      gff-edit's header says v0.2 coverage; a gff-tool residue in spec 2;
+      the hash-test instruction isn't runnable as written (route through
+      apply.py --selftest); .clinerules dangling ref; the fragile :1043
+      anchor; the remaining 5.20/5.21 section-number pointers.
+- [ ] **Code hygiene:** parse_hex_bytes strips "0x" anywhere (120x34
+      silently becomes 1234 - prefix-only); Edit.from_dict lacks an
+      offset >= 0 guard (gpl-asm and exe-patch both guard it).
+- [ ] **Blitz candidates:** DS2's 30 dead triggers are pipeline-ready
+      (reuses the proven darktriggers loop; Brandon decides ship-ahead vs
+      phase order; needs a DS2 correlation dig first); CONTRIBUTING.md
+      (stdlib-only rule, the --selftest idiom, the cookbook convention);
+      GNAME[39] resolution rides the runtime-capture recipe.
+- [ ] **GitHub presentation (workspace batch):** description carries
+      literal markdown asterisks (replacement drafted); topics +dos/
+      dosbox/assembler/python; homepage codex entry is stale (twelve
+      tools / darkfixes "future" vs 14 tools / darkfix-ds1 shipped) -
+      update the codex page in the site pass.
