@@ -4,7 +4,58 @@ Released versions appear here, newest first.
 
 ## Unreleased
 
-Tagged releases from this batch: `ovr-map-v0.3.0` and
+The 2026-09-13 packaging + hardening batch: one tagged item
+(`gpl-asm` v0.9.1), plus unreleased applier and packaging work
+that ships with the next `darkfix-ds1` release.
+
+- **`gpl-asm` v0.9.1**: `--patch` no longer silently corrupts hex
+  byte strings that carry a stray `0x`. The parser stripped the
+  prefix anywhere in the string, so `bytes_old = "120x34"` parsed
+  as `1234` and fingerprint-checked against the wrong bytes. A
+  `0x` prefix is now accepted only at the start of a
+  whitespace-separated group (`0xDE 0xAD` still parses; a
+  mid-string `0x` fails loudly as bad hex). Regression-tested in
+  the assembler's unit suite.
+
+- **release packaging**: `tools/build-release.sh` ships: the zip
+  builder promised in `docs/patch-workflow.md` §7 since Phase 6.
+  It stages the flattened tree spec.md §4 defines (manifest.toml,
+  VERSION, apply.py, darkfix/, fixes/, the player README), gates
+  the stage through the real fix-contract checks, a compile pass,
+  the staged applier's `--selftest`, and a direct-CLI manifest
+  discovery check, then writes a deterministic
+  `darkfix-dsN-v<version>.zip` (fixed entry timestamps, so
+  rebuilding an unchanged tree is byte-identical). Building it
+  caught a real ship-blocker: the v0.1.0 tag's `apply.py` resolved
+  its patch root one directory above the zip layout, so the
+  release zip could never find its own manifest. The
+  `darkfix-ds1-v0.1.0` GitHub Release now carries its zip asset,
+  built with the script: the tagged tree plus that one
+  manifest-discovery fix in `apply.py`, verified end to end from
+  the extracted zip (selftest, apply, verify, status, unapply
+  byte-identical against copies of the real install files). A
+  `release zip` workflow builds and attaches the zip
+  automatically on every future `darkfix-ds*-v*` tag (manual
+  dispatch with a tag input covers a release that already
+  exists), kept outside the push/PR CI path.
+
+- **darkfix applier (unreleased; ships with the next
+  `darkfix-ds1`)**: interrupted applies are recoverable. The
+  journal is written pending before the first write and completed
+  after the last, so a crash mid-write no longer strands a
+  half-apply: the next apply refuses with a pending-journal
+  message, `--unapply` restores every file the interrupted run
+  reached from `darkfix-backup/` (leaving files it never reached
+  and clearing stray staged `.darkfix-tmp` files), and the
+  mismatch errors name the backup directory as the manual route.
+  Two enabled fixes sharing one target are refused at check time
+  with an explicit error (the second write would corrupt the
+  first fix). `Edit.from_dict` rejects negative offsets instead
+  of letting Python's slice semantics patch the wrong bytes.
+  Seventeen new selftest cases cover all of it; `apply.py
+  --selftest` runs 39 checks, all green.
+
+Tagged releases from the previous batch: `ovr-map-v0.3.0` and
 `save-inspect-v0.9.5`, joined 2026-09-06 by `ovr-map-v0.3.1`,
 `ovr-map-v0.3.2`, `exe-patch-v0.1.0`, `repro-v0.5.0` and
 `image-extract-v0.5.0`, joined 2026-09-11 by

@@ -189,16 +189,25 @@ behalf without being asked.)
 
 When the next minor version is ready:
 
-1. Bump version in `dsN-patch/manifest.toml`.
+1. Bump `dsN-patch/VERSION` (the single source of truth;
+   `manifest.toml` never carries the version, per spec.md §4).
 2. Move "Unreleased" content in `patchnotes.md` under a new
    version heading.
 3. Build the distribution zip:
-   `tools/build-release.sh dsN <version>`. (The script does not
-   exist yet; building it is Phase 6 packaging work. Until then,
-   zip `manifest.toml`, `fixes/`, `scripts/apply.py`, and
-   `scripts/darkfix/` as `darkfix-dsN-v<version>/`.)
-4. Tag the umbrella repo: `git tag darkfix-dsN-vMAJOR.MINOR.PATCH`.
-5. Push. Create a GitHub release; attach the zip.
+   `tools/build-release.sh dsN <version>`. The script assembles
+   the flattened zip spec.md §4 defines (manifest.toml, VERSION,
+   apply.py, darkfix/, fixes/, the player README), gates it
+   through the fix-contract checks, a compile pass, and the
+   staged applier's `--selftest`, then writes
+   `darkfix-dsN-v<version>.zip` (default output
+   `scratch/releases/`, override with `--out`; rebuilding an
+   unchanged tree is byte-identical).
+4. Tag the umbrella repo: `git tag darkfix-dsN-vMAJOR.MINOR.PATCH`
+   (annotated; the message is that release's patchnotes entry).
+5. Push. Create a GitHub release and attach the zip. From the
+   next darkfix tag onward the `release zip` workflow does this
+   automatically on the tag push (and on a manual dispatch with a
+   tag input, for a release that already exists).
 
 ## 8. When stuck
 

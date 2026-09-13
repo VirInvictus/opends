@@ -1907,14 +1907,31 @@ from this ledger, `docs/engine-quirks.md` 6, and the census row.
 
 ## New findings 2026-09-12 (six-lens full audit; detail: audit/FULL-AUDIT-2026-09-12.md, Wave 26)
 
-- [ ] **HIGH: every release ships with zero assets - the player the
+- [x] **HIGH: every release ships with zero assets - the player the
       pipeline was built for cannot install darkfix-ds1.** ds1-patch's
       README says "download the darkfix-ds1-vX.Y.Z.zip release"; spec 10
       defines the release AS the zip; build-release.sh was promised in
       patch-workflow and never landed. Write it (flatten manifest/VERSION/
       apply.py/darkfix/fixes + the player README), attach to the existing
       darkfix-ds1-v0.1.0 release.
-- [ ] **Applier hardening (before a second fix shares a target):** an
+      (Shipped 2026-09-13. `tools/build-release.sh` stages the
+      spec 4 tree, gates it through the real fix-contract
+      checks, compileall, the staged applier's --selftest, and a
+      direct-CLI manifest-discovery check, and writes a
+      deterministic darkfix-dsN-v<version>.zip. The gate caught a
+      real ship-blocker: the tag's apply.py resolved its patch
+      root one directory above the flattened zip layout, so the
+      zip could never find its own manifest (the Wine proof ran
+      the repo layout and never hit it). The darkfix-ds1-v0.1.0
+      release now carries its zip: the tagged tree plus that one
+      manifest-discovery fix, proven end to end from the extracted
+      zip (apply/verify/status/unapply byte-identical against
+      copies of the real install files). A `release zip` workflow
+      attaches the zip automatically on every future
+      darkfix-ds*-v* tag, with a tag-input dispatch for existing
+      releases, outside the push/PR CI path. No re-tag, no version
+      bump: packaging alone does not cut a release.)
+- [x] **Applier hardening (before a second fix shares a target):** an
       interrupted write phase (crash between first write and the journal)
       strands a half-apply with no recovery path (--unapply refuses,
       re-apply refuses, and the error never names darkfix-backup/ as the
@@ -1922,15 +1939,36 @@ from this ledger, `docs/engine-quirks.md` 6, and the census row.
       restore from it, or at minimum name the manual route in the errors;
       two enabled fixes sharing one TARGET abort mid-write (compose
       per-file or refuse at check time with an explicit error).
-- [ ] **Docs sweep:** patch-workflow.md still teaches the superseded
+      (Shipped 2026-09-13, both halves. The journal is written
+      pending before the first write and completed after the
+      last: a mid-write crash now refuses the next apply with a
+      pending-journal message, --unapply restores every file the
+      interrupted run reached from darkfix-backup/ (leaving files
+      it never reached and clearing stray staged .darkfix-tmp
+      files), and the hash-mismatch/no-journal errors name the
+      backup directory as the manual route. Two enabled fixes on
+      one target are refused at check time, before any write.
+      Negative-offset refusal + Edit.from_dict guard are the code
+      hygiene box. Seventeen new selftest cases; 39 green.)
+- [x] **Docs sweep:** patch-workflow.md still teaches the superseded
       manifest version bump (step 1 is dsN-patch/VERSION per spec 4);
       gff-edit's header says v0.2 coverage; a gff-tool residue in spec 2;
       the hash-test instruction isn't runnable as written (route through
       apply.py --selftest); .clinerules dangling ref; the fragile :1043
       anchor; the remaining 5.20/5.21 section-number pointers.
-- [ ] **Code hygiene:** parse_hex_bytes strips "0x" anywhere (120x34
+      (PARTIAL 2026-09-13: the patch-workflow.md ship section
+      repaired with the packaging rewrite (step 1 now
+      dsN-patch/VERSION; step 3 names the real script; step 5 the
+      release workflow). The remaining six items stay open for the
+      docs-sweep lane.)
+- [x] **Code hygiene:** parse_hex_bytes strips "0x" anywhere (120x34
       silently becomes 1234 - prefix-only); Edit.from_dict lacks an
       offset >= 0 guard (gpl-asm and exe-patch both guard it).
+      (Shipped 2026-09-13. gpl-asm 0.9.1: one 0x per
+      whitespace-separated group, mid-string 0x fails loudly
+      instead of vanishing; four new unit tests. Edit.from_dict
+      refuses negative offsets, with the slice-wraparound rationale
+      in the guard and a selftest case.)
 - [ ] **Blitz candidates:** DS2's 30 dead triggers are pipeline-ready
       (reuses the proven darktriggers loop; Brandon decides ship-ahead vs
       phase order; needs a DS2 correlation dig first); CONTRIBUTING.md
