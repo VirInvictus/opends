@@ -1,0 +1,70 @@
+# Release rider: build the darkfix player zip for a darkfix tag and
+# attach it to the tag's GitHub Release (spec.md section 10: the
+# release IS the zip). Runs only on darkfix-dsN-v* tag pushes plus a
+# manual dispatch with a tag input (for attaching to a release that
+# already exists); it is not part of the push/PR CI path in ci.yml.
+name: release zip
+
+on:
+  push:
+    tags:
+      - "darkfix-ds?-v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing darkfix tag to build and attach (e.g. darkfix-ds1-v0.2.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  zip:
+    name: build + attach the player zip
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          # Full history so the annotated tag's message is available
+          # if the release notes need to be derived from it below.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          # The applier's floor (3.11: tomllib); building under it
+          # proves the zip on the oldest Python we promise players.
+          python-version: "3.11"
+
+      - name: Resolve the tag
+        id: tag
+        run: echo "tag=${TAG_INPUT:-$GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+        env:
+          TAG_INPUT: ${{ github.event.inputs.tag }}
+
+      - name: Build the zip
+        run: |
+          case "$TAG" in
+            darkfix-ds1-v*) game=ds1 ;;
+            darkfix-ds2-v*) game=ds2 ;;
+            *) echo "not a darkfix tag: $TAG" >&2; exit 1 ;;
+          esac
+          version=${TAG##*-v}
+          tools/build-release.sh "$game" "$version" --out dist
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+
+      - name: Attach to the release
+        run: |
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json id > /dev/null 2>&1; then
+            # Release not cut yet: create it with the annotated tag's
+            # message (the verbatim patchnotes entry) as the notes.
+            git for-each-ref "refs/tags/$TAG" --format="%(contents)" > tag-notes.txt
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --title "$TAG" --notes-file tag-notes.txt
+          fi
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" \
+            dist/darkfix-*.zip --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
