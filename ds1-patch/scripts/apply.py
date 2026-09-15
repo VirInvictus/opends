@@ -142,6 +142,13 @@ def cmd_apply(layout: Layout, install: Path, *, check_all: bool = False) -> int:
 
     enabled = [e for e in manifest["fixes"] if e.get("enabled", True)]
     disabled = [e for e in manifest["fixes"] if not e.get("enabled", True)]
+    if not enabled:
+        # Refusing (instead of "applying" zero fixes) avoids writing
+        # an empty journal that --unapply could never consume.
+        raise P.PatchError(
+            "no enabled fixes: the manifest's fix list is empty or"
+            " every fix is disabled; nothing to apply"
+        )
     journal = P.read_journal(install)
     if journal is not None:
         if journal.get("status", "applied") == "pending":
@@ -767,6 +774,38 @@ def selftest() -> int:
             ok("negative edit offset refused", False)
         except P.PatchError:
             ok("negative edit offset refused", True)
+
+        # Torn journal with no backup directory: the error must name
+        # the delete-the-journal remedy (nothing was ever written),
+        # not only the restore-from-backup route.
+        inst5 = tmp / "inst5"
+        inst5.mkdir()
+        (inst5 / "TEST.DAT").write_bytes(_synth_bytes(128))
+        (inst5 / P.JOURNAL_NAME).write_text("{ torn")
+        err_out = io.StringIO()
+        with contextlib.redirect_stderr(err_out):
+            rc = run([str(inst5)], patch_root=root)
+        ok("torn journal blocks apply", rc == 1)
+        ok(
+            "torn-journal error names the no-backup remedy",
+            f"delete {P.JOURNAL_NAME}" in err_out.getvalue(),
+        )
+
+        # An all-disabled manifest is refused instead of "applied"
+        # into an empty journal that --unapply could never consume.
+        root6 = _make_multi_patch(tmp, "alldisabled", [("TEST.DAT", h4, [e4a])])
+        m6 = root6 / "manifest.toml"
+        m6.write_text(m6.read_text().replace("enabled = true", "enabled = false"))
+        inst6 = tmp / "inst6"
+        inst6.mkdir()
+        t6 = inst6 / "TEST.DAT"
+        t6.write_bytes(data4)
+        err_out = io.StringIO()
+        with contextlib.redirect_stderr(err_out):
+            rc = run([str(inst6)], patch_root=root6)
+        ok("all-disabled manifest refused", rc == 1)
+        ok("all-disabled refusal wrote no journal", P.read_journal(inst6) is None)
+        ok("all-disabled refusal left the target untouched", t6.read_bytes() == data4)
 
     exe = DEFAULT_PATCH_ROOT.parent / ".games" / "ds1" / "DSUN.EXE"
     if exe.is_file():

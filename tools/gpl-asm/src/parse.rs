@@ -1138,8 +1138,10 @@ fn expression_byte_len(expr: &Expression) -> usize {
             StringSubType::Compressed => {
                 // marker (1) + STRING_COMPRESSED (1) +
                 // ceil(((chars + 1) * 7) / 8) bytes for the
-                // bitstream.
-                let bits = (value.chars().count() + 1) * 7;
+                // bitstream. Counted in bytes (== chars for the
+                // ASCII-only payload pack_compressed_string
+                // accepts; it refuses anything else).
+                let bits = (value.len() + 1) * 7;
                 1 + 1 + bits.div_ceil(8)
             }
         },

@@ -204,6 +204,12 @@ def classify(report: dict[str, Any], off: int, n: int) -> dict[str, Any]:
         )
         return info
     if off < image_end:
+        if off + n > image_end:
+            info["error"] = (
+                f"edit straddles the resident image boundary at 0x{image_end:x} "
+                f"(it reaches 0x{off + n:x}, inside the FBOV overlay header); "
+                f"not patchable across the boundary"
+            )
         info["region"] = "resident"
         return info
     if off < base:
@@ -521,6 +527,20 @@ def selftest() -> int:
         check(
             res["ok"] and res["edits"][0]["region"] == "resident",
             "fixture: bare resident offset should resolve",
+        )
+
+        # A resident edit whose length crosses the image boundary into
+        # the FBOV header is flagged and refused, not silently passed
+        # off as plain resident (off < image_end < off + n).
+        res_straddle = run(
+            '[[edit]]\nat = "0x1ff"\nbytes_old = "00 00"\nbytes_new = "c3 c3"\n'
+        )
+        check(
+            not res_straddle["ok"]
+            and res_straddle["edits"][0]["region"] == "resident"
+            and any("straddle" in e for e in res_straddle["errors"]),
+            f"fixture: resident/FBOV straddle must be refused: "
+            f"{res_straddle['edits']} {res_straddle['errors']}",
         )
         sym = validate(
             _write_script(

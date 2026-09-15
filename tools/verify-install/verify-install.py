@@ -237,6 +237,35 @@ def _extract_from_installer(installer: Path) -> Path:
     return tmp
 
 
+def _repair_file(rel: str, src: Path, install: Path, backup_root: Path) -> bool:
+    """Copy `<src>/<rel>` over `<install>/<rel>`, backing up the
+    current bytes to `<backup_root>/<rel>` first.
+
+    Returns False when the installer tree has no such file. Raises
+    FileExistsError when a pre-repair backup already exists: a second
+    repair run against changed bytes would overwrite the only copy of
+    the originals (the darkfix applier's never-clobber policy).
+    """
+    src_file = src / rel
+    if not src_file.is_file():
+        return False
+    dst = install / rel
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    if dst.exists():
+        backup_dst = backup_root / rel
+        if backup_dst.exists():
+            raise FileExistsError(
+                f"refusing to repair {rel}: {backup_dst} already holds a"
+                f" pre-repair backup; repairing again would overwrite the"
+                f" only copy of the original bytes. Run --rollback first"
+                f" (restores that backup), or move it aside if you are sure."
+            )
+        backup_dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(dst, backup_dst)
+    shutil.copy2(src_file, dst)
+    return True
+
+
 def cmd_repair(args: argparse.Namespace, install: Path, report: dict) -> int:
     """Restore mismatched / missing files from the GOG installer.
 
@@ -269,19 +298,20 @@ def cmd_repair(args: argparse.Namespace, install: Path, report: dict) -> int:
         restored = 0
         skipped = []
         for rel in targets:
-            src = extracted_root / rel
-            if not src.is_file():
-                skipped.append(rel)
-                continue
-            dst = install / rel
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            if dst.exists():
-                backup_dst = backup_root / rel
-                backup_dst.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(dst, backup_dst)
-            shutil.copy2(src, dst)
-            restored += 1
-            print(f"  restored {rel}")
+            try:
+                if _repair_file(rel, extracted_root, install, backup_root):
+                    restored += 1
+                    print(f"  restored {rel}")
+                else:
+                    skipped.append(rel)
+            except FileExistsError as e:
+                print(f"error: {e}", file=sys.stderr)
+                print(
+                    "  files restored before this refusal are backed up"
+                    " and reversible via --rollback",
+                    file=sys.stderr,
+                )
+                return 2
         print(
             f"repair: restored {restored}/{len(targets)} file(s); "
             f"{len(skipped)} not found in installer"
@@ -578,7 +608,73 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def selftest() -> int:
+    """Refusal-path checks that need no installer: the repair clobber
+    guard must never overwrite an existing pre-repair backup.
+    """
+    failures = 0
+
+    def ok(label: str, cond: bool) -> None:
+        nonlocal failures
+        print(f"  {'PASS' if cond else 'FAIL'}: {label}")
+        if not cond:
+            failures += 1
+
+    print("verify-install selftest")
+    with tempfile.TemporaryDirectory(prefix="verify-install-selftest-") as td:
+        tmp = Path(td)
+        install = tmp / "install"
+        install.mkdir()
+        target = install / "TEST.DAT"
+        target.write_bytes(b"ORIGINAL")
+        extracted = tmp / "installer-tree"
+        extracted.mkdir()
+        (extracted / "TEST.DAT").write_bytes(b"PATCHED")
+        backup_root = install / "__verify-install-backup"
+
+        ok(
+            "first repair succeeds",
+            _repair_file("TEST.DAT", extracted, install, backup_root),
+        )
+        ok(
+            "backup holds the pristine bytes",
+            (backup_root / "TEST.DAT").read_bytes() == b"ORIGINAL",
+        )
+        ok("target holds the repaired bytes", target.read_bytes() == b"PATCHED")
+
+        (extracted / "TEST.DAT").write_bytes(b"PATCHED-2")
+        refused = False
+        try:
+            _repair_file("TEST.DAT", extracted, install, backup_root)
+        except FileExistsError:
+            refused = True
+        ok("second repair refuses to clobber its own backup", refused)
+        ok(
+            "backup still holds the only pristine copy",
+            (backup_root / "TEST.DAT").read_bytes() == b"ORIGINAL",
+        )
+        ok(
+            "target untouched by the refusal",
+            target.read_bytes() == b"PATCHED",
+        )
+
+        ok(
+            "missing installer file reports as skipped",
+            not _repair_file("NOPE.DAT", extracted, install, backup_root),
+        )
+
+    print()
+    if failures:
+        print(f"SELFTEST FAIL ({failures} failure(s))")
+        return 1
+    print("SELFTEST OK")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if "--selftest" in argv:
+        return selftest()
     args = build_parser().parse_args(argv)
     if args.path is None:
         args.path = DEFAULT_PATHS[args.game]

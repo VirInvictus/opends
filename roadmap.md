@@ -2027,7 +2027,26 @@ Eight lenses + slop-reader at 5c6cbd7. Tally after dedup: 0 HIGH / 8 MEDIUM / ~4
       status: a pending journal prints INTERRUPTED with the
       --unapply recovery route; two new selftest cases cover
       both branches, 41 checks green.)
-- [ ] [LOW] Seven real-bug LOWs: `opends extract` dispatches to a gff-cat subcommand that has never existed (tools/opends/src/main.rs:197); gpl-asm silently mangles non-ASCII string content through 7-bit masking (lib.rs:528, unreachable via the round-trip loop but one hand-authored accent from corruption); journal writes are non-atomic so a first-write crash blocks apply AND unapply with a message naming a backup that does not exist yet (patcher.py:288); an all-disabled manifest "applies" and writes an unremovable empty journal (apply.py:141); build-release.sh Gate 1 misses the duplicate-TARGET refusal so a bad manifest ships in the zip (:89); verify-install --repair clobbers its own backup (:278); exe-patch resident edits skip the straddle check (exe-patch.py:206).
+- [x] [LOW] Seven real-bug LOWs: `opends extract` dispatches to a gff-cat subcommand that has never existed (tools/opends/src/main.rs:197); gpl-asm silently mangles non-ASCII string content through 7-bit masking (lib.rs:528, unreachable via the round-trip loop but one hand-authored accent from corruption); journal writes are non-atomic so a first-write crash blocks apply AND unapply with a message naming a backup that does not exist yet (patcher.py:288); an all-disabled manifest "applies" and writes an unremovable empty journal (apply.py:141); build-release.sh Gate 1 misses the duplicate-TARGET refusal so a bad manifest ships in the zip (:89); verify-install --repair clobbers its own backup (:278); exe-patch resident edits skip the straddle check (exe-patch.py:206).
+      (Shipped 2026-09-15, each with a regression test: extract
+      now dispatches `gff-cat extract --all -o` with an arg-shape
+      unit test; pack_compressed_string refuses non-ASCII before
+      writing a byte (new NonAsciiString error) and the parse-side
+      estimator counts bytes to match; write_journal goes through
+      the same staged tmp + os.replace as targets, a torn-journal
+      error names the delete-the-journal remedy when no backup
+      exists, and pending recovery sweeps a stray staged journal;
+      an empty enabled set is refused instead of journalled;
+      build-release.sh gate 1 gains the seen-targets refusal plus
+      a --selftest that proves a dup-target manifest is refused,
+      and `build-release.sh ds2` refuses friendly instead of a raw
+      cp error (lens 2 polish 9, same file); verify-install --repair
+      raises on an existing pre-repair backup and grows a --selftest
+      flag covering the guard; classify() flags a resident edit that
+      straddles image_end into the FBOV header, with a selftest
+      case. ovr-map/save-inspect struct pre-checks, patcher
+      int(offset) coercion, and parse_hex_bytes("") refusal stay
+      recorded polish: below the ranked line, authoring-controlled.)
 - [ ] [LOW] The docs-sweep box (all six confirmed still open): hash-test instruction unrunnable (route through apply.py --selftest), .clinerules re-point, gff-tool residue in spec 2, dangling section pointers (5.20/5.21/:1043), gff-edit v0.2 header.
 - [ ] [LOW] Em-dash/punctuation pass on live prose: the four doc titles (roadmap, spec, both patch READMEs); spec's 21 live lines; README's find-replace artifacts (floating " :" continuation lines :131-135, double colon :75-77, " ;" :7); CREDITS.md's 17 list glyphs; the 4 docs singles; roadmap.md:1910/:1938/:1965 ASCII " - " surrogates in the live findings block. Historical records (roadmap 212-1907, old patchnotes) stay as records.
 - [ ] [LOW] GitHub: SECURITY.md (binary patches players run: the one repo that needs it, name the deterministic-zip hash for verification); dependabot (actions+cargo, deliberately no pip); CI badge; SHA-pin the five floating action refs; release.yml's dispatch repair path cannot rebuild darkfix-ds1-v0.1.0 (build-release.sh is absent from that tag's tree; take it from the default branch on dispatch); concurrency group; online check for unattested Releases (ovr-map-v0.3.0, save-inspect-v0.9.5, elevator-site-report-v1).

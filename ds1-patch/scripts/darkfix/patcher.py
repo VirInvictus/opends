@@ -287,7 +287,12 @@ def journal_path(install: Path) -> Path:
 
 def write_journal(install: Path, journal: dict) -> Path:
     path = journal_path(install)
-    path.write_text(json.dumps(journal, indent=2) + "\n")
+    # Staged write + atomic rename (same pattern as the apply write
+    # phase): a crash mid-write must never leave torn JSON that
+    # blocks both apply and unapply.
+    tmp = path.with_name(path.name + STAGED_SUFFIX)
+    tmp.write_text(json.dumps(journal, indent=2) + "\n")
+    os.replace(tmp, path)
     return path
 
 
@@ -298,9 +303,13 @@ def read_journal(install: Path) -> dict | None:
     try:
         return json.loads(path.read_text())
     except json.JSONDecodeError as e:
-        raise PatchError(
-            f"{path} is not valid JSON ({e}); restore manually from {BACKUP_DIR}/"
-        ) from None
+        message = f"{path} is not valid JSON ({e}); restore manually from {BACKUP_DIR}/"
+        if not backup_root(install).is_dir():
+            message += (
+                f"; no {BACKUP_DIR}/ exists, so nothing was ever"
+                f" written: delete {JOURNAL_NAME} to clear it"
+            )
+        raise PatchError(message) from None
 
 
 def restore_from_backup(
@@ -352,6 +361,11 @@ def restore_from_backup(
                 staged.unlink()
             except FileNotFoundError:
                 pass
+        staged_journal = journal_path(install).with_name(JOURNAL_NAME + STAGED_SUFFIX)
+        try:
+            staged_journal.unlink()
+        except FileNotFoundError:
+            pass
     root = backup_root(install)
     for dirpath, _dirnames, _filenames in sorted(os.walk(root, topdown=False)):
         try:

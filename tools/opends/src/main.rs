@@ -62,7 +62,7 @@ enum Cmd {
         gff: PathBuf,
     },
     /// Bulk-extract every chunk in a GFF to a sibling directory.
-    /// Thin wrapper over `gff-cat bulk-extract`.
+    /// Thin wrapper over `gff-cat extract --all`.
     Extract {
         /// Path to the GFF.
         file: PathBuf,
@@ -208,15 +208,40 @@ fn cmd_extract(file: &Path, output: Option<&Path>) -> Result<()> {
             &default_out
         }
     };
-    run_tool(
-        "gff-cat",
-        &[
-            "bulk-extract".as_ref(),
-            file.as_os_str(),
-            "-o".as_ref(),
-            out_path.as_os_str(),
-        ],
-    )
+    let args = extract_args(file, out_path);
+    let arg_refs: Vec<&std::ffi::OsStr> = args.iter().map(|s| s.as_os_str()).collect();
+    run_tool("gff-cat", &arg_refs)
+}
+
+/// The gff-cat invocation behind `opends extract`: every chunk to
+/// `<out>/<kind>-<id>.bin` via `extract --all`.
+fn extract_args(file: &Path, out: &Path) -> Vec<std::ffi::OsString> {
+    vec![
+        "extract".into(),
+        file.as_os_str().to_owned(),
+        "--all".into(),
+        "-o".into(),
+        out.as_os_str().to_owned(),
+    ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extract_dispatches_to_a_real_gff_cat_subcommand() {
+        // Regression: `opends extract` used to dispatch to
+        // `gff-cat bulk-extract`, a subcommand gff-cat has never
+        // had, so every invocation failed. `extract --all -o` is
+        // the real surface (gff-cat.rs Cmd::Extract).
+        let args = extract_args(Path::new("GPLDATA.GFF"), Path::new("out"));
+        let strs: Vec<String> = args
+            .iter()
+            .map(|a| a.to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(strs, ["extract", "GPLDATA.GFF", "--all", "-o", "out"]);
+    }
 }
 
 fn cmd_tools() -> Result<()> {

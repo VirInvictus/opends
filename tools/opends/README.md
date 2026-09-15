@@ -35,7 +35,7 @@ opends inspect .games/ds1/SAVE00.SAV         # → save-inspect
 opends inspect /path/to/sprite.png           # → PNG metadata + pack hint
 
 # Bulk operations.
-opends extract .games/ds1/RESOURCE.GFF       # → gff-cat bulk-extract
+opends extract .games/ds1/RESOURCE.GFF       # → gff-cat extract --all
 opends render .games/ds1/RGN02.GFF -o map.png
 opends find "Magnolia" .games/ds1/GPLDATA.GFF
 ```
@@ -56,7 +56,7 @@ Other subcommands are thin wrappers:
 |----------------------------------|----------------------------------------------|
 | `opends render <gff> -o <png>`   | `region-render <gff> -o <png>`               |
 | `opends find <pattern> <gff>`    | `python3 dialog-extract.py --grep ...`       |
-| `opends extract <gff> -o <dir>`  | `gff-cat bulk-extract <gff> -o <dir>`        |
+| `opends extract <gff> -o <dir>`  | `gff-cat extract <gff> --all -o <dir>`     |
 | `opends tools`                   | reads every `tools/*/VERSION` and prints     |
 
 ## Tool discovery

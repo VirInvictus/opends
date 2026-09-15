@@ -70,6 +70,10 @@ pub enum EncodeError {
         "Unknown token encountered in instruction at offset {offset}; the source disassembly bailed mid-parse"
     )]
     UnknownToken { offset: usize },
+    #[error(
+        "instruction at offset {offset}: compressed string payload {value:?} is not ASCII; the 7-bit packed format cannot encode bytes >= 0x80, so writing it would silently corrupt the chunk"
+    )]
+    NonAsciiString { offset: usize, value: String },
     #[error("encoded output is {actual} bytes but DisasmResult reported {expected}")]
     LengthMismatch { expected: usize, actual: usize },
 }
@@ -148,7 +152,7 @@ pub fn encode_instruction(out: &mut Vec<u8>, instr: &Instruction) -> Result<()> 
             }
             match &instr.params[0][0] {
                 Expression::ImmediateString { sub_type, value } => {
-                    encode_string_payload(out, *sub_type, value);
+                    encode_string_payload(out, instr.offset, *sub_type, value)?;
                 }
                 _ => {
                     return Err(EncodeError::BadParamShape {
@@ -360,7 +364,7 @@ pub fn encode_expression(out: &mut Vec<u8>, instr_offset: usize, expr: &Expressi
         }
         Expression::ImmediateString { sub_type, value } => {
             out.push(GPL_IMMED_STRING | 0x80);
-            encode_string_payload(out, *sub_type, value);
+            encode_string_payload(out, instr_offset, *sub_type, value)?;
         }
         Expression::Variable {
             var_kind,
@@ -499,7 +503,12 @@ fn encode_complex_body(out: &mut Vec<u8>, obj_name: i32, depth: u8, elements: &[
 /// Encode the body of an `IMMED_STRING` (or `ParamSpec::Log`): one
 /// sub-type marker byte (`STRING_INTRODUCE` / `STRING_UNCOMPRESSED`
 /// / `STRING_COMPRESSED`) optionally followed by the payload.
-fn encode_string_payload(out: &mut Vec<u8>, sub_type: StringSubType, value: &str) {
+fn encode_string_payload(
+    out: &mut Vec<u8>,
+    offset: usize,
+    sub_type: StringSubType,
+    value: &str,
+) -> Result<()> {
     match sub_type {
         StringSubType::Introduce => {
             out.push(STRING_INTRODUCE);
@@ -513,9 +522,10 @@ fn encode_string_payload(out: &mut Vec<u8>, sub_type: StringSubType, value: &str
         }
         StringSubType::Compressed => {
             out.push(STRING_COMPRESSED);
-            pack_compressed_string(out, value);
+            pack_compressed_string(out, offset, value)?;
         }
     }
+    Ok(())
 }
 
 /// Pack `value`'s characters into the 7-bit MSB-first bitstream
@@ -527,7 +537,18 @@ fn encode_string_payload(out: &mut Vec<u8>, sub_type: StringSubType, value: &str
 /// into a final byte. The decoder ignores bits past the terminator
 /// (it returns as soon as it sees 0x03), so the padding bits we
 /// emit don't affect a re-decode.
-pub fn pack_compressed_string(out: &mut Vec<u8>, value: &str) {
+///
+/// Non-ASCII input is refused: the 7-bit format can only carry
+/// bytes < 0x80 (the decoder can never produce one), so packing
+/// `value.bytes() & 0x7F` would emit wrong symbols with no error.
+/// The corpus is pure ASCII; hand-authored strings must be too.
+pub fn pack_compressed_string(out: &mut Vec<u8>, offset: usize, value: &str) -> Result<()> {
+    if !value.is_ascii() {
+        return Err(EncodeError::NonAsciiString {
+            offset,
+            value: value.to_string(),
+        });
+    }
     let mut buffer: u32 = 0;
     let mut nbits: u32 = 0;
     let push_seven = |out: &mut Vec<u8>, buffer: &mut u32, nbits: &mut u32, v: u8| {
@@ -547,6 +568,7 @@ pub fn pack_compressed_string(out: &mut Vec<u8>, value: &str) {
         // Left-justify the trailing bits into one final byte.
         out.push(((buffer << (8 - nbits)) & 0xFF) as u8);
     }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -637,7 +659,7 @@ mod tests {
         // (through disassemble of a gpl print string instruction).
         // gpl print string (0x4F) takes 2 params.
         let mut payload = Vec::new();
-        pack_compressed_string(&mut payload, "Hi");
+        pack_compressed_string(&mut payload, 0, "Hi").expect("ASCII pack");
         // Build: 0x4F (gpl print string), param0 = imm14(0), param1 = IMMED_STRING marker + COMPRESSED + payload.
         let mut bytes = vec![0x4F, 0x00, 0x00, GPL_IMMED_STRING | 0x80, STRING_COMPRESSED];
         bytes.extend(payload);
@@ -650,7 +672,7 @@ mod tests {
         // After v0.4.3 the decoder is lossless; the encoder relies on
         // that contract.
         let mut payload = Vec::new();
-        pack_compressed_string(&mut payload, "\tA");
+        pack_compressed_string(&mut payload, 0, "\tA").expect("ASCII pack");
         // Manually decode (just shift bits) to confirm.
         let r = disassemble(&[
             0x4F,
@@ -668,6 +690,40 @@ mod tests {
                 assert_eq!(value.as_bytes(), b"\tA");
             }
             other => panic!("expected ImmediateString, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn pack_compressed_string_refuses_non_ascii() {
+        // Regression: non-ASCII input used to be packed through
+        // `bytes() & 0x7F`, silently emitting wrong symbols (one
+        // accented hand-authored string away from a corrupted
+        // chunk). It must be a loud error, writing no bytes.
+        let mut payload = Vec::new();
+        let err = pack_compressed_string(&mut payload, 0x1234, "caf\u{e9}e")
+            .expect_err("non-ASCII must refuse");
+        assert!(payload.is_empty(), "refusal must write no bytes");
+        match err {
+            EncodeError::NonAsciiString { offset, value } => {
+                assert_eq!(offset, 0x1234);
+                assert_eq!(value, "caf\u{e9}e");
+            }
+            other => panic!("expected NonAsciiString, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn string_estimator_agrees_with_packer() {
+        // The parse-side length estimator and the packer must use
+        // the same length definition for every string the packer
+        // accepts (ASCII-only; it refuses the rest).
+        for s in ["", "Hi", "\tA", "the quick brown fox jumps"] {
+            let mut payload = Vec::new();
+            pack_compressed_string(&mut payload, 0, s).expect("ASCII pack");
+            // estimator: marker (1) + STRING_COMPRESSED (1) +
+            // ceil(((len + 1) * 7) / 8) for the bitstream.
+            let estimated = 1 + 1 + ((s.len() + 1) * 7).div_ceil(8);
+            assert_eq!(estimated, 2 + payload.len(), "estimator drift on {s:?}");
         }
     }
 

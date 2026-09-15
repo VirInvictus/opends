@@ -52,6 +52,15 @@ the canonical bytes in a temp dir, then copies each requested
 file into place over a same-path backup. Requires `innoextract`
 on `PATH` (Fedora: `dnf install innoextract`).
 
+A repair never overwrites an existing pre-repair backup: if
+`__verify-install-backup/<path>` already exists (a previous
+repair), the run refuses with an error instead of destroying the
+only copy of the original bytes. `--rollback` first, or move the
+backup aside deliberately.
+
+`--selftest` runs the refusal-path checks (the clobber guard)
+without touching an install.
+
 ### Rollback (undo a repair)
 
 ```sh
