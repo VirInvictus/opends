@@ -46,6 +46,22 @@ neither dependency is adopted:
 
 Python 3.11+ (tomllib). Nothing else.
 
+The Python gate (what CI runs, and what you should run before
+pushing) is:
+
+```sh
+ruff check tools ds1-patch
+ruff format --check tools ds1-patch
+python -m compileall -q tools ds1-patch
+```
+
+Ruff is pinned by the root `ruff.toml` to the exact version CI
+installs (0.15.20): a different ruff refuses to run rather than
+silently disagreeing. If your system ruff is not 0.15.20, run
+the gate through `uvx ruff@0.15.20 check ...` instead. Every
+Python tool also carries a `--selftest` flag; CI runs all of
+them (see `.github/workflows/ci.yml`).
+
 ## 3. DOSBox-Staging
 
 Flatpak is the easiest path:

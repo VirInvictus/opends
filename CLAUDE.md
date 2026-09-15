@@ -45,6 +45,8 @@ python3 tools/dialog-extract/dialog-extract.py <gpldata.gff>
 python3 tools/repro/repro.py ds1-smoke --play --session main
 ```
 
+The Python gate (`ruff check tools ds1-patch` + `ruff format --check tools ds1-patch` + `python -m compileall -q tools ds1-patch`, plus every tool's `--selftest`) runs in CI under Python 3.11 and 3.14. Ruff is pinned by the root `ruff.toml` to exactly the CI version (0.15.20); a different ruff refuses to run, so use `uvx ruff@0.15.20` if your system ruff differs. The floor is 3.11 (tomllib).
+
 ## Game-install paths
 
 - **`.games/ds1/`**, **`.games/ds2/`**: dev-side innoextract output. The Rust corpus tests read from here. Gitignored.

@@ -1984,7 +1984,15 @@ from this ledger, `docs/engine-quirks.md` 6, and the census row.
 
 Eight lenses + slop-reader at 5c6cbd7. Tally after dedup: 0 HIGH / 8 MEDIUM / ~40 LOW + 8 feature proposals. The campaign's first zero-HIGH repo: the 09-13 packaging + hardening batch verified real end to end (all four Wave-26 MEDIUMs closed, parse_hex_bytes fixed with regression tests, from_dict guarded, the release pipeline works), and code-vs-docs found zero unrecorded drift. NEW findings LOGGED, never executed:
 
-- [ ] [MEDIUM] CI catch-up: the python gate covers tools/ only, so the applier, darkfix/, and fixes/*.py (the most-distributed Python artifact; ships in every player zip) are never linted/format-checked/byte-compiled; CI runs 3.14 only vs the declared 3.11 floor; the ruff 0.15.20 pin exists nowhere in-repo (newer ruff has already run locally). Extend the gate to ds1-patch/, add a 3.11 leg, add a root ruff.toml.
+- [x] [MEDIUM] CI catch-up: the python gate covers tools/ only, so the applier, darkfix/, and fixes/*.py (the most-distributed Python artifact; ships in every player zip) are never linted/format-checked/byte-compiled; CI runs 3.14 only vs the declared 3.11 floor; the ruff 0.15.20 pin exists nowhere in-repo (newer ruff has already run locally). Extend the gate to ds1-patch/, add a 3.11 leg, add a root ruff.toml.
+      (Shipped 2026-09-15. Root ruff.toml pins required-version
+      to ==0.15.20 (a different ruff refuses to run instead of
+      silently diverging from CI) and sets the py311 target; the
+      three gate commands cover tools/ and ds1-patch/; the
+      python job is now a 3.11 + 3.14 matrix, so the declared
+      floor runs the whole gate including the six selftests
+      instead of only the zip build. build-environment.md 2 and
+      CLAUDE.md carry the gate line.)
 - [ ] [MEDIUM] Repair the Phase 6 pick-box scar: the 09-12 5.20-strike repair took the pick-box header with it and the body resumes mid-sentence ("work). Prefer a GPL-data fix..."); restore the box, move the orphaned body + annotations under it, delete the dangling "work)". Same lane: fold the ratified 09-12 dispositions into the save-inspect and opcode-fuzz box bodies (roadmap.md:1803-1818), which still list decoded items as open.
 - [ ] [MEDIUM] spec.md:225-237 (section 6) still says "No reassembler in v1"; gpl-asm is 0.9.1 and produced the first real fix. Rewrite to the shipped stack (gpl-disasm, gpl-asm --patch, gff-cat replace). Same lane: patchnotes.md has its entire 113-entry history under one `## Unreleased` heading while patch-workflow.md:194 describes version headings; introduce headings and move tagged entries out.
 - [ ] [MEDIUM] Comment-header de-versioning sweep (headers frozen in tool infancy): gpl-asm lib.rs:1-25 (still "v0.1.0 encoder foundation"; all three future-work items shipped) and :23-25 (says Search chunks are "flagged unencodable"; the encoder handles them at :274-300/:413-436) and the dead-version error strings; save-inspect.py:4-9 (claims CHAR records are opaque hex; decoded per game and writable since 0.8.0); gff-edit lib.rs:21/builder.rs:12; gpl-disasm lib.rs:19; opcode-fuzz.py:5. Plus apply.py:366 --status prints "applied" for a pending (interrupted) journal: branch on status.

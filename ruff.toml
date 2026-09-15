@@ -1,0 +1,5 @@
+# Ruff pin: CI installs 0.15.20 and this file makes every other ruff
+# agree (newer local ruff could otherwise pass or fail silently against
+# what CI enforces). Bump only alongside the CI pin.
+required-version = "==0.15.20"
+target-version = "py311"

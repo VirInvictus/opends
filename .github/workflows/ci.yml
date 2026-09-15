@@ -42,27 +42,38 @@ jobs:
         run: cargo test --workspace
 
   python:
-    name: python — ruff + compile
+    name: python — ruff + compile (${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # 3.11 is the declared floor (spec 7a: tomllib); 3.14 is the
+        # dev machine. The floor used to be exercised only at
+        # zip-build time; both legs now run the whole gate.
+        python-version: ["3.11", "3.14"]
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.14"
+          python-version: ${{ matrix.python-version }}
 
       - run: pip install ruff==0.15.20
 
       - name: ruff check
-        run: ruff check tools
+        # The root ruff.toml pins required-version to this same
+        # 0.15.20 and sets the py311 target, so a newer local ruff
+        # refuses instead of silently diverging from CI.
+        run: ruff check tools ds1-patch
 
       - name: ruff format --check
-        run: ruff format --check tools
+        run: ruff format --check tools ds1-patch
 
       - name: compile check
         # Stdlib-only single-file tools; no unittest/pytest suite exists,
-        # so byte-compilation is the syntax gate.
-        run: python -m compileall -q tools
+        # so byte-compilation is the syntax gate. ds1-patch is the
+        # player-distributed half (apply.py, darkfix/, fixes/*.py); it
+        # ships in every zip and gates like the tools do.
+        run: python -m compileall -q tools ds1-patch
 
       - name: tool selftests
         # The --selftest flag is the repo's Python test idiom (decided
