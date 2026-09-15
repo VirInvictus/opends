@@ -377,7 +377,7 @@ negative; this prose now says so too.
 | `RDFF` | Record data: distinct schemas per game (DS1/DS2/DSO) for: |
 |        |  item, combat, char, mini, player, entity records          |
 | `FNFO` | Object data table                                          |
-| `RDAT` | Per-region binary config (u16 pairs; NOT names — corrected 2026-09-05) |
+| `RDAT` | Per-region binary config (u16 pairs; NOT names, corrected 2026-09-05) |
 | `NAME` | Names                                                      |
 | `TEXT` | Generic text resources                                     |
 | `MERR` | Error messages                                             |

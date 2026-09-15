@@ -4,7 +4,7 @@
 
 # OpenDS
 
-**An open community toolkit for SSI's Dark Sun CRPGs** ;
+**An open community toolkit for SSI's Dark Sun CRPGs**:
 *Shattered Lands* (1993) and *Wake of the Ravager* (1994).
 
 Tools, patches, and documentation. Everything we learn gets
@@ -73,8 +73,8 @@ language, with no public spec: and the volume of game logic
 expressed in it.
 
 OpenDS goes at it sideways: ship the artifacts you build *on the
-way* to an engine: disassemblers, chunk editors, format docs, bug
-patches: as standalone, useful tools. Each one is valuable on
+way* to an engine (disassemblers, chunk editors, format docs, bug
+patches) as standalone, useful tools. Each one is valuable on
 its own. Each one teaches us more about the engine. The eventual
 full reimplementation lives in the project's name as an
 aspiration, not a roadmap commitment. We get there if we get
@@ -128,14 +128,16 @@ Standing on the shoulders of every prior attempt:
   catalogue, the GPL_* constants, and the 7-bit packed inline
   string decoder all came from these projects. OpenDS would
   not be feasible without them.
-- **John Glassmyer** ([dsun_music](https://github.com/JohnGlassmyer/dsun_music))
- : the GFF *writer* policy (in-place if it fits, append
-  otherwise) and the GFFI segmented-chunk cross-reference
-  layout (`SecondaryGffiTable`) come from `GffFile.java`.
-- **Greg Kennedy** ([DarkSunOnline](https://github.com/greg-kennedy/DarkSunOnline))
- : DSO protocol RE; the v1.0 client's debug symbols
-  cross-reference WotR engine internals. Future reference for
-  symbol curation in `gpl-disasm`.
+- **John Glassmyer**
+  ([dsun_music](https://github.com/JohnGlassmyer/dsun_music)): the
+  GFF *writer* policy (in-place if it fits, append otherwise) and
+  the GFFI segmented-chunk cross-reference layout
+  (`SecondaryGffiTable`) come from `GffFile.java`.
+- **Greg Kennedy**
+  ([DarkSunOnline](https://github.com/greg-kennedy/DarkSunOnline)):
+  DSO protocol RE; the v1.0 client's debug symbols cross-reference
+  WotR engine internals. Future reference for symbol curation in
+  `gpl-disasm`.
 
 [`CREDITS.md`](CREDITS.md) is the per-feature attribution
 manifest: it maps each OpenDS feature to the specific upstream

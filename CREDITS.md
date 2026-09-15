@@ -23,8 +23,8 @@ comments next to the relevant code.
 | Chunk-type FOURCC catalogue (~70 entries: GFFI, FORM, GFRE, GTOC, PAL, BMP, BMAP, PORT, WALL, ICON, TILE, RMAP, GMAP, ETAB, RDFF, etc.) | `dsoageofheroes/libgff` `include/gff/gfftypes.h` | MIT |
 
 **OpenDS code that consumes the above:**
-- `tools/gff-edit/src/lib.rs` — `FileHeader`, `parse_toc`, `resolve_segmented_type`, `Gff::replace_chunk`
-- `tools/gff-edit/src/bin/gff-cat.rs` — `KIND_CATALOGUE`
+- `tools/gff-edit/src/lib.rs`: `FileHeader`, `parse_toc`, `resolve_segmented_type`, `Gff::replace_chunk`
+- `tools/gff-edit/src/bin/gff-cat.rs`: `KIND_CATALOGUE`
 - `docs/file-formats.md` §1 and §1's "Segmented chunk resolution"
 
 ## GPL bytecode
@@ -45,11 +45,11 @@ comments next to the relevant code.
 | Branch-opcode semantics for the CFG (gpl-disasm v0.3.0): the first param of every branch opcode (`gpl jump` 0x12, `gpl local sub` 0x13, `gpl global sub` 0x14 first param, `gpl if` 0x3E, `gpl else` 0x3F, `gpl while` 0x63, `gpl wend` 0x64) and the **second** param of `gpl ifcompare` 0x27 is the absolute byte offset of the target instruction within the same GPL chunk. Verified via soloscuro-archive's `print_label` / `lua_goto` (label = `data_ptr - chunk_start_ptr`), libgff's `gpl_call_global` printf labeling `(ADDR, FILE)`, and a hand-trace of DS1 GPLDATA chunks 3 + 9 + 199 (11 / 11 jumps land on instruction boundaries, plus the corpus-wide soundness test). | `dsoageofheroes/soloscuro-archive` `src/gpl/gpl-lua.c` (lines 218 `lua_goto`, 265 `print_label`, 1111 `gpl_lua_if`, 1119 `gpl_lua_else`, 1524 `gpl_lua_jump`, 1528 `gpl_lua_local_sub`, 1534 `gpl_lua_global_sub`); `dsoageofheroes/libgff` `src/gpl/parse.c` `gpl_jump` 1305, `gpl_call_local` 1312, `gpl_call_global` 1319, `gpl_if` 670, `gpl_else` 682, `gpl_while` 1417, `gpl_wend` 1425, `gpl_ifcompare` 784 | MIT |
 
 **OpenDS code that consumes the above:**
-- `tools/gpl-disasm/src/lib.rs` — `OPCODES`, `build_cfg`,
+- `tools/gpl-disasm/src/lib.rs`: `OPCODES`, `build_cfg`,
   `classify_branch`, `successors_for`, `write_dot`
 - `docs/gpl-opcodes.md`
 - `docs/gpl-bytecode.md` §5a (branch-opcode semantics)
-- `tools/dialog-extract/dialog-extract.py` — `decode_compressed_string`
+- `tools/dialog-extract/dialog-extract.py`: `decode_compressed_string`
 
 ## Character data (CHARSAVE.GFF)
 
@@ -57,18 +57,18 @@ comments next to the relevant code.
 |---------|----------|---------|
 | `gff_rdff_header_t` (10-byte header: load_action, blocknum, type, index, from, len) | `dsoageofheroes/libgff` `include/gff/rdff.h` | MIT |
 | `gff_char_entry_t` (RDFF header + opaque `data[]`) | `dsoageofheroes/libgff` `include/gff/char.h` | MIT |
-| `gff_psin_t` (`uint8_t types[7]` — psionic discipline byte codes) | `dsoageofheroes/libgff` `include/gff/psionic.h` | MIT |
-| `gff_psionic_list_t` / `gff_psst_t` (`uint8_t psionics[34]` — psionic mastery array) | `dsoageofheroes/libgff` `include/gff/psionic.h` | MIT |
+| `gff_psin_t` (`uint8_t types[7]`, psionic discipline byte codes) | `dsoageofheroes/libgff` `include/gff/psionic.h` | MIT |
+| `gff_psionic_list_t` / `gff_psst_t` (`uint8_t psionics[34]`, psionic mastery array) | `dsoageofheroes/libgff` `include/gff/psionic.h` | MIT |
 | `ds_character_t` (72-byte computed; DS1 on-disk is 71 bytes per actual save files): current_xp / high_xp / base_hp / high_hp / base_psp / id / legal_class / race / gender / alignment / stats (str/dex/con/intel/wis/cha) / real_class[3] / level[3] / base_ac / base_move / magic_resistance / num_blows / num_attacks[3] / num_dice[3] / num_sides[3] / num_bonuses[3] / saving_throw[5] / allegiance / size / spell_group / high_level[3] / sound_fx / attack_sound / psi_group / palette | `dsoageofheroes/libgff` `include/gff/object.h` `ds_character_s` | MIT |
 | `ds1_combat_t` (58 bytes): hp / psp / char_index / id / ready_item_index / weapon_index / pack_index / data_block[8] / special_attack / special_defense / icon / ac / move / status / allegiance / data / thac0 / priority / flags / stats / name[18] | `dsoageofheroes/libgff` `include/gff/object.h` `_ds_combat_t` | MIT |
 | `ds1_item_t` (~23 bytes computed; DS1 on-disk is 21): id / quantity / next / value / pack_index / item_index / icon / charges / special / slot / name_idx / bonus / priority / data0 | `dsoageofheroes/libgff` `include/gff/item.h` `ds1_item_s` | MIT (annotated "Not confirmed at all" by upstream) |
 | Positional sub-block reader for CHAR bodies (combat → character → item × N, terminated by RDFF_END): the engine reads sub-blocks by position, not by `rdff.type`. The first sub-block's `blocknum` gives the total count. | `dsoageofheroes/libsoloscuro` `src/entity.c` `sol_entity_load_from_gff` | MIT |
 | `gff_race_e` (MONSTER / HUMAN / DWARF / ELF / HALFELF / HALFGIANT / HALFLING / MUL / THRIKREEN) | `dsoageofheroes/libgff` `include/gff/object.h` `enum gff_race_e` | MIT |
 | Item slot enum (ARM / AMMO / MISSILE / HAND0 / FINGER0 / WAIST / LEGS / HEAD / NECK / CHEST / HAND1 / FINGER1 / CLOAK / FOOT) | `dsoageofheroes/libgff` `include/gff/item.h` slot enum | MIT |
-| DS2 RDFF schemas (combat 49 bytes, character 66 bytes) — defer; v0.2.0 surfaces character names heuristically and emits raw hex for DS2 sub-blocks rather than producing wrong-looking fields. | `dsoageofheroes/libsoloscuro` (TBD) | TBD |
+| DS2 RDFF schemas (combat 49 bytes, character 66 bytes): defer; v0.2.0 surfaces character names heuristically and emits raw hex for DS2 sub-blocks rather than producing wrong-looking fields. | `dsoageofheroes/libsoloscuro` (TBD) | TBD |
 
 **OpenDS code that consumes the above:**
-- `tools/save-inspect/save-inspect.py` — `decode_rdff_header`, PSIN / PSST branches in `decode_chunk`
+- `tools/save-inspect/save-inspect.py`: `decode_rdff_header`, PSIN / PSST branches in `decode_chunk`
 
 ## Bitmap and palette (image-extract)
 
@@ -80,16 +80,16 @@ comments next to the relevant code.
 | PLNR bit-packed dictionary decoder (`bits_per_symbol` byte + `(1 << bits) byte dictionary` + bit-packed symbol stream via `plnr_get_next` / `plnr_get_bits`; 4-bit-rotated bit-order extraction within each byte) | `dsoageofheroes/libgff` `src/gpl/image.c` `plnr_get_next` + `plnr_get_bits` + `plnr_get_mask` | MIT |
 
 **OpenDS code that consumes the above:**
-- `tools/image-extract/src/lib.rs` — `Palette`, `Bitmap`,
+- `tools/image-extract/src/lib.rs`: `Palette`, `Bitmap`,
   `decode_ds1_rle`, `decode_plnr`, `plnr_get_next`, `plnr_get_bits`
 
 ## Influences (read but not yet ported)
 
-- **`dsoageofheroes/libsoloscuro`** — DS-specific rules engine
+- **`dsoageofheroes/libsoloscuro`**: DS-specific rules engine
   (class.c, race.c, stats.c, dude.c, item.h, combat.h, powers.h,
   psionic.h). Will inform save-inspect v0.2.0 (CHAR record body
   decoding) and any future rules-aware tool.
-- **`greg-kennedy/DarkSunOnline`** — DSO server reimplementation
+- **`greg-kennedy/DarkSunOnline`**: DSO server reimplementation
   + wiki. The DSO v1.0 client shipped with Watcom debug symbols
   including function and variable names; Greg's repo extracts
   them to `tools/symbols.txt` (3,530 functions + 2,247 globals).
@@ -100,14 +100,14 @@ comments next to the relevant code.
   we port. Future reference for `gpl-disasm` symbol curation
   (v0.4.0+) and any binary patching work.
 - **Crimson Sands postmortem** (Gamasutra / Game Developer
-  Magazine) — the only first-person account that names "GPL"
+  Magazine): the only first-person account that names "GPL"
   as the in-engine scripting language. Cited in
   [`docs/gpl-bytecode.md`](docs/gpl-bytecode.md) §2.
-- **Beamdog forums Shattered Lands → Infinity Engine port** —
+- **Beamdog forums Shattered Lands → Infinity Engine port**:
   community attempt to recreate DS1 inside BG2:EE. Useful as a
   reference for asset extraction patterns.
 - **FearLess Cheat Engine tables** (DS1 + DS2) and the
-  **DREAD +10 Trainer** — memory-layout references for any
+  **DREAD +10 Trainer**: memory-layout references for any
   future binary patching work.
 
 ## Reference checkouts
@@ -115,15 +115,15 @@ comments next to the relevant code.
 For fast iteration during research, the following are cloned
 locally and gitignored:
 
-- `.dsun_music/` — shallow clone of
+- `.dsun_music/`: shallow clone of
   [`JohnGlassmyer/dsun_music`](https://github.com/JohnGlassmyer/dsun_music)
   (MIT).
-- `.dsoageofheroes/` — shallow clones of all 7 repos at
+- `.dsoageofheroes/`: shallow clones of all 7 repos at
   [`github.com/dsoageofheroes`](https://github.com/dsoageofheroes):
   `libgff`, `libsoloscuro`, `soloscuro`, `soloscuro-archive`,
   `soloscuro-oldgo`, `soloscuro-orx`, `the-dark-lens` (mostly
   MIT).
-- `.dso-online/` — shallow clone of
+- `.dso-online/`: shallow clone of
   [`greg-kennedy/DarkSunOnline`](https://github.com/greg-kennedy/DarkSunOnline)
   (AGPL-3.0). Research mirror; we do not port source code from
   it. We cite individual symbol names from its

@@ -1,4 +1,4 @@
-# OpenDS — Roadmap
+# OpenDS Roadmap
 
 Phased plan. Each phase has a single shippable artifact; later
 phases depend on earlier ones.
@@ -1919,7 +1919,7 @@ from this ledger, `docs/engine-quirks.md` 6, and the census row.
 
 ## New findings 2026-09-12 (six-lens full audit; detail: audit/FULL-AUDIT-2026-09-12.md, Wave 26)
 
-- [x] **HIGH: every release ships with zero assets - the player the
+- [x] **HIGH: every release ships with zero assets: the player the
       pipeline was built for cannot install darkfix-ds1.** ds1-patch's
       README says "download the darkfix-ds1-vX.Y.Z.zip release"; spec 10
       defines the release AS the zip; build-release.sh was promised in
@@ -1947,7 +1947,7 @@ from this ledger, `docs/engine-quirks.md` 6, and the census row.
       interrupted write phase (crash between first write and the journal)
       strands a half-apply with no recovery path (--unapply refuses,
       re-apply refuses, and the error never names darkfix-backup/ as the
-      manual route) - write a pending journal and teach --unapply to
+      manual route); write a pending journal and teach --unapply to
       restore from it, or at minimum name the manual route in the errors;
       two enabled fixes sharing one TARGET abort mid-write (compose
       per-file or refuse at check time with an explicit error).
@@ -1982,7 +1982,7 @@ from this ledger, `docs/engine-quirks.md` 6, and the census row.
       shows the annotated `git tag -a` command instead of a
       lightweight-tag example.)
 - [x] **Code hygiene:** parse_hex_bytes strips "0x" anywhere (120x34
-      silently becomes 1234 - prefix-only); Edit.from_dict lacks an
+      silently becomes 1234, prefix-only); Edit.from_dict lacks an
       offset >= 0 guard (gpl-asm and exe-patch both guard it).
       (Shipped 2026-09-13. gpl-asm 0.9.1: one 0x per
       whitespace-separated group, mid-string 0x fails loudly
@@ -2060,7 +2060,15 @@ Eight lenses + slop-reader at 5c6cbd7. Tally after dedup: 0 HIGH / 8 MEDIUM / ~4
 - [x] [LOW] The docs-sweep box (all six confirmed still open): hash-test instruction unrunnable (route through apply.py --selftest), .clinerules re-point, gff-tool residue in spec 2, dangling section pointers (5.20/5.21/:1043), gff-edit v0.2 header.
       (Shipped 2026-09-15: all six, plus the Wave-26 Docs sweep
       box above is now marked CLOSED with the item-by-item notes.)
-- [ ] [LOW] Em-dash/punctuation pass on live prose: the four doc titles (roadmap, spec, both patch READMEs); spec's 21 live lines; README's find-replace artifacts (floating " :" continuation lines :131-135, double colon :75-77, " ;" :7); CREDITS.md's 17 list glyphs; the 4 docs singles; roadmap.md:1910/:1938/:1965 ASCII " - " surrogates in the live findings block. Historical records (roadmap 212-1907, old patchnotes) stay as records.
+- [x] [LOW] Em-dash/punctuation pass on live prose: the four doc titles (roadmap, spec, both patch READMEs); spec's 21 live lines; README's find-replace artifacts (floating " :" continuation lines :131-135, double colon :75-77, " ;" :7); CREDITS.md's 17 list glyphs; the 4 docs singles; roadmap.md:1910/:1938/:1965 ASCII " - " surrogates in the live findings block. Historical records (roadmap 212-1907, old patchnotes) stay as records.
+      (Shipped 2026-09-15. Titles recast ("OpenDS Roadmap",
+      "OpenDS Design Spec", "darkfix for Dark Sun: ..."); every
+      live em-dash recast as a colon, semicolon, comma, or
+      parenthesis (never " - "), spec and CREDITS now at zero;
+      README's stranded " ;" and " :" joiners repaired; the three
+      ASCII surrogates in the live findings block recast. The 70
+      historical roadmap dashes and 18 patchnotes dashes stay as
+      the record.)
 - [ ] [LOW] GitHub: SECURITY.md (binary patches players run: the one repo that needs it, name the deterministic-zip hash for verification); dependabot (actions+cargo, deliberately no pip); CI badge; SHA-pin the five floating action refs; release.yml's dispatch repair path cannot rebuild darkfix-ds1-v0.1.0 (build-release.sh is absent from that tag's tree; take it from the default branch on dispatch); concurrency group; online check for unattested Releases (ovr-map-v0.3.0, save-inspect-v0.9.5, elevator-site-report-v1).
 - [ ] [LOW] Removal/housekeeping: dedupe the fix-script skeleton to fix-format.md (three inlined copies, already drifted in depth); git rm the two ds1-patch .gitkeeps; repoint .gitignore:33 at re-tooling.md; add .claude/ and .ruff_cache/ lines; versioning.md should cover 0.0.x pre-releases; CREDITS.md:90 stale "v0.2.0" forward ref; roadmap.md:54 snapshot table still says gpl-asm 0.9.0; optional ~12-line justfile for the full local gate.
 

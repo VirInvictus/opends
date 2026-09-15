@@ -1,4 +1,4 @@
-# OpenDS — Design Spec
+# OpenDS Design Spec
 
 This document captures the design invariants and architectural
 decisions for OpenDS. It is the source of truth for "what we are
@@ -14,21 +14,21 @@ OpenDS is a **community toolkit** for SSI's Dark Sun CRPGs:
 Three product surfaces, each shippable on its own and ordered
 by priority:
 
-1. **Modding toolkit (Goal 1)** — public, MIT-licensed tools
+1. **Modding toolkit (Goal 1)**: public, MIT-licensed tools
    under [`tools/`](tools/) that let anyone read, inspect,
    edit, and repack the game's files: GFF reader/writer
    (`gff-edit`), GPL disassembler/assembler, region viewer,
    dialog extractor, save inspector, install verifier. The
    toolkit is the primary deliverable. It serves any mod
    author, not just our own patch work.
-2. **darkfix patches (Goal 2)** — unofficial bugfix patches
+2. **darkfix patches (Goal 2)**: unofficial bugfix patches
    per game, under [`ds1-patch/`](ds1-patch/) and
    [`ds2-patch/`](ds2-patch/). Applied to the player's GOG
    install; the game still runs in DOSBox under the original
    engine. These are our application of the toolkit, not the
    reason for it. A community mod author with different goals
    uses the same tools.
-3. **Documentation** — every reverse-engineering finding is
+3. **Documentation**: every reverse-engineering finding is
    written into [`docs/`](docs/) so the next person doesn't
    have to redo the work. Cross-cutting; supports both Goal 1
    and Goal 2.
@@ -55,8 +55,8 @@ original.
 
 OpenDS reframes the problem. Instead of "build the whole engine
 in one push," we ship the artifacts you accumulate *on the way*
-to an engine — disassemblers, chunk editors, format
-documentation, bug patches — as standalone, useful tools. Each
+to an engine (disassemblers, chunk editors, format
+documentation, bug patches) as standalone, useful tools. Each
 one is valuable on its own. Each one chips at the GPL VM
 problem. Each one is something a future engine project can pick
 up and use rather than reinvent.
@@ -81,7 +81,7 @@ being authored against ad-hoc one-off code.
 
 ## 2. Target platform
 
-- **Player platform**: anywhere the GOG release runs — primarily
+- **Player platform**: anywhere the GOG release runs, primarily
   Windows, Linux, macOS. The patch is applied to the installed game
   files, then the user launches via the GOG/DOSBox launcher as usual.
 - **Authoring platform**: Linux x86_64, Fedora 43+. All tooling
@@ -126,7 +126,7 @@ Bugs that the GPL scripts cannot reach (combat AI loops, sprite
 culling, save/exit bugs) live in `DSUN.EXE`. We patch the executable
 directly.
 
-Authoring tools: **radare2** (preferred — scriptable, on Fedora as
+Authoring tools: **radare2** (preferred: scriptable, on Fedora as
 `r2`) or **Ghidra** for analysis; Python `pwntools`/`keystone-engine`
 or hand-assembled hex for emitting patches.
 
@@ -382,7 +382,7 @@ opends/
 
 The repo name `opends` is the umbrella project. The patches
 shipped from inside it are referred to as **darkfix patches**
-(`darkfix-ds1`, `darkfix-ds2`) — that's the name players and
+(`darkfix-ds1`, `darkfix-ds2`); that is the name players and
 release artifacts see. Tools are referred to by their own names
 (`gpl-disasm`, etc.). When the engine eventually exists, it
 inherits the umbrella name: OpenDS.
@@ -416,16 +416,16 @@ in v1 scope.
 
 Three levels:
 
-1. **Unit** — patch script applies cleanly to a known-hash source
+1. **Unit**: patch script applies cleanly to a known-hash source
    and produces a known-hash output.
-2. **In-game** — DOSBox-Staging runs the patched game; a recorded
+2. **In-game**: DOSBox-Staging runs the patched game; a recorded
    playthrough trace reproduces the bug-trigger and the bug doesn't
    fire.
-3. **Manual** — Brandon plays the game.
+3. **Manual**: Brandon plays the game.
 
 CI runs unit tests only. In-game and manual run locally.
 
-## 12. Engine (deferred — the aspiration in the name)
+## 12. Engine (deferred; the aspiration in the name)
 
 A from-scratch engine remains the long-term goal the name
 *OpenDS* encodes. The project does not promise it. The toolkit
@@ -435,7 +435,7 @@ and patches are the v1 deliverables; the engine is what becomes
 Concretely: when we have a working GPL disassembler, a
 GPL reassembler, a GFF reader/writer in our preferred language,
 a region renderer prototype, and enough documented opcodes to
-read the bulk of `GPLDATA.GFF` — *then* an engine project is no
+read the bulk of `GPLDATA.GFF`, *then* an engine project is no
 longer an act of single-handed reverse-engineering. It's
 plumbing. At that point, spinning it up makes sense.
 
@@ -458,18 +458,18 @@ ships:
 
 If a tool turns out to have wider applicability than Dark Sun
 specifically (e.g., a generic GFF inspector), we factor it into
-its own repo and link from the toolkit index — but we don't do
+its own repo and link from the toolkit index, but we don't do
 this prematurely. One repo until friction proves we need two.
 
 ## 14. Open questions
 
 - Do we want one umbrella repo (current plan) or two repos
   (`darkfix-ds1`, `darkfix-ds2`)? Current: umbrella with subfolders.
-- License — MIT for tooling, what for the patches themselves?
+- License: MIT for tooling; what for the patches themselves?
   (Patches don't include game data, but they are derived works of
   reverse-engineering. MIT or Public Domain likely.)
 - How to handle the GOG-Linux-DOSBox `cloud_saves/` directory in
-  the applier — back it up too, or leave it alone?
+  the applier: back it up too, or leave it alone?
 - Should we publish the GPL disassembly itself, or treat it as
   internal-only (for risk-reducing the project's relationship with
   WotC's IP)?

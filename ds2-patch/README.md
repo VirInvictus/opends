@@ -1,4 +1,4 @@
-# darkfix — Dark Sun: Wake of the Ravager
+# darkfix for Dark Sun: Wake of the Ravager
 
 Bugfix patch for *Dark Sun: Wake of the Ravager* (1994). Targets
 the GOG release (engine version 1.10).
@@ -7,7 +7,7 @@ Part of the [OpenDS](../README.md) community toolkit. The patch
 ships as `darkfix-ds2` releases; the rest of OpenDS provides the
 tools used to author them.
 
-This is the headline patch — *Wake of the Ravager* shipped with
+This is the headline patch: *Wake of the Ravager* shipped with
 game-breaking bugs that even SSI's 1.02 and 1.10 patches did not
 fully resolve. There has never been a public unofficial patch.
 This will be the first.
@@ -27,15 +27,15 @@ tooling or copied per patch.
 
 ## Layout
 
-- `VERSION` — patch version (docs/versioning.md; single source
+- `VERSION`: patch version (docs/versioning.md; single source
   for the release tooling). 0.0.1 = pre-release, nothing
   shipped.
-- `manifest.toml` — schema v1 (spec.md §4): target game and the
+- `manifest.toml`: schema v1 (spec.md §4); target game and the
   canonical `DSUN.EXE` hash. The fix list is empty until the
   first fix lands.
-- `fixes/` — one markdown writeup + one applier script per fix.
+- `fixes/`: one markdown writeup + one applier script per fix.
   Each fix has a stable identifier (`fix.ds2.<short-name>`).
-- `scripts/apply.py` — the umbrella applier.
+- `scripts/apply.py`: the umbrella applier.
 
 ## Player install (forthcoming)
 

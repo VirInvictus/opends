@@ -4,7 +4,7 @@ Resolved from the dispatch table at DGROUP:0xc0 (file `0x48a20`),
 reached by the interpreter's `shl ax,1; mov bx,ax; call near
 [bx+0xc0]` at file `0x99c5` (the dispatch site has an intervening
 `mov bx,ax` vs DS2's direct `mov bx,ax` pattern). Handler file
-addresses use code segment base `0x97d0` (paragraph `0x43d`) —
+addresses use code segment base `0x97d0` (paragraph `0x43d`),
 **confirmed** by 783 MZ relocations carrying segment ordinal
 0x43d, and by 129/129 entries landing on valid Borland function
 entries (114 frameless stack-check, 11 overlay-marked frame,

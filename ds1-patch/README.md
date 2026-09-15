@@ -1,4 +1,4 @@
-# darkfix — Dark Sun: Shattered Lands
+# darkfix for Dark Sun: Shattered Lands
 
 Bugfix patch for *Dark Sun: Shattered Lands* (1993). Targets the
 GOG release (engine version 1.10).
@@ -16,15 +16,15 @@ writeups.
 
 ## Layout
 
-- `VERSION` — patch version (docs/versioning.md; read at runtime
+- `VERSION`: patch version (docs/versioning.md; read at runtime
   by the applier).
-- `manifest.toml` — schema v1 (spec.md §4): target game, the
+- `manifest.toml`: schema v1 (spec.md §4); target game, the
   canonical hashes of every file a fix touches, and the ordered
   fix list with on/off state.
-- `fixes/` — one markdown writeup + one applier script per fix.
+- `fixes/`: one markdown writeup + one applier script per fix.
   Each fix has a stable identifier (`fix.ds1.<short-name>`).
-- `scripts/apply.py` — the umbrella applier.
-- `scripts/darkfix/` — the engine the applier and fix scripts
+- `scripts/apply.py`: the umbrella applier.
+- `scripts/darkfix/`: the engine the applier and fix scripts
   share: byte edits, GFF chunk replacement, backup, journal.
 
 A release zip flattens those last two to the zip root

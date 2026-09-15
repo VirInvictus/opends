@@ -3,7 +3,7 @@
 Resolved from the dispatch table at DGROUP:0x30a (file `0x4d30a`),
 reached by the interpreter's `shl ax,1; call near [bx+0x30a]` at
 file `0xc677`. Handler file addresses use code segment base
-`0xc4c0` (paragraph `0x72c`) — **confirmed** by the MZ
+`0xc4c0` (paragraph `0x72c`): **confirmed** by the MZ
 relocation table (the interpreter's fixups all carry segment
 ordinal 0x72c) and verified by clean prologue decodes at
 multiple handlers (0x00 -> 0xe409, 0x22 -> 0xd444). The
