@@ -1403,6 +1403,7 @@ authoring should feel like routine work.
       > downloadable). Still open, Brandon's side: one run on a real
       > Windows. (The §5.20 dependency stance closed 2026-09-06:
       > nasm, no keystone.)
+- [x] Pick one trivial DS1 bug (identified during Phase 2 repro
       work). Prefer a GPL-data fix if one is available: it
       exercises `gpl-asm --patch` + `gff-edit` and defers the
       EXE surface until Phase 5.7 exists. Prefer, second, a
@@ -1800,22 +1801,31 @@ abandoned; nothing here is scheduled.
       gets repetitive enough to want them; the `--patch` TOML
       mode may obsolete the need instead. Re-evaluate at
       Phase 6.
-- [ ] **`opcode-fuzz` recipe format decision + recipe-driven
-      fuzz.** The harness runs a swapped chunk through DOSBox
-      and diffs `DARKRUN.GFF`; what is missing is the settled
-      recipe format (short-form mnemonics vs JSON vs gpl-asm
-      extension) and the loop that walks candidate opcodes.
-      Phase 5's done-when (discover at least one
-      previously-unknown opcode, add it to
-      `docs/gpl-opcodes.md`) is still open; keep this phase
-      alive until it is met or explicitly closed.
-- [ ] **`save-inspect` DARKRUN SAVE chunk RE.** SAVE/1 (the
-      ~10 KB probable master per-region state table),
-      SAVE/2-/4, /7-/9, the u16 scalar family at ids 10..17,
-      the 51-byte SAVE/18 boolean array. Bootstrap with the
+- [ ] **`opcode-fuzz` first opcode-semantics discovery (JSON
+      recipes).** The harness runs a swapped chunk through DOSBox
+      and diffs `DARKRUN.GFF`; what remains is the loop that
+      walks candidate opcodes and the discovery work itself.
+      (Ratified 2026-09-12: reframed from "discover a
+      previously-unknown opcode", whose original shape died when
+      the 15 unknown dispatch slots were proven unimplemented,
+      so only semantics discovery can meet it; the recipe-format
+      call is made, JSON recipes matching the `gpl-disasm
+      --json` contract the other tools speak; the work
+      schedules with the DOSBox session calendar. Keep this box
+      alive until a semantics discovery lands or the box is
+      explicitly closed.)
+- [ ] **`save-inspect` DARKRUN SAVE chunk RE.** (Ratified
+      2026-09-12, partially absorbed: SAVE/1 and SAVE/7 are
+      decoded into the field catalogue as of 0.9.6; the
+      remaining ids stay deferred on the original trigger, a
+      fix that must READ a save field.) Still open: SAVE/2-/4,
+      /8, /9, the u16 scalar family at ids 10..17, and the
+      51-byte SAVE/18 boolean array. Bootstrap with the
       v0.7.0 `save-diff` harness: snapshot, one in-game
       action, snapshot, diff. Quest and world-state fixes
-      need this; promote when the first such fix is chosen.
+      need this; promote when the first such fix is chosen
+      (the dead-trigger pick reads GPL chunks, not saves, so
+      it does not pull this forward).
 - [ ] **`extract.sh`.** From-installer extraction wrapper.
       Deferred; `innoextract` is one command and
       `verify-install --repair` already shells out. Reinstate
@@ -1993,7 +2003,17 @@ Eight lenses + slop-reader at 5c6cbd7. Tally after dedup: 0 HIGH / 8 MEDIUM / ~4
       floor runs the whole gate including the six selftests
       instead of only the zip build. build-environment.md 2 and
       CLAUDE.md carry the gate line.)
-- [ ] [MEDIUM] Repair the Phase 6 pick-box scar: the 09-12 5.20-strike repair took the pick-box header with it and the body resumes mid-sentence ("work). Prefer a GPL-data fix..."); restore the box, move the orphaned body + annotations under it, delete the dangling "work)". Same lane: fold the ratified 09-12 dispositions into the save-inspect and opcode-fuzz box bodies (roadmap.md:1803-1818), which still list decoded items as open.
+- [x] [MEDIUM] Repair the Phase 6 pick-box scar: the 09-12 5.20-strike repair took the pick-box header with it and the body resumes mid-sentence ("work). Prefer a GPL-data fix..."); restore the box, move the orphaned body + annotations under it, delete the dangling "work)". Same lane: fold the ratified 09-12 dispositions into the save-inspect and opcode-fuzz box bodies (roadmap.md:1803-1818), which still list decoded items as open.
+      (Shipped 2026-09-15. The deleted header line was recovered
+      verbatim from the strike commit's diff ("- [x] Pick one
+      trivial DS1 bug (identified during Phase 2 repro") and
+      reinserted, so the orphaned body and the shortlist/
+      CORRELATED/PICKED annotations sit under their box again.
+      The ratified dispositions are folded into both bodies:
+      opcode-fuzz reframed to first opcode-semantics discovery
+      with the JSON-recipes call recorded, save-inspect marked
+      partially absorbed (SAVE/1 + SAVE/7 decoded in 0.9.6) with
+      only the true remainder listed open.)
 - [ ] [MEDIUM] spec.md:225-237 (section 6) still says "No reassembler in v1"; gpl-asm is 0.9.1 and produced the first real fix. Rewrite to the shipped stack (gpl-disasm, gpl-asm --patch, gff-cat replace). Same lane: patchnotes.md has its entire 113-entry history under one `## Unreleased` heading while patch-workflow.md:194 describes version headings; introduce headings and move tagged entries out.
 - [ ] [MEDIUM] Comment-header de-versioning sweep (headers frozen in tool infancy): gpl-asm lib.rs:1-25 (still "v0.1.0 encoder foundation"; all three future-work items shipped) and :23-25 (says Search chunks are "flagged unencodable"; the encoder handles them at :274-300/:413-436) and the dead-version error strings; save-inspect.py:4-9 (claims CHAR records are opaque hex; decoded per game and writable since 0.8.0); gff-edit lib.rs:21/builder.rs:12; gpl-disasm lib.rs:19; opcode-fuzz.py:5. Plus apply.py:366 --status prints "applied" for a pending (interrupted) journal: branch on status.
 - [ ] [LOW] Seven real-bug LOWs: `opends extract` dispatches to a gff-cat subcommand that has never existed (tools/opends/src/main.rs:197); gpl-asm silently mangles non-ASCII string content through 7-bit masking (lib.rs:528, unreachable via the round-trip loop but one hand-authored accent from corruption); journal writes are non-atomic so a first-write crash blocks apply AND unapply with a message naming a backup that does not exist yet (patcher.py:288); an all-disabled manifest "applies" and writes an unremovable empty journal (apply.py:141); build-release.sh Gate 1 misses the duplicate-TARGET refusal so a bad manifest ships in the zip (:89); verify-install --repair clobbers its own backup (:278); exe-patch resident edits skip the straddle check (exe-patch.py:206).
