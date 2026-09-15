@@ -1,21 +1,14 @@
 # Patchnotes
 
-Released versions appear here, newest first.
+Released versions appear here, newest first: one heading per
+tagged release or dated batch. A `<tool>-vX.Y.Z` tag's message
+is that release's entry here, verbatim (see `docs/versioning.md`).
 
 ## Unreleased
 
-The 2026-09-13 packaging + hardening batch: one tagged item
-(`gpl-asm` v0.9.1), plus unreleased applier and packaging work
-that ships with the next `darkfix-ds1` release.
-
-- **`gpl-asm` v0.9.1**: `--patch` no longer silently corrupts hex
-  byte strings that carry a stray `0x`. The parser stripped the
-  prefix anywhere in the string, so `bytes_old = "120x34"` parsed
-  as `1234` and fingerprint-checked against the wrong bytes. A
-  `0x` prefix is now accepted only at the start of a
-  whitespace-separated group (`0xDE 0xAD` still parses; a
-  mid-string `0x` fails loudly as bad hex). Regression-tested in
-  the assembler's unit suite.
+Applier and packaging work from the 2026-09-13 batch; it
+ships with the next `darkfix-ds1` release. (The batch's tagged
+item, `gpl-asm` v0.9.1, has its own heading below.)
 
 - **release packaging**: `tools/build-release.sh` ships: the zip
   builder promised in `docs/patch-workflow.md` §7 since Phase 6.
@@ -55,13 +48,18 @@ that ships with the next `darkfix-ds1` release.
   Seventeen new selftest cases cover all of it; `apply.py
   --selftest` runs 39 checks, all green.
 
-Tagged releases from the previous batch: `ovr-map-v0.3.0` and
-`save-inspect-v0.9.5`, joined 2026-09-06 by `ovr-map-v0.3.1`,
-`ovr-map-v0.3.2`, `exe-patch-v0.1.0`, `repro-v0.5.0` and
-`image-extract-v0.5.0`, joined 2026-09-11 by
-`region-render-v0.8.0`, `ovr-map-v0.3.4` and `darkfix-ds1-v0.1.0`
-(all git tags pushed with GitHub Releases; the entries below are
-the release notes).
+## gpl-asm v0.9.1 (2026-09-13)
+
+- **`gpl-asm` v0.9.1**: `--patch` no longer silently corrupts hex
+  byte strings that carry a stray `0x`. The parser stripped the
+  prefix anywhere in the string, so `bytes_old = "120x34"` parsed
+  as `1234` and fingerprint-checked against the wrong bytes. A
+  `0x` prefix is now accepted only at the start of a
+  whitespace-separated group (`0xDE 0xAD` still parses; a
+  mid-string `0x` fails loudly as bad hex). Regression-tested in
+  the assembler's unit suite.
+
+## darkfix-ds1 v0.1.0, ovr-map v0.3.4, region-render v0.8.0 (2026-09-10/11)
 
 - **`darkfix-ds1` v0.1.0**: **the first real fix ships.**
   `fix.ds1.deadtriggers` repoints the four static dead-trigger
@@ -140,6 +138,8 @@ the release notes).
   schedule, the DS1 default set, and per-frame PLTE output.
   Also repairs the README palette-precedence table (it predated
   the v0.5.0 preset flag and the CPAL:200-first fallback).
+
+## 2026-09-06 hardening batch: save-inspect v0.9.6, ovr-map v0.3.1-0.3.3, gpl-disasm v0.7.0/0.8.0, image-extract v0.5.0, repro v0.5.0, exe-patch v0.1.0
 
 - **`tools/save-inspect/` v0.9.6**: **SAVE/1 decoded**, and
   the semantic differ gains game-scoped hypothesis rows.
@@ -323,6 +323,8 @@ the release notes).
   handler at the address that actually runs. `--selftest`
   green on both games; the old address resolves to no name.
 
+## The first per-tool tags: ovr-map v0.3.0, save-inspect v0.9.5 (2026-09-04)
+
 - **`save-inspect` v0.9.5** — the DARKRUN SAVE semantic
   differ. `scripts/save-semantic-diff.py` diffs two
   DARKRUN-shape GFFs, clusters the byte differences per SAVE
@@ -380,6 +382,8 @@ the release notes).
   roots, `$HOME` for the Wine installs), and `ds2-patch/`
   has its `VERSION` (0.0.1) and `manifest.toml` (canonical
   GOG 1.10 `DSUN.EXE` hash, empty fix list).
+
+## 2026-08: the binary side opens (ovr-map v0.1.0/0.2.0, gpl-asm v0.9.0, darkfix-ds1 v0.0.1)
 
 - **`docs/dsun-exe-survey.md`** is new: a whole-binary measured
   survey of both engines, the exploration half of Phase 5.6.
@@ -525,6 +529,8 @@ the release notes).
   round-trip stays 600 / 600. This removes hand-counted byte
   offsets from darkfix authoring, the Phase 6 soft-blocker.
 
+## 2026-06-10: dialog-extract v0.7.1, gpl-asm v0.8.1
+
 - **`tools/dialog-extract/` v0.7.1** adds the missing
   `from typing import Any` (six annotation sites used `Any`
   unimported; harmless under deferred annotation evaluation
@@ -566,6 +572,8 @@ the release notes).
   ("Gerakis"). Auto-backup to
   `<file>.bak.ds1-party-edit.<unix_ts>` on every edit.
   `--dry-run` to preview.
+
+## 2026-05-18: Phase 5 tools mature (save editing, the assembler, atlas, fuzz)
 
 - **SAVE-chunk decode discoveries** (v0.7.0 follow-on):
   - **DARKRUN.GFF SAVE-5** = array of DS1 combat sub-blocks
@@ -1421,6 +1429,8 @@ the release notes).
     `apply_to_locals_decorates_matching_chunk_only`,
     `apply_to_locals_skips_non_matching_chunk`) plus the
     existing 600/600 corpus round-trip stays clean.
+
+## 2026-05-16/17: the harness and rendering phases (repro, region-render, image-extract, dialog-extract, opcode-fuzz, exe-re)
 
 - **`tools/gpl-asm/` v0.7.0** adds two real authoring
   features on top of v0.6.0's directive infrastructure. Pure
@@ -3031,6 +3041,8 @@ the release notes).
     source of truth, so this release catches it back up. No
     behavioural change.
   - Roadmap Phase 3 opcode-mnemonic-override bullet ticked.
+
+## 2026-05-14/15: project formation, the GFF foundation, the first tools
 
 - **`tools/gpl-disasm/` v0.4.1** adds inter-chunk control-flow
   analysis. New `--global-cfg <path>` flag emits a whole-file

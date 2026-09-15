@@ -224,24 +224,42 @@ letting the second write corrupt the first fix.
 
 ## 6. GPL bytecode
 
+*(Updated 2026-09-15 to the shipped stack; the "no reassembler in
+v1" stance this section carried since Phase 0 is obsolete:
+`gpl-asm` is real, and `fix.ds1.deadtriggers` was authored with
+it.)*
+
 Quest fixes require disassembling, editing, and reassembling GPL
-("Game Programming Language") bytecode chunks. The authoring stack:
+("Game Programming Language") bytecode chunks. The authoring
+stack, as shipped:
 
-1. **`gpl-disasm`** — our own disassembler. Reads `GPL ` chunks,
-   emits annotated mnemonic source. Built incrementally; opcodes
-   that aren't decoded yet are emitted as `db` byte literals.
-2. **Manual editing** — we hand-edit the disassembly in the patch
-   we author. No reassembler in v1; we patch bytes directly using
-   the disassembler's offset annotations.
-3. **`gpl-asm`** — eventual reassembler that takes our disassembly
-   format back to bytecode. Not blocking for v1 patches.
+1. **`gpl-disasm`** reads `GPL ` chunks and emits annotated
+   mnemonic source or JSON (100% corpus alignment, CFG labels,
+   curated symbol names). Opcodes that aren't decoded yet are
+   emitted as `db` byte literals.
+2. **Edit the disassembly** by hand or in a patch script.
+3. **`gpl-asm`** turns the edited disassembly back into
+   bytecode, byte-identically (600/600 corpus chunks
+   round-trip). Its `--patch` mode applies label-anchored TOML
+   patch scripts: every edit addresses `"<label> + N"` or a
+   curated symbol name (never hand-counted bytes) and carries a
+   mandatory `bytes_old` fingerprint; `--dry-run` validates
+   without writing.
+4. **`gff-cat replace`** (gff-edit) reinserts the patched chunk
+   into the GFF, in place when it fits, appended otherwise.
 
-`soloscuro-archive`'s partial GPL parser is the closest public
+The shipped EDITS in a darkfix are the verified bytes at absolute
+file offsets (§4), so the player-side applier needs none of these
+tools at apply time; the stack above is the authoring side.
+
+`soloscuro-archive`'s partial GPL parser was the closest public
 prior art and the starting point. The DSO v1.0 client (per
 greg-kennedy's wiki) shipped with debug symbols including GPL
-function names — the highest-value cross-reference we have.
+function names: the highest-value cross-reference we have, now
+curated into `tools/gpl-disasm/syms/`.
 
-See [`docs/gpl-bytecode.md`](docs/gpl-bytecode.md).
+See [`docs/gpl-bytecode.md`](docs/gpl-bytecode.md) and
+[`docs/fix-format.md`](docs/fix-format.md).
 
 ## 7. Tooling stack
 

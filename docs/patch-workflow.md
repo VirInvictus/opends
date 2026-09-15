@@ -202,8 +202,10 @@ When the next minor version is ready:
    `darkfix-dsN-v<version>.zip` (default output
    `scratch/releases/`, override with `--out`; rebuilding an
    unchanged tree is byte-identical).
-4. Tag the umbrella repo: `git tag darkfix-dsN-vMAJOR.MINOR.PATCH`
-   (annotated; the message is that release's patchnotes entry).
+4. Tag the release commit (annotated; the message is that
+   release's full patchnotes entry, not a summary): extract the
+   entry verbatim into a file, then
+   `git tag -a darkfix-dsN-vMAJOR.MINOR.PATCH --cleanup=verbatim -F <file> <release-commit>`.
 5. Push. Create a GitHub release and attach the zip. From the
    next darkfix tag onward the `release zip` workflow does this
    automatically on the tag push (and on a manual dispatch with a
