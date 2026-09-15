@@ -225,25 +225,6 @@ fn extract_args(file: &Path, out: &Path) -> Vec<std::ffi::OsString> {
     ]
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn extract_dispatches_to_a_real_gff_cat_subcommand() {
-        // Regression: `opends extract` used to dispatch to
-        // `gff-cat bulk-extract`, a subcommand gff-cat has never
-        // had, so every invocation failed. `extract --all -o` is
-        // the real surface (gff-cat.rs Cmd::Extract).
-        let args = extract_args(Path::new("GPLDATA.GFF"), Path::new("out"));
-        let strs: Vec<String> = args
-            .iter()
-            .map(|a| a.to_string_lossy().into_owned())
-            .collect();
-        assert_eq!(strs, ["extract", "GPLDATA.GFF", "--all", "-o", "out"]);
-    }
-}
-
 fn cmd_tools() -> Result<()> {
     let root = workspace_root();
     println!("OpenDS toolkit (umbrella v{})", env!("CARGO_PKG_VERSION"));
@@ -459,4 +440,23 @@ fn workspace_root() -> Option<PathBuf> {
 fn read_version(path: &Path) -> Result<String> {
     let text = fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
     Ok(text.trim().to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extract_dispatches_to_a_real_gff_cat_subcommand() {
+        // Regression: `opends extract` used to dispatch to
+        // `gff-cat bulk-extract`, a subcommand gff-cat has never
+        // had, so every invocation failed. `extract --all -o` is
+        // the real surface (gff-cat.rs Cmd::Extract).
+        let args = extract_args(Path::new("GPLDATA.GFF"), Path::new("out"));
+        let strs: Vec<String> = args
+            .iter()
+            .map(|a| a.to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(strs, ["extract", "GPLDATA.GFF", "--all", "-o", "out"]);
+    }
 }

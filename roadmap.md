@@ -51,7 +51,7 @@ understanding campaign it should have been.
 | `region-render` | 0.8.0 | shipped; animated palette (`--animate-palette`, 2026-09-10); `--annotate` deferred |
 | `atlas` | 0.1.1 | shipped |
 | `opends` | 0.1.0 | shipped |
-| `gpl-asm` | 0.9.0 | shipped; 600/600 round-trip; macros queued |
+| `gpl-asm` | 0.9.1 | shipped; 600/600 round-trip; `--patch` hex parsing hardened; macros queued |
 | `opcode-fuzz` | 0.3.0 | shipped; recipe-driven fuzz + first opcode discovery open |
 | `ovr-map` | 0.3.4 | shipped; symbol catalogue (130 DS1 / 132 DS2 rows incl. StartCycle/StopCycle), xref tools, Ghidra pipeline run-proven end to end (2026-09-10), OBJEX sprite pipeline |
 | `exe-patch` | 0.1.0 | shipped; the Phase 5.7 EXE patch authoring surface (`ovr:`/symbol addressing, mandatory fingerprints, `--verify` gate, in-place enforcement) |

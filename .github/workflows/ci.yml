@@ -94,3 +94,4 @@ jobs:
           python3 ds1-patch/scripts/apply.py --selftest
           python3 tools/gpl-disasm/scripts/global-state-sweep.py --selftest
           python3 tools/gpl-disasm/scripts/dead-trigger-sweep.py --selftest
+          python3 tools/verify-install/verify-install.py --selftest

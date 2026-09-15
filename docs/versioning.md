@@ -71,8 +71,11 @@ another.
 
 ## Pre-1.0
 
-All items start at `0.1.0`. The semantic difference between
-0.x.y and 1.0.0:
+All items start at `0.1.0`; `0.0.x` is reserved for pre-release
+scaffolding before an item's first real release (ds2-patch's
+`0.0.1` is an empty fix list awaiting its first fix; ds1-patch
+lived at `0.0.1` for the same reason before `0.1.0` shipped). The
+semantic difference between 0.x.y and 1.0.0:
 
 - **0.x.y**: the interface may still change between minor
   bumps. No strict back-compat promise.

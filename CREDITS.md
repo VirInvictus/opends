@@ -87,8 +87,10 @@ comments next to the relevant code.
 
 - **`dsoageofheroes/libsoloscuro`**: DS-specific rules engine
   (class.c, race.c, stats.c, dude.c, item.h, combat.h, powers.h,
-  psionic.h). Will inform save-inspect v0.2.0 (CHAR record body
-  decoding) and any future rules-aware tool.
+  psionic.h). save-inspect already decoded the CHAR record body
+  per game (v0.8.0 onward, writable since the same release); a
+  rules-aware consumer of the structs themselves is still future
+  work.
 - **`greg-kennedy/DarkSunOnline`**: DSO server reimplementation
   + wiki. The DSO v1.0 client shipped with Watcom debug symbols
   including function and variable names; Greg's repo extracts
