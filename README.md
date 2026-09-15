@@ -4,6 +4,8 @@
 
 # OpenDS
 
+[![CI](https://github.com/VirInvictus/opends/actions/workflows/ci.yml/badge.svg)](https://github.com/VirInvictus/opends/actions/workflows/ci.yml)
+
 **An open community toolkit for SSI's Dark Sun CRPGs**:
 *Shattered Lands* (1993) and *Wake of the Ravager* (1994).
 

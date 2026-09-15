@@ -1,0 +1,13 @@
+# Dependency and action updates. Deliberately NO pip ecosystem:
+# the ruff 0.15.20 pin is policy (root ruff.toml + the CI install
+# line), not drift, and the Python tools are stdlib-only.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly

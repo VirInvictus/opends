@@ -2069,7 +2069,25 @@ Eight lenses + slop-reader at 5c6cbd7. Tally after dedup: 0 HIGH / 8 MEDIUM / ~4
       ASCII surrogates in the live findings block recast. The 70
       historical roadmap dashes and 18 patchnotes dashes stay as
       the record.)
-- [ ] [LOW] GitHub: SECURITY.md (binary patches players run: the one repo that needs it, name the deterministic-zip hash for verification); dependabot (actions+cargo, deliberately no pip); CI badge; SHA-pin the five floating action refs; release.yml's dispatch repair path cannot rebuild darkfix-ds1-v0.1.0 (build-release.sh is absent from that tag's tree; take it from the default branch on dispatch); concurrency group; online check for unattested Releases (ovr-map-v0.3.0, save-inspect-v0.9.5, elevator-site-report-v1).
+- [x] [LOW] GitHub: SECURITY.md (binary patches players run: the one repo that needs it, name the deterministic-zip hash for verification); dependabot (actions+cargo, deliberately no pip); CI badge; SHA-pin the five floating action refs; release.yml's dispatch repair path cannot rebuild darkfix-ds1-v0.1.0 (build-release.sh is absent from that tag's tree; take it from the default branch on dispatch); concurrency group; online check for unattested Releases (ovr-map-v0.3.0, save-inspect-v0.9.5, elevator-site-report-v1).
+      (Shipped 2026-09-15. SECURITY.md names GitHub private
+      vulnerability reporting plus the deterministic-zip sha256
+      check, and release.yml now quotes the built zip's sha256
+      into the release notes so the promise is true going
+      forward. dependabot.yml: github-actions + cargo weekly, no
+      pip (the ruff pin is policy). All five action refs SHA-pinned
+      (checkout v4.2.2, setup-python v5.6.0, rust-cache v2.8.1,
+      dtolnay/rust-toolchain stable branch head). The v0.1.0
+      dispatch exception is COMMENTED in release.yml's build step
+      rather than papered over: the script's absence from that
+      tree already fails loudly, which is the safe behavior,
+      because a rebuild from main's tree would silently change a
+      shipped asset (its zip carried the manifest-discovery fix
+      in apply.py). ci.yml gains a cancel-in-progress concurrency
+      group. Online check ran: all 16 tags have Releases, so the
+      three flagged as unattested (ovr-map-v0.3.0,
+      save-inspect-v0.9.5, elevator-site-report-v1) are in fact
+      attested; audit correction recorded.)
 - [ ] [LOW] Removal/housekeeping: dedupe the fix-script skeleton to fix-format.md (three inlined copies, already drifted in depth); git rm the two ds1-patch .gitkeeps; repoint .gitignore:33 at re-tooling.md; add .claude/ and .ruff_cache/ lines; versioning.md should cover 0.0.x pre-releases; CREDITS.md:90 stale "v0.2.0" forward ref; roadmap.md:54 snapshot table still says gpl-asm 0.9.0; optional ~12-line justfile for the full local gate.
 
 CONFIRMED-prior (verified): the release-assets HIGH closed 09-13 (build-release.sh + release.yml + the zip proven by download); applier hardening closed (39 checks statically consistent); the PARTIAL sweep residuals all still open and correctly tracked. SUPERSEDED: parse_hex_bytes (fixed + regression tests), Edit.from_dict guard. Audit-side correction: the audit sheet still says "5.20 still open" on bsdiff4/keystone; the repo closed 5.20 on 2026-09-06 with neither adopted.
