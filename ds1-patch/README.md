@@ -16,6 +16,7 @@ writeups.
 
 ## Layout
 
+- `LICENSE`: MIT, same as the toolkit (spec 14).
 - `VERSION`: patch version (docs/versioning.md; read at runtime
   by the applier).
 - `manifest.toml`: schema v1 (spec.md §4); target game, the
@@ -111,27 +112,12 @@ and the cookbook skeleton
 Authoring-time full-install hash check: `--check-all` (uses
 `docs/source-hashes/ds1-gog-1.10.toml`; a distributed zip does not
 ship docs/, so players never need it).
-A fix script is a small Python module next to its writeup:
-
-```python
-from darkfix.patcher import apply_bytes
-
-# matches manifest.toml
-ID = "fix.ds1.<short-name>"
-# relative to the install root
-TARGET = "GPLDATA.GFF"
-# canonical GOG 1.10 hash
-SOURCE_SHA256 = "..."
-# in-place byte edits; fingerprint-checked
-EDITS = [
-    {"offset": 0x1234, "expect": b"\x74\x0a", "replace": b"\x75\x0a"},
-]
-
-
-def apply(source_path, dest_path):
-    apply_bytes(source_path, dest_path, EDITS)
-```
-
+A fix script is a small Python module next to its writeup: it
+declares `ID`, `TARGET`, `SOURCE_SHA256`, `EDITS`, and
+`apply(source_path, dest_path)`. The canonical skeleton and
+contract live in
+[`../docs/fix-format.md`](../docs/fix-format.md);
+[`fixes/000-noop.py`](fixes/000-noop.py) is the live example.
 Then add the fix to `manifest.toml` under `[[fixes]]`.
 Byte edits are strictly in-place (same length); chunk-level GFF
 fixes go through `darkfix.patcher.apply_gff_chunk` (shells to

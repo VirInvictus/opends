@@ -2088,7 +2088,14 @@ Eight lenses + slop-reader at 5c6cbd7. Tally after dedup: 0 HIGH / 8 MEDIUM / ~4
       three flagged as unattested (ovr-map-v0.3.0,
       save-inspect-v0.9.5, elevator-site-report-v1) are in fact
       attested; audit correction recorded.)
-- [ ] [LOW] Removal/housekeeping: dedupe the fix-script skeleton to fix-format.md (three inlined copies, already drifted in depth); git rm the two ds1-patch .gitkeeps; repoint .gitignore:33 at re-tooling.md; add .claude/ and .ruff_cache/ lines; versioning.md should cover 0.0.x pre-releases; CREDITS.md:90 stale "v0.2.0" forward ref; roadmap.md:54 snapshot table still says gpl-asm 0.9.0; optional ~12-line justfile for the full local gate.
+- [x] [LOW] Removal/housekeeping: dedupe the fix-script skeleton to fix-format.md (three inlined copies, already drifted in depth); git rm the two ds1-patch .gitkeeps; repoint .gitignore:33 at re-tooling.md; add .claude/ and .ruff_cache/ lines; versioning.md should cover 0.0.x pre-releases; CREDITS.md:90 stale "v0.2.0" forward ref; roadmap.md:54 snapshot table still says gpl-asm 0.9.0; optional ~12-line justfile for the full local gate.
+      (Shipped 2026-09-15, the gitkeeps and the dedupe on
+      Brandon's explicit go. patch-workflow 4.2 and the ds1-patch
+      README now point at fix-format.md's canonical skeleton with
+      the one-line contract; spec 14 resolved as MIT with LICENSE
+      staged into both patch dirs and the zips by build-release.sh;
+      the .gitignore Ghidra comment cites re-tooling.md and gains
+      .claude/ + .ruff_cache/ lines.)
 
 CONFIRMED-prior (verified): the release-assets HIGH closed 09-13 (build-release.sh + release.yml + the zip proven by download); applier hardening closed (39 checks statically consistent); the PARTIAL sweep residuals all still open and correctly tracked. SUPERSEDED: parse_hex_bytes (fixed + regression tests), Edit.from_dict guard. Audit-side correction: the audit sheet still says "5.20 still open" on bsdiff4/keystone; the repo closed 5.20 on 2026-09-06 with neither adopted.
 

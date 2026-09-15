@@ -14,7 +14,7 @@
 # spec.md section 4 defines, so the player can run
 # `python3 apply.py <game folder>` from the unzipped root:
 #
-#   manifest.toml   VERSION   apply.py   README.md   darkfix/   fixes/
+#   manifest.toml   VERSION   apply.py   README.md   LICENSE   darkfix/   fixes/
 #
 # Gates before anything is zipped, run against the staged tree:
 # every manifest fix is loaded through the real contract checker
@@ -177,7 +177,7 @@ stage="$(mktemp -d)"
 trap 'command rm -rf "$stage"' EXIT
 
 mkdir -p "$stage/fixes"
-cp "$patch_dir/manifest.toml" "$patch_dir/VERSION" "$patch_dir/README.md" "$stage/"
+cp "$patch_dir/manifest.toml" "$patch_dir/VERSION" "$patch_dir/README.md" "$patch_dir/LICENSE" "$stage/"
 cp "$patch_dir/scripts/apply.py" "$stage/"
 cp -R "$patch_dir/scripts/darkfix" "$stage/darkfix"
 # fixes/: scripts and writeups ship; caches and dir placeholders do not.

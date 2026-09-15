@@ -30,9 +30,13 @@
 /scratch/
 
 # Generated Ghidra scripts (ovr-map --ghidra / --ghidra-rename).
-# Regenerate instead of editing; see docs/dsun-exe-re.md 7.
+# Regenerate instead of editing; the recipe is docs/re-tooling.md.
 /OvrMap.java
 /OvrRename.java
+
+# Agent and tool caches
+/.claude/
+/.ruff_cache/
 
 # Python bytecode caches
 __pycache__/

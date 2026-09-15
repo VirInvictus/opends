@@ -108,40 +108,23 @@ Long-form analysis. Include:
 
 ### 4.2. Patch script: `dsN-patch/fixes/NNN-<short-id>.py`
 
-Python 3, stdlib-only. Reads the original file, applies the edit,
-writes the output. Idempotent: running twice does not double-apply.
+Python 3, stdlib-only. One fix per module; idempotent by
+construction (the applier's journal and `AlreadyApplied`
+bookkeeping mean running twice does not double-apply).
 
-The engine behind the skeleton is real: `darkfix.patcher` lives at
-`ds1-patch/scripts/darkfix/patcher.py` (byte edits, GFF chunk
-replacement, backup, journal), and `ds1-patch/scripts/apply.py` is
-the working umbrella applier (verify, backup, apply, `--unapply`).
-`ds1-patch/fixes/000-noop.py` is a live example of the contract
-below.
-
-Skeleton:
-
-```python
-"""fix.dsN.<short-id>: one-line summary"""
-
-from darkfix.patcher import apply_bytes, apply_gff_chunk
-
-ID = "fix.dsN.<short-id>"
-TARGET = "DSUN.EXE"          # or "GPLDATA.GFF" etc.
-SOURCE_SHA256 = "..."        # canonical 1.10 hash
-
-# For binary fixes:
-EDITS = [
-    {"offset": 0x1234, "expect": b"\x74\x0a", "replace": b"\x75\x0a"},
-]
-
-def apply(source_path, dest_path):
-    apply_bytes(source_path, dest_path, EDITS)
-```
-
-For GPL data fixes, the script uses `apply_gff_chunk` (same
-module): extract via `gff-edit`, edit via `gpl-asm`'s
-verified `--patch` output, reinsert. The authoritative format
-write-up is [`fix-format.md`](fix-format.md).
+The authoritative skeleton and contract live in
+[`fix-format.md`](fix-format.md) (one canonical copy, so it
+cannot drift): a fix module declares `ID`, `TARGET`,
+`SOURCE_SHA256`, `EDITS` (fingerprint-checked, in-place byte
+edits), and an `apply(source_path, dest_path)` function the
+applier loads. `ds1-patch/fixes/000-noop.py` is the live
+example; the engine behind it is `darkfix.patcher`
+(`ds1-patch/scripts/darkfix/`: byte edits, GFF chunk
+replacement, backup, journal) and the umbrella applier
+`ds1-patch/scripts/apply.py` (verify, backup, apply,
+`--unapply`). GPL data fixes use `apply_gff_chunk` from the
+same module: extract via `gff-edit`, edit via `gpl-asm`'s
+verified `--patch` output, reinsert.
 
 ## 5. Test the fix
 

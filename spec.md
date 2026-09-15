@@ -162,6 +162,7 @@ A darkfix patch is a directory tree:
 darkfix-ds1-v0.1.0/            # the release zip, flattened
 ├── manifest.toml         # target hashes and the fix list
 ├── apply.py              # the applier
+├── LICENSE               # the patch license (MIT, resolved below)
 │                         #   (repo path: ds1-patch/scripts/apply.py)
 ├── darkfix/              # the engine the applier and fixes share
 │                         #   (repo path: ds1-patch/scripts/darkfix/)
@@ -465,9 +466,12 @@ this prematurely. One repo until friction proves we need two.
 
 - Do we want one umbrella repo (current plan) or two repos
   (`darkfix-ds1`, `darkfix-ds2`)? Current: umbrella with subfolders.
-- License: MIT for tooling; what for the patches themselves?
-  (Patches don't include game data, but they are derived works of
-  reverse-engineering. MIT or Public Domain likely.)
+- ~~License~~ RESOLVED 2026-09-15 (Brandon): the patches are
+  MIT, same as the tooling; each `dsN-patch/` carries a LICENSE
+  and `build-release.sh` stages it into the player zip. (The
+  patches include no game data, but they are derived works of
+  reverse-engineering; Public Domain was the alternative and was
+  declined to keep one license across the repo.)
 - How to handle the GOG-Linux-DOSBox `cloud_saves/` directory in
   the applier: back it up too, or leave it alone?
 - Should we publish the GPL disassembly itself, or treat it as

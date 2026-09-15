@@ -27,6 +27,7 @@ tooling or copied per patch.
 
 ## Layout
 
+- `LICENSE`: MIT, same as the toolkit (spec 14).
 - `VERSION`: patch version (docs/versioning.md; single source
   for the release tooling). 0.0.1 = pre-release, nothing
   shipped.
