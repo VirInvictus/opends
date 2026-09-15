@@ -149,13 +149,20 @@ Three layers:
 
 ### 5.1. Hash test
 
+The hash gate is the applier's selftest: its real-install cycle
+applies the shipped fix set to copies of every `[target.files]`
+entry, asserts the patched-file hash recorded in the fix writeup
+(any EDITS drift fails the run), verifies, and unapplies
+byte-identically:
+
 ```sh
-python3 dsN-patch/fixes/NNN-<short-id>.py .games/dsN/<file> /tmp/patched
-sha256sum /tmp/patched
+python3 ds1-patch/scripts/apply.py --selftest
 ```
 
-The hash should match a value recorded in the writeup. This
-guards against regressions in the patch script itself.
+(The fix scripts define an `apply()` function for the applier to
+load, not a CLI, so they are not run directly.) The recorded
+value lives in the fix's writeup under `fixes/`; add it there
+when you author the fix.
 
 ### 5.2. In-game test
 
@@ -182,8 +189,8 @@ This is the catch-net for "fix A interacts badly with fix B."
 5. Commit. Suggested message:
    `dsN: fix.dsN.<short-id>: one-line summary`.
 
-(Per house rule, see `.clinerules`: do not commit on the user's
-behalf without being asked.)
+(Per house rule, see `CLAUDE.md` under "Git habits": never push
+without explicit approval, and show the commit message first.)
 
 ## 7. Ship
 

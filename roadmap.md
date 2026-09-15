@@ -1345,7 +1345,7 @@ report (5.6.3). Data-surface fixes do not wait on either.
       bin` + `bits 16`, the assembler half of the toolchain
       `ovr-map --disasm` already trusts, round-trip-proven
       against `ndisasm -b 16` in the selftest. Correction
-      recorded in docs/re-tooling.md. The §5.20 keystone
+      recorded in docs/re-tooling.md. The keystone
       question closed 2026-09-06: nasm is the assembler path;
       keystone is not adopted (see the tooling inventory).)
 - [x] Round-trip proof: a no-op EXE patch script applies and
@@ -1401,7 +1401,7 @@ authoring should feel like routine work.
       > scratch rig lives in scratch/wine-applier-proof/
       > (gitignored; the embeddable Python zip is re-
       > downloadable). Still open, Brandon's side: one run on a real
-      > Windows. (The §5.20 dependency stance closed 2026-09-06:
+      > Windows. (The dependency stance closed 2026-09-06:
       > nasm, no keystone.)
 - [x] Pick one trivial DS1 bug (identified during Phase 2 repro
       work). Prefer a GPL-data fix if one is available: it
@@ -1508,7 +1508,8 @@ authoring should feel like routine work.
       guard post-flee) needs a played DARKSAVE.GFF from the
       Darkhold endgame and a keystroke load-save schedule; the
       fixture documents the promotion path and rides the
-      played-save gate, roadmap 5.6.2 / :1043.)
+      played-save gate (roadmap 5.6.2's played-save chunk-map
+      box).)
 - [x] **Differential capture** (promoted from the repro
       backlog, because it is the fix's proof): a
       run-with-patch and run-without-patch side-by-side
@@ -1728,7 +1729,8 @@ abandoned; nothing here is scheduled.
       two: `ovr-map-v0.3.0` and `save-inspect-v0.9.5` at their
       release commits. Backfilling the 14 tools' older
       releases stays open as an optional one-off; the audit's
-      §5.21 ruling is satisfied by forward-only tagging.)
+      audit's tag-policy ruling is satisfied by forward-only
+      tagging.)
 - [ ] **`gff-edit` segmented-type build.** Builder covers
       indexed GFFs only; the secondary-table + `GFFI`
       cross-reference dance is unwritten. Promote when a
@@ -1969,8 +1971,16 @@ from this ledger, `docs/engine-quirks.md` 6, and the census row.
       (PARTIAL 2026-09-13: the patch-workflow.md ship section
       repaired with the packaging rewrite (step 1 now
       dsN-patch/VERSION; step 3 names the real script; step 5 the
-      release workflow). The remaining six items stay open for the
-      docs-sweep lane.)
+      release workflow).
+      CLOSED 2026-09-15, the remaining six: the hash-test
+      instruction routes through `apply.py --selftest` (patch
+      workflow 5.1 rewritten); .clinerules now points at
+      CLAUDE.md's git habits; the gff-tool residue is gone from
+      spec 2; the gff-edit v0.2 header was rewritten with the
+      comment sweep; and the :1043 anchor plus the 5.20/5.21
+      pointers cite their boxes by name. patch-workflow 7.4 also
+      shows the annotated `git tag -a` command instead of a
+      lightweight-tag example.)
 - [x] **Code hygiene:** parse_hex_bytes strips "0x" anywhere (120x34
       silently becomes 1234 - prefix-only); Edit.from_dict lacks an
       offset >= 0 guard (gpl-asm and exe-patch both guard it).
@@ -2047,7 +2057,9 @@ Eight lenses + slop-reader at 5c6cbd7. Tally after dedup: 0 HIGH / 8 MEDIUM / ~4
       case. ovr-map/save-inspect struct pre-checks, patcher
       int(offset) coercion, and parse_hex_bytes("") refusal stay
       recorded polish: below the ranked line, authoring-controlled.)
-- [ ] [LOW] The docs-sweep box (all six confirmed still open): hash-test instruction unrunnable (route through apply.py --selftest), .clinerules re-point, gff-tool residue in spec 2, dangling section pointers (5.20/5.21/:1043), gff-edit v0.2 header.
+- [x] [LOW] The docs-sweep box (all six confirmed still open): hash-test instruction unrunnable (route through apply.py --selftest), .clinerules re-point, gff-tool residue in spec 2, dangling section pointers (5.20/5.21/:1043), gff-edit v0.2 header.
+      (Shipped 2026-09-15: all six, plus the Wave-26 Docs sweep
+      box above is now marked CLOSED with the item-by-item notes.)
 - [ ] [LOW] Em-dash/punctuation pass on live prose: the four doc titles (roadmap, spec, both patch READMEs); spec's 21 live lines; README's find-replace artifacts (floating " :" continuation lines :131-135, double colon :75-77, " ;" :7); CREDITS.md's 17 list glyphs; the 4 docs singles; roadmap.md:1910/:1938/:1965 ASCII " - " surrogates in the live findings block. Historical records (roadmap 212-1907, old patchnotes) stay as records.
 - [ ] [LOW] GitHub: SECURITY.md (binary patches players run: the one repo that needs it, name the deterministic-zip hash for verification); dependabot (actions+cargo, deliberately no pip); CI badge; SHA-pin the five floating action refs; release.yml's dispatch repair path cannot rebuild darkfix-ds1-v0.1.0 (build-release.sh is absent from that tag's tree; take it from the default branch on dispatch); concurrency group; online check for unattested Releases (ovr-map-v0.3.0, save-inspect-v0.9.5, elevator-site-report-v1).
 - [ ] [LOW] Removal/housekeeping: dedupe the fix-script skeleton to fix-format.md (three inlined copies, already drifted in depth); git rm the two ds1-patch .gitkeeps; repoint .gitignore:33 at re-tooling.md; add .claude/ and .ruff_cache/ lines; versioning.md should cover 0.0.x pre-releases; CREDITS.md:90 stale "v0.2.0" forward ref; roadmap.md:54 snapshot table still says gpl-asm 0.9.0; optional ~12-line justfile for the full local gate.

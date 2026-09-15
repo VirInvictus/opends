@@ -85,7 +85,7 @@ being authored against ad-hoc one-off code.
   Windows, Linux, macOS. The patch is applied to the installed game
   files, then the user launches via the GOG/DOSBox launcher as usual.
 - **Authoring platform**: Linux x86_64, Fedora 43+. All tooling
-  (DOSBox-Staging, `gff-tool`, radare2/Ghidra, hash utilities) is
+  (DOSBox-Staging, radare2/Ghidra, hash utilities) is
   available natively.
 
 The patch artifact is platform-agnostic: it's a zip of edited GFF
