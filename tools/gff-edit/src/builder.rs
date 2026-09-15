@@ -9,13 +9,15 @@
 //! at the *structural* level (same types, same chunks, same
 //! payload bytes; byte layout is canonicalised).
 //!
-//! v0.5.0 is **indexed-only**. Segmented types require the
-//! secondary-table + `GFFI` cross-reference dance and are
-//! deferred to v0.6.0; calling [`GffBuilder::build`] on an
-//! input that resolves to segmented chunks is currently a
-//! programmer error (we don't yet have a way to express
-//! "build this as a segmented type", so the question doesn't
-//! arise: every builder-emitted GFF is indexed-only).
+//! The builder is **indexed-only**. Segmented types require the
+//! secondary-table + `GFFI` cross-reference dance, which the
+//! builder does not implement (reading and replacing handle
+//! segmented GFFs; construction does not). Calling
+//! [`GffBuilder::build`] on an input that resolves to segmented
+//! chunks is currently a programmer error (we don't yet have a
+//! way to express "build this as a segmented type", so the
+//! question doesn't arise: every builder-emitted GFF is
+//! indexed-only).
 //!
 //! ## On-disk layout produced
 //!
@@ -260,9 +262,11 @@ pub fn builder_from_gff(gff: &Gff) -> Option<GffBuilder> {
     Some(b)
 }
 
-// Silence unused-import lints when Segmented-related items are
-// referenced only in scope-out comments. Keep imports compact;
-// the items will be needed in v0.6.0.
+// Silence unused-import lints while the segmented build path
+// stays deferred (backlog: promote when a downstream consumer
+// must CONSTRUCT a segmented GFF from scratch; reading and
+// replacing already cover that). These imports are the skeleton
+// that path will need.
 #[allow(dead_code)]
 fn _segmented_imports_keep_alive(_: &ChunkRef, _: &SegmentedInfo) -> u32 {
     SEGMENTED_FLAG

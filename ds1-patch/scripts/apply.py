@@ -22,8 +22,10 @@ docs/patch-workflow.md §4.2.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import fnmatch
 import importlib.util
+import io
 import os
 import shutil
 import sys
@@ -364,7 +366,18 @@ def cmd_status(layout: Layout, install: Path) -> int:
     )
     print(f"install:  {install}")
     journal = P.read_journal(install)
-    if journal:
+    if journal and journal.get("status", "applied") == "pending":
+        print(
+            f"state:    INTERRUPTED (pending {P.JOURNAL_NAME} from a"
+            f" crashed apply; darkfix {journal.get('version', '?')})"
+        )
+        for fix in journal.get("fixes", []):
+            print(f"          {fix.get('id')}")
+        print(
+            "          recover: --unapply restores what the interrupted"
+            " run reached from darkfix-backup/"
+        )
+    elif journal:
         print(
             f"state:    applied {journal.get('applied_at', '?')}"
             f" (darkfix {journal.get('version', '?')})"
@@ -629,6 +642,14 @@ def selftest() -> int:
                 ],
             },
         )
+        status_out = io.StringIO()
+        with contextlib.redirect_stdout(status_out):
+            run([str(inst2), "--status"], patch_root=root2)
+        ok(
+            "--status reports the interrupted state, not applied",
+            "INTERRUPTED" in status_out.getvalue()
+            and "state:    applied" not in status_out.getvalue(),
+        )
         rc = run([str(inst2)], patch_root=root2)
         ok("apply refuses while a pending journal is present", rc == 1)
         ok(
@@ -639,6 +660,13 @@ def selftest() -> int:
         ok("unapply recovers a pending-journal install", rc == 0)
         ok("recovered install is byte-identical", t2.read_bytes() == data2)
         ok("pending journal consumed", P.read_journal(inst2) is None)
+        status_out = io.StringIO()
+        with contextlib.redirect_stdout(status_out):
+            run([str(inst2), "--status"], patch_root=root2)
+        ok(
+            "--status reports not applied after recovery",
+            "not applied" in status_out.getvalue(),
+        )
         ok(
             "recovery consumed the backup",
             not (P.backup_root(inst2) / "TEST.DAT").exists(),

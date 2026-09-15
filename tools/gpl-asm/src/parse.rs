@@ -3,15 +3,14 @@
 //! and produces a [`DisasmResult`] that the encoder can
 //! re-emit.
 //!
-//! v0.2.1 adds two pieces over v0.2.0's --no-labels-only
-//! support:
+//! Two pieces sit on top of the `--no-labels-only` baseline:
 //!
 //! - **Label declarations**: lines ending with `:` of the form
 //!   `label_0xNNNN:` or `entry_0xNNNN[ (function_name)]:` are
 //!   pre-scanned and collected as a name -> offset map. Branch
 //!   params that name a label resolve through the map.
 //! - **`; raw_tail=HEX` trailers**: the disassembler emits this
-//!   on `gpl_search` instructions in v0.4.6+; the parser reads
+//!   on `gpl_search` instructions (v0.4.6+); the parser reads
 //!   the hex and reconstructs `Instruction.raw_tail`, closing
 //!   the text-format round-trip on Search-containing chunks.
 //!
@@ -55,7 +54,7 @@ pub enum ParseError {
         detail: String,
     },
     #[error(
-        "line {line}: opcode 0x{opcode:02x} ({mnemonic}) is not supported by the v0.2.0 text parser ({reason})"
+        "line {line}: opcode 0x{opcode:02x} ({mnemonic}) is not supported by the text parser ({reason})"
     )]
     UnsupportedOpcode {
         line: usize,
@@ -1233,7 +1232,7 @@ fn parse_params(
                 line: line_no,
                 opcode,
                 mnemonic: opcode_name(opcode).unwrap_or("?").to_string(),
-                reason: "Custom-shape opcodes not in v0.2.0",
+                reason: "Custom-shape opcodes are not modelled (no decoder case to invert)",
             });
         }
         _ => {}

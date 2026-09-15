@@ -1,15 +1,17 @@
 //! gpl-asm: reassembler for SSI's GPL bytecode (Dark Sun).
 //!
-//! v0.1.0 ships the **round-trip reassembler**: takes a
-//! [`DisasmResult`] (produced by `gpl-disasm`) and emits
-//! byte-identical bytecode. The load-bearing test is the
-//! same shape as `gff-edit`'s writer: every aligned GPL/MAS
-//! chunk in DS1+DS2 round-trips byte-for-byte through
-//! `disassemble -> encode`.
+//! Takes a [`DisasmResult`] (produced by `gpl-disasm`, as JSON or
+//! via the text parser in [`parse`]) and emits byte-identical
+//! bytecode. The load-bearing test is the same shape as
+//! `gff-edit`'s writer: every aligned GPL/MAS chunk in DS1+DS2
+//! round-trips byte-for-byte through `disassemble -> encode`
+//! (600/600 corpus chunks).
 //!
-//! Text-input parsing, structural edits (insert/delete with
-//! label re-resolution), and a higher-level authoring DSL roll
-//! into later versions; v0.1.0 is the encoder foundation.
+//! Around that encoder the crate ships the authoring surface:
+//! text-listing parsing ([`parse`], with `@include`), structural
+//! edits with label re-resolution ([`edit`]), validation
+//! ([`validate`]), and the label-anchored patch scripts the
+//! `--patch` CLI applies when authoring darkfixes.
 //!
 //! Ports the inverse of every decoder case in `gpl-disasm`'s
 //! `src/lib.rs`: high-bit dispatch, 14-bit immediates, byte /
@@ -20,11 +22,11 @@
 //! special-shape opcodes (`gpl_menu`, `gpl_setrecord`,
 //! `gpl_load_variable`).
 //!
-//! Out of scope for v0.1.0: `ParamSpec::Search` (0x33; 0
-//! occurrences in DS1, 2 in DS2 — chunks containing them are
-//! flagged unencodable rather than handled), `best_effort`
-//! instructions (their params may not faithfully reproduce
-//! the source).
+//! Scope notes: `ParamSpec::Search` (0x33) encodes as its leading
+//! expression plus the instruction's `raw_tail` bytes verbatim,
+//! top-level and inside `GPL_RETVAL` alike. `best_effort`
+//! instructions are refused rather than encoded: their params
+//! may not faithfully reproduce the source.
 
 use gpl_disasm::{
     DisasmResult, EXTENDED_VAR, Expression, GPL_ACCM, GPL_COMPLEX_LOW, GPL_HI_CLOSE_PAREN,
@@ -88,7 +90,7 @@ pub fn encode(result: &DisasmResult) -> Result<Vec<u8>> {
     // The length sanity-check used to be a hard error here, but
     // it makes the encoder over-strict for inputs whose
     // `total_bytes` field comes from a downstream consumer
-    // (e.g. the v0.2.0 text parser, which can only estimate the
+    // (e.g. the text parser, which can only estimate the
     // length until it actually encodes). Verification at the
     // corpus-roundtrip level (`encoded == source_bytes`) catches
     // real encoder bugs; this check was redundant.
@@ -302,7 +304,7 @@ pub fn encode_instruction(out: &mut Vec<u8>, instr: &Instruction) -> Result<()> 
             return Err(EncodeError::UnsupportedOpcode {
                 offset: instr.offset,
                 opcode: instr.opcode,
-                reason: "Custom-shape opcodes are not modelled by v0.1.0",
+                reason: "Custom-shape opcodes are not modelled (no decoder case to invert)",
             });
         }
     }
@@ -438,7 +440,7 @@ pub fn encode_expression(out: &mut Vec<u8>, instr_offset: usize, expr: &Expressi
                     return Err(EncodeError::UnsupportedOpcode {
                         offset: instr_offset,
                         opcode: *inner_opcode,
-                        reason: "RETVAL inner opcodes with non-Fixed/Search specs not supported in v0.1.1",
+                        reason: "RETVAL inner opcodes with non-Fixed/Search specs are not supported",
                     });
                 }
             }

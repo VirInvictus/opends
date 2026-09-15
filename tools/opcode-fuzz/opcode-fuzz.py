@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """OpenDS opcode-fuzz harness.
 
-v0.1.0 ships the **chunk-patchwork pipeline** that opcode-fuzz
-needs to build on: extract a GPL chunk into a work directory,
-edit its disassembly, repack it back into the GFF. Plus a
-corpus-level round-trip self-test that verifies every chunk in
+The chunk-patchwork pipeline: extract a GPL chunk into a work
+directory, edit its disassembly, repack it back into the GFF.
+Plus a corpus-level round-trip self-test that verifies every chunk in
 a GFF survives extract -> disasm -> reasm -> replace
 byte-identical.
 
-The eventual Phase 5 vision (DOSBox debugger IPC, per-tick
-state capture, opcode-discovery loop per roadmap.md Phase 5) is
-queued for v0.2.0+. This version is the foundation those
-versions build on, not the discovery loop itself.
+`run` boots the game under DOSBox with a swapped chunk;
+`boot-chunks` enumerates the boot-executed chunks (the discovery
+half). What remains of the Phase 5 vision (DOSBox debugger IPC,
+per-tick state capture, the recipe-driven discovery loop) is
+deferred, gated on the DOSBox session calendar per the roadmap's
+ratified reframe.
 
 Shells out to:
 

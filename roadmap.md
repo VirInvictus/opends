@@ -2015,7 +2015,18 @@ Eight lenses + slop-reader at 5c6cbd7. Tally after dedup: 0 HIGH / 8 MEDIUM / ~4
       partially absorbed (SAVE/1 + SAVE/7 decoded in 0.9.6) with
       only the true remainder listed open.)
 - [ ] [MEDIUM] spec.md:225-237 (section 6) still says "No reassembler in v1"; gpl-asm is 0.9.1 and produced the first real fix. Rewrite to the shipped stack (gpl-disasm, gpl-asm --patch, gff-cat replace). Same lane: patchnotes.md has its entire 113-entry history under one `## Unreleased` heading while patch-workflow.md:194 describes version headings; introduce headings and move tagged entries out.
-- [ ] [MEDIUM] Comment-header de-versioning sweep (headers frozen in tool infancy): gpl-asm lib.rs:1-25 (still "v0.1.0 encoder foundation"; all three future-work items shipped) and :23-25 (says Search chunks are "flagged unencodable"; the encoder handles them at :274-300/:413-436) and the dead-version error strings; save-inspect.py:4-9 (claims CHAR records are opaque hex; decoded per game and writable since 0.8.0); gff-edit lib.rs:21/builder.rs:12; gpl-disasm lib.rs:19; opcode-fuzz.py:5. Plus apply.py:366 --status prints "applied" for a pending (interrupted) journal: branch on status.
+- [x] [MEDIUM] Comment-header de-versioning sweep (headers frozen in tool infancy): gpl-asm lib.rs:1-25 (still "v0.1.0 encoder foundation"; all three future-work items shipped) and :23-25 (says Search chunks are "flagged unencodable"; the encoder handles them at :274-300/:413-436) and the dead-version error strings; save-inspect.py:4-9 (claims CHAR records are opaque hex; decoded per game and writable since 0.8.0); gff-edit lib.rs:21/builder.rs:12; gpl-disasm lib.rs:19; opcode-fuzz.py:5. Plus apply.py:366 --status prints "applied" for a pending (interrupted) journal: branch on status.
+      (Shipped 2026-09-15. All six headers rewritten to present
+      tense on the region-render model; the gpl-asm scope note
+      now states the real Search handling (leading expression +
+      verbatim raw_tail, top-level and RETVAL-inner) and the
+      "v0.1.0"/"v0.1.1"/"v0.2.0" error-string stamps are gone;
+      gff-edit's header also stops calling the crate a reader
+      and the builder keep-alive comment names the real
+      deferral trigger. apply.py --status branches on journal
+      status: a pending journal prints INTERRUPTED with the
+      --unapply recovery route; two new selftest cases cover
+      both branches, 41 checks green.)
 - [ ] [LOW] Seven real-bug LOWs: `opends extract` dispatches to a gff-cat subcommand that has never existed (tools/opends/src/main.rs:197); gpl-asm silently mangles non-ASCII string content through 7-bit masking (lib.rs:528, unreachable via the round-trip loop but one hand-authored accent from corruption); journal writes are non-atomic so a first-write crash blocks apply AND unapply with a message naming a backup that does not exist yet (patcher.py:288); an all-disabled manifest "applies" and writes an unremovable empty journal (apply.py:141); build-release.sh Gate 1 misses the duplicate-TARGET refusal so a bad manifest ships in the zip (:89); verify-install --repair clobbers its own backup (:278); exe-patch resident edits skip the straddle check (exe-patch.py:206).
 - [ ] [LOW] The docs-sweep box (all six confirmed still open): hash-test instruction unrunnable (route through apply.py --selftest), .clinerules re-point, gff-tool residue in spec 2, dangling section pointers (5.20/5.21/:1043), gff-edit v0.2 header.
 - [ ] [LOW] Em-dash/punctuation pass on live prose: the four doc titles (roadmap, spec, both patch READMEs); spec's 21 live lines; README's find-replace artifacts (floating " :" continuation lines :131-135, double colon :75-77, " ;" :7); CREDITS.md's 17 list glyphs; the 4 docs singles; roadmap.md:1910/:1938/:1965 ASCII " - " surrogates in the live findings block. Historical records (roadmap 212-1907, old patchnotes) stay as records.

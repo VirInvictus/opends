@@ -14,14 +14,16 @@
 //! (not one per byte as in v0.1.0). True instruction boundaries
 //! are aligned with the real program flow for the common path.
 //!
-//! Scope notes (Partial v0.2.0):
-//! - GPL_RETVAL (`0x8C` = `GPL_RETVAL | 0x80`) is decoded as an
-//!   opaque [`Expression::RetVal`] with the inner opcode byte
-//!   captured but recursion deferred to v0.2.1.
+//! Scope notes:
+//! - GPL_RETVAL (`0x8C` = `GPL_RETVAL | 0x80`) decodes
+//!   recursively: the inner opcode's parameter shape dispatches
+//!   within a bounded depth (`MAX_RETVAL_DEPTH`) when it is in
+//!   libgff's safe subset, capturing `inner_params` and
+//!   `inner_raw_tail` for reassembly; anything else is marked
+//!   `best_effort` with empty inner params.
 //! - GPL_COMPLEX_* (`0x30..0x3F`, dispatch bytes `0xB0..0xBF`)
-//!   plus the `0xb3` "passive-flag" special case are decoded as
-//!   opaque [`Expression::Complex`]; their internal layout
-//!   (`gpl_access_complex`) lands in v0.2.1.
+//!   plus the `0xb3` "passive-flag" special case decode the
+//!   `gpl_access_complex` layout into [`Expression::ComplexAccess`].
 //! - Handlers with custom parameter loops (`gpl_load_variable`,
 //!   `gpl_search`, `gpl_setrecord`, `gpl_menu`) are marked
 //!   `best_effort = true` and consume only the opcode byte;

@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """save-inspect: dump a Dark Sun CHARSAVE.GFF as JSON.
 
-Stdlib-only. Decodes the well-understood save chunks (CHAR
-header, PSIN/PSST psionics, TEXT) and emits opaque hex previews
-for chunks whose internal layout isn't yet documented per game
-(CHAR record data, SPST, CACT, PREF, GREQ). v0.2.0 will fill in
-the RDFF schemas for CHAR records (per-game; see
-docs/file-formats.md §2).
+Stdlib-only. Decodes the well-understood save chunks: the CHAR
+header, the per-game CHAR record data (the RDFF schemas,
+decoded per game and writable since v0.8.0; see
+docs/file-formats.md §2), PSIN/PSST psionics, and TEXT. Chunks
+whose internal layout is still undocumented per game (SPST,
+CACT, PREF, GREQ) are emitted as opaque hex previews only:
+there is no structured edit path for them.
 
 The embedded GFF parser only handles indexed chunks. CHARSAVE.GFF
 never uses segmented chunks; if that changes we'd shell out to

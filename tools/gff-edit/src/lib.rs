@@ -1,4 +1,5 @@
-//! gff-edit: pure-Rust reader for SSI's GFF container format.
+//! gff-edit: pure-Rust reader and writer for SSI's GFF container
+//! format.
 //!
 //! Foundation library for the OpenDS toolkit. See the repository's
 //! `docs/file-formats.md` §1 for the on-disk layout implemented here.
@@ -18,7 +19,7 @@
 //! # Ok::<(), gff_edit::GffError>(())
 //! ```
 //!
-//! # Coverage of GFF features in this version (v0.2)
+//! # Coverage of GFF features
 //!
 //! - **Indexed chunk lists** are fully parsed; their `ChunkRef`s
 //!   appear in [`Gff::chunks`] and chunk bytes can be read via
@@ -29,8 +30,10 @@
 //!   GFFI chunk, reconstructs resource numbers from the type's
 //!   segment runs, and appends the resulting `ChunkRef`s to
 //!   [`Gff::chunks`] in TOC declaration order.
-//! - **Writer** (round-trip read → edit → write byte-identical):
-//!   lands in v0.3.0.
+//! - **Writer** (round-trip read → edit → write byte-identical)
+//!   ships with the crate, in-place when the replacement fits
+//!   and appended otherwise. Construction from scratch lives in
+//!   the `builder` module (indexed-only).
 
 use std::fmt;
 use std::fs;
