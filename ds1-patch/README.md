@@ -74,7 +74,12 @@ the originals from the backups. To re-check a patched install:
 
 If the applier refuses with a hash mismatch, the folder is not the
 GOG 1.10 build this patch targets (wrong engine version, already
-patched, or damaged install). Nothing was changed.
+patched, or damaged install). Nothing was changed. GOG 1.10 is
+the only supported base by policy: other pressings and variants
+are refused rather than patched blindly (see
+[`../docs/install-variants.md`](../docs/install-variants.md)
+section 7); `verify-install.py --summary` from the toolkit tells
+you which files disagree and why.
 
 If an apply was interrupted partway (power loss, Ctrl-C during the
 write phase), the next run refuses with a pending-journal message

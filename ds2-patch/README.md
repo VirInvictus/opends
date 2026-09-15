@@ -48,8 +48,11 @@ the release, run `py apply.py "C:\GOG Games\Dark Sun 2"` from
 the unzipped folder, and launch the game normally. The applier
 verifies your install hash, backs up touched files to
 `darkfix-backup/`, applies the enabled fixes, and journals;
-`--unapply` reverts. No fix ships yet, so there is nothing to
-install today.
+`--unapply` reverts. GOG 1.10 is the only supported base by
+policy; a non-canonical install gets a hard refusal
+([`../docs/install-variants.md`](../docs/install-variants.md)
+section 7). No fix ships yet, so there is nothing to install
+today.
 
 ## Notes specific to DS2
 

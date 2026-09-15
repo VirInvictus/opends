@@ -74,6 +74,10 @@ Contract:
   against: `PatchError`, `HashMismatch`, `FingerprintMismatch`,
   `AlreadyApplied`, `NotApplied` (plus `ManifestError` at the
   umbrella layer).
+- A player on a non-canonical install (any variant other than
+  the targeted GOG 1.10 base) gets the hash-mismatch refusal;
+  that is the documented policy, not a bug
+  ([`install-variants.md`](install-variants.md) section 7).
 
 ## The authoring TOML (`gpl-asm --patch`)
 

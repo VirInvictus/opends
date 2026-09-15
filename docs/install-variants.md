@@ -168,7 +168,33 @@ Open questions, for whoever picks this up:
 - Is floppy-1.10 `GPLDATA.GFF` byte-identical to CD-1.10's
   (expected, unverifiable until a floppy 1.10 exists)?
 
-## 7. Reproducing the evidence
+## 7. Policy: refusal is the supported path (2026-09-15)
+
+Ratified by Brandon: **GOG 1.10 is the only supported patch base,
+and a non-canonical install gets the applier's hard refusal.**
+There is no permissive mode. Concretely:
+
+- Every darkfix manifest pins one sha256 per touched file, and
+  the applier verifies the install before any write; a player on
+  any other variant (a real DS1 1.1 CD/floppy pressing, if one
+  ever surfaces) sees a hash-mismatch refusal naming the
+  expected and actual hashes, and nothing is modified.
+- The documented path out is
+  `python3 tools/verify-install/verify-install.py --game dsN
+  --summary`: it reports exactly which files disagree with the
+  canonical manifest, so the player can see whether their
+  install is damaged (repairable via `--repair`) or genuinely a
+  different variant (not supported).
+- Manifest schema v2 (per-variant hash lists) stays gated until
+  a verifiable second variant actually exists to pin hashes
+  from; the format notes in section 6 describe how it would be
+  added. Rumors of variants (section 1's open lead) are not a
+  base to target.
+
+This keeps the promise that a darkfix zip can never corrupt a
+base it was not authored against.
+
+## 8. Reproducing the evidence
 
 Local artifacts live under `.games/archive-org/` (gitignored):
 the IA floppy trees (`ds2-floppy-1.0/`, `hotu/`), the patch

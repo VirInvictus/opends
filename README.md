@@ -99,9 +99,12 @@ fix, one runtime capture from a complete site report.
 
 - [`spec.md`](spec.md): design spec and invariants
 - [`roadmap.md`](roadmap.md): phased plan and current status
+- [`CONTRIBUTING.md`](CONTRIBUTING.md): how to contribute, the
+  short version
 - [`docs/README.md`](docs/README.md): documentation index with
   reading paths (modder, engine researcher, patch author,
-  contributor)
+  contributor); the [`cookbook`](docs/cookbook/) holds the worked
+  authoring sessions
 
 ## Quick start (developer)
 
