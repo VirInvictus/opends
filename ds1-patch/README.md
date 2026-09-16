@@ -7,7 +7,7 @@ Part of the [OpenDS](../README.md) community toolkit. The patch
 ships as `darkfix-ds1` releases; the rest of OpenDS provides the
 tools used to author them.
 
-Status: v0.1.0 ships the first real fix (`fix.ds1.deadtriggers`,
+Status: v0.1.1 ships the first real fix (`fix.ds1.deadtriggers`,
 the Darkhold dead-trigger family: enemies in the endgame that
 refuse to engage and look text that stops working). The
 distribution format and applier were proven in `v0.0.1`. See

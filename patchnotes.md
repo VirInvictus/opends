@@ -6,10 +6,6 @@ is that release's entry here, verbatim (see `docs/versioning.md`).
 
 ## Unreleased
 
-Applier and packaging work from the 2026-09-13 batch; it
-ships with the next `darkfix-ds1` release. (The batch's tagged
-item, `gpl-asm` v0.9.1, has its own heading below.)
-
 - **release packaging**: `tools/build-release.sh` ships: the zip
   builder promised in `docs/patch-workflow.md` §7 since Phase 6.
   It stages the flattened tree spec.md §4 defines (manifest.toml,
@@ -32,21 +28,29 @@ item, `gpl-asm` v0.9.1, has its own heading below.)
   dispatch with a tag input covers a release that already
   exists), kept outside the push/PR CI path.
 
-- **darkfix applier (unreleased; ships with the next
-  `darkfix-ds1`)**: interrupted applies are recoverable. The
-  journal is written pending before the first write and completed
-  after the last, so a crash mid-write no longer strands a
-  half-apply: the next apply refuses with a pending-journal
-  message, `--unapply` restores every file the interrupted run
-  reached from `darkfix-backup/` (leaving files it never reached
-  and clearing stray staged `.darkfix-tmp` files), and the
-  mismatch errors name the backup directory as the manual route.
-  Two enabled fixes sharing one target are refused at check time
-  with an explicit error (the second write would corrupt the
-  first fix). `Edit.from_dict` rejects negative offsets instead
-  of letting Python's slice semantics patch the wrong bytes.
-  Seventeen new selftest cases cover all of it; `apply.py
-  --selftest` runs 39 checks, all green.
+## darkfix-ds1 v0.1.1 (2026-09-15)
+
+- **`darkfix-ds1` v0.1.1**: the hardened applier ships to players
+  (PATCH bump; no fix content changes). Interrupted applies are
+  recoverable: the journal is written pending before the first
+  write and completed after the last, so a crash mid-write no
+  longer strands a half-apply: the next apply refuses with a
+  pending-journal message, `--unapply` restores every file the
+  interrupted run reached from `darkfix-backup/` (leaving files
+  it never reached and clearing stray staged `.darkfix-tmp`
+  files), and the mismatch errors name the backup directory as
+  the manual route. Two enabled fixes sharing one target are
+  refused at check time with an explicit error. On top of that
+  batch, this release adds the 2026-09-15 hardening: journal
+  writes go through the same staged tmp + atomic rename as
+  targets (a torn journal that blocks both apply and unapply is
+  no longer writable), a torn-journal error names the
+  delete-the-journal remedy when no backup exists, an
+  all-disabled manifest is refused instead of writing an empty
+  journal `--unapply` could never consume, and `--status`
+  reports INTERRUPTED for a pending journal instead of
+  "applied". `apply.py --selftest` runs 46 checks, all green.
+  The same applier, copied, boots `darkfix-ds2` v0.1.0.
 
 ## gpl-disasm v0.8.1 (2026-09-15)
 
