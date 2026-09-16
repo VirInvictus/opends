@@ -28,16 +28,21 @@ EXE-side question, which is why the fix is designed to be
 harmless under either.)
 
 **Fix**: repoint each of the 27 registrations to the object's own
-working handler: a same-chunk alive handler of the same trigger
-type where one exists (21 rows), or the handler attested by the
-region master script's own alive registration for that object
-(6 rows, the same MAS-attested cross-chunk repoint
-`fix.ds1.deadtriggers` used for the portcullis guard). Every edit
-is 5 bytes: opcode + handler entry immediate + chunk immediate.
-Chunk lengths are untouched. 12 of the 39 dead rows are
-deliberately left: two pickup rows on object -900, one look row on
--1922, two use rows on -2975, and seven use-with rows in GPL-98,
-none of which has a statically provable correct handler.
+working handler: 24 repoint within their own chunk (18 of them
+the shared prop object -2975 across 13 region scripts; the rest,
+the Tyr/Silt Giants attack trio -418/-209/-406 and the VA
+Headquarters, Crypt, and forest look rows -1923/-2994/-445, land
+on that region's own alive handler for the object), and 3 repoint
+across chunks to the handler the region's own registrations
+attest (Jann's talk pair to `GPL-69@1` per MAS-59; the forest
+attack row -146 to `GPL-29@1229` per MAS-1): the same
+registration-attested cross-chunk repoint `fix.ds1.deadtriggers`
+used for the portcullis guard. Every edit is 5 bytes: opcode +
+handler entry immediate + chunk immediate. Chunk lengths are
+untouched. 12 of the 39 dead rows are deliberately left: two
+pickup rows on object -900, one look row on -1922, two use rows
+on -2975, and seven use-with rows in GPL-98, none of which has a
+statically provable correct handler.
 
 **Surface**: GPL (`GPLDATA.GFF`)
 
@@ -50,7 +55,7 @@ none of which has a statically provable correct handler.
 The corrected census at the fix's HEAD (after the sweep tool's
 pickup-mnemonic and use-with entry-position fixes): 1,915 trigger
 registrations, 1,670 alive, 206 intentional null-handlers,
-39 dead. Object census of the repointed rows: 16 use rows on one
+39 dead. Object census of the repointed rows: 18 use rows on one
 shared prop object (-2975, OBJEX BMP 447, placed in Limbo); the
 rest span story objects in Tyr (-418), the Silt Giant lands
 (-406, -418), the Volcano (-209), the forest (-146, -445), Jann

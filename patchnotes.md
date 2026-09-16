@@ -124,13 +124,16 @@ is that release's entry here, verbatim (see `docs/versioning.md`).
   re-registrations sitting beside alive handlers for the same
   objects (the occlusion shape `fix.ds1.deadtriggers` repaired in
   Shattered Lands). Each row returns to its object's own working
-  handler: 21 same-chunk (16 of them the shared prop object
-  -2975 across 14 region scripts, the rest the Tyr/Silt Giant
-  combat trio and the VA Headquarters look pair), 6 attested by
-  the region master scripts' own alive registrations (the
-  forest's look pair, Jann's talk pair, the forest attack row).
-  Under either registration semantics the fix is a no-op or a
-  restoration; it cannot regress. 12 of the 39 rows stay: no
+  handler: 24 repoint within their own chunk (18 of them the
+  shared prop object -2975 across 13 region scripts; the rest,
+  the Tyr/Silt Giants attack trio -418/-209/-406 and the VA
+  Headquarters, Crypt, and forest look rows -1923/-2994/-445,
+  land on that region's own alive handler for the object), and 3
+  repoint across chunks to the handler the region's own
+  registrations attest (Jann's talk pair to `GPL-69@1` per
+  MAS-59; the forest attack row -146 to `GPL-29@1229` per
+  MAS-1). Under either registration semantics the fix is a no-op
+  or a restoration; it cannot regress. 12 of the 39 rows stay: no
   statically provable handler (two pickup rows on -900, one look
   on -1922, two use rows on -2975, seven use-with rows in
   GPL-98). Proof: the patched file re-disassembles 350/350
