@@ -2199,3 +2199,58 @@ condition; GF[395] stays parked.
       `bugs/ds2-deadtriggers/`; scene legs ride the played-save
       gate). Tag `darkfix-ds2-v0.1.0` cut via the standard
       procedure; release.yml attaches the zip.)
+
+### The bestiary campaign opens 2026-09-16 (catalogue lane; Brandon-directed)
+
+Goal: pull a confirmed bestiary and full item/weapon/armor/spell
+catalogues out of the shipped data: every piece, dug until
+confirmed, nothing guessed. The data-side substrate the engine
+question (spec 12) also stands on. Wave 1 was four read-only
+extraction agents (schemas; items; spells; creatures) over
+SEGOBJEX.GFF / OBJEX.GFF, GPLDATA, RESOURCE, and the EXE spell
+tables, cross-checked against the played-save layouts, the
+in-install SSI clue books (facts only), and libgff.
+
+- [x] **Wave 1: the object-database schema maps.** Both games'
+      RDFF chain model (10-byte headers; load_action walk;
+      item/combat/charrec/mini/template subtypes; chain-shape
+      census), the combat + charrec field maps for both games,
+      OJFF, DS1 IT1R + NAME pool, DS2 TEXT/1000 name pool, the
+      32-byte spell power record (DS1: 196x32 at DSUN.EXE
+      0x41f70; DS2: 320x73 at RESOURCE 0x120e8, names inline),
+      the DS1 7-byte spell-level table (0x4512c), MONR as DS1
+      encounter tables (DS2's copy is stale carryover), and the
+      SPST/PSST/PSIN known-spell encodings. Written up as
+      `docs/object-formats.md`. Corrections it records against
+      the historical notes: the negated-id anchor is combat
+      +6 / item +0 (the "+14" reading reproduces nothing
+      corpus-wide), and the 1.10 SPIN fills are DS2-scoped.
+      Key confirmations: the creature records ARE the party
+      records (SAVE/5-/6 and CHARSAVE layouts), monster magic
+      resistance matches the clue book exactly on every
+      cross-checkable row (Mindflayer 90, Blue Slaad 40,
+      Rampager 25, Vrock 70), and the wand charges match the
+      treasure guide.
+- [x] **The executable schema + generated catalogues.**
+      `tools/gff-edit/scripts/extract-catalogue.py` (stdlib,
+      `--selftest`) walks both object databases and emits
+      `docs/{bestiary,item-catalogue,spell-catalogue}-ds{1,2}.md`
+      (290 DS1 + 352 DS2 creature rows, ~750 + ~1,230 item
+      rows, 196 + 320 spell rows, MONR appendices). Every
+      document carries a verification footer: 22 anchor gates
+      (named monsters' stats, name joins, the 5807 -> BMP 951
+      sprite anchor, the Magic Missile / Fireball damage words)
+      all pass, and the run exits nonzero on any drift. The
+      damage-word decode is marked partial; the raw hex rides
+      every row.
+- [ ] **Wave 2: close the marked-open fields.** The highest
+      leverage, from the wave-1 reports: DS2 charrec
+      +16..20 (class bits, race, gender, alignment); DS2
+      THAC0 derivation (no stored byte; `fight` handler DS2
+      0xd70c); the special_attack/defense and allegiance
+      enums; the DS2 damage-word scale/div semantics (the
+      sc/div/dp bits beyond the two confirmed modes); the
+      effect-id (+25) jump table, which is the actual spell
+      behavior and the single highest-value target for the
+      engine question; DS2 SPST length rule; the named-shield
+      AC discrepancy (El's vs Drake, one in-game check).

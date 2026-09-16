@@ -68,6 +68,10 @@ attribute-everything policy; see also the repo-root
 | Document | What it holds |
 |---|---|
 | [`file-formats.md`](file-formats.md) | The GFF container and every chunk layout we've locked. |
+| [`object-formats.md`](object-formats.md) | Object database records (creatures, items, OJFF), the spell power tables, MONR. |
+| [`bestiary-ds1.md`](bestiary-ds1.md) / [`bestiary-ds2.md`](bestiary-ds2.md) | Machine-generated: every creature record, per game. |
+| [`item-catalogue-ds1.md`](item-catalogue-ds1.md) / [`item-catalogue-ds2.md`](item-catalogue-ds2.md) | Machine-generated: every item record, per game. |
+| [`spell-catalogue-ds1.md`](spell-catalogue-ds1.md) / [`spell-catalogue-ds2.md`](spell-catalogue-ds2.md) | Machine-generated: every spell power record, per game. |
 | [`engine-quirks.md`](engine-quirks.md) | Surprising engine behaviors that affect modding. |
 | [`gpl-bytecode.md`](gpl-bytecode.md) | The GPL scripting language and its bytecode encoding. |
 | [`gpl-opcodes.md`](gpl-opcodes.md) | The 129-entry GPL opcode table. |
