@@ -6,9 +6,11 @@ Consumes a directory of `gpl-disasm --all --json` dumps. Entity
 trigger registrations have the shape (entry_offset, handler_chunk_id,
 NAME(-object)):
 
-- attacktrigger / looktrigger / pickupitemtrigger / usetrigger /
-  talktotrigger / noorderstrigger (3 params; chunk id at position 1)
-- usewithtrigger (4 params; chunk id at position 3)
+- attacktrigger / looktrigger / pickup itemtrigger / usetrigger /
+  talktotrigger / noorderstrigger (3 params; entry offset at
+  position 0, chunk id at position 1)
+- usewithtrigger (4 params; the two NAME operands at positions
+  0-1, entry offset at position 2, chunk id at position 3)
 
 For every registration the sweep checks the handler chunk:
 
@@ -38,15 +40,20 @@ from typing import Any
 HERE = Path(__file__).resolve().parent
 VERSION = (HERE.parent / "VERSION").read_text().strip()
 
-# mnemonic -> index of the handler-chunk-id parameter
+# mnemonic -> (entry-offset param index, handler-chunk param index).
+# The 3-param triggers lead with the entry; usewithtrigger leads
+# with its two NAME operands. "gpl pickup itemtrigger" is the
+# catalogue's real mnemonic (0x6C, with the space): the key below
+# used to say "pickupitemtrigger", which matched nothing, so every
+# pickup trigger in both games went unswept until 2026-09-15.
 TRIGGER_OPS = {
-    "gpl attacktrigger": 1,
-    "gpl looktrigger": 1,
-    "gpl pickupitemtrigger": 1,
-    "gpl usetrigger": 1,
-    "gpl talktotrigger": 1,
-    "gpl noorderstrigger": 1,
-    "gpl usewithtrigger": 3,
+    "gpl attacktrigger": (0, 1),
+    "gpl looktrigger": (0, 1),
+    "gpl pickup itemtrigger": (0, 1),
+    "gpl usetrigger": (0, 1),
+    "gpl talktotrigger": (0, 1),
+    "gpl noorderstrigger": (0, 1),
+    "gpl usewithtrigger": (2, 3),
 }
 # instructions that mean "there is no handler here"
 TRIVIAL_MNEMONICS = {"gpl exit gpl", "gpl global ret", "gpl local ret"}
@@ -84,14 +91,15 @@ def sweep_dump_dir(dump_dir: Path) -> dict[str, Any]:
         registrar = path.stem
         data = json.loads(path.read_text())
         for instruction in data.get("instructions", []):
-            position = TRIGGER_OPS.get(instruction.get("mnemonic", ""))
-            if position is None:
+            positions = TRIGGER_OPS.get(instruction.get("mnemonic", ""))
+            if positions is None:
                 continue
+            entry_pos, handler_pos = positions
             params = instruction.get("params", [])
-            if len(params) <= position:
+            if len(params) <= max(entry_pos, handler_pos):
                 continue
-            handler_id = _immediate(params[1] if position == 1 else params[3])
-            entry_offset = _immediate(params[0])
+            handler_id = _immediate(params[handler_pos])
+            entry_offset = _immediate(params[entry_pos])
             if handler_id is None or entry_offset is None:
                 continue  # computed handler: flag as unresolvable below
             registrations.append(
@@ -211,6 +219,32 @@ def selftest() -> int:
                                 [{"kind": "immediate_name", "value": -77}],
                             ],
                         ),
+                        # 0x6C's real mnemonic carries a space; the
+                        # sweep's table used to miss it entirely.
+                        inst(
+                            "gpl pickup itemtrigger",
+                            80,
+                            8,
+                            [
+                                imm(0x10),
+                                imm(2),
+                                [{"kind": "immediate_name", "value": -78}],
+                            ],
+                        ),
+                        # usewithtrigger: NAME operands at 0-1, entry
+                        # at 2, chunk at 3 (the table used to read the
+                        # entry from position 0 and skip every row).
+                        inst(
+                            "gpl usewithtrigger",
+                            100,
+                            10,
+                            [
+                                [{"kind": "immediate_name", "value": -79}],
+                                [{"kind": "immediate_name", "value": -80}],
+                                imm(0x20),
+                                imm(3),
+                            ],
+                        ),
                     ]
                 }
             )
@@ -236,8 +270,8 @@ def selftest() -> int:
         )
         report = sweep_dump_dir(root)
         verdicts = {(d["handler"], d["verdict"]) for d in report["dead"]}
-        check(report["registrations"] == 4, "four registrations parsed")
-        check(report["alive"] == 1, "one alive")
+        check(report["registrations"] == 6, "six registrations parsed")
+        check(report["alive"] == 2, "two alive")
         check(("GPL-9", "MISSING") in verdicts, "missing chunk detected")
         check(("GPL-3", "TRIVIAL") in verdicts, "trivial handler detected")
         check(("GPL-2", "MID-SEQUENCE") not in verdicts, "mid-sequence not dead")

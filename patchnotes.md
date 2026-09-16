@@ -48,6 +48,21 @@ item, `gpl-asm` v0.9.1, has its own heading below.)
   Seventeen new selftest cases cover all of it; `apply.py
   --selftest` runs 39 checks, all green.
 
+## gpl-disasm v0.8.1 (2026-09-15)
+
+- **`gpl-disasm` v0.8.1**: the dead-trigger sweep's census was
+  undercounting both games, and had been since it shipped. The
+  sweep's trigger table keyed `gpl pickupitemtrigger`, but the
+  catalogue's real mnemonic for opcode 0x6C is `gpl pickup
+  itemtrigger` (with the space), so every pickup trigger went
+  unswept; and the use-with row's handler entry offset was read
+  from parameter 0 (a NAME operand) instead of parameter 2, so
+  every use-with row was skipped as unresolvable. The corrected
+  census: DS2 1,915 registrations / 39 dead (was 1,741 / 30),
+  DS1 1,539 / 6 (the dead count unchanged: the six rows
+  `fix.ds1.deadtriggers` repaired remain the complete DS1 set).
+  Selftest covers both shapes.
+
 ## darkfix-ds2 v0.1.0 (2026-09-15)
 
 - **`darkfix-ds2` v0.1.0**: **the first Wake of the Ravager fix
