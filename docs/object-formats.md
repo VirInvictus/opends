@@ -101,15 +101,15 @@ read straight from the shipped data.
 | 6 | i16 | own id, negated | VB 291/291 |
 | 8/10/12 | i16 x3 | ready item / weapon / pack (0 = none in DS1) | LA+VB |
 | 14..21 | u8[8] | data_block (all zero on disk; runtime-filled) | LA |
-| 22 | u8 | special_attack enum (0,4,5,12,13,14,16,17,19,23,24,25,31 observed) | LA + XC-qualitative |
-| 23 | u8 | special_defense (0 in all 291) | LA |
+| 22 | u8 | special_attack: an ENUM index (not a bitfield), 33 distinct values corpus-wide; candidate ability map in the wave-2 ledger (poison 1/5/11/26, psionics 23/30, paralytic gaze 14, corrosive 12, chilling touch 13, spines 20, entangle 22, fire breath 9, sting 26 ...) | enum verdict high, per-value map partial |
+| 23 | u8 | special_defense (0 in all 291; defenses live in magic_res and the item/equipment layer) | LA |
 | 24..25 | i16 | icon (0 in 273/291) | LA |
 | 26 | i8 | AC (current) | VB+XC (Bulette -2) |
 | 27 | u8 | move (current) | VB (Silt Runner 48) |
 | 28 | u8 | status (1 = active, 276/291) | VB |
-| 29 | u8 | allegiance (1 PC, 2, 4) | VB, enum H |
+| 29 | u8 | allegiance enum: 1 = party (PC templates + joinables), 2 = hostile placement, 4 = neutral/friendly default | VB + wave-2 census |
 | 30 | u8 | data (2 dominant) | LA |
-| 31 | i8 | THAC0 | VB+XC (tracks level inversely) |
+| 31 | i8 | THAC0 | VB+XC (tracks level inversely; DS1 Manual anchors: Dune Reaper 13, Mountain Stalker 11, Sand Howler 17) |
 | 32 | u8 | priority (5/6/7) | LA |
 | 33 | u8 | flags (0x20 in 255/291) | LA |
 | 34..39 | u8[6] | stats STR DEX CON INT WIS CHA | VB (Cilla == played save) |
@@ -123,22 +123,24 @@ ready/weapon/pack is 9999; PCs in CHARSAVE carry `0x8000|n` at
 
 | Off | Type | Field | Conf |
 |---:|---|---|---|
-| 14..15 | u16 | unresolved (0/15/12/14 pattern; special-attack candidate) | H |
+| 14..15 | u16 | special-attack candidate: low byte = index into the DS2 special-attack scheme, high byte = secondary parameter (1..16, present on multi-ability monsters); DS2 anchors: Mindflayers 12, Verini spit 15, Giant Skeleton 17, Umber Hulk 19, fear 8 | H-leaning (book-correlated rows) |
 | 16..17 | u16 | data remnant (0 in 336/352) | H |
 | 18 | i8 | AC (current) | VB+XC (drakes -2/-4/-3 == charrec base) |
 | 19 | u8 | move (current) | VB |
 | 20 | u8 | status (1 in 347/352) | VB |
-| 21 | u8 | allegiance (0..7) | VB, enum H |
-| 22 | u8 | special_attack candidate | H |
-| 23 | u8 | special_defense candidate (6 in 307/352) | H |
+| 21 | u8 | allegiance enum: 0 = party, 7 = hostile, 4 = friendly/neutral, 1 = placed-neutral (city faction / hostile-later), 5 = mercenaries/wild attackables; 3 and 6 singletons | VB + wave-2 census |
+| 22 | i8 | **THAC0** (wave 2: the engine reads it at DS2 EXE file 0x5c6e9: `imul ax,ax,0x31; les bx,[0x19c9]; mov al,[es:bx+0x16]`, the byte-for-byte mirror of DS1's +31 read at 0x58113; warrior PCs carry 21 - level; Umber Hulk/Mindflayer 11 = the 2e Manual value; Tarrasque stores -5) | VB (instruction) + XC |
+| 23 | u8 | priority (DS1's +32 byte relocated: same {5,6,7} domain, 6-dominant; 7 = PC templates, 5 = big monsters) | VB distribution |
 | 24 | u8 | flags (0/0x20, mirrors DS1 +33) | VB |
 | 25..30 | u8[6] | stats STR DEX CON INT WIS CHA | VB (== charrec stats, all sampled pairs) |
 | 31..32 | u16 | constant 4 in 335/352; unknown | H |
 | 33..48 | char[16] | name, NUL-terminated (352/352) | VB |
 
-There is no THAC0 byte in DS2's block; the engine derives it
-(runtime derivation from level is the standing hypothesis, one
-EXE read from settled: the `fight` handler DS2 0xd70c).
+The earlier "no THAC0 byte; derived from level" hypothesis is
+refuted (wave 2): DS2 kept DS1's stored-byte design and moved it
+to +22. THAC0 = 21 - HD holds for 193/347 monster rows; classed
+NPCs follow class progressions (rogue L12 rows carry 15, mage L9
+rows 18) and named monsters are hand-tuned.
 
 ### 2.3 DS1 charrec block (type 4, 71 bytes)
 
@@ -158,7 +160,7 @@ byte, and matches `file-formats.md` 3.4 (SAVE/6).
 | 20..23 | u8[4] | data2 (0) | LA |
 | 24 | u8 | race (PCs 1-8; monsters 9/10/12/14 category codes) | LA, monster codes H |
 | 25 | u8 | gender | LA |
-| 26 | u8 | alignment (0..9; enum open; Vrock 9, Slaad 8, Zombie 5) | LA + H |
+| 26 | u8 | alignment, enum confirmed (see 2.6) | XC + wave-2 instruction evidence |
 | 27..32 | u8[6] | stats STR DEX CON INT WIS CHA | VB |
 | 33..35 | u8[3] | real_class[3] | VB |
 | 36..38 | u8[3] | level[3]; level[0] is the monster's hit dice | VB+XC |
@@ -181,17 +183,18 @@ byte, and matches `file-formats.md` 3.4 (SAVE/6).
 
 ### 2.4 DS2 charrec block (type 3, 66 bytes)
 
-The DS1 layout with 5 bytes removed before the stats. Offsets
-0..13 are identical to DS1 (XP, next XP, base HP, high HP, base
-PSP). Then:
+The DS1 layout with 6 bytes removed before the stats (the 2-byte
+negative link and the 4-byte data2; every later field shifts by
+6). Offsets 0..13 are identical to DS1 (XP, next XP, base HP,
+high HP, base PSP). Then:
 
 | Off | Type | Field | Conf |
 |---:|---|---|---|
 | 14 | u16 | tagged index: `0x80xx` PCs, `0xe4xx` disk records (byte 15 = 0xE4 constant in 352/352) | H |
-| 16 | u16 | legal_class bitmask (same 0x20-dominant distribution as DS1 +18) | LA-positional |
-| 18 | u8 | race | H positional |
-| 19 | u8 | gender | H positional |
-| 20 | u8 | alignment | H positional |
+| 16..17 | u16 | legal_class bitmask (the engine's class-anim selector tests 0x20/0x10/0x40/0x200/0xf/0x400/0x100/0x80 at DS2 EXE 0x6ef84; verified pairs: class 9 = 0x2000, 10 = 0x4000, 11 = 0x8000, 12 = 0x1, fighter = 0x20, thief = 0x400) | VB (instruction + data) |
+| 18 | u8 | race (1 = human, 8 = thri-kreen with an engine special-case at 0x6ef94, 12 = generic monster category, 16 = mindflayer; 2..7 = the other PC races by elimination) | VB (instruction + data) |
+| 19 | u8 | gender (1 male, 2 female, 0 none; selector at 0x8fef0) | VB (instruction + data) |
+| 20 | u8 | alignment, enum confirmed (see 2.6; protection-from-alignment grid read at 0x83775) | VB (instruction) |
 | 21..26 | u8[6] | stats STR DEX CON INT WIS CHA | VB (== combat stats) |
 | 27..29 | u8[3] | real_class[3] | XC |
 | 30..32 | u8[3] | level[3]; level[0] = hit dice (Umber Hulk 8, Mindflayer 8, Lord Warrior 15) | VB+XC |
@@ -212,6 +215,38 @@ Named non-combat entities: id i16 negated +0, next u16 +2
 data +22. Matches libgff `mini_t` exactly; verified ("Helmine"
 id 1, "Miner" id 500). DS1 type-5 DATA blocks are 0-length
 markers; DS1 minis do not exist.
+
+### 2.6 The alignment and allegiance enums (wave 2)
+
+Alignment (charrec: DS1 +26, DS2 +20), one enum both games,
+column-major law-first:
+
+| value | alignment | anchors |
+|---:|---|---|
+| 0 | none/unlisted | Fire Eel, Mastyrial ("ALIGNMENT: Nil" in the DS1 Manual) |
+| 1 | Lawful Good | weak (pregens only) |
+| 2 | Lawful Neutral | Magera ("lawful neutral or lawful evil") |
+| 3 | Lawful Evil | Psurlon, all 15 DS2 Mindflayers |
+| 4 | Neutral Good | Verini villagers, Jann ("Neutral Good", DS2 Manual) |
+| 5 | Neutral (true) | Sand Howler, Strine, Dune Reaper ("ALIGNMENT: Neutral") |
+| 6 | Neutral Evil | Mountain Stalker, Dagolar Slime |
+| 7 | Chaotic Good | weak (pregens only) |
+| 8 | Chaotic Neutral | slaadi, tohr-kreen |
+| 9 | Chaotic Evil | Shadow, Vrock, Babau, Soulshard, Kartang, Umber Hulk |
+
+The DS2 engine's protection-from-alignment bonus reads the
+{3, 6, 9} column of the 3x3 grid at DS2 EXE 0x83775, confirming
+the column-major order by instruction.
+
+Allegiance is per-game and lives in the combat block (DS1 +29,
+DS2 +21); the charrec copy is the default faction and the
+combat copy the placed/current disposition (joinables carry
+charrec 4 with combat 1). DS1: 1 = party, 2 = hostile
+placement, 4 = neutral/friendly. DS2: 0 = party, 7 = hostile,
+4 = friendly/neutral, 1 = placed-neutral (civilians and
+hostile-later villains), 5 = mercenaries/wild attackables;
+3 and 6 are singletons. The bitfield reading is dead in both
+games (DS2's party value is 0; 7 = 1|2|4 appears 65 times).
 
 ## 3. OJFF (placement/graphics, 16 bytes, both games)
 
@@ -357,20 +392,23 @@ authoritative).
 Mechanical stats live in engine power tables, NOT in GPL
 scripts (casting is engine-native; the DSO symbol inventory
 names CastSpell/DoMagicAndPsi). Both tables share a 32-byte
-record; the per-record layout (field order and damage formula
-from `.dsoageofheroes/soloscuro-archive` `extract.c`, offsets
-measured here):
+record; the per-record field order is soloscuro-archive's
+`extract.c`, with the offsets measured here and the damage
+semantics corrected against the full description corpus (see
+the damage-word note below the layout).
 
 ```
 +0  u8  data0          (low 2 bits ai-type, high 6 repeat count)
 +1  i16 range          (feet; -2 touch, -1 self)
-+3  u8  range_per_level
++3  u8  range_per_level (real: Cone of Cold 0 + 20/lvl matches its text)
 +4  u8  duration packed (low nibble dice, high nibble sides)
 +5  u16 dur_per_level
-+7  i16 dur_multiplier (0 instant, -9999 indefinite, 60 rounds/level, ...)
++7  i16 dur_multiplier (0 instant, -9999 indefinite, 60 rounds,
+       600 turns, 3600 hours, -1 event-based expiry, 1 handler tick)
 +9  u16 area (feet)
 +11 u8  area_per_level
-+12 u8  target (0 none,1 single,2 line,3 ally,4 enemy,5 anyone,6 cone,7 self,8 two)
++12 u8  target (1 point/place, 2 wall/line, 3 ally, 4 single enemy,
+       5 anyone, 6 cone, 7 self; 0 and 8 unobserved in 516 records)
 +13 i16 cast FX ref
 +15 u8  cast_sound
 +16 i8  thrown
@@ -382,16 +420,53 @@ measured here):
 +22 u8  hit_sound
 +23 i8  aoe_id
 +24 u8  data1
-+25 i8  effect (engine effect-handler id; jump table unmapped)
++25 i8  effect (special-behavior selector; see the dispatch note below)
 +26 u16 effect_type (damage-type bitmask: 1 poison, 2 fire, 4 cold,
        8 blunt, 0x10 cutting, 0x20 piercing, 0x40 acid, 0x80 electric,
        0x100 draining, 0x200 magic, 0x400 mental, 0x800 death, ...)
 +28 u32 damage packed:
        byte0 plus(5) | dice_plus(3); byte1 div(3) | dice(5);
-       byte2 sides(4) | level(4); byte3 savable(1) | save_mod(4s)
+       byte2 sides(4) | scale(4); byte3 savable(1) | save_mod(4s)
              | save_type(3: 1 poison, 2 wands, 3 petr, 4 breath,
                         5 spells, 6 paral, 7 death, 8 magic)
 ```
+
+Damage word semantics (wave 2: corpus-confirmed against all 441
+text-backed spell descriptions; 9/9 on per-level damage claims):
+
+- `div == 0`: flat damage, `dice`d`sides` + flat `plus`.
+- `div == 1`: count = `dice_plus`*level (+`dice`), and `plus`
+  is the PER-CASTER-LEVEL bonus: Burning Hands = 1d3+2/lvl,
+  Shocking Grasp = 1d8+1/lvl, Fireball = (1*lvl)d6, Delayed
+  Blast Fireball = (1*lvl)d6+1/lvl.
+- `div > 1` with the `scale` nibble set: grouped per-level,
+  ((level+dice_plus)/div)d`sides`: Magic Missile = ((lvl+1)/2)d4+1.
+  `div` also does non-damage grouping (Mirror Image 1 image per
+  3 levels, Stoneskin 1 charge per 2 levels).
+- `div > 1` without `scale`: flat `dice_plus` dice: Flame Arrow
+  = 5d6 (upstream extract.c's multiplier formula predicts zero
+  dice here and is corrected by this reading).
+- `scale` is a 1-bit flag in practice (510/516 records are 0);
+  with empty dice it marks handler-defined damage (Sunray, Air
+  Lens, Psionic Damper, Spider Strand).
+
+Duration = (NdS + dur_per_level/level) units of dur_multiplier
+(Haste 3d1+1/lvl rounds, Strength 1/lvl hours; the -1 class is
+event-expiry: Armor, Invisibility, Stoneskin).
+
+The effect byte (+25) is NOT a central jump-table index: wave 2
+enumerated every table-indirect call site in both binaries and
+found none keyed on it. The dispatch is distributed compiled
+case-chains plus overlay-runtime far-call indirection (the
+runtime overlay segment map is the concrete blocker for
+resolving the cast/apply handlers statically). Effect 0 (the
+majority: Fireball, Magic Missile, Cure wounds, all the wall
+spells) is the generic packed-word damage/duration path; the
+nonzero ids select special behaviors (charm family, holds,
+fear, invisibility, armor, ...). Live-id census: DS1 53
+nonzero ids, DS2 75; the id space was renumbered between
+engines (Charm 10 -> 20, Shield 46 -> 89), so handler maps do
+not transfer.
 
 - DS2 table: 320 records x 73 bytes (32 stat + 32 long name +
   9 short name) at file offset 0x120E8 of RESOURCE.GFF.
@@ -413,6 +488,19 @@ measured here):
 - PSP costs: the DSO 3-byte-stride table (mdark.bin 0x10AA59)
   covers the shared 34-power psionic list; treat as prior-art
   context, not DS1/DS2 ground truth.
+
+Text-vs-data disagreements (wave 2 corpus cross-check; likely
+SSI data bugs, each worth a darkfix-style note someday):
+Stinking Cloud and Produce Fire carry 1d6 where their text
+says 2-5 (1d4+1, same mean, wrong dice); Cause Fear's word is
+1 round/level against the text's "1 to 4 rounds"; Delayed
+Blast Fireball's delay reads as 1d3+2/level rounds against the
+text's "2-5 rounds"; Melf's Minute Meteors stores only the
+per-globe die (globe count is handler-side); Chaos's creature
+count scaling is not in the word or area fields. Handler-side
+damage with an intentionally empty word: Detonate, Sunray,
+Vampiric Touch, the Cure family's heal dice, the stat-boost
+family.
 
 Known-spells-per-character (save side, for completeness):
 DS1 SPST = 138 bytes, one byte per spell id 1..138, 1 = known.
@@ -439,7 +527,13 @@ installs, cross-checked against `.dsoageofheroes/libgff` (cite
 `rdff.h`, `object.h`, `item.h`, `common.h`), soloscuro-archive's
 `extract.c`, the played-save layouts in `file-formats.md`, and
 the SSI clue books shipped in the install dirs (facts only).
-Corrections recorded here supersede earlier prose in the
-roadmap's historical notes (the "+14" id anchor; the
-DS2-scoping of the SPIN 1.10 fills). Regenerate the catalogues
+Wave 2 (same day, four more read-only agents) pinned the DS2
+THAC0 byte and the DS2 charrec identity bytes by instruction
+evidence, resolved the alignment and allegiance enums, settled
+the damage-word and duration semantics corpus-wide against the
+spell descriptions, and produced the effect-dispatch negative
+result recorded in section 6. Corrections recorded here
+supersede earlier prose in the roadmap's historical notes (the
+"+14" id anchor; the DS2-scoping of the SPIN 1.10 fills; the
+"DS2 THAC0 is derived" hypothesis). Regenerate the catalogues
 with `tools/gff-edit/scripts/extract-catalogue.py`.

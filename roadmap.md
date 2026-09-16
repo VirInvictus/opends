@@ -2254,3 +2254,33 @@ in-install SSI clue books (facts only), and libgff.
       behavior and the single highest-value target for the
       engine question; DS2 SPST length rule; the named-shield
       AC discrepancy (El's vs Drake, one in-game check).
+      (Wave 2 EXECUTED 2026-09-16, four read-only agents;
+      all integrated into `docs/object-formats.md` and the
+      generator. RESOLVED: DS2 THAC0 is a STORED byte at
+      combat+22, instruction-proven at DS2 EXE 0x5c6e9
+      (mirror of DS1's +31 read), refuting the
+      derived-from-level hypothesis; the DS2 charrec
+      +16..20 identity block (legal_class u16, race,
+      gender, alignment) pinned by the class-anim selector
+      at 0x6ef84, the race special-case at 0x6ef94, the
+      gender selector at 0x8fef0, and the
+      protection-from-alignment grid at 0x83775; the
+      alignment enum (1 LG .. 9 CE, 0 none) book-anchored;
+      the allegiance enums censused per game (bitfield
+      reading dead); DS1 special_attack confirmed an ENUM
+      with 33 values and a partial ability map; the damage
+      word settled corpus-wide (div 0 flat, div 1
+      per-level including the plus-per-level bonus, div > 1
+      grouped only under the scale flag else flat; duration
+      unit map; target enum refined; a 7-entry SSI
+      text-vs-data disagreement list recorded). NEGATIVE
+      RESULT with roadmap value: there is no central
+      effect-id jump table; dispatch is distributed
+      case-chains behind overlay-runtime far-call
+      indirection, so handler resolution needs the runtime
+      overlay segment map (a DOSBox break on the resident
+      spell-record getter 0xb8:3) or the FBOV exeinfo
+      decode. REMAINING OPEN: DS2 cb14 high byte,
+      allegiance values 3/6, DS2 SPST length rule, the
+      named-shield AC check, and the runtime-capture route
+      to the cast/apply handlers.)
