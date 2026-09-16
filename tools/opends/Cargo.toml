@@ -1,6 +1,6 @@
 [package]
 name = "opends"
-version = "0.1.0"
+version = "0.1.1"
 description = "Umbrella CLI for the OpenDS toolkit (auto-dispatch by file magic)."
 readme = "README.md"
 edition.workspace = true

@@ -100,6 +100,14 @@ item, `gpl-asm` v0.9.1, has its own heading below.)
   straddle refusal always did. Selftest case added on the
   synthetic fixture.
 
+## opends v0.1.1 (2026-09-15)
+
+- **`opends` v0.1.1**: `opends extract` works. It dispatched to
+  `gff-cat bulk-extract`, a subcommand gff-cat has never had, so
+  every invocation failed; it now dispatches the real surface,
+  `gff-cat extract <file> --all -o <dir>`, with a unit test
+  pinning the argument shape.
+
 ## darkfix-ds2 v0.1.0 (2026-09-15)
 
 - **`darkfix-ds2` v0.1.0**: **the first Wake of the Ravager fix
