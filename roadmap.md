@@ -2102,3 +2102,72 @@ CONFIRMED-prior (verified): the release-assets HIGH closed 09-13 (build-release.
 Feature candidates (RE-RANKED from the recorded board; grounded in audit-final/opends/FINAL-REPORT.md lens 4): P1 the DS2 dead-trigger correlation dig (S, agent-executable now, decision-free: it arms the ship-order call rather than preempting it) then P2 the DS2 fix lane (M, highest absolute value; rides the ship-order and applier promote-vs-copy calls); P3 DS2 party edit-surface verification + cookbook entry (the only Phase 7 precursor gated on nothing Brandon must do); P4 CONTRIBUTING.md (and link the cookbook from the root README, which never mentions it); P5 set-up-repro-fixture.md rides the DS2 lane; P6 DS2 StartCycle init site; P7 install-variant refusal policy (NEW decision + docs); P8 DS1 final-battle variant-1 dig (NEW, contingent). GF[395] stays parked.
 
 Slop-reader: voice is human everywhere (no stock vocab, no hedging, dated correction blockquotes are an anti-drift pattern worth copying); the em-dash census of 143 lines verified exact with the live/historical split above; the real finding is mechanical find-replace (" - " and ":" substitutes instead of recasts) in README and the live roadmap block, plus the four banned-dash titles.
+
+### Blitz execution 2026-09-15 (THE FINAL BLITZ; findings ledger: audit-final/opends/FINAL-REPORT.md)
+
+All ten ranked items executed same-day; every audit-block box above
+is ticked with a ship note. **Decisions (Brandon, via prompts,
+2026-09-15)**: (1) standing push grant through 09-20; (2) cut
+darkfix-ds1 v0.1.1 with the accumulated applier work; (3) DS2
+ship-order: ship the dead-trigger fix ahead of the elevator IF the
+correlation dig shows main-quest content, else hold; (4) ds2-patch
+applier shape: copy per patch; (5) spec 14 patch license: MIT
+(LICENSE staged into the zips); (6) CONTRIBUTING.md: go; (7) git rm
+the ds1 .gitkeep pair; (8) dedupe the fix-script skeleton to
+fix-format.md; (9) P7 install-variant policy: refusal is the path;
+(10) GitHub presentation batch: execute. The gated hands set
+(played-save sessions, DOSBox capture calendar) stays
+calendar-gated and is recorded in project.done as a reopen
+condition; GF[395] stays parked.
+
+- [x] **P1: the DS2 dead-trigger correlation dig** (executed
+      2026-09-15, agent-side, decision-free). The sweep at this
+      HEAD: 1,741 trigger registrations; 1,505 alive; 206
+      intentional null-handlers; **30 dead**, every one pointing
+      at **GPL-24 entry 0x1** (`gpl exit gpl`). GPL-24 is not a
+      clobbered stub like DS1's GPL-200@0x909: it is DS2's shared
+      NPC-chatter library (bystander combat refusals, enemy
+      taunts, party barks, race names, menu threats), alive via
+      104 `gpl global sub` call sites corpus-wide; only entry 1
+      is a no-op, and it is a discovered entry with its own
+      explicit exit (GPL-46's entry 1 is a real handler, so the
+      shape is a deliberate shared default, not a format
+      artifact). 37 trigger registrations target the chunk; all
+      37 target entry 1.
+      The 30 rows are later or interleaved no-op re-registrations
+      sitting beside ALIVE handlers for the same objects: the
+      DS1 occlusion shape exactly. Example: GPL-8 registers
+      objects -209/-406 alive at GPL-8@861 (0x1e/0x27) and dead
+      at 24@1 (0x473/0x47b); GPL-187 registers -2975 alive at
+      6349 (0x1744/0x197b) and dead at 0x18cd.
+      Object census (OBJEX OJFF -> BMP, placements from the RGN
+      ETABs): 20 rows on ONE object, -2975 (BMP 447, a 14x14
+      gnarled prop; placed in Limbo/RGN0FF at (71,157); rendered
+      and visually identified). The rest: -418 (BMP 1753; Tyr,
+      Silt Giants, Limbo), -406 (BMP 1754; Silt Giants, Cosmos,
+      Limbo), -209 (BMP 2427; Volcano Level 3, Limbo), -146
+      (BMP 1269; forest), -445 (BMP 1268; forest), -106 (BMP
+      1247; Jann), -1922/-1923 (BMP 1186/1185; VA Headquarters,
+      Limbo), -2994 (BMP 2016; Crypt). Trigger mix: 20 usetrigger,
+      4 looktrigger, 4 attacktrigger, 2 talktotrigger.
+      **Correlation verdict: main-quest, normal-playthrough
+      content** (Tyr, the VA headquarters, Jann, the Silt Giant
+      lands, the Cosmos, the Crypt, the Volcano, the Limbo
+      endgame): the gate for decision (3) PASSES, with one
+      honest caveat: only 4 of 30 rows are the attacktrigger
+      "enemies refuse to engage" class that gave DS1 its
+      player-visible symptom; the other 26 are use/look/talk
+      interactions on a shared prop and story objects, so the
+      fix's visible payoff is quieter than DS1's. Same open
+      EXE-side question as DS1: first-wins vs last-wins
+      re-registration semantics; the fix design stays
+      semantics-proof (repoint the no-op rows at each object's
+      own working handler: a no-op if the engine keeps first
+      registrations, a restoration if it keeps last). 28 of 30
+      rows have locally provable working handlers; GPL-30's and
+      GPL-64's -2975 rows have none and stay untouched.
+- [ ] **P2: the DS2 dead-trigger fix lane** (darkfix-ds2 v0.1.0:
+      the ds2-patch bootstrap with the copied applier plus
+      `fix.ds2.deadtriggers`, repointing the provable rows).
+      Gate condition met per decision (3); execution in progress
+      below.
