@@ -330,6 +330,24 @@ North). Surface: mixed engine/data; low severity each.
   shipped (runtime-variable object, inert stub); see
   `ds1-patch/fixes/001-deadtriggers.md`. In-game scene
   confirmation rides the played-save sessions.
+- (DS2) Dead triggers: the corrected sweep (gpl-disasm scripts fix,
+  2026-09-15: the tool's table said `pickupitemtrigger` while the
+  catalogue's real mnemonic is `gpl pickup itemtrigger`, and the
+  use-with entry offset was read from the wrong parameter, so
+  pickup and use-with rows went unswept in BOTH games) counts DS2
+  at 1,915 registrations, 1,670 alive, 206 intentional
+  null-handlers, 39 dead, all pointing at the shared NPC-chatter
+  library's no-op `GPL-24` entry 0x1. The DS1 recount under the
+  corrected tool: 1,539 registrations (was 1,449), dead count
+  unchanged at the six rows `fix.ds1.deadtriggers` repaired.
+  FIXED 2026-09-15 for 27 of the 39 in darkfix-ds2 0.1.0
+  (`fix.ds2.deadtriggers`): each static row is repointed to the
+  object's own working handler (21 same-chunk, 6 MAS-attested),
+  the same no-op-or-restoration design as the DS1 fix. 12 rows
+  stay: no statically provable handler (two pickup rows on
+  -900, one look on -1922, two use rows on -2975, seven use-with
+  rows in GPL-98); see `ds2-patch/fixes/001-deadtriggers.md`.
+  In-game scene confirmation rides the played-save sessions.
 - The region-transition screen-blanking line has no independent
   community trail; it predates the compiled list and stays untriaged
   until a report or a repro catches it.
