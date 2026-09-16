@@ -372,10 +372,10 @@ negative; this prose now says so too.
 
 | FOURCC | Purpose                                                    |
 |--------|------------------------------------------------------------|
-| `IT1R` | Items                                                      |
+| `IT1R` | Items (DS1 base-stat table; see `object-formats.md`)      |
 | `OJFF` | Object data (general)                                      |
-| `RDFF` | Record data: distinct schemas per game (DS1/DS2/DSO) for: |
-|        |  item, combat, char, mini, player, entity records          |
+| `RDFF` | Record data: per-game record chains (items, creatures,     |
+|        | minis, templates; full layouts in `object-formats.md`)     |
 | `FNFO` | Object data table                                          |
 | `RDAT` | Per-region binary config (u16 pairs; NOT names, corrected 2026-09-05) |
 | `NAME` | Names                                                      |
