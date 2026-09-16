@@ -6,326 +6,326 @@ Levels: number = spell level; P = psionic; S = stat power; I = innate monster po
 
 | id | lvl | name | range | duration | area | target | damage (packed) | save | fx | eff |
 |---:|---|---|---:|---|---:|---:|---|---|---|---:|
-| 1 | 1 | ARMOR | -2 | 8d1+1/lvl (m-1) | 1 | 3 | 0d1 [0xa0010100] | - | 0x0000 | 5 |
-| 2 | 1 | BURNING HANDS | 40 | 0d0 rds/lvl | 40 | 6 | 1d3+2 [0xa1030902] | spells | 0x0202 | 0 |
+| 1 | 1 | ARMOR | -2 | event | 1 | 3 | 0d1 [0xa0010100] | - | 0x0000 | 5 |
+| 2 | 1 | BURNING HANDS | 40 | 0d0 rounds | 40 | 6 | 1d3+2/lvl [0xa1030902] | spells | 0x0202 | 0 |
 | 3 | 1 | CHARM PERSON | 1440 | indefinite | 1 | 4 | 0d1 [0xa1010100] | spells | 0x0000 | 20 |
-| 4 | 1 | CHILL TOUCH | -2 | 0d1 rds/lvl | 1 | 4 | 1d4 [0xa1040900] | spells | 0x0304 | 0 |
-| 5 | 1 | COLOR SPRAY | 80 | 2d4 rds/lvl | 160 | 6 | - [0xa1000100] | spells | 0x0000 | 69 |
-| 6 | 1 | ENLARGE | -2 | 0d1+5/lvl rds/lvl | 1 | 3 | - [0xa0000100] | - | 0x0000 | 32 |
-| 7 | 1 | GAZE REFLECTION | -2 | 2d1+1/lvl rds/lvl | 1 | 3 | - [0xa0000100] | - | 0x0000 | 84 |
+| 4 | 1 | CHILL TOUCH | -2 | 0d1 rounds | 1 | 4 | 1d4 [0xa1040900] | spells | 0x0304 | 0 |
+| 5 | 1 | COLOR SPRAY | 80 | 2d4 rounds | 160 | 6 | - [0xa1000100] | spells | 0x0000 | 69 |
+| 6 | 1 | ENLARGE | -2 | 0d1+5/lvl rounds | 1 | 3 | - [0xa0000100] | - | 0x0000 | 32 |
+| 7 | 1 | GAZE REFLECTION | -2 | 2d1+1/lvl rounds | 1 | 3 | - [0xa0000100] | - | 0x0000 | 84 |
 | 8 | 1 | GREASE | 120 | instant | 40 | 1 | 0d1 [0xa1010100] | spells | 0x0000 | 66 |
-| 9 | 1 | MAGIC MISSILE | 720 | instant | 1 | 4 | ((lvl+1)/2)d4+1 (sc1) [0x00140221] | - | 0x0200 | 0 |
-| 10 | 1 | SHIELD | -1 | 0d0+5/lvl rds/lvl | 1 | 7 | - [0xa0000100] | - | 0x0000 | 89 |
-| 11 | 1 | SHOCKING GRASP | -2 | 0d0 rds/lvl | 1 | 4 | 1d8+1 [0xa0080901] | - | 0x0280 | 0 |
+| 9 | 1 | MAGIC MISSILE | 720 | instant | 1 | 4 | ((lvl+1)/2)d4+1 [0x00140221] | - | 0x0200 | 0 |
+| 10 | 1 | SHIELD | -1 | 0d0+5/lvl rounds | 1 | 7 | - [0xa0000100] | - | 0x0000 | 89 |
+| 11 | 1 | SHOCKING GRASP | -2 | 0d0 rounds | 1 | 4 | 1d8+1/lvl [0xa0080901] | - | 0x0280 | 0 |
 | 12 | 1 | WALL OF FOG | 360 | instant | 80+40/lvl | 2 | - [0xa0000100] | - | 0x0000 | 0 |
-| 13 | 2 | BLUR | -1 | 3d1+1/lvl rds/lvl | 1 | 7 | - [0xa0000100] | - | 0x0000 | 13 |
-| 14 | 2 | DETECT INVISIBLE | -1 | 0d1+5/lvl rds/lvl | 1 | 7 | - [0xa0000100] | - | 0x0000 | 25 |
-| 15 | 2 | FLAMING SPHERE | 120 | 0d0 rds/lvl | 20 | 1 | 2d4 [0xa1041100] | spells | 0x0202 | 0 |
+| 13 | 2 | BLUR | -1 | 3d1+1/lvl rounds | 1 | 7 | - [0xa0000100] | - | 0x0000 | 13 |
+| 14 | 2 | DETECT INVISIBLE | -1 | 0d1+5/lvl rounds | 1 | 7 | - [0xa0000100] | - | 0x0000 | 25 |
+| 15 | 2 | FLAMING SPHERE | 120 | 0d0 rounds | 20 | 1 | 2d4 [0xa1041100] | spells | 0x0202 | 0 |
 | 16 | 2 | FOG CLOUD | 30 | instant | 120 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
-| 17 | 2 | GLITTER DUST | 0 | 1d4+1/lvl rds/lvl | 80 | 1 | - [0xa1000100] | spells | 0x0000 | 10 |
-| 18 | 2 | INVISIBILITY | -2 | 1d1 (m-1) | 1 | 3 | - [0xa0000100] | - | 0x0000 | 53 |
-| 19 | 2 | ACID ARROW | 800 | 1d1+20/lvl (m1) | 1 | 4 | 2d4 [0xa0041100] | - | 0x0240 | 1 |
-| 20 | 2 | MIRROR IMAGE | -1 | 1d4+1/lvl (m-1) | 1 | 7 | - [0xa0000300] | - | 0x0000 | 46 |
-| 21 | 2 | PROTECTION FROM PARALYSIS | -2 | 0d0+1/lvl (x600) | 1 | 3 | - [0xa0000100] | - | 0x0000 | 48 |
-| 22 | 2 | SCARE | 90 | 1d4+1/lvl rds/lvl | 60 | 1 | - [0xa0000100] | - | 0x0000 | 35 |
-| 23 | 2 | STINKING CLOUD | 90 | 1d6 rds/lvl | 40 | 1 | - [0x21000100] | poison | 0x0200 | 65 |
-| 24 | 2 | STRENGTH | -2 | 0d1+1/lvl (x3600) | 1 | 3 | - [0xa0000100] | - | 0x0000 | 0 |
+| 17 | 2 | GLITTER DUST | 0 | 1d4+1/lvl rounds | 80 | 1 | - [0xa1000100] | spells | 0x0000 | 10 |
+| 18 | 2 | INVISIBILITY | -2 | event | 1 | 3 | - [0xa0000100] | - | 0x0000 | 53 |
+| 19 | 2 | ACID ARROW | 800 | ticks | 1 | 4 | 2d4 [0xa0041100] | - | 0x0240 | 1 |
+| 20 | 2 | MIRROR IMAGE | -1 | event | 1 | 7 | - [0xa0000300] | - | 0x0000 | 46 |
+| 21 | 2 | PROTECTION FROM PARALYSIS | -2 | 0d0+1/lvl turns | 1 | 3 | - [0xa0000100] | - | 0x0000 | 48 |
+| 22 | 2 | SCARE | 90 | 1d4+1/lvl rounds | 60 | 1 | - [0xa0000100] | - | 0x0000 | 35 |
+| 23 | 2 | STINKING CLOUD | 90 | 1d6 rounds | 40 | 1 | - [0x21000100] | poison | 0x0200 | 65 |
+| 24 | 2 | STRENGTH | -2 | 0d1+1/lvl hours | 1 | 3 | - [0xa0000100] | - | 0x0000 | 0 |
 | 25 | 2 | WEB | 0 | indefinite | 80 | 1 | - [0xbd000100] | spells-2 | 0x0000 | 66 |
-| 26 | 3 | BLINK | -1 | 0d0+1/lvl rds/lvl | 1 | 7 | - [0xa0000100] | - | 0x0000 | 11 |
-| 27 | 3 |  DISPEL MAGIC | 200 | 0d0 rds/lvl | 120 | 1 | - [0xa0000100] | - | 0x0000 | 68 |
-| 28 | 3 | FIREBALL | 120 | 0d0 rds/lvl | 80 | 1 | (1*lvl)d6 [0xa1060120] | spells | 0x0202 | 0 |
-| 29 | 3 | FLAMING ARROW | 90 | 0d1 rds/lvl | 1 | 4 | ((lvl+5)/5)d6 [0xa00605a0] | - | 0x0222 | 0 |
-| 30 | 3 | HASTE | 180 | 3d1+1/lvl rds/lvl | 160 | 1 | - [0xa0000100] | - | 0x0000 | 42 |
-| 31 | 3 |  HOLD PERSON | 200 | 0d1+2/lvl rds/lvl | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 69 |
-| 32 | 3 | HOLD UNDEAD | 60 | 1d4+1/lvl rds/lvl | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 69 |
-| 33 | 3 | LIGHTNING BOLT | 400 | 0d1 rds/lvl | 40 | 1 | (1*lvl)d6 [0xa1060120] | spells | 0x0280 | 0 |
-| 34 | 3 | MINUTE METEORS | 840 | 0d1 rds/lvl | 1 | 4 | (1*lvl)d4 [0xa0040120] | - | 0x0202 | 0 |
-| 35 | 3 | MINOR MALISON | 60 | 0d1+2/lvl rds/lvl | 80 | 1 | - [0xa0000100] | - | 0x0000 | 88 |
-| 36 | 3 | PROTECTION FROM MISSILES | -2 | 0d1+1/lvl (x600) | 1 | 3 | - [0xa0000100] | - | 0x0000 | 47 |
-| 37 | 3 | SLOW | 200 | 3d1+1/lvl rds/lvl | 160 | 1 | - [0xb9000100] | spells-4 | 0x0000 | 91 |
-| 38 | 3 | SPIRIT ARMOR | -1 | 0d1+2/lvl rds/lvl | 1 | 7 | - [0xa0000100] | - | 0x0000 | 94 |
-| 39 | 3 | VAMPIRIC TOUCH | -2 | 0d1 rds/lvl | 1 | 4 | - [0xa0000100] | - | 0x0300 | 0 |
+| 26 | 3 | BLINK | -1 | 0d0+1/lvl rounds | 1 | 7 | - [0xa0000100] | - | 0x0000 | 11 |
+| 27 | 3 |  DISPEL MAGIC | 200 | 0d0 rounds | 120 | 1 | - [0xa0000100] | - | 0x0000 | 68 |
+| 28 | 3 | FIREBALL | 120 | 0d0 rounds | 80 | 1 | (1*lvl)d6 [0xa1060120] | spells | 0x0202 | 0 |
+| 29 | 3 | FLAMING ARROW | 90 | 0d1 rounds | 1 | 4 | 5d6 (div5) [0xa00605a0] | - | 0x0222 | 0 |
+| 30 | 3 | HASTE | 180 | 3d1+1/lvl rounds | 160 | 1 | - [0xa0000100] | - | 0x0000 | 42 |
+| 31 | 3 |  HOLD PERSON | 200 | 0d1+2/lvl rounds | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 69 |
+| 32 | 3 | HOLD UNDEAD | 60 | 1d4+1/lvl rounds | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 69 |
+| 33 | 3 | LIGHTNING BOLT | 400 | 0d1 rounds | 40 | 1 | (1*lvl)d6 [0xa1060120] | spells | 0x0280 | 0 |
+| 34 | 3 | MINUTE METEORS | 840 | 0d1 rounds | 1 | 4 | (1*lvl)d4 [0xa0040120] | - | 0x0202 | 0 |
+| 35 | 3 | MINOR MALISON | 60 | 0d1+2/lvl rounds | 80 | 1 | - [0xa0000100] | - | 0x0000 | 88 |
+| 36 | 3 | PROTECTION FROM MISSILES | -2 | 0d1+1/lvl turns | 1 | 3 | - [0xa0000100] | - | 0x0000 | 47 |
+| 37 | 3 | SLOW | 200 | 3d1+1/lvl rounds | 160 | 1 | - [0xb9000100] | spells-4 | 0x0000 | 91 |
+| 38 | 3 | SPIRIT ARMOR | -1 | 0d1+2/lvl rounds | 1 | 7 | - [0xa0000100] | - | 0x0000 | 94 |
+| 39 | 3 | VAMPIRIC TOUCH | -2 | 0d1 rounds | 1 | 4 | - [0xa0000100] | - | 0x0300 | 0 |
 | 40 | 4 | CHARM MONSTER | 180 | indefinite | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 20 |
-| 41 | 4 |  CONFUSION | 200 | 2d1+1/lvl rds/lvl | 240 | 1 | - [0xbd000100] | spells-2 | 0x0000 | 21 |
-| 42 | 4 | FEAR | 240 | 1d1+1/lvl rds/lvl | 480 | 6 | - [0xa1000100] | spells | 0x0000 | 35 |
-| 43 | 4 | FIRE SHIELD | -1 | 2d1+1/lvl rds/lvl | 1 | 7 | - [0xa0000100] | - | 0x0202 | 38 |
-| 44 | 4 | ICE STORM | 0 | 0d1 rds/lvl | 80 | 1 | 3d10 [0xa00a1900] | - | 0x0208 | 0 |
-| 45 | 4 | IMPROVED INVISIBILITY | -2 | 4d1+1/lvl rds/lvl | 1 | 3 | - [0xa0000100] | - | 0x0000 | 53 |
-| 46 | 4 | M GLOBE OF INVULNERABILITY | -1 | 1d1+1/lvl rds/lvl | 1 | 7 | - [0xa0000100] | - | 0x0000 | 55 |
-| 47 | 4 | MINOR SPELL TURNING | -1 | 1d1 (m-1) | 1 | 7 | - [0xa0000100] | - | 0x0000 | 85 |
-| 48 | 4 | OTILUKE'S RESILIENT SPHERE | 240 | 0d0+1/lvl rds/lvl | 1 | 5 | - [0xa1000100] | spells | 0x0000 | 56 |
+| 41 | 4 |  CONFUSION | 200 | 2d1+1/lvl rounds | 240 | 1 | - [0xbd000100] | spells-2 | 0x0000 | 21 |
+| 42 | 4 | FEAR | 240 | 1d1+1/lvl rounds | 480 | 6 | - [0xa1000100] | spells | 0x0000 | 35 |
+| 43 | 4 | FIRE SHIELD | -1 | 2d1+1/lvl rounds | 1 | 7 | - [0xa0000100] | - | 0x0202 | 38 |
+| 44 | 4 | ICE STORM | 0 | 0d1 rounds | 80 | 1 | 3d10 [0xa00a1900] | - | 0x0208 | 0 |
+| 45 | 4 | IMPROVED INVISIBILITY | -2 | 4d1+1/lvl rounds | 1 | 3 | - [0xa0000100] | - | 0x0000 | 53 |
+| 46 | 4 | M GLOBE OF INVULNERABILITY | -1 | 1d1+1/lvl rounds | 1 | 7 | - [0xa0000100] | - | 0x0000 | 55 |
+| 47 | 4 | MINOR SPELL TURNING | -1 | event | 1 | 7 | - [0xa0000100] | - | 0x0000 | 85 |
+| 48 | 4 | OTILUKE'S RESILIENT SPHERE | 240 | 0d0+1/lvl rounds | 1 | 5 | - [0xa1000100] | spells | 0x0000 | 56 |
 | 49 | 4 | PSIONIC DAMPENER | 0 | instant | 1 | 4 | - [0xa1100100] | spells | 0x0200 | 67 |
-| 50 | 4 | RAINBOW PATTERN | 40 | 1d3 rds/lvl | 120 | 1 | - [0xa1000100] | spells | 0x0000 | 69 |
+| 50 | 4 | RAINBOW PATTERN | 40 | 1d3 rounds | 120 | 1 | - [0xa1000100] | spells | 0x0000 | 69 |
 | 51 | 4 | SOLID FOG | 90 | indefinite | 80 | 1 | - [0xa0000100] | - | 0x0000 | 66 |
-| 52 | 4 | SPIDER STRAND | 360 | 0d0+1/lvl rds/lvl | 1 | 4 | - [0x01100100] | 0 | 0x0000 | 50 |
-| 53 | 4 | STONE SKIN | -2 | 1d4+1/lvl (m-1) | 1 | 3 | - [0xa0000200] | - | 0x0000 | 96 |
-| 54 | 4 | PEBBLE TO BOULDER | 50 | 0d1 rds/lvl | 1 | 4 | 6d6 [0xa0063100] | - | 0x0208 | 0 |
-| 55 | 4 |  WALL OF FIRE | 180 | 0d1 rds/lvl | 0+80/lvl | 2 | 2d6+1 [0xa0061101] | - | 0x0202 | 0 |
-| 56 | 4 | WALL OF ICE | 0 | 0d1 (x600) | 120 | 2 | - [0xa0000100] | - | 0x0208 | 0 |
-| 57 | 5 | CHAOS | 0 | 0d1+1/lvl rds/lvl | 160 | 1 | - [0xa1000100] | spells | 0x0000 | 21 |
-| 58 | 5 | CLOUD KILL | 30 | 0d1+1/lvl rds/lvl | 80 | 1 | 1d10 [0x3c0a0900] | - | 0x0201 | 0 |
-| 59 | 5 | CONE OF COLD | 0 | 0d1 rds/lvl | 0+40/lvl | 6 | (1*lvl)d6 [0xa1060120] | spells | 0x0204 | 0 |
-| 60 | 5 | CONJURE ELEMENTAL | 180 | 0d1+1/lvl (x600) | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
-| 61 | 5 | DISMISSAL | 30 | 0d1 rds/lvl | 1 | 5 | - [0xa1000100] | spells | 0x0000 | 0 |
+| 52 | 4 | SPIDER STRAND | 360 | 0d0+1/lvl rounds | 1 | 4 | - [0x01100100] | 0 | 0x0000 | 50 |
+| 53 | 4 | STONE SKIN | -2 | event | 1 | 3 | - [0xa0000200] | - | 0x0000 | 96 |
+| 54 | 4 | PEBBLE TO BOULDER | 50 | 0d1 rounds | 1 | 4 | 6d6 [0xa0063100] | - | 0x0208 | 0 |
+| 55 | 4 |  WALL OF FIRE | 180 | 0d1 rounds | 0+80/lvl | 2 | 2d6+1/lvl [0xa0061101] | - | 0x0202 | 0 |
+| 56 | 4 | WALL OF ICE | 0 | 0d1 turns | 120 | 2 | - [0xa0000100] | - | 0x0208 | 0 |
+| 57 | 5 | CHAOS | 0 | 0d1+1/lvl rounds | 160 | 1 | - [0xa1000100] | spells | 0x0000 | 21 |
+| 58 | 5 | CLOUD KILL | 30 | 0d1+1/lvl rounds | 80 | 1 | 1d10 [0x3c0a0900] | - | 0x0201 | 0 |
+| 59 | 5 | CONE OF COLD | 0 | 0d1 rounds | 0+40/lvl | 6 | (1*lvl)d6 [0xa1060120] | spells | 0x0204 | 0 |
+| 60 | 5 | CONJURE ELEMENTAL | 180 | 0d1+1/lvl turns | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
+| 61 | 5 | DISMISSAL | 30 | 0d1 rounds | 1 | 5 | - [0xa1000100] | spells | 0x0000 | 0 |
 | 62 | 5 | DOMINATE | 0 | indefinite | 1 | 4 | - [0xbd000100] | spells-2 | 0x0000 | 20 |
 | 63 | 5 | FEEBLE MIND | 0 | indefinite | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 37 |
-| 64 | 5 | HOLD MONSTER | 0 | 0d1+1/lvl rds/lvl | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 69 |
-| 65 | 5 | LOWER RESISTANCE TO MAGIC | 180 | 1d1+1/lvl rds/lvl | 1 | 4 | - [0x00000100] | - | 0x0000 | 61 |
-| 66 | 5 | SUMMON SHADOW | 30 | 1d1+1/lvl rds/lvl | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
-| 67 | 5 | WALL OF FORCE | 90 | 0d1 rds/lvl | 0+40/lvl | 2 | - [0xa0000100] | - | 0x0000 | 0 |
-| 68 | 5 | WALL OF STONE | 0 | 0d1 (x3600) | 0+80/lvl | 2 | - [0xa0000100] | - | 0x0000 | 0 |
-| 69 | 6 | ANTI MAGIC SHELL | 1 | 0d1+1/lvl (x600) | 0+4/lvl | 7 | - [0x00000100] | - | 0x0000 | 4 |
-| 70 | 6 | CHAIN LIGHTNING | 480 | 0d1 rds/lvl | 0+40/lvl | 6 | (1*lvl)d6 [0xa1060120] | spells | 0x0280 | 0 |
-| 71 | 6 | DEATH FOG | 360 | 1d4+1/lvl rds/lvl | 120+80/lvl | 2 | (1*lvl+2)d2 [0x00021120] | - | 0x0040 | 0 |
+| 64 | 5 | HOLD MONSTER | 0 | 0d1+1/lvl rounds | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 69 |
+| 65 | 5 | LOWER RESISTANCE TO MAGIC | 180 | 1d1+1/lvl rounds | 1 | 4 | - [0x00000100] | - | 0x0000 | 61 |
+| 66 | 5 | SUMMON SHADOW | 30 | 1d1+1/lvl rounds | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
+| 67 | 5 | WALL OF FORCE | 90 | 0d1 rounds | 0+40/lvl | 2 | - [0xa0000100] | - | 0x0000 | 0 |
+| 68 | 5 | WALL OF STONE | 0 | 0d1 hours | 0+80/lvl | 2 | - [0xa0000100] | - | 0x0000 | 0 |
+| 69 | 6 | ANTI MAGIC SHELL | 1 | 0d1+1/lvl turns | 0+4/lvl | 7 | - [0x00000100] | - | 0x0000 | 4 |
+| 70 | 6 | CHAIN LIGHTNING | 480 | 0d1 rounds | 0+40/lvl | 6 | (1*lvl)d6 [0xa1060120] | spells | 0x0280 | 0 |
+| 71 | 6 | DEATH FOG | 360 | 1d4+1/lvl rounds | 120+80/lvl | 2 | (1*lvl+2)d2 [0x00021120] | - | 0x0040 | 0 |
 | 72 | 6 | DEATH SPELL | 0 | instant | 120+1/lvl | 1 | - [0x00000100] | - | 0x0200 | 0 |
 | 73 | 6 |  DISINTEGRATE | 0 | instant | 1 | 4 | - [0xa1000100] | spells | 0x0200 | 0 |
-| 74 | 6 | GLOBE OF INVULNERABILITY | -1 | 0d0+1/lvl rds/lvl | 20 | 7 | - [0x00000100] | - | 0x0000 | 55 |
-| 75 | 6 | IMPROVED HASTE | -2 | 0d0+1/lvl rds/lvl | 1 | 3 | - [0x00000000] | - | 0x0000 | 51 |
-| 76 | 6 | IMPROVED SLOW | 1080 | 1d1+1/lvl rds/lvl | 160 | 2 | - [0xa1000100] | spells | 0x0000 | 52 |
-| 77 | 6 | MONSTER SUMMONING IV | 720 | 5d1+1/lvl rds/lvl | 1 | 1 | - [0x00000100] | - | 0x0000 | 0 |
-| 78 | 6 | REINCARNATION | -2 | 0d1 rds/lvl | 1 | 3 | - [0x00000100] | - | 0x0000 | 0 |
-| 79 | 6 | STONE TO FLESH | 0 | 0d1 rds/lvl | 1 | 3 | 0d1 [0xa0010100] | - | 0x0000 | 70 |
-| 80 | 6 | FLESH TO STONE | 120 | 0d1 rds/lvl | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 70 |
-| 81 | 6 | TENSER'S TRANSFORMATION | -1 | 0d0+1/lvl rds/lvl | 1 | 7 | - [0x00000100] | - | 0x0000 | 102 |
-| 82 | 7 | CONJURE GREATER ELEMENTAL | 90 | 0d0+1/lvl (x600) | 1 | 1 | - [0x00000100] | - | 0x0000 | 0 |
+| 74 | 6 | GLOBE OF INVULNERABILITY | -1 | 0d0+1/lvl rounds | 20 | 7 | - [0x00000100] | - | 0x0000 | 55 |
+| 75 | 6 | IMPROVED HASTE | -2 | 0d0+1/lvl rounds | 1 | 3 | - [0x00000000] | - | 0x0000 | 51 |
+| 76 | 6 | IMPROVED SLOW | 1080 | 1d1+1/lvl rounds | 160 | 2 | - [0xa1000100] | spells | 0x0000 | 52 |
+| 77 | 6 | MONSTER SUMMONING IV | 720 | 5d1+1/lvl rounds | 1 | 1 | - [0x00000100] | - | 0x0000 | 0 |
+| 78 | 6 | REINCARNATION | -2 | 0d1 rounds | 1 | 3 | - [0x00000100] | - | 0x0000 | 0 |
+| 79 | 6 | STONE TO FLESH | 0 | 0d1 rounds | 1 | 3 | 0d1 [0xa0010100] | - | 0x0000 | 70 |
+| 80 | 6 | FLESH TO STONE | 120 | 0d1 rounds | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 70 |
+| 81 | 6 | TENSER'S TRANSFORMATION | -1 | 0d0+1/lvl rounds | 1 | 7 | - [0x00000100] | - | 0x0000 | 102 |
+| 82 | 7 | CONJURE GREATER ELEMENTAL | 90 | 0d0+1/lvl turns | 1 | 1 | - [0x00000100] | - | 0x0000 | 0 |
 | 83 | 7 | CONTROL UNDEAD | 240 | indefinite | 1 | 5 | - [0xa1000100] | spells | 0x0000 | 20 |
-| 84 | 7 | DELAYED BLAST FIREBALL | 1200 | 1d3+2/lvl rds/lvl | 80 | 1 | (1*lvl)d6+1 [0xa1060121] | spells | 0x0202 | 0 |
-| 85 | 7 | FINGER OF DEATH | 240 | 0d0 rds/lvl | 1 | 4 | 2d8+1 [0xa1081001] | spells | 0x0202 | 0 |
-| 86 | 7 | FORCE CAGE | 0 | 6d1+1/lvl (x600) | 80 | 1 | - [0x00000100] | - | 0x0000 | 66 |
-| 87 | 7 | MASS INVISIBILITY | 0 | 1d1 (m-1) | 720 | 7 | - [0x00000100] | - | 0x0000 | 53 |
-| 88 | 7 | MONSTER SUMMONING V | 840 | 6d1+1/lvl rds/lvl | 1 | 1 | - [0x00000100] | - | 0x0000 | 0 |
-| 89 | 7 | MORDENKAINEN'S SWORD | 360 | 0d1+1/lvl rds/lvl | 1 | 1 | - [0x00000000] | - | 0x0000 | 0 |
-| 90 | 7 | POWER WORD STUN | 0 | 0d1 rds/lvl | 1 | 4 | - [0x00000100] | - | 0x0000 | 69 |
-| 91 | 7 | PRISMATIC SPRAY | 0 | 0d1 rds/lvl | 0+40/lvl | 6 | 1d4 [0x01040800] | 0 | 0x0201 | 70 |
-| 92 | 7 | SPELL TURNING | 0 | 0d0+3/lvl rds/lvl | 1 | 7 | - [0x00000100] | - | 0x0000 | 85 |
-| 93 | 8 | BIGBY'S CLENCHED FIST | 0 | 0d0+1/lvl rds/lvl | 1 | 1 | - [0x00000000] | - | 0x0000 | 0 |
-| 94 | 8 | INCENDIARY CLOUD | 360 | 5d2 rds/lvl | 80 | 1 | 1d4 [0xa1040800] | spells | 0x0202 | 0 |
+| 84 | 7 | DELAYED BLAST FIREBALL | 1200 | 1d3+2/lvl rounds | 80 | 1 | (1*lvl)d6+1/lvl [0xa1060121] | spells | 0x0202 | 0 |
+| 85 | 7 | FINGER OF DEATH | 240 | 0d0 rounds | 1 | 4 | 2d8+1 [0xa1081001] | spells | 0x0202 | 0 |
+| 86 | 7 | FORCE CAGE | 0 | 6d1+1/lvl turns | 80 | 1 | - [0x00000100] | - | 0x0000 | 66 |
+| 87 | 7 | MASS INVISIBILITY | 0 | event | 720 | 7 | - [0x00000100] | - | 0x0000 | 53 |
+| 88 | 7 | MONSTER SUMMONING V | 840 | 6d1+1/lvl rounds | 1 | 1 | - [0x00000100] | - | 0x0000 | 0 |
+| 89 | 7 | MORDENKAINEN'S SWORD | 360 | 0d1+1/lvl rounds | 1 | 1 | - [0x00000000] | - | 0x0000 | 0 |
+| 90 | 7 | POWER WORD STUN | 0 | 0d1 rounds | 1 | 4 | - [0x00000100] | - | 0x0000 | 69 |
+| 91 | 7 | PRISMATIC SPRAY | 0 | 0d1 rounds | 0+40/lvl | 6 | 1d4 [0x01040800] | 0 | 0x0201 | 70 |
+| 92 | 7 | SPELL TURNING | 0 | 0d0+3/lvl rounds | 1 | 7 | - [0x00000100] | - | 0x0000 | 85 |
+| 93 | 8 | BIGBY'S CLENCHED FIST | 0 | 0d0+1/lvl rounds | 1 | 1 | - [0x00000000] | - | 0x0000 | 0 |
+| 94 | 8 | INCENDIARY CLOUD | 360 | 5d2 rounds | 80 | 1 | 1d4 [0xa1040800] | spells | 0x0202 | 0 |
 | 95 | 8 | MASS CHARM | 0 | indefinite | 120 | 1 | 0d1 [0xbd010100] | spells-2 | 0x0000 | 20 |
 | 96 | 8 | MIND BLANK WIZARD | 360 | indefinite | 1 | 3 | - [0x00000100] | - | 0x0000 | 64 |
-| 97 | 8 | MONSTER SUMMONING VI | 960 | 7d1+1/lvl rds/lvl | 1 | 1 | - [0x00000100] | - | 0x0000 | 0 |
-| 98 | 8 | OTILUKE'S TELEKINETIC SPHERE | 240 | 0d0+2/lvl rds/lvl | 1 | 5 | - [0xa1000100] | spells | 0x0000 | 56 |
-| 99 | 8 | OTTO'S IRRESISTIBLE DANCE | -2 | 1d4+1/lvl rds/lvl | 1 | 4 | - [0x00000100] | - | 0x0000 | 23 |
+| 97 | 8 | MONSTER SUMMONING VI | 960 | 7d1+1/lvl rounds | 1 | 1 | - [0x00000100] | - | 0x0000 | 0 |
+| 98 | 8 | OTILUKE'S TELEKINETIC SPHERE | 240 | 0d0+2/lvl rounds | 1 | 5 | - [0xa1000100] | spells | 0x0000 | 56 |
+| 99 | 8 | OTTO'S IRRESISTIBLE DANCE | -2 | 1d4+1/lvl rounds | 1 | 4 | - [0x00000100] | - | 0x0000 | 23 |
 | 100 | 8 | POWER WORD BLIND | 0 | indefinite | 60 | 4 | - [0x00000100] | - | 0x0000 | 10 |
-| 101 | 8 | PRISMATIC WALL | 120 | 0d0+1/lvl (x600) | 1+160/lvl | 2 | - [0xa1000900] | spells | 0x0200 | 70 |
-| 102 | 8 | SPELL IMMUNITY | -2 | 0d0+1/lvl rds/lvl | 120 | 3 | - [0x00000100] | - | 0x0000 | 49 |
-| 103 | 9 | BIGBY'S CRUSHING HAND | 0 | 0d0+1/lvl rds/lvl | 1 | 4 | 1d10 [0x000a0900] | - | 0x0008 | 69 |
+| 101 | 8 | PRISMATIC WALL | 120 | 0d0+1/lvl turns | 1+160/lvl | 2 | - [0xa1000900] | spells | 0x0200 | 70 |
+| 102 | 8 | SPELL IMMUNITY | -2 | 0d0+1/lvl rounds | 120 | 3 | - [0x00000100] | - | 0x0000 | 49 |
+| 103 | 9 | BIGBY'S CRUSHING HAND | 0 | 0d0+1/lvl rounds | 1 | 4 | 1d10 [0x000a0900] | - | 0x0008 | 69 |
 | 104 | 9 | CRYSTAL BRITTLE | -2 | indefinite | 1 | 4 | 0d1 [0x00010000] | - | 0x0000 | 0 |
-| 105 | 9 | LEVEL DRAIN | -2 | 0d1 (m-1) | 1 | 4 | - [0x00000100] | - | 0x0100 | 59 |
+| 105 | 9 | LEVEL DRAIN | -2 | event | 1 | 4 | - [0x00000100] | - | 0x0100 | 59 |
 | 106 | 9 | METEOR SWARM | 480 | instant | 120 | 1 | 10d4 [0xa1045000] | spells | 0x0202 | 0 |
-| 107 | 9 | MONSTER SUMMONING VII | 1080 | 8d1+1/lvl rds/lvl | 1 | 1 | - [0x00000100] | - | 0x0000 | 0 |
+| 107 | 9 | MONSTER SUMMONING VII | 1080 | 8d1+1/lvl rounds | 1 | 1 | - [0x00000100] | - | 0x0000 | 0 |
 | 108 | 9 | MORDENKAINEN'S DISJUNCTION | 0 | instant | 120 | 1 | 0d1 [0x00010000] | - | 0x0000 | 4 |
-| 109 | 9 | POWER WORD KILL | 0 | 0d1 rds/lvl | 80 | 4 | - [0x0000011c] | - | 0x0000 | 0 |
-| 110 | 9 | PRISMATIC SPHERE | 28 | 0d1+1/lvl (x600) | 40 | 1 | - [0xa0000900] | - | 0xffff | 70 |
-| 111 | 9 | TIME STOP | 0 | 1d3 rds/lvl | 60 | 7 | - [0x00000100] | - | 0x0000 | 103 |
-| 112 | 10 | DOME OF INVULNERABILITY | -1 | 6d1 (x600) | 120 | 7 | - [0x00000000] | - | 0x0000 | 55 |
-| 113 | 10 | MAGICAL PLAGUE | 0 | 0d0 rds/lvl | 120+120/lvl | 1 | - [0xa1000800] | spells | 0x0200 | 68 |
-| 114 | 10 |  RIFT | -1 | 6d1 (x600) | 4320 | 7 | - [0x00000000] | - | 0x0000 | 0 |
-| 115 | 10 | WALL OF ASH | 60 | 0d1 rds/lvl | 0+104/lvl | 2 | 10d10 [0x2d0a5000] | poison+6 | 0x0800 | 0 |
-| 116 | 1 | BLESS | 180 | 6d1 rds/lvl | 200 | 1 | - [0xa0000100] | - | 0x0000 | 9 |
-| 117 | 1 | CURSE | 180 | 6d1 rds/lvl | 200 | 1 | - [0xa0000100] | - | 0x0000 | 22 |
-| 118 | 1 | CURE LIGHT WOUNDS | -2 | 0d1 rds/lvl | 1 | 3 | - [0xa0000100] | - | 0x0000 | 0 |
-| 119 | 1 | CAUSE LIGHT WOUNDS | -2 | 0d1 rds/lvl | 1 | 4 | 1d8 [0xa0080900] | - | 0x0300 | 0 |
-| 120 | 1 | ENTANGLE | 200 | 1d1 rds/lvl | 160 | 1 | - [0xa1000100] | spells | 0x0000 | 66 |
-| 121 | 1 | INVISIBLE TO UNDEAD | -2 | 1d1 (m-1) | 1 | 3 | - [0xa0000100] | - | 0x0000 | 54 |
-| 122 | 1 | MAGIC STONE | 360 | 0d1 rds/lvl | 1 | 4 | 1d4 [0xa0040900] | - | 0x1008 | 0 |
-| 123 | 1 | PROTECTION FROM EVIL | -2 | 0d1+3/lvl rds/lvl | 1 | 3 | - [0xa0000100] | - | 0x0000 | 75 |
-| 124 | 1 | REMOVE FEAR | 30 | 0d1 rds/lvl | 1 | 3 | 0d1 [0xa0010100] | - | 0x0000 | -35 |
-| 125 | 1 | CAUSE FEAR | 30 | 0d0+1/lvl rds/lvl | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 35 |
-| 126 | 1 | SANCTUARY | -2 | 2d1+1/lvl rds/lvl | 1 | 3 | - [0x00000100] | - | 0x0000 | 87 |
-| 127 | 1 | SHILLELAGH | -1 | 4d1+1/lvl rds/lvl | 1 | 7 | - [0x00000100] | - | 0x0000 | 0 |
-| 128 | 2 | AID | -2 | 1d1+1/lvl rds/lvl | 1 | 3 | - [0xa0000100] | - | 0x0000 | 9 |
+| 109 | 9 | POWER WORD KILL | 0 | 0d1 rounds | 80 | 4 | - [0x0000011c] | - | 0x0000 | 0 |
+| 110 | 9 | PRISMATIC SPHERE | 28 | 0d1+1/lvl turns | 40 | 1 | - [0xa0000900] | - | 0xffff | 70 |
+| 111 | 9 | TIME STOP | 0 | 1d3 rounds | 60 | 7 | - [0x00000100] | - | 0x0000 | 103 |
+| 112 | 10 | DOME OF INVULNERABILITY | -1 | 6d1 turns | 120 | 7 | - [0x00000000] | - | 0x0000 | 55 |
+| 113 | 10 | MAGICAL PLAGUE | 0 | 0d0 rounds | 120+120/lvl | 1 | - [0xa1000800] | spells | 0x0200 | 68 |
+| 114 | 10 |  RIFT | -1 | 6d1 turns | 4320 | 7 | - [0x00000000] | - | 0x0000 | 0 |
+| 115 | 10 | WALL OF ASH | 60 | 0d1 rounds | 0+104/lvl | 2 | 10d10 [0x2d0a5000] | poison+6 | 0x0800 | 0 |
+| 116 | 1 | BLESS | 180 | 6d1 rounds | 200 | 1 | - [0xa0000100] | - | 0x0000 | 9 |
+| 117 | 1 | CURSE | 180 | 6d1 rounds | 200 | 1 | - [0xa0000100] | - | 0x0000 | 22 |
+| 118 | 1 | CURE LIGHT WOUNDS | -2 | 0d1 rounds | 1 | 3 | - [0xa0000100] | - | 0x0000 | 0 |
+| 119 | 1 | CAUSE LIGHT WOUNDS | -2 | 0d1 rounds | 1 | 4 | 1d8 [0xa0080900] | - | 0x0300 | 0 |
+| 120 | 1 | ENTANGLE | 200 | 1d1 rounds | 160 | 1 | - [0xa1000100] | spells | 0x0000 | 66 |
+| 121 | 1 | INVISIBLE TO UNDEAD | -2 | event | 1 | 3 | - [0xa0000100] | - | 0x0000 | 54 |
+| 122 | 1 | MAGIC STONE | 360 | 0d1 rounds | 1 | 4 | 1d4 [0xa0040900] | - | 0x1008 | 0 |
+| 123 | 1 | PROTECTION FROM EVIL | -2 | 0d1+3/lvl rounds | 1 | 3 | - [0xa0000100] | - | 0x0000 | 75 |
+| 124 | 1 | REMOVE FEAR | 30 | 0d1 rounds | 1 | 3 | 0d1 [0xa0010100] | - | 0x0000 | -35 |
+| 125 | 1 | CAUSE FEAR | 30 | 0d0+1/lvl rounds | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 35 |
+| 126 | 1 | SANCTUARY | -2 | 2d1+1/lvl rounds | 1 | 3 | - [0x00000100] | - | 0x0000 | 87 |
+| 127 | 1 | SHILLELAGH | -1 | 4d1+1/lvl rounds | 1 | 7 | - [0x00000100] | - | 0x0000 | 0 |
+| 128 | 2 | AID | -2 | 1d1+1/lvl rounds | 1 | 3 | - [0xa0000100] | - | 0x0000 | 9 |
 | 129 | 2 | ALTRUISM | -2 | instant | 1 | 3 | - [0x00000100] | - | 0x0000 | 0 |
-| 130 | 2 | BARKSKIN | -2 | 4d1+1/lvl rds/lvl | 1 | 3 | - [0x00000100] | - | 0x0000 | 6 |
-| 131 | 2 | CHANNEL STENCH | 0 | 0d0 rds/lvl | 40 | 6 | - [0x21000100] | poison | 0x0001 | 65 |
+| 130 | 2 | BARKSKIN | -2 | 4d1+1/lvl rounds | 1 | 3 | - [0x00000100] | - | 0x0000 | 6 |
+| 131 | 2 | CHANNEL STENCH | 0 | 0d0 rounds | 40 | 6 | - [0x21000100] | poison | 0x0001 | 65 |
 | 132 | 2 | CHARM MAMMAL | 200 | indefinite | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 20 |
-| 133 | 2 | DUSTDEVIL | 90 | 0d1+2/lvl rds/lvl | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
-| 134 | 2 | FIND TRAPS | -1 | 3d1 (x600) | 1 | 7 | - [0xa0000100] | - | 0x0000 | 26 |
-| 135 | 2 | FLAME BLADE | -1 | 4d1+1/lvl rds/lvl | 1 | 7 | - [0xa0000200] | - | 0x0000 | 0 |
-| 136 | 2 | HESITATION | 90 | 0d1+1/lvl rds/lvl | 20 | 4 | - [0xa1000100] | spells | 0x0000 | 112 |
-| 137 | 2 | HOLD PERSON | 200 | 0d1+2/lvl rds/lvl | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 69 |
-| 138 | 2 | MUSIC OF THE SPHERES | 150 | 10d1+1/lvl rds/lvl | 40 | 1 | - [0xa1000100] | spells | 0x0000 | 33 |
-| 139 | 2 | RESIST FIRE | -2 | 0d1+1/lvl rds/lvl | 1 | 3 | - [0xa0000100] | - | 0x0000 | 77 |
-| 140 | 2 | RESIST COLD | -2 | 0d1+1/lvl rds/lvl | 1 | 3 | - [0xa0000100] | - | 0x0000 | 73 |
-| 141 | 2 | SILENCE 15 FEET | 1440 | 0d1+2/lvl rds/lvl | 60 | 1 | - [0x00000100] | - | 0x0200 | 68 |
-| 142 | 2 | SPIRITUAL HAMMER | -1 | 3d1+1/lvl rds/lvl | 1 | 7 | - [0x00000100] | - | 0x0000 | 0 |
-| 143 | 2 | STEAL BREATH | 1440 | 3d1 rds/lvl | 1 | 4 | - [0x00000100] | - | 0x0000 | 68 |
-| 144 | 3 | AIR LENS | 0 | 3d1+1/lvl rds/lvl | 0 | 7 | - [0x00100000] | - | 0x0000 | 0 |
-| 145 | 3 | BRAMBLESTAFF | 0 | 0d0+1/lvl (x600) | 1 | 7 | - [0x00000000] | - | 0x0020 | 0 |
-| 146 | 3 | CREATE SMOKE | 120 | 4d1 rds/lvl | 120 | 1 | - [0x21000100] | poison | 0x0000 | 10 |
-| 147 | 3 | CURE BLINDNESS | -2 | 0d1 rds/lvl | 1 | 3 | - [0xa0000100] | - | 0x0000 | -10 |
+| 133 | 2 | DUSTDEVIL | 90 | 0d1+2/lvl rounds | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
+| 134 | 2 | FIND TRAPS | -1 | 3d1 turns | 1 | 7 | - [0xa0000100] | - | 0x0000 | 26 |
+| 135 | 2 | FLAME BLADE | -1 | 4d1+1/lvl rounds | 1 | 7 | - [0xa0000200] | - | 0x0000 | 0 |
+| 136 | 2 | HESITATION | 90 | 0d1+1/lvl rounds | 20 | 4 | - [0xa1000100] | spells | 0x0000 | 112 |
+| 137 | 2 | HOLD PERSON | 200 | 0d1+2/lvl rounds | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 69 |
+| 138 | 2 | MUSIC OF THE SPHERES | 150 | 10d1+1/lvl rounds | 40 | 1 | - [0xa1000100] | spells | 0x0000 | 33 |
+| 139 | 2 | RESIST FIRE | -2 | 0d1+1/lvl rounds | 1 | 3 | - [0xa0000100] | - | 0x0000 | 77 |
+| 140 | 2 | RESIST COLD | -2 | 0d1+1/lvl rounds | 1 | 3 | - [0xa0000100] | - | 0x0000 | 73 |
+| 141 | 2 | SILENCE 15 FEET | 1440 | 0d1+2/lvl rounds | 60 | 1 | - [0x00000100] | - | 0x0200 | 68 |
+| 142 | 2 | SPIRITUAL HAMMER | -1 | 3d1+1/lvl rounds | 1 | 7 | - [0x00000100] | - | 0x0000 | 0 |
+| 143 | 2 | STEAL BREATH | 1440 | 3d1 rounds | 1 | 4 | - [0x00000100] | - | 0x0000 | 68 |
+| 144 | 3 | AIR LENS | 0 | 3d1+1/lvl rounds | 0 | 7 | - [0x00100000] | - | 0x0000 | 0 |
+| 145 | 3 | BRAMBLESTAFF | 0 | 0d0+1/lvl turns | 1 | 7 | - [0x00000000] | - | 0x0020 | 0 |
+| 146 | 3 | CREATE SMOKE | 120 | 4d1 rounds | 120 | 1 | - [0x21000100] | poison | 0x0000 | 10 |
+| 147 | 3 | CURE BLINDNESS | -2 | 0d1 rounds | 1 | 3 | - [0xa0000100] | - | 0x0000 | -10 |
 | 148 | 3 | CAUSE BLINDNESS | -2 | indefinite | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 10 |
-| 149 | 3 | CURE DISEASE | -2 | 0d1 rds/lvl | 1 | 3 | - [0xa0000100] | - | 0x0000 | -27 |
+| 149 | 3 | CURE DISEASE | -2 | 0d1 rounds | 1 | 3 | - [0xa0000100] | - | 0x0000 | -27 |
 | 150 | 3 | CAUSE DISEASE | -2 | indefinite | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 27 |
-| 151 | 3 | DISPEL MAGIC | 180 | 0d1 rds/lvl | 120 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
-| 152 | 3 | HEAT EXHAUSTION | 150 | 0d0 rds/lvl | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 22 |
-| 153 | 3 | MAGIC VESTMENT | -1 | 0d1+5/lvl rds/lvl | 1 | 7 | - [0xa0000100] | - | 0x0000 | 104 |
-| 154 | 3 | NEGATIVE PLANE PROTECTION | -2 | 1d1 (m-1) | 1 | 3 | - [0xa0000100] | - | 0x0000 | 79 |
+| 151 | 3 | DISPEL MAGIC | 180 | 0d1 rounds | 120 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
+| 152 | 3 | HEAT EXHAUSTION | 150 | 0d0 rounds | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 22 |
+| 153 | 3 | MAGIC VESTMENT | -1 | 0d1+5/lvl rounds | 1 | 7 | - [0xa0000100] | - | 0x0000 | 104 |
+| 154 | 3 | NEGATIVE PLANE PROTECTION | -2 | event | 1 | 3 | - [0xa0000100] | - | 0x0000 | 79 |
 | 155 | 3 | PLANT GROWTH | 160 | indefinite | 0+160/lvl | 2 | - [0x00000100] | - | 0x0000 | 83 |
-| 156 | 3 | PRAYER | 20 | 0d1+1/lvl rds/lvl | 240 | 1 | - [0xa0000100] | - | 0x0000 | 72 |
-| 157 | 3 | PROTECTION FROM FIRE | -2 | 0d1+1/lvl (x600) | 1 | 3 | - [0xa0000100] | - | 0x0000 | 77 |
+| 156 | 3 | PRAYER | 20 | 0d1+1/lvl rounds | 240 | 1 | - [0xa0000100] | - | 0x0000 | 72 |
+| 157 | 3 | PROTECTION FROM FIRE | -2 | 0d1+1/lvl turns | 1 | 3 | - [0xa0000100] | - | 0x0000 | 77 |
 | 158 | 3 | REMOVE CURSE | -2 | indefinite | 1 | 5 | - [0xa0000100] | - | 0x0000 | 0 |
-| 159 | 3 | BESTOW CURSE | -2 | 0d1+1/lvl (x600) | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 22 |
+| 159 | 3 | BESTOW CURSE | -2 | 0d1+1/lvl turns | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 22 |
 | 160 | 3 | REMOVE PARALYSIS | 0 | indefinite | 80 | 3 | - [0x00000100] | - | 0x0000 | 0 |
 | 161 | 3 | SAND SPRAY | -2 | instant | 1 | 6 | 0d10 [0xa10a0100] | spells | 0x0000 | 10 |
-| 162 | 3 | SPIKE GROWTH | 720 | 3d4+1/lvl (x600) | 0+40/lvl | 2 | - [0xa1000100] | spells | 0x0000 | 83 |
+| 162 | 3 | SPIKE GROWTH | 720 | 3d4+1/lvl turns | 0+40/lvl | 2 | - [0xa1000100] | spells | 0x0000 | 83 |
 | 163 | 3 | STONE SHAPE | -2 | indefinite | 3+1/lvl | 7 | - [0x00000100] | - | 0x0000 | 0 |
 | 164 | 3 | STRENGTH OF ONE | 120 | indefinite | 1 | 7 | - [0xa0000100] | - | 0x0000 | 99 |
-| 165 | 3 | SUMMON INSECTS | 90 | 0d1+1/lvl rds/lvl | 1 | 4 | 4d1 [0xa1012100] | spells | 0x0020 | 68 |
-| 166 | 4 | ABJURE | 30 | 0d1 rds/lvl | 1 | 4 | - [0xa0000100] | - | 0x0000 | 0 |
-| 167 | 4 | BLOOD FLOW | -2 | 1d4 rds/lvl | 1 | 5 | - [0xa0000100] | - | 0x0000 | 0 |
-| 168 | 4 | CLOAK OF BRAVERY | -2 | 1d1 (m-1) | 1 | 3 | - [0xa0000100] | - | 0x0000 | 18 |
-| 169 | 4 | CLOAK OF FEAR | -2 | 1d1 (m-1) | 1 | 3 | - [0xa0000100] | - | 0x0000 | 36 |
-| 170 | 4 | CONDENSE | 200 | 0d1 rds/lvl | 1 | 4 | 3d6 [0xa0061900] | - | 0x0208 | 0 |
-| 171 | 4 | CURE SERIOUS WOUNDS | -2 | 0d1 rds/lvl | 1 | 3 | - [0xa0000100] | - | 0x0000 | 0 |
-| 172 | 4 | CAUSE SERIOUS WOUNDS | -2 | 0d1 rds/lvl | 1 | 4 | 2d9 [0xa0091100] | - | 0x0300 | 0 |
-| 173 | 4 | DEHYDRATE | -2 | 0d1 rds/lvl | 1 | 4 | 2d6+1 [0xa0061101] | - | 0x0200 | 0 |
-| 174 | 4 | DUST CLOUD | 180 | 0d1 rds/lvl | 120 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
-| 175 | 4 | FOCUS HEAT | 180 | 0d1 rds/lvl | 1 | 4 | 2d6+1 [0xa1061101] | spells | 0x0202 | 0 |
-| 176 | 4 | FREE ACTION | -2 | 0d1+1/lvl (x600) | 1 | 3 | - [0xa0000100] | - | 0x0000 | 41 |
-| 177 | 4 | LUNGS OF WATER | 60 | 2d3 rds/lvl | 1 | 4 | - [0xa1000100] | spells | 0x0200 | 100 |
+| 165 | 3 | SUMMON INSECTS | 90 | 0d1+1/lvl rounds | 1 | 4 | 4d1 [0xa1012100] | spells | 0x0020 | 68 |
+| 166 | 4 | ABJURE | 30 | 0d1 rounds | 1 | 4 | - [0xa0000100] | - | 0x0000 | 0 |
+| 167 | 4 | BLOOD FLOW | -2 | 1d4 rounds | 1 | 5 | - [0xa0000100] | - | 0x0000 | 0 |
+| 168 | 4 | CLOAK OF BRAVERY | -2 | event | 1 | 3 | - [0xa0000100] | - | 0x0000 | 18 |
+| 169 | 4 | CLOAK OF FEAR | -2 | event | 1 | 3 | - [0xa0000100] | - | 0x0000 | 36 |
+| 170 | 4 | CONDENSE | 200 | 0d1 rounds | 1 | 4 | 3d6 [0xa0061900] | - | 0x0208 | 0 |
+| 171 | 4 | CURE SERIOUS WOUNDS | -2 | 0d1 rounds | 1 | 3 | - [0xa0000100] | - | 0x0000 | 0 |
+| 172 | 4 | CAUSE SERIOUS WOUNDS | -2 | 0d1 rounds | 1 | 4 | 2d9 [0xa0091100] | - | 0x0300 | 0 |
+| 173 | 4 | DEHYDRATE | -2 | 0d1 rounds | 1 | 4 | 2d6+1/lvl [0xa0061101] | - | 0x0200 | 0 |
+| 174 | 4 | DUST CLOUD | 180 | 0d1 rounds | 120 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
+| 175 | 4 | FOCUS HEAT | 180 | 0d1 rounds | 1 | 4 | 2d6+1/lvl [0xa1061101] | spells | 0x0202 | 0 |
+| 176 | 4 | FREE ACTION | -2 | 0d1+1/lvl turns | 1 | 3 | - [0xa0000100] | - | 0x0000 | 41 |
+| 177 | 4 | LUNGS OF WATER | 60 | 2d3 rounds | 1 | 4 | - [0xa1000100] | spells | 0x0200 | 100 |
 | 178 | 4 | MAGMA BLADE | -1 | indefinite | 1 | 7 | - [0x00000000] | - | 0x0000 | 0 |
-| 179 | 4 | NEUTRALIZE POISON | -2 | 0d1 rds/lvl | 1 | 3 | - [0xa0000100] | - | 0x0000 | -71 |
-| 180 | 4 | POISON | -2 | 10d1 (m-1) | 1 | 4 | - [0x21000100] | poison | 0x0a01 | 71 |
-| 181 | 4 | PRODUCE FIRE | 120 | 0d1+1/lvl rds/lvl | 48 | 1 | 1d4 [0xa0040900] | - | 0x0202 | 0 |
-| 182 | 4 | QUENCH FIRE | 120 | 0d1+1/lvl rds/lvl | 48 | 1 | - [0x00000000] | - | 0x0000 | 0 |
-| 183 | 4 | PROTECTION FROM EVIL 10 | -2 | 0d1+1/lvl (x600) | 1 | 3 | - [0xa0000100] | - | 0x0000 | 76 |
-| 184 | 4 | PROTECTION FROM LIGHTNING | -2 | 0d1+1/lvl (x600) | 1 | 3 | - [0xa0000100] | - | 0x0000 | 78 |
-| 185 | 4 | PROTECTION FROM WEATHER | -2 | 0d0+6/lvl (x600) | 1 | 3 | - [0x00000100] | - | 0x0000 | 80 |
-| 186 | 4 | INTENSIFICATION OF WEATHER | -2 | 0d0+6/lvl (x600) | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 107 |
-| 187 | 4 | RETURN TO EARTH | 0 | 0d1+1/lvl rds/lvl | 0+120/lvl | 4 | - [0xa1000100] | spells | 0x0000 | 86 |
-| 188 | 4 | SOOTHE | -2 | 1d1 rds/lvl | 20 | 1 | - [0x00000100] | - | 0x0000 | 34 |
-| 189 | 4 | THORNS OF BINDING | 30 | 1d1+2/lvl rds/lvl | 120 | 4 | - [0xa1000000] | spells | 0x0000 | 16 |
-| 190 | 5 | CONJURE AIR ELEMENTAL | 90 | 10d1+1/lvl rds/lvl | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
-| 191 | 5 | CONJURE FIRE ELEMENTAL | 90 | 10d1+1/lvl rds/lvl | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
-| 192 | 5 | CONJURE EARTH ELEMENTAL | 960 | 10d1+1/lvl rds/lvl | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
-| 193 | 5 | CONJURE WATER ELEMENTAL | 240 | 0d0+1/lvl (x600) | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
+| 179 | 4 | NEUTRALIZE POISON | -2 | 0d1 rounds | 1 | 3 | - [0xa0000100] | - | 0x0000 | -71 |
+| 180 | 4 | POISON | -2 | event | 1 | 4 | - [0x21000100] | poison | 0x0a01 | 71 |
+| 181 | 4 | PRODUCE FIRE | 120 | 0d1+1/lvl rounds | 48 | 1 | 1d4 [0xa0040900] | - | 0x0202 | 0 |
+| 182 | 4 | QUENCH FIRE | 120 | 0d1+1/lvl rounds | 48 | 1 | - [0x00000000] | - | 0x0000 | 0 |
+| 183 | 4 | PROTECTION FROM EVIL 10 | -2 | 0d1+1/lvl turns | 1 | 3 | - [0xa0000100] | - | 0x0000 | 76 |
+| 184 | 4 | PROTECTION FROM LIGHTNING | -2 | 0d1+1/lvl turns | 1 | 3 | - [0xa0000100] | - | 0x0000 | 78 |
+| 185 | 4 | PROTECTION FROM WEATHER | -2 | 0d0+6/lvl turns | 1 | 3 | - [0x00000100] | - | 0x0000 | 80 |
+| 186 | 4 | INTENSIFICATION OF WEATHER | -2 | 0d0+6/lvl turns | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 107 |
+| 187 | 4 | RETURN TO EARTH | 0 | 0d1+1/lvl rounds | 0+120/lvl | 4 | - [0xa1000100] | spells | 0x0000 | 86 |
+| 188 | 4 | SOOTHE | -2 | 1d1 rounds | 20 | 1 | - [0x00000100] | - | 0x0000 | 34 |
+| 189 | 4 | THORNS OF BINDING | 30 | 1d1+2/lvl rounds | 120 | 4 | - [0xa1000000] | spells | 0x0000 | 16 |
+| 190 | 5 | CONJURE AIR ELEMENTAL | 90 | 10d1+1/lvl rounds | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
+| 191 | 5 | CONJURE FIRE ELEMENTAL | 90 | 10d1+1/lvl rounds | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
+| 192 | 5 | CONJURE EARTH ELEMENTAL | 960 | 10d1+1/lvl rounds | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
+| 193 | 5 | CONJURE WATER ELEMENTAL | 240 | 0d0+1/lvl turns | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
 | 194 | 5 | CRUMBLE | 0 | indefinite | 1 | 4 | - [0x00000100] | - | 0x8200 | 0 |
-| 195 | 5 | CURE CRITICAL WOUNDS | -2 | 0d1 rds/lvl | 1 | 3 | - [0xa0000100] | - | 0x0000 | 0 |
-| 196 | 5 | CAUSE CRITICAL WOUNDS | -2 | 0d1 rds/lvl | 1 | 4 | 3d9 [0xa0091900] | - | 0x0300 | 0 |
-| 197 | 5 | DEFLECTION | -1 | 5d3+1/lvl rds/lvl | 1 | 7 | - [0xa0000100] | - | 0x0000 | 47 |
-| 198 | 5 | DISPEL EVIL | -2 | 0d1+1/lvl rds/lvl | 1 | 3 | - [0xa0000100] | - | 0x0000 | 28 |
-| 199 | 5 | FLAME STRIKE | 180 | 0d1 rds/lvl | 20 | 1 | 6d8 [0xa1083100] | spells | 0x0202 | 0 |
-| 200 | 5 | INSECT PLAGUE | 1440 | 0d1+2/lvl rds/lvl | 720 | 1 | - [0x00000000] | - | 0x0200 | 35 |
-| 201 | 5 | IRON SKIN | -2 | 6d6 (m-1) | 1 | 3 | 0d1 (div2) [0x00010200] | - | 0x0000 | 57 |
-| 202 | 5 | RAINBOW | -1 | 0d1+1/lvl rds/lvl | 1 | 7 | 4d8 [0x00082100] | - | 0x0000 | 0 |
-| 203 | 5 | QUICKSAND | 180 | 1d1 rds/lvl | 120 | 1 | - [0xa1000100] | spells | 0x0000 | 66 |
-| 204 | 5 | RAISE DEAD | 90 | 0d1 rds/lvl | 1 | 3 | - [0xa0000100] | - | 0x0000 | 0 |
-| 205 | 5 | SLAY LIVING | 90 | 0d1 rds/lvl | 1 | 4 | 4d8 [0x21082100] | poison | 0x0b00 | 0 |
+| 195 | 5 | CURE CRITICAL WOUNDS | -2 | 0d1 rounds | 1 | 3 | - [0xa0000100] | - | 0x0000 | 0 |
+| 196 | 5 | CAUSE CRITICAL WOUNDS | -2 | 0d1 rounds | 1 | 4 | 3d9 [0xa0091900] | - | 0x0300 | 0 |
+| 197 | 5 | DEFLECTION | -1 | 5d3+1/lvl rounds | 1 | 7 | - [0xa0000100] | - | 0x0000 | 47 |
+| 198 | 5 | DISPEL EVIL | -2 | 0d1+1/lvl rounds | 1 | 3 | - [0xa0000100] | - | 0x0000 | 28 |
+| 199 | 5 | FLAME STRIKE | 180 | 0d1 rounds | 20 | 1 | 6d8 [0xa1083100] | spells | 0x0202 | 0 |
+| 200 | 5 | INSECT PLAGUE | 1440 | 0d1+2/lvl rounds | 720 | 1 | - [0x00000000] | - | 0x0200 | 35 |
+| 201 | 5 | IRON SKIN | -2 | event | 1 | 3 | 0d1 (div2) [0x00010200] | - | 0x0000 | 57 |
+| 202 | 5 | RAINBOW | -1 | 0d1+1/lvl rounds | 1 | 7 | 4d8 [0x00082100] | - | 0x0000 | 0 |
+| 203 | 5 | QUICKSAND | 180 | 1d1 rounds | 120 | 1 | - [0xa1000100] | spells | 0x0000 | 66 |
+| 204 | 5 | RAISE DEAD | 90 | 0d1 rounds | 1 | 3 | - [0xa0000100] | - | 0x0000 | 0 |
+| 205 | 5 | SLAY LIVING | 90 | 0d1 rounds | 1 | 4 | 4d8 [0x21082100] | poison | 0x0b00 | 0 |
 | 206 | 5 | SANDSTORM | 180 | instant | 120 | 1 | 2d6 [0xab061000] | spells+5 | 0x0040 | 78 |
-| 207 | 5 | SPIKE STONES | 90 | 3d4+1/lvl (x600) | 0+40/lvl | 2 | 1d4 [0x00040800] | - | 0x0020 | 0 |
-| 208 | 5 | WALL OF FIRE | 960 | 0d1 rds/lvl | 0+80/lvl | 2 | 4d4+1 [0xa0042001] | - | 0x0202 | 0 |
-| 209 | 6 | BLADE BARRIER | 90 | 0d1+3/lvl rds/lvl | 240 | 2 | 8d8 [0xa1084000] | spells | 0x0010 | 0 |
-| 210 | 6 | FIRE SEEDS | 480 | 0d0 rds/lvl | 20 | 1 | 2d8 [0xa1081000] | spells | 0x0202 | 0 |
+| 207 | 5 | SPIKE STONES | 90 | 3d4+1/lvl turns | 0+40/lvl | 2 | 1d4 [0x00040800] | - | 0x0020 | 0 |
+| 208 | 5 | WALL OF FIRE | 960 | 0d1 rounds | 0+80/lvl | 2 | 4d4+1 [0xa0042001] | - | 0x0202 | 0 |
+| 209 | 6 | BLADE BARRIER | 90 | 0d1+3/lvl rounds | 240 | 2 | 8d8 [0xa1084000] | spells | 0x0010 | 0 |
+| 210 | 6 | FIRE SEEDS | 480 | 0d0 rounds | 20 | 1 | 2d8 [0xa1081000] | spells | 0x0202 | 0 |
 | 211 | 6 | HEAL | -2 | instant | 1 | 3 | - [0x00000100] | - | 0x0000 | 0 |
-| 212 | 6 | HARM | -2 | 0d1 rds/lvl | 1 | 4 | - [0x00000000] | - | 0x0200 | 0 |
-| 213 | 6 | HEARTSEEKER | -2 | 4d1+600/lvl (m1) | 1 | 7 | - [0x00000000] | - | 0x0200 | 0 |
+| 212 | 6 | HARM | -2 | 0d1 rounds | 1 | 4 | - [0x00000000] | - | 0x0200 | 0 |
+| 213 | 6 | HEARTSEEKER | -2 | ticks | 1 | 7 | - [0x00000000] | - | 0x0200 | 0 |
 | 214 | 6 | SUNSTROKE | 0 | indefinite | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 101 |
-| 215 | 6 | WALL OF THORNS | 240 | 1d1+1/lvl (x600) | 40+40/lvl | 2 | 8d1 [0xa0014000] | - | 0x0020 | 0 |
-| 216 | 6 | WATERS OF LIFE | 0 | 0d1 rds/lvl | 1 | 3 | - [0x00000100] | - | 0x0000 | 0 |
-| 217 | 7 | CONFUSION | 240 | 0d0+1/lvl (x600) | 160+2/lvl | 1 | - [0x1c000100] | - | 0x0000 | 21 |
-| 218 | 7 | CONJURE GREATER AIR ELEMENTAL | 90 | 0d0+1/lvl (x600) | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
-| 219 | 7 | CONJURE GREATER FIRE ELEMENTAL | 90 | 0d0+10/lvl rds/lvl | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
-| 220 | 7 | CONJURE GREATER EARTH ELEMENTAL | 90 | 0d0+10/lvl rds/lvl | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
-| 221 | 7 | CONJURE GREATER WATER ELEMENTAL | 90 | 0d0+10/lvl rds/lvl | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
-| 222 | 7 | CREEPING DOOM | 960 | 0d1+4/lvl rds/lvl | 80 | 1 | - [0x00000100] | - | 0x0038 | 0 |
-| 223 | 7 | FIRESTORM | 1920 | 0d1 rds/lvl | 10+80/lvl | 2 | 2d8+1 [0xa1081101] | spells | 0x0202 | 0 |
-| 224 | 7 | GLASS STORM | 120 | 0d1+1/lvl rds/lvl | 120 | 1 | 2d8 [0x00081100] | - | 0x0038 | 10 |
+| 215 | 6 | WALL OF THORNS | 240 | 1d1+1/lvl turns | 40+40/lvl | 2 | 8d1 [0xa0014000] | - | 0x0020 | 0 |
+| 216 | 6 | WATERS OF LIFE | 0 | 0d1 rounds | 1 | 3 | - [0x00000100] | - | 0x0000 | 0 |
+| 217 | 7 | CONFUSION | 240 | 0d0+1/lvl turns | 160+2/lvl | 1 | - [0x1c000100] | - | 0x0000 | 21 |
+| 218 | 7 | CONJURE GREATER AIR ELEMENTAL | 90 | 0d0+1/lvl turns | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
+| 219 | 7 | CONJURE GREATER FIRE ELEMENTAL | 90 | 0d0+10/lvl rounds | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
+| 220 | 7 | CONJURE GREATER EARTH ELEMENTAL | 90 | 0d0+10/lvl rounds | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
+| 221 | 7 | CONJURE GREATER WATER ELEMENTAL | 90 | 0d0+10/lvl rounds | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
+| 222 | 7 | CREEPING DOOM | 960 | 0d1+4/lvl rounds | 80 | 1 | - [0x00000100] | - | 0x0038 | 0 |
+| 223 | 7 | FIRESTORM | 1920 | 0d1 rounds | 10+80/lvl | 2 | 2d8+1/lvl [0xa1081101] | spells | 0x0202 | 0 |
+| 224 | 7 | GLASS STORM | 120 | 0d1+1/lvl rounds | 120 | 1 | 2d8 [0x00081100] | - | 0x0038 | 10 |
 | 225 | 7 | RESTORE | -2 | instant | 1 | 3 | - [0xa0000100] | - | 0x0000 | -71 |
-| 226 | 7 | ENERGY DRAIN | -2 | 0d1 (m-1) | 1 | 4 | - [0x00000000] | - | 0x0100 | 59 |
-| 227 | 7 | SCIROCCO | 1 | 1d6 (x600) | 1+10/lvl | 1 | 2d10 [0x000a1100] | - | 0x0038 | 0 |
-| 228 | 7 | SUNRAY | 0 | 2d6 rds/lvl | 40 | 1 | - [0xa1100000] | spells | 0x0200 | 10 |
-| 229 | 7 | SYMBOL OF HOPELESSNESS | 28 | 3d4 (x600) | 480 | 1 | - [0xa1000100] | spells | 0x0000 | 65 |
-| 230 | 7 | SYMBOL OF PAIN | -2 | 2d10 (x600) | 120 | 1 | - [0xa1000100] | spells | 0x0000 | 10 |
-| 231 | 7 | SYMBOL OF PERSUASION | -2 | 1d4 (x600) | 120 | 1 | - [0xa1000100] | spells | 0x0000 | 20 |
+| 226 | 7 | ENERGY DRAIN | -2 | event | 1 | 4 | - [0x00000000] | - | 0x0100 | 59 |
+| 227 | 7 | SCIROCCO | 1 | 1d6 turns | 1+10/lvl | 1 | 2d10 [0x000a1100] | - | 0x0038 | 0 |
+| 228 | 7 | SUNRAY | 0 | 2d6 rounds | 40 | 1 | - [0xa1100000] | spells | 0x0200 | 10 |
+| 229 | 7 | SYMBOL OF HOPELESSNESS | 28 | 3d4 turns | 480 | 1 | - [0xa1000100] | spells | 0x0000 | 65 |
+| 230 | 7 | SYMBOL OF PAIN | -2 | 2d10 turns | 120 | 1 | - [0xa1000100] | spells | 0x0000 | 10 |
+| 231 | 7 | SYMBOL OF PERSUASION | -2 | 1d4 turns | 120 | 1 | - [0xa1000100] | spells | 0x0000 | 20 |
 | 232 | 8 | REVERSE WINDS | 7200 | instant | 7200 | 1 | - [0x00000000] | - | 0x0000 | 0 |
 | 233 | 9 | DISRUPTION | -2 | indefinite | 1200 | 1 | - [0xa0000100] | - | 0x0000 | 68 |
-| 234 | 10 | INSECT HOST | 3600 | 1d1 rds/lvl | 1+20/lvl | 1 | 5d1 [0x00012900] | - | 0x0000 | 68 |
-| 235 | 10 | RIFT | -1 | 6d6 (x600) | 4320 | 7 | - [0x00000000] | - | 0x0000 | 0 |
-| 236 | P | DETONATE | 180 | 0d1 rds/lvl | 1 | 4 | 0d1 [0xa0010100] | - | 0x0000 | 0 |
+| 234 | 10 | INSECT HOST | 3600 | 1d1 rounds | 1+20/lvl | 1 | 5d1 [0x00012900] | - | 0x0000 | 68 |
+| 235 | 10 | RIFT | -1 | 6d6 turns | 4320 | 7 | - [0x00000000] | - | 0x0000 | 0 |
+| 236 | P | DETONATE | 180 | 0d1 rounds | 1 | 4 | 0d1 [0xa0010100] | - | 0x0000 | 0 |
 | 237 | P | DISINTEGRATE | 150 | instant | 1 | 4 | - [0x21000100] | poison | 0x0200 | 0 |
-| 238 | P | PROJECT FORCE | 200 | 0d1 rds/lvl | 1 | 4 | 1d6 [0x00060900] | - | 0x0008 | 0 |
-| 239 | P | BALLISTIC ATTACK | 90 | 0d1 rds/lvl | 1 | 4 | 1d6 [0x20060900] | - | 0x0008 | 0 |
-| 240 | P | CONTROL BODY | 200 | 5d1 rds/lvl | 1 | 4 | - [0x21000100] | poison | 0x0000 | 20 |
+| 238 | P | PROJECT FORCE | 200 | 0d1 rounds | 1 | 4 | 1d6 [0x00060900] | - | 0x0008 | 0 |
+| 239 | P | BALLISTIC ATTACK | 90 | 0d1 rounds | 1 | 4 | 1d6 [0x20060900] | - | 0x0008 | 0 |
+| 240 | P | CONTROL BODY | 200 | 5d1 rounds | 1 | 4 | - [0x21000100] | poison | 0x0000 | 20 |
 | 241 | P | INERTIAL BARRIER | -1 | indefinite | 1 | 7 | - [0xa0000100] | - | 0x0000 | 47 |
 | 242 | P | ANIMAL AFFINITY | -1 | indefinite | 1 | 7 | - [0x00000100] | - | 0x0000 | 3 |
 | 243 | P | ENERGY CONTROL | -1 | indefinite | 1 | 7 | - [0xa0000100] | - | 0x0000 | 74 |
-| 244 | P | LIFE DRAIN | -2 | 0d1 rds/lvl | 1 | 4 | - [0xa0000100] | - | 0x0100 | 0 |
-| 245 | P | ABSORB DISEASE | -2 | 0d1 rds/lvl | 1 | 3 | - [0xa0000100] | - | 0x0000 | 0 |
+| 244 | P | LIFE DRAIN | -2 | 0d1 rounds | 1 | 4 | - [0xa0000100] | - | 0x0100 | 0 |
+| 245 | P | ABSORB DISEASE | -2 | 0d1 rounds | 1 | 3 | - [0xa0000100] | - | 0x0000 | 0 |
 | 246 | P | ADRENALIN CONTROL | -1 | indefinite | 1 | 7 | - [0xa0000100] | - | 0x0000 | 0 |
 | 247 | P | BIOFEEDBACK | -1 | indefinite | 1 | 7 | - [0xa0000100] | - | 0x0000 | 8 |
 | 248 | P | BODY WEAPONRY | -1 | indefinite | 1 | 7 | - [0xa0000100] | - | 0x0000 | 14 |
-| 249 | P | CELLULAR ADJUSTMENT | -2 | 0d1 rds/lvl | 1 | 3 | - [0xa0000100] | - | 0x0000 | -27 |
+| 249 | P | CELLULAR ADJUSTMENT | -2 | 0d1 rounds | 1 | 3 | - [0xa0000100] | - | 0x0000 | -27 |
 | 250 | P | DISPLACEMENT | -1 | indefinite | 1 | 7 | - [0xa0000100] | - | 0x0000 | 29 |
 | 251 | P | ENHANCED STRENGTH | -1 | indefinite | 1 | 7 | - [0xa0000100] | - | 0x0000 | 31 |
 | 252 | P | FLESH ARMOR | -1 | indefinite | 1 | 7 | - [0xa0000100] | - | 0x0000 | 40 |
 | 253 | P | GRAFT WEAPON | -1 | indefinite | 1 | 7 | - [0xa0000100] | - | 0x0000 | 106 |
-| 254 | P | LEND HEALTH | -2 | 0d1 rds/lvl | 1 | 3 | - [0xa0000100] | - | 0x0000 | 0 |
+| 254 | P | LEND HEALTH | -2 | 0d1 rounds | 1 | 3 | - [0xa0000100] | - | 0x0000 | 0 |
 | 255 | P | SHARE STRENGTH | -2 | indefinite | 1 | 3 | - [0xa0000100] | - | 0x0000 | 0 |
-| 256 | P | DOMINATION | 90 | 5d1 rds/lvl | 1 | 4 | - [0xa1000100] | spells | 0x0400 | 20 |
-| 257 | P | MASS DOMINATION | 120 | 10d1 rds/lvl | 1 | 4 | - [0xa1000100] | spells | 0x0400 | 20 |
-| 258 | P | PSYCHIC CRUSH | 150 | 0d1 rds/lvl | 1 | 4 | 1d8 [0x21080900] | poison | 0x0400 | 0 |
+| 256 | P | DOMINATION | 90 | 5d1 rounds | 1 | 4 | - [0xa1000100] | spells | 0x0400 | 20 |
+| 257 | P | MASS DOMINATION | 120 | 10d1 rounds | 1 | 4 | - [0xa1000100] | spells | 0x0400 | 20 |
+| 258 | P | PSYCHIC CRUSH | 150 | 0d1 rounds | 1 | 4 | 1d8 [0x21080900] | poison | 0x0400 | 0 |
 | 259 | P | SUPERIOR INVISIBILITY | -1 | indefinite | 1 | 7 | - [0xa0000100] | - | 0x0000 | 53 |
 | 260 | P | TOWER OF IRON WILL | -1 | indefinite | 12 | 7 | - [0xa0000100] | - | 0x0000 | 0 |
-| 261 | P | EGO WHIP | 120 | 1d4 rds/lvl | 1 | 4 | - [0xa0000100] | - | 0x0400 | 65 |
-| 262 | P | ID INSINUATION | 180 | 1d4 rds/lvl | 1 | 4 | - [0xa0000100] | - | 0x0400 | 69 |
+| 261 | P | EGO WHIP | 120 | 1d4 rounds | 1 | 4 | - [0xa0000100] | - | 0x0400 | 65 |
+| 262 | P | ID INSINUATION | 180 | 1d4 rounds | 1 | 4 | - [0xa0000100] | - | 0x0400 | 69 |
 | 263 | P | INTELLECT FORTRESS | -1 | indefinite | 36 | 7 | - [0xa0000100] | - | 0x0000 | 0 |
 | 264 | P | MENTAL BARRIER | -1 | indefinite | 1 | 7 | - [0xa0000100] | - | 0x0000 | 0 |
 | 265 | P | PSIONIC MIND BAR | -1 | indefinite | 1 | 7 | - [0xa0000100] | - | 0x0000 | 64 |
 | 266 | P | MIND BLANK | -1 | indefinite | 1 | 7 | - [0xa0000100] | - | 0x0000 | 0 |
-| 267 | P | PSIONIC BLAST | 60 | 0d1 rds/lvl | 1 | 4 | - [0x21000100] | poison | 0x0400 | 0 |
+| 267 | P | PSIONIC BLAST | 60 | 0d1 rounds | 1 | 4 | - [0x21000100] | poison | 0x0400 | 0 |
 | 268 | P | SYNAPTIC STATIC | -1 | indefinite | 1 | 7 | - [0xa0000100] | - | 0x0000 | 58 |
 | 269 | P | THOUGHT SHIELD | -1 | indefinite | 1 | 7 | - [0xa0000100] | - | 0x0000 | 0 |
-| - | I | MONS269 | -2 | 0d1 (m1) | 1 | 4 | 2d6 [0x00061100] | - | 0x0004 | 0 |
-| - | I | MONS270 | -2 | 2d6 rds/lvl | 1 | 4 | 0d1 [0x21010100] | poison | 0x0004 | 69 |
-| - | I | MONS271 | -2 | 0d1 (m1) | 1 | 4 | 2d6 [0x00061100] | - | 0x0040 | 0 |
+| - | I | MONS269 | -2 | ticks | 1 | 4 | 2d6 [0x00061100] | - | 0x0004 | 0 |
+| - | I | MONS270 | -2 | 2d6 rounds | 1 | 4 | 0d1 [0x21010100] | poison | 0x0004 | 69 |
+| - | I | MONS271 | -2 | ticks | 1 | 4 | 2d6 [0x00061100] | - | 0x0040 | 0 |
 | - | I | MONS272 | 360 | indefinite | 20 | 1 | - [0xa0000100] | - | 0x0000 | 66 |
-| - | I | MONS273 | -2 | 0d1 (m1) | 1 | 4 | - [0x2100070a] | poison | 0x0001 | 0 |
-| - | I | MONS274 | -2 | 0d1 (m1) | 1 | 4 | - [0x2100071e] | poison | 0x0001 | 0 |
-| - | I | MONS275 | -2 | 0d1 (m1) | 1 | 4 | - [0x21000714] | poison | 0x0040 | 0 |
-| - | I | MONS276 | 75 | 2d6 rds/lvl | 1 | 4 | 0d1 [0x21010100] | poison | 0x0200 | 69 |
-| - | I | MONS277 | 160 | 0d1 (m1) | 1 | 4 | 1d6 [0x00060900] | - | 0x0020 | 0 |
-| - | I | MONS278 | 20 | 0d1 (m1) | 40 | 6 | 6d6 [0x81063100] | breath | 0x0002 | 0 |
-| - | I | MONS279 | 20 | 2d4 rds/lvl | 40 | 6 | 0d1 [0x81010100] | breath | 0x0200 | 69 |
-| - | I | MONS280 | 90 | 0d1 (m1) | 1 | 4 | 0d1 [0x00010100] | - | 0x0000 | 0 |
+| - | I | MONS273 | -2 | ticks | 1 | 4 | - [0x2100070a] | poison | 0x0001 | 0 |
+| - | I | MONS274 | -2 | ticks | 1 | 4 | - [0x2100071e] | poison | 0x0001 | 0 |
+| - | I | MONS275 | -2 | ticks | 1 | 4 | - [0x21000714] | poison | 0x0040 | 0 |
+| - | I | MONS276 | 75 | 2d6 rounds | 1 | 4 | 0d1 [0x21010100] | poison | 0x0200 | 69 |
+| - | I | MONS277 | 160 | ticks | 1 | 4 | 1d6 [0x00060900] | - | 0x0020 | 0 |
+| - | I | MONS278 | 20 | ticks | 40 | 6 | 6d6 [0x81063100] | breath | 0x0002 | 0 |
+| - | I | MONS279 | 20 | 2d4 rounds | 40 | 6 | 0d1 [0x81010100] | breath | 0x0200 | 69 |
+| - | I | MONS280 | 90 | ticks | 1 | 4 | 0d1 [0x00010100] | - | 0x0000 | 0 |
 | - | I | MONS281 | -2 | indefinite | 1 | 4 | 0d1 [0x21010100] | poison | 0x0000 | 27 |
-| - | I | MONS282 | 20 | 0d1 (m1) | 40 | 6 | 3d6 [0x81061900] | breath | 0x0002 | 0 |
-| - | I | MONS283 | -2 | 0d1 (m1) | 1 | 4 | 0d1 [0x00010100] | - | 0x0000 | 0 |
-| - | I | MONS284 | -2 | 0d1 (m1) | 1 | 4 | 0d1 [0x00010100] | - | 0x0000 | 0 |
-| - | I | MONS285 | 0 | 3d4 (m-1) | 600 | 6 | 10d12 [0xb90c5100] | spells-4 | 0x0200 | 71 |
-| - | I | MONS286 | 40 | 1d6 rds/lvl | 40 | 4 | - [0x61000100] | petr | 0x0000 | 65 |
-| - | I | MONS287 | 1 | 1d4 rds/lvl | 1 | 4 | 0d1 [0x00010100] | - | 0x0030 | 66 |
+| - | I | MONS282 | 20 | ticks | 40 | 6 | 3d6 [0x81061900] | breath | 0x0002 | 0 |
+| - | I | MONS283 | -2 | ticks | 1 | 4 | 0d1 [0x00010100] | - | 0x0000 | 0 |
+| - | I | MONS284 | -2 | ticks | 1 | 4 | 0d1 [0x00010100] | - | 0x0000 | 0 |
+| - | I | MONS285 | 0 | event | 600 | 6 | 10d12 [0xb90c5100] | spells-4 | 0x0200 | 71 |
+| - | I | MONS286 | 40 | 1d6 rounds | 40 | 4 | - [0x61000100] | petr | 0x0000 | 65 |
+| - | I | MONS287 | 1 | 1d4 rounds | 1 | 4 | 0d1 [0x00010100] | - | 0x0030 | 66 |
 | - | I | MONS288 | 1 | indefinite | 1 | 4 | - [0x00000100] | - | 0x0000 | 30 |
-| - | I | MONS289 | 600 | 1d1+1/lvl (x600) | 600 | 1 | 2d6 [0x81061100] | breath | 0x0008 | 0 |
+| - | I | MONS289 | 600 | 1d1+1/lvl turns | 600 | 1 | 2d6 [0x81061100] | breath | 0x0008 | 0 |
 | - | I | MONS290 | 200 | indefinite | 200 | 1 | 1d2 [0x61020900] | petr | 0x0008 | 100 |
-| - | I | MONS291 | 200 | 1d6+4/lvl rds/lvl | 200 | 1 | 4d10 [0x810a2100] | breath | 0x0002 | 0 |
-| - | I | MONS292 | 90 | 0d1+1/lvl rds/lvl | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
-| - | I | MONS293 | 0 | 0d1+1/lvl rds/lvl | 720 | 1 | 4d6 [0x61062100] | petr | 0x0008 | 0 |
-| - | I | MONS294 | -2 | 2d6 rds/lvl | 240 | 1 | - [0xa5000100] | spells+2 | 0x0000 | 35 |
-| - | I | MONS295 | -2 | 0d1 rds/lvl | 160 | 1 | 2d6 [0x21061100] | poison | 0x0038 | 10 |
-| - | I | MONS296 | -1 | 2d1+1/lvl rds/lvl | 1 | 7 | - [0xa0000100] | - | 0x0202 | 38 |
-| - | I | MONS297 | -2 | 2d4 rds/lvl | 1 | 4 | 1d10 [0x210a0900] | poison | 0x0002 | 19 |
-| - | I | MONS298 | 90 | 0d1 rds/lvl | 1 | 4 | 10d6 [0x21065100] | poison | 0x0002 | 0 |
-| - | I | MONS299 | -2 | 1d1+1/lvl rds/lvl | 480 | 1 | - [0xa1000100] | spells | 0x0000 | 35 |
-| - | I | MONS300 | 240 | 3d4 rds/lvl | 280+1/lvl | 6 | 0d6 [0xa1060000] | spells | 0x0400 | 69 |
-| - | I | MONS301 | -2 | 1d1 (m-1) | 1 | 4 | - [0x00000100] | - | 0x0000 | 0 |
-| - | I | MONS302 | 120 | 0d1 rds/lvl | 30 | 4 | 4d10 [0x000a2100] | - | 0x0008 | 0 |
-| - | I | MONS303 | -2 | 0d1 rds/lvl | 1 | 4 | 2d9 [0xa0091100] | - | 0x0038 | 70 |
-| - | I | MONS304 | 120 | 2d4 rds/lvl | 1 | 4 | - [0x21000100] | poison | 0x0000 | 69 |
-| - | I | MONS305 | -2 | 2d8 rds/lvl | 0 | 4 | - [0x21000100] | poison | 0x0001 | 69 |
-| - | I | MONS306 | 800 | 0d1 (m1) | 120 | 1 | 0d1 [0x00010100] | - | 0x0000 | 0 |
-| - | I | MONS307 | -1 | 0d1 (m1) | 1 | 7 | 0d1 [0x00010100] | - | 0x0000 | 0 |
-| - | I | MONS308 | 200 | 0d1 (m1) | 1 | 5 | 0d1 [0x00010100] | - | 0x0000 | 0 |
-| - | I | MONS309 | 28 | 0d1 (m1) | 12 | 1 | 1d10 [0xa10a0800] | spells | 0x0002 | 0 |
-| - | I | MONS310 | 28 | 0d0 rds/lvl | 1 | 3 | - [0xa0000100] | - | 0x0000 | 0 |
-| - | I | MONS311 | 180 | 0d1 rds/lvl | 40 | 4 | 1d10 [0xa00a0800] | - | 0x0038 | 0 |
-| - | I | MONS312 | -2 | 0d1+2/lvl rds/lvl | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 0 |
+| - | I | MONS291 | 200 | 1d6+4/lvl rounds | 200 | 1 | 4d10 [0x810a2100] | breath | 0x0002 | 0 |
+| - | I | MONS292 | 90 | 0d1+1/lvl rounds | 1 | 1 | - [0xa0000100] | - | 0x0000 | 0 |
+| - | I | MONS293 | 0 | 0d1+1/lvl rounds | 720 | 1 | 4d6 [0x61062100] | petr | 0x0008 | 0 |
+| - | I | MONS294 | -2 | 2d6 rounds | 240 | 1 | - [0xa5000100] | spells+2 | 0x0000 | 35 |
+| - | I | MONS295 | -2 | 0d1 rounds | 160 | 1 | 2d6 [0x21061100] | poison | 0x0038 | 10 |
+| - | I | MONS296 | -1 | 2d1+1/lvl rounds | 1 | 7 | - [0xa0000100] | - | 0x0202 | 38 |
+| - | I | MONS297 | -2 | 2d4 rounds | 1 | 4 | 1d10 [0x210a0900] | poison | 0x0002 | 19 |
+| - | I | MONS298 | 90 | 0d1 rounds | 1 | 4 | 10d6 [0x21065100] | poison | 0x0002 | 0 |
+| - | I | MONS299 | -2 | 1d1+1/lvl rounds | 480 | 1 | - [0xa1000100] | spells | 0x0000 | 35 |
+| - | I | MONS300 | 240 | 3d4 rounds | 280+1/lvl | 6 | 0d6 [0xa1060000] | spells | 0x0400 | 69 |
+| - | I | MONS301 | -2 | event | 1 | 4 | - [0x00000100] | - | 0x0000 | 0 |
+| - | I | MONS302 | 120 | 0d1 rounds | 30 | 4 | 4d10 [0x000a2100] | - | 0x0008 | 0 |
+| - | I | MONS303 | -2 | 0d1 rounds | 1 | 4 | 2d9 [0xa0091100] | - | 0x0038 | 70 |
+| - | I | MONS304 | 120 | 2d4 rounds | 1 | 4 | - [0x21000100] | poison | 0x0000 | 69 |
+| - | I | MONS305 | -2 | 2d8 rounds | 0 | 4 | - [0x21000100] | poison | 0x0001 | 69 |
+| - | I | MONS306 | 800 | ticks | 120 | 1 | 0d1 [0x00010100] | - | 0x0000 | 0 |
+| - | I | MONS307 | -1 | ticks | 1 | 7 | 0d1 [0x00010100] | - | 0x0000 | 0 |
+| - | I | MONS308 | 200 | ticks | 1 | 5 | 0d1 [0x00010100] | - | 0x0000 | 0 |
+| - | I | MONS309 | 28 | ticks | 12 | 1 | 1d10 [0xa10a0800] | spells | 0x0002 | 0 |
+| - | I | MONS310 | 28 | 0d0 rounds | 1 | 3 | - [0xa0000100] | - | 0x0000 | 0 |
+| - | I | MONS311 | 180 | 0d1 rounds | 40 | 4 | 1d10 [0xa00a0800] | - | 0x0038 | 0 |
+| - | I | MONS312 | -2 | 0d1+2/lvl rounds | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 0 |
 | - | I | MONS313 | -2 | instant | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 127 |
-| - | I | MONS314 | 1440 | 0d1+1/lvl rds/lvl | 0 | 4 | - [0x00000100] | - | 0x0000 | 0 |
-| - | I | MONS315 | 1440 | 0d1+1/lvl rds/lvl | 0 | 4 | - [0x00000100] | - | 0x0000 | 0 |
-| - | I | MONS316 | 0 | 0d1 rds/lvl | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 0 |
+| - | I | MONS314 | 1440 | 0d1+1/lvl rounds | 0 | 4 | - [0x00000100] | - | 0x0000 | 0 |
+| - | I | MONS315 | 1440 | 0d1+1/lvl rounds | 0 | 4 | - [0x00000100] | - | 0x0000 | 0 |
+| - | I | MONS316 | 0 | 0d1 rounds | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 0 |
 | - | I | MONS317 | 0 | instant | 0 | 4 | - [0x00000100] | - | 0x0000 | 108 |
 | - | I | MONS318 | -2 | indefinite | 0 | 4 | 8d1 [0x00014100] | - | 0x0010 | 110 |
-| - | I | MONS319 | -2 | 2d1+1/lvl rds/lvl | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 21 |
+| - | I | MONS319 | -2 | 2d1+1/lvl rounds | 1 | 4 | - [0xa1000100] | spells | 0x0000 | 21 |
 
 ## Extraction verification
 
@@ -334,7 +334,8 @@ Levels: number = spell level; P = psionic; S = stat power; I = innate monster po
 - PASS: DS2 RDFF chunks (1643)
 - PASS: DS2 creatures == 352 (352)
 - PASS: DS2 negated-id anchors (1585/1585)
-- PASS: Umber Hulk 405 (hp 50, ac 2, hd 8) (ok)
+- PASS: Umber Hulk 405 (hp 50, ac 2, hd 8, thac0 11) (ok)
+- PASS: Umber Hulk 405 alignment CE (9) (align)
 - PASS: Mindflayer 416 (MR 90, psp 300) (ok)
 - PASS: obj 603 ~ Longsword (Longsword)
 - PASS: spell 0 ~ Armor (ARMOR)

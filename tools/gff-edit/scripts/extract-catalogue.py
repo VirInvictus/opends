@@ -201,7 +201,13 @@ class Creature:
     special_attack: int
     special_defense: int
     flags: int
+    alignment: int
     sp_alt: int  # DS2 cb+14 unresolved candidate
+
+
+# Alignment enum (docs/object-formats.md 2.3, confirmed wave 2:
+# book-anchored; 0 = none/unlisted).
+ALIGNMENT_NAMES = ("-", "LG", "LN", "LE", "NG", "N", "NE", "CG", "CN", "CE")
 
 
 def decode_creature(
@@ -210,17 +216,17 @@ def decode_creature(
     if game == "ds1":
         name = cstr(combat[40:56])
         thac0: int | None = i8(combat, 31)
-        sp_alt = 0
+        sp_atk, sp_def, sp_alt = u8(combat, 22), u8(combat, 23), 0
         ac_off, move_off, alleg_off, stats_off = 26, 27, 29, 34
         lvl_off, cls_off, atk_off, dmg_off, save_off = 36, 33, 43, 46, 55
-        mr_off, bac_off, bmv_off = 41, 39, 40
+        mr_off, bac_off, bmv_off, align_off = 41, 39, 40, 26
     else:
         name = cstr(combat[33:49])
-        thac0 = None
-        sp_alt = u16(combat, 14)
+        thac0 = i8(combat, 22)
+        sp_atk, sp_def, sp_alt = 0, 0, u16(combat, 14)
         ac_off, move_off, alleg_off, stats_off = 18, 19, 21, 25
         lvl_off, cls_off, atk_off, dmg_off, save_off = 30, 27, 37, 40, 49
-        mr_off, bac_off, bmv_off = 35, 33, 34
+        mr_off, bac_off, bmv_off, align_off = 35, 33, 34, 20
     return Creature(
         game=game,
         obj_id=obj_id,
@@ -249,9 +255,10 @@ def decode_creature(
         base_ac=i8(charrec, bac_off),
         base_move=u8(charrec, bmv_off),
         sprite_bmp=sprite,
-        special_attack=u8(combat, 22),
-        special_defense=u8(combat, 23),
+        special_attack=sp_atk,
+        special_defense=sp_def,
         flags=u8(combat, 24) if game == "ds2" else u8(combat, 33),
+        alignment=u8(charrec, align_off),
         sp_alt=sp_alt,
     )
 
@@ -660,9 +667,14 @@ def extract_ds2(games_dir: Path) -> GameData:
                 f"{stats['id_ok']}/{stats['combat'] + stats['item_la1']}",
             ),
             (
-                "Umber Hulk 405 (hp 50, ac 2, hd 8)",
-                _find_creature(creatures, 405, hp=50, ac=2, hd=8),
+                "Umber Hulk 405 (hp 50, ac 2, hd 8, thac0 11)",
+                _find_creature(creatures, 405, hp=50, ac=2, hd=8, thac0=11),
                 "ok",
+            ),
+            (
+                "Umber Hulk 405 alignment CE (9)",
+                any(c.alignment == 9 for c in creatures if c.obj_id == 405),
+                "align",
             ),
             (
                 "Mindflayer 416 (MR 90, psp 300)",
@@ -793,18 +805,23 @@ def decode_spells_ds2(resource: bytes, exe_path: Path) -> list[dict]:
 
 
 def fmt_duration(s: dict) -> str:
+    """Duration = (NdS + per-level count) units of dur_multiplier; the
+    unit map is the wave-2 corpus read (60 round, 600 turn, 3600 hour,
+    -1 event-based expiry, 1 handler tick)."""
     mult = s["dur_mult"]
-    tag = {0: "instant", -9999: "indefinite"}.get(mult)
+    tag = {
+        0: "instant",
+        -9999: "indefinite",
+        -1: "event",
+        1: "ticks",
+    }.get(mult)
     if tag:
         return tag
     base = f"{s['dur_n']}d{s['dur_s']}"
     if s["dur_pl"]:
         base += f"+{s['dur_pl']}/lvl"
-    if mult == 60:
-        return f"{base} rds/lvl"
-    if mult in (600, 3600):
-        return f"{base} (x{mult})"
-    return f"{base} (m{mult})"
+    unit = {60: "rounds", 600: "turns", 3600: "hours"}.get(mult)
+    return f"{base} {unit}" if unit else f"{base} (m{mult})"
 
 
 def unpack_damage(d: int) -> tuple[int, int, int, int, int, int, int, int, int]:
@@ -832,27 +849,39 @@ def unpack_damage(d: int) -> tuple[int, int, int, int, int, int, int, int, int]:
 
 
 def fmt_damage(s: dict) -> str:
-    """Partial derivation of the packed damage word; the raw hex is
-    always appended so nothing is lost to a wrong reading
+    """The packed damage word under the wave-2 corpus-confirmed
+    semantics: div 0 = flat dice and flat plus; div 1 = count is
+    dice_plus*lvl (+dice) and plus is per-level; div > 1 = grouped
+    ((lvl+dice_plus)/div) dice when the scale flag is set, else flat
+    dice_plus dice (FLAME ARROW). The raw hex is always appended
     (docs/object-formats.md section 6)."""
     d = s["dmg"]
-    plus, dice_plus, div, dice, sides, scale, savable, _sm, _st = unpack_damage(d)
+    plus, dice_plus, div, dice, sides, scale, _sav, _sm, _st = unpack_damage(d)
     if not sides:
         return f"- [0x{d:08x}]"
     notes = []
-    if dice_plus and div > 1:
-        core = f"((lvl+{dice_plus})/{div})d{sides}"
-    elif dice_plus:
-        tail = f"+{dice}" if dice else ""
-        core = f"({dice_plus}*lvl{tail})d{sides}"
-    else:
+    if div == 0:
         core = f"{dice}d{sides}"
-        if div > 1:
+        if plus:
+            core += f"+{plus}"
+    elif div == 1:
+        if dice_plus:
+            count = f"({dice_plus}*lvl" + (f"+{dice}" if dice else "") + ")"
+        else:
+            count = f"{dice}"
+        core = f"{count}d{sides}"
+        if plus:
+            core += f"+{plus}/lvl"
+    else:
+        if scale and dice_plus:
+            core = f"((lvl+{dice_plus})/{div})d{sides}"
+        else:
+            core = f"{dice_plus or dice}d{sides}"
             notes.append(f"div{div}")
-    if plus:
-        core += f"+{plus}"
-    if scale:
-        notes.append(f"sc{scale}")
+        if plus:
+            core += f"+{plus}"
+    if scale and div <= 1:
+        notes.append("sc1")
     if notes:
         core += " (" + ", ".join(notes) + ")"
     return f"{core} [0x{d:08x}]"
@@ -939,24 +968,31 @@ def emit_bestiary(out: GameData, lines: list[str]) -> None:
         "Every creature record in the game's object database"
         " (combat + character blocks, docs/object-formats.md section 2)."
         " Attacks are the half-round slots (value/2 per round) with"
-        " their damage dice. DS2 THAC0 has no stored byte (the engine"
-        " derives it from level at runtime). special-attack bytes are"
-        " unresolved enums and are not shown; allegiance and alignment"
-        " enums are unconfirmed. XP is the charrec value; several DS1"
-        " rows carry filler values."
+        " their damage dice. THAC0 is a stored byte in both games"
+        " (DS1 combat+31, DS2 combat+22; DS2's was located by the"
+        " wave-2 engine read). Alignment uses the confirmed enum"
+        " (1 LG .. 9 CE, 0 unlisted). special-attack bytes are enum"
+        " candidates and are not shown; allegiance enums differ per"
+        " game and are documented in object-formats.md. XP is the"
+        " charrec value; several DS1 rows carry filler values."
     )
     lines.append("")
     lines.append(
         "| id | name | hp | psp | AC | MV | HD | THAC0 | attacks x damage"
-        " | MR% | XP | saves | stats |"
+        " | MR% | XP | align | saves | stats |"
     )
-    lines.append("|---:|---|---:|---:|---:|---:|---:|---:|---|---:|---:|---|---|")
+    lines.append("|---:|---|---:|---:|---:|---:|---:|---:|---|---:|---:|---|---|---|")
     for c in sorted(out.creatures, key=lambda c: c.obj_id):
-        thac0 = str(c.thac0) if c.thac0 is not None else "(derived)"
+        thac0 = str(c.thac0) if c.thac0 is not None else "-"
+        align = (
+            ALIGNMENT_NAMES[c.alignment]
+            if c.alignment < len(ALIGNMENT_NAMES)
+            else str(c.alignment)
+        )
         lines.append(
             f"| {c.obj_id} | {c.name} | {c.hp} | {c.psp} | {c.ac} | {c.move}"
             f" | {c.level[0]} | {thac0} | {fmt_attack(c)} | {c.magic_res}"
-            f" | {c.xp} | {'/'.join(str(v) for v in c.saves)}"
+            f" | {c.xp} | {align} | {'/'.join(str(v) for v in c.saves)}"
             f" | {'/'.join(str(v) for v in c.stats)} |"
         )
     lines.append("")
@@ -1086,7 +1122,7 @@ def selftest() -> int:
     failures.append(("damage 3d10", "3d10" in fmt_damage(s), fmt_damage(s)))
     s2 = {"dmg": 1 | (8 << 8) | (4 << 16)}
     failures.append(("damage 1d4+1", "1d4+1" in fmt_damage(s2), fmt_damage(s2)))
-    s3 = {"dmg": 0x00140221}  # the real Magic Missile word
+    s3 = {"dmg": 0x00140221}  # Magic Missile: div 2, scale 1, dp 1
     failures.append(
         (
             "damage magic missile",
@@ -1094,8 +1130,14 @@ def selftest() -> int:
             fmt_damage(s3),
         )
     )
-    s4 = {"dmg": 0xA1060120}  # the real Fireball word
+    s4 = {"dmg": 0xA1060120}  # Fireball: div 1, dp 1
     failures.append(("damage fireball", "(1*lvl)d6" in fmt_damage(s4), fmt_damage(s4)))
+    s5 = {"dmg": 0xA1030902}  # Burning Hands: div 1, plus 2 (per-level)
+    failures.append(
+        ("damage burning hands", "1d3+2/lvl" in fmt_damage(s5), fmt_damage(s5))
+    )
+    s6 = {"dmg": (5 << 5) | (5 << 8) | (6 << 16)}  # Flame Arrow: div 5, dp 5, scale 0
+    failures.append(("damage flame arrow", "5d6" in fmt_damage(s6), fmt_damage(s6)))
 
     for label, ok, detail in failures:
         print(f"{'ok' if ok else 'FAIL'}  {label}: {detail}")
