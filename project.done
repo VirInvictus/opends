@@ -1,0 +1,75 @@
+# OpenDS: project.done
+
+**Completion date**: 2026-09-15 (THE FINAL BLITZ; final commit of the
+blitz train on main, all gates green, CI green, everything pushed).
+
+**What shipped**
+
+- Every ranked item of the final audit (audit-final/opends/
+  FINAL-REPORT.md, all 4 MEDIUM + 5 LOW lanes) executed: the CI
+  catch-up (ds1-patch gated, 3.11 leg, root ruff.toml pinning
+  0.15.20), the Phase 6 pick-box scar repair and the ratified
+  backlog dispositions folded, spec 6 rewritten to the shipped
+  gpl-asm stack, the patchnotes restructured into version/batch
+  headings, the comment-header de-versioning sweep, the seven
+  real-bug LOWs (each with a regression test), the docs-sweep box,
+  the em-dash/punctuation pass on all live prose, the GitHub batch
+  (SECURITY.md, dependabot, CI badge, SHA-pinned actions,
+  concurrency group, the v0.1.0 dispatch exception documented),
+  and the removal/housekeeping set (both removals on Brandon's
+  explicit go).
+- Two latent census bugs fixed in the dead-trigger sweep tool
+  (gpl-disasm 0.8.1): pickup triggers were never counted (mnemonic
+  mismatch) and use-with rows were always skipped (wrong entry
+  parameter). Corrected census: DS1 1,539 registrations / 6 dead
+  (unchanged), DS2 1,915 / 39.
+- **darkfix-ds2 v0.1.0, the first Wake of the Ravager fix**:
+  `fix.ds2.deadtriggers` repoints 27 of the 39 dead registrations
+  to each object's own working handler (P1 correlation dig +
+  P2 fix lane executed same-day on Brandon's conditional
+  ship-ahead); 12 rows left with no statically provable handler.
+  ds2-patch/scripts/ bootstrapped with the DS1 applier copied per
+  patch (Brandon's call).
+- **darkfix-ds1 v0.1.1**: the hardened applier (pending-journal
+  recovery, composition refusal, atomic journal writes, torn-
+  journal remedy, empty-enabled-set refusal, truthful --status)
+  shipped to players.
+- Tool releases: gpl-disasm 0.8.1, gpl-asm 0.9.2, verify-install
+  0.3.1, exe-patch 0.1.1, opends 0.1.1. All seven releases live on
+  GitHub; both darkfix zips attached by the release zip workflow
+  with their sha256 quoted in the notes; darkfix-ds1-v0.1.0's
+  notes retrofitted with its live asset's hash.
+- GitHub presentation batch executed (description de-asterisked,
+  4 topics added); CONTRIBUTING.md written (Brandon's go); the
+  install-variant refusal policy documented (Brandon's call);
+  spec 14 resolved: patches are MIT, LICENSE staged into both
+  patch dirs and the zips.
+
+**Reopen conditions**
+
+1. **The gated hands set** (Brandon's calendar, unchanged):
+   played-save sessions for the scene-level behavioral proofs
+   (darkfix-ds1's Darkhold scenes; darkfix-ds2's affected-object
+   scenes: the Limbo prop, the VA Headquarters creatures, the Tyr
+   encounter), the DOSBox capture calendar, GF[395] (stays parked
+   until a played-save session attaches a symptom), and the
+   real-Windows applier run (the open half of Phase 6's applier
+   box).
+2. **The 12 unshipped DS2 dead rows** (recorded in
+   ds2-patch/fixes/001-deadtriggers.md): two pickup rows on -900,
+   one look row on -1922, two use rows on -2975, seven use-with
+   rows in GPL-98; promote when a played-save session or a deeper
+   dig gives any of them a provable handler.
+3. **The recorded feature board** (roadmap audit block, P3-P8):
+   DS2 party edit-surface verification + cookbook entry (P3),
+   set-up-repro-fixture.md (P5), DS2 StartCycle init site (P6),
+   DS1 final-battle variant-1 dig (P8).
+4. **First/last-wins registration semantics**: still an open
+   EXE-side question; both shipped fixes are no-op-or-restoration
+   under either. A debugger session settles it.
+5. **Workflow quirk**: darkfix tags must be pushed individually
+   (a multi-tag push triggered no tag runs; release.yml carries
+   the note and the dispatch path is proven).
+6. **Lens 8 watch-item**: the Rust toolchain floats (@stable)
+   while ruff is pinned; pin rust-toolchain.toml if rustfmt ever
+   diverges.
