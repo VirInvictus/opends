@@ -63,6 +63,22 @@ item, `gpl-asm` v0.9.1, has its own heading below.)
   `fix.ds1.deadtriggers` repaired remain the complete DS1 set).
   Selftest covers both shapes.
 
+## gpl-asm v0.9.2 (2026-09-15)
+
+- **`gpl-asm` v0.9.2**: `pack_compressed_string` refuses non-ASCII
+  string payloads instead of silently mangling them. The 7-bit
+  packed-string format cannot carry bytes >= 0x80 (its decoder can
+  never produce one), but the packer pushed `value.bytes()` through
+  a `& 0x7F` mask, so one accented character in a hand-authored
+  string would have emitted wrong symbols with no error. A
+  non-ASCII payload is now a loud `NonAsciiString` error that
+  writes nothing, and the text parser's length estimator counts
+  bytes to match the packer exactly. The module headers and error
+  strings also stop stamping long-dead versions (`v0.1.0 encoder
+  foundation`, `not supported in v0.1.1`): they describe what the
+  crate ships today. Two new unit tests; 600/600 corpus round-trip
+  unchanged.
+
 ## darkfix-ds2 v0.1.0 (2026-09-15)
 
 - **`darkfix-ds2` v0.1.0**: **the first Wake of the Ravager fix
