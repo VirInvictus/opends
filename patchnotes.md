@@ -48,6 +48,40 @@ item, `gpl-asm` v0.9.1, has its own heading below.)
   Seventeen new selftest cases cover all of it; `apply.py
   --selftest` runs 39 checks, all green.
 
+## darkfix-ds2 v0.1.0 (2026-09-15)
+
+- **`darkfix-ds2` v0.1.0**: **the first Wake of the Ravager fix
+  ships.** `fix.ds2.deadtriggers` repoints 27 of the 39 dead
+  trigger registrations the corrected sweep counts in DS2's
+  `GPLDATA.GFF`. All 39 pointed at entry 1 of `GPL-24`, the
+  shared NPC-chatter library's deliberate no-op: 37 trigger
+  registrations across the corpus target exactly that entry, and
+  the repointed 27 are later or interleaved no-op
+  re-registrations sitting beside alive handlers for the same
+  objects (the occlusion shape `fix.ds1.deadtriggers` repaired in
+  Shattered Lands). Each row returns to its object's own working
+  handler: 21 same-chunk (16 of them the shared prop object
+  -2975 across 14 region scripts, the rest the Tyr/Silt Giant
+  combat trio and the VA Headquarters look pair), 6 attested by
+  the region master scripts' own alive registrations (the
+  forest's look pair, Jann's talk pair, the forest attack row).
+  Under either registration semantics the fix is a no-op or a
+  restoration; it cannot regress. 12 of the 39 rows stay: no
+  statically provable handler (two pickup rows on -900, one look
+  on -1922, two use rows on -2975, seven use-with rows in
+  GPL-98). Proof: the patched file re-disassembles 350/350
+  chunks aligned with the sweep dropping 39 dead to exactly the
+  12 left; the applier selftest's real-install cycle pins the
+  patched `GPLDATA.GFF` hash and round-trips byte-identically
+  (46 checks); the `repro --diff` capture
+  (`bugs/ds2-deadtriggers/`) passes both legs with identical
+  DARKRUN world-state fingerprints, and the scene-level
+  behavioral proof rides the played-save sessions (roadmap
+  gate). This release also bootstraps `ds2-patch/scripts/` with
+  the proven DS1 applier, copied per patch (2026-09-15 decision)
+  and carrying every applier hardening from the 09-13 batch and
+  this blitz from day one.
+
 ## gpl-asm v0.9.1 (2026-09-13)
 
 - **`gpl-asm` v0.9.1**: `--patch` no longer silently corrupts hex

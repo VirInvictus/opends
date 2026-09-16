@@ -12,28 +12,29 @@ game-breaking bugs that even SSI's 1.02 and 1.10 patches did not
 fully resolve. There has never been a public unofficial patch.
 This will be the first.
 
-Status: pre-release. No fixes shipped yet. See
-[`../roadmap.md`](../roadmap.md). Headline target:
-**the mines elevator freeze** ([`../docs/known-bugs.md`](../docs/known-bugs.md)
-section 2.1).
+Status: v0.1.0 ships the first fix, `fix.ds2.deadtriggers`
+(27 dead-trigger registrations repointed to their objects' working
+handlers; see [`fixes/001-deadtriggers.md`](fixes/001-deadtriggers.md)).
+The headline target remains **the mines elevator freeze**
+([`../docs/known-bugs.md`](../docs/known-bugs.md) section 2.1);
+see [`../roadmap.md`](../roadmap.md).
 
 The applier machinery is proven on the DS1 side
 ([`../ds1-patch/`](../ds1-patch/): the distribution format and
 no-op round-trip landed in v0.0.1, and v0.1.0 shipped the first
-real fix, `fix.ds1.deadtriggers`, 2026-09-11). The scripts
-below get populated from that proven shape when Phase 7 starts;
-decide then whether `scripts/darkfix/` is promoted to shared
-tooling or copied per patch.
+real fix, `fix.ds1.deadtriggers`, 2026-09-11). Per the 2026-09-15
+decision, `scripts/` is a COPY of the proven DS1 applier (adapted
+for ds2), not shared tooling: each patch ships isolated, and any
+promotion to shared tooling waits for a third consumer.
 
 ## Layout
 
 - `LICENSE`: MIT, same as the toolkit (spec 14).
 - `VERSION`: patch version (docs/versioning.md; single source
-  for the release tooling). 0.0.1 = pre-release, nothing
-  shipped.
+  for the release tooling).
 - `manifest.toml`: schema v1 (spec.md §4); target game and the
-  canonical `DSUN.EXE` hash. The fix list is empty until the
-  first fix lands.
+  canonical hashes of every file an enabled fix touches. The
+  applier refuses any other engine build.
 - `fixes/`: one markdown writeup + one applier script per fix.
   Each fix has a stable identifier (`fix.ds2.<short-name>`).
 - `scripts/apply.py`: the umbrella applier.
@@ -51,8 +52,7 @@ verifies your install hash, backs up touched files to
 `--unapply` reverts. GOG 1.10 is the only supported base by
 policy; a non-canonical install gets a hard refusal
 ([`../docs/install-variants.md`](../docs/install-variants.md)
-section 7). No fix ships yet, so there is nothing to install
-today.
+section 7).
 
 ## Notes specific to DS2
 

@@ -3,10 +3,11 @@
 # The patch version lives in this directory's VERSION file
 # (docs/versioning.md); it is never duplicated here.
 #
-# No fix ships yet (see README: pre-release). The target hash below
-# is already canonical: the applier refuses to run against any other
-# engine build, and authoring-time checks (`apply.py --check-all`)
-# compare the whole install against docs/source-hashes/ds2-gog-1.10.toml.
+# First fix ships with v0.1.0: fix.ds2.deadtriggers (GPL data
+# surface). The target hashes below are canonical: the applier
+# refuses to run against any other engine build, and authoring-time
+# checks (`apply.py --check-all`) compare the whole install against
+# docs/source-hashes/ds2-gog-1.10.toml.
 
 [meta]
 schema_version = 1
@@ -28,7 +29,10 @@ reference_manifest = "docs/source-hashes/ds2-gog-1.10.toml"
 # canonical GOG 1.10 install (docs/source-hashes/ds2-gog-1.10.toml).
 # The applier refuses to run when any of these differ: wrong engine
 # build, already-patched file, or damaged install.
-"DSUN.EXE" = "ce02ee1f31c2339fc3e16926e370639af782a5ecd6c8a6081140fa23445fc92c"
+"GPLDATA.GFF" = "be5efb2b76a5f77b9858b9583bd34c452ea86869f0c866436cf8e298ad96fbb8"
 
-# The ordered fix list. Empty until Phase 7; entries follow the ds1
-# shape ([[fixes]] with id, path, enabled).
+# The ordered fix list; entries follow the ds1 shape.
+[[fixes]]
+id = "fix.ds2.deadtriggers"
+path = "fixes/001-deadtriggers.py"
+enabled = true

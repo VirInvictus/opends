@@ -1,0 +1,38 @@
+# OpenDS repro harness: bug fixture
+#
+# Schema notes: see bugs/ds2-smoke/bug.toml and tools/repro/README.md.
+
+id          = "ds2-deadtriggers"
+target_game = "ds2"
+description = """
+Harness-level leg of the fix.ds2.deadtriggers proof (darkfix-ds2
+0.1.0). DS2 boots and runs its full budget from a tree whose
+GPLDATA.GFF carries the 27 repointed trigger registrations, with
+the run recorded for side-by-side comparison. `repro.py --diff`
+stages the patched GPLDATA.GFF over the overlay for the patched
+leg, so baseline and patched boots share one fixture and one delta
+report.
+
+The in-game scene leg (use/look/talk at the affected objects: the
+Limbo prop, the VA Headquarters creatures, the Tyr encounter)
+needs a played DARKSAVE.GFF per scene; drop one in this directory
+and add a [[trigger.keystrokes]] load-save schedule to promote
+this fixture to the full behavioral proof. Rides the played-save
+gate (roadmap Phase 5.6.2).
+"""
+
+[setup]
+copy_files = [
+  { src = "SOUND.CFG", dst = "SOUND.CFG" },
+]
+
+[trigger]
+commands = [
+  "DSUN -W0 -L > d:\\dsun.log",
+]
+
+[expected]
+timeout_seconds     = 30
+min_runtime_seconds = 25
+require_files       = []
+forbid_files        = []

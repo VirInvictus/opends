@@ -2166,8 +2166,23 @@ condition; GF[395] stays parked.
       registrations, a restoration if it keeps last). 28 of 30
       rows have locally provable working handlers; GPL-30's and
       GPL-64's -2975 rows have none and stay untouched.
-- [ ] **P2: the DS2 dead-trigger fix lane** (darkfix-ds2 v0.1.0:
+- [x] **P2: the DS2 dead-trigger fix lane** (darkfix-ds2 v0.1.0:
       the ds2-patch bootstrap with the copied applier plus
       `fix.ds2.deadtriggers`, repointing the provable rows).
-      Gate condition met per decision (3); execution in progress
-      below.
+      (Shipped 2026-09-15 on the standing grant's release
+      cadence. `ds2-patch/scripts/` is the DS1 applier copied
+      per decision (4), adapted for ds2 and carrying every
+      applier hardening from day one; `fix.ds2.deadtriggers`
+      repoints 27 of the 39 corrected-census dead rows (21
+      same-chunk, 6 MAS-attested, the DS1 portcullis-guard
+      precedent), leaving 12 with no statically provable
+      handler; the sweep-tool census fix (gpl-disasm 0.8.1)
+      surfaced the extra 9 rows (pickup + use-with) that both
+      games' sweeps had been skipping. Proofs: patched file
+      re-disassembles 350/350 aligned; sweep 39 -> exactly the
+      12 left; apply.py --selftest 46 checks green with the
+      patched hash pinned; `repro --diff` both legs PASS with
+      identical DARKRUN fingerprints (fixture
+      `bugs/ds2-deadtriggers/`; scene legs ride the played-save
+      gate). Tag `darkfix-ds2-v0.1.0` cut via the standard
+      procedure; release.yml attaches the zip.)
