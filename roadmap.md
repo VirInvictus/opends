@@ -2166,6 +2166,19 @@ condition; GF[395] stays parked.
       registrations, a restoration if it keeps last). 28 of 30
       rows have locally provable working handlers; GPL-30's and
       GPL-64's -2975 rows have none and stay untouched.
+- [x] **Releases: seven tags cut and pushed 2026-09-15/16**
+      (darkfix-ds2-v0.1.0, darkfix-ds1-v0.1.1, gpl-disasm-v0.8.1,
+      gpl-asm-v0.9.2, verify-install-v0.3.1, exe-patch-v0.1.1,
+      opends-v0.1.1; CI green on both pushes; every Release page
+      live, the two darkfix zips attached by the release zip
+      workflow with their sha256 quoted into the notes, the v0.1.0
+      release notes retrofitted with its live asset's hash per the
+      metadata-batch decision). Workflow note: the two darkfix tag
+      pushes rode a 7-tag single `git push`, which triggered NO
+      tag runs at all (first tag-triggered run of release.yml
+      would have been these); the workflow's own dispatch path
+      built and attached both zips, and release.yml now carries a
+      comment: push darkfix tags individually or use dispatch.
 - [x] **P2: the DS2 dead-trigger fix lane** (darkfix-ds2 v0.1.0:
       the ds2-patch bootstrap with the copied applier plus
       `fix.ds2.deadtriggers`, repointing the provable rows).

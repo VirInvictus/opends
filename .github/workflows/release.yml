@@ -3,6 +3,11 @@
 # release IS the zip). Runs only on darkfix-dsN-v* tag pushes plus a
 # manual dispatch with a tag input (for attaching to a release that
 # already exists); it is not part of the push/PR CI path in ci.yml.
+#
+# Known GitHub quirk (observed 2026-09-15): pushing several tags in
+# ONE `git push` (7 at once) triggered no tag runs at all. Push
+# darkfix tags individually, or re-run via workflow_dispatch with
+# the tag input (that path is proven).
 name: release zip
 
 on:
