@@ -18,6 +18,7 @@ python:
     python3 tools/exe-patch/exe-patch.py --selftest
     python3 tools/repro/repro.py --selftest
     python3 ds1-patch/scripts/apply.py --selftest
+    python3 ds2-patch/scripts/apply.py --selftest
     python3 tools/gpl-disasm/scripts/global-state-sweep.py --selftest
     python3 tools/gpl-disasm/scripts/dead-trigger-sweep.py --selftest
     python3 tools/verify-install/verify-install.py --selftest
