@@ -90,6 +90,16 @@ item, `gpl-asm` v0.9.1, has its own heading below.)
   grows a `--selftest` flag (the repo's Python test idiom)
   covering the clobber guard and the skipped-file path.
 
+## exe-patch v0.1.1 (2026-09-15)
+
+- **`exe-patch` v0.1.1**: resident-region edits get the straddle
+  check the overlay format requires. An edit anchored below the
+  resident image's end whose length crossed into the FBOV overlay
+  header was classified `resident` with no error; it is now flagged
+  and refused (`off < image_end < off + n`), like the segment
+  straddle refusal always did. Selftest case added on the
+  synthetic fixture.
+
 ## darkfix-ds2 v0.1.0 (2026-09-15)
 
 - **`darkfix-ds2` v0.1.0**: **the first Wake of the Ravager fix
