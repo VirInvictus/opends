@@ -79,6 +79,17 @@ item, `gpl-asm` v0.9.1, has its own heading below.)
   crate ships today. Two new unit tests; 600/600 corpus round-trip
   unchanged.
 
+## verify-install v0.3.1 (2026-09-15)
+
+- **`verify-install` v0.3.1**: `--repair` never overwrites its own
+  backup. A second repair run against changed bytes used to
+  `shutil.copy2` straight over `__verify-install-backup/<path>`,
+  destroying the only copy of the pre-repair originals; it now
+  refuses with an error naming `--rollback` as the way out
+  (files restored before the refusal stay reversible). The tool
+  grows a `--selftest` flag (the repo's Python test idiom)
+  covering the clobber guard and the skipped-file path.
+
 ## darkfix-ds2 v0.1.0 (2026-09-15)
 
 - **`darkfix-ds2` v0.1.0**: **the first Wake of the Ravager fix

@@ -17,7 +17,7 @@ implementation-language split.
 |---|---|---|---|
 | [`atlas`](atlas/) | Python | 0.1.1 | **Static-HTML site generator.** Drives image-extract / region-render / dialog-extract against every detected game install and produces a browsable offline `file://` directory: sprite gallery, inline region maps, dialog browser. |
 | [`opends`](opends/) | Rust | 0.1.0 | **Umbrella CLI.** "I have this file, what is it?" Auto-dispatches by file magic to the right tool; `opends tools` prints the version table; thin shells over extract / render / find. |
-| [`verify-install`](verify-install/) | Python | 0.3.0 | Checks an install against the canonical pristine-hash manifest. Repairs from the GOG installer (`--repair`, `--dry-run`), rolls repairs back (`--rollback`), and answers in one line with `--summary`. |
+| [`verify-install`](verify-install/) | Python | 0.3.1 | Checks an install against the canonical pristine-hash manifest. Repairs from the GOG installer (`--repair`, `--dry-run`), rolls repairs back (`--rollback`), and answers in one line with `--summary`. |
 | [`gff-edit`](gff-edit/) | Rust | 0.6.0 | Pure-Rust GFF read/write (library `gff_edit` + CLI `gff-cat`): dump, extract, replace, text codec, JSON, catalogue, and the `gff-cat what` per-chunk describer. The foundation everything else builds on. |
 | [`gpl-disasm`](gpl-disasm/) | Rust | 0.8.1 | GPL bytecode disassembler: text or JSON, CFG labels, curated symbol catalogues (functions, variables, per-chunk locals), inter-chunk callgraph (`--global-cfg`), lossless packed-string decode. |
 | [`gpl-asm`](gpl-asm/) | Rust | 0.9.2 | GPL reassembler and patch author: consumes `gpl-disasm` text/JSON (600/600 corpus chunks round-trip byte-identical) and applies fingerprint-checked, label-relative `--patch` byte edits. |
