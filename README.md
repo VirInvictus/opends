@@ -45,8 +45,11 @@ In build order: **tools first, patches second**:
   don't. Authoring is built on the tools above.
   → [`ds1-patch/`](ds1-patch/), [`ds2-patch/`](ds2-patch/)
 - **Documentation**: file formats, engine internals, bug
-  catalogs, reverse-engineering notes. So the next person doesn't
-  have to figure it out again. → [`docs/`](docs/)
+  catalogs, reverse-engineering notes, and the complete mined
+  game data: every creature's stats, every item, spell, chest,
+  inventory, map placement, and dialog line, published as
+  regenerable catalogues. So the next person doesn't have to
+  figure it out again. → [`docs/`](docs/)
 
 Anything that makes the digging easier is priority #1. Patches
 follow the toolkit. See [`roadmap.md`](roadmap.md) for the
@@ -70,17 +73,27 @@ decades:
   *Shattered Lands* inside the Infinity Engine. Inactive.
 
 Every attempt has stalled before delivering a playable game. The
-problem is the GPL bytecode VM: the engine's embedded scripting
-language, with no public spec: and the volume of game logic
-expressed in it.
+blocker was the GPL bytecode VM: the engine's embedded scripting
+language, with no public spec, and most of the game's logic
+written in it.
+
+That spec now exists, here.
+[`docs/gpl-vm.md`](docs/gpl-vm.md) documents the VM end to end
+(both games ship one engine; the interpreter loop, the variable
+model, and every opcode family, read out of the binaries), and
+the catalogues under [`docs/`](docs/) carry the complete game
+data it operates on. What still separates this repo from a
+playable engine is not knowledge of the data: it is the runtime
+behavior only a live engine can reveal (combat timing, the
+scheduler) and the work of building the thing.
 
 OpenDS goes at it sideways: ship the artifacts you build *on the
 way* to an engine (disassemblers, chunk editors, format docs, bug
-patches) as standalone, useful tools. Each one is valuable on
-its own. Each one teaches us more about the engine. The eventual
-full reimplementation lives in the project's name as an
-aspiration, not a roadmap commitment. We get there if we get
-there. The toolkit and patches matter even if we don't.
+patches, data catalogues) as standalone, useful tools. Each one
+is valuable on its own. Each one teaches us more about the
+engine. The eventual full reimplementation lives in the project's
+name as an aspiration, not a roadmap commitment. We get there if
+we get there. The toolkit and patches matter even if we don't.
 
 ## Status
 
@@ -98,6 +111,24 @@ dead-trigger family) and darkfix-ds2 0.1.0 (`fix.ds2.deadtriggers`,
 regions), each with its repro fixture and differential capture.
 Phase 7 is the DS2 mines-elevator fix, one runtime capture from a
 complete site report.
+
+The game data itself is documented end to end: machine-generated
+catalogues under `docs/` cover every creature record (290 in
+*Shattered Lands*, 352 in *Wake of the Ravager*), every item and
+spell, every chest's contents, every creature inventory, every
+map placement (13,028 + 13,559 across all 53 regions), and the
+dialog corpus (46,000+ strings). Each catalogue is regenerated
+from the shipped files by
+[`extract-catalogue.py`](tools/gff-edit/scripts/extract-catalogue.py)
+and gated on known-value checks (a named monster's stats, a known
+chest, the elevator's sprite), so the numbers are verified, not
+transcribed. The format references
+([`object-formats.md`](docs/object-formats.md),
+[`region-formats.md`](docs/region-formats.md),
+[`presentation-formats.md`](docs/presentation-formats.md),
+[`dialogs.md`](docs/dialogs.md)) document how it all fits
+together: the substrate a total conversion or engine project
+would build on.
 
 - [`spec.md`](spec.md): design spec and invariants
 - [`roadmap.md`](roadmap.md): phased plan and current status
