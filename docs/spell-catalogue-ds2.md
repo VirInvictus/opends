@@ -333,6 +333,8 @@ Levels: number = spell level; P = psionic; S = stat power; I = innate monster po
 - PASS: DS2 item name joins (1069 named + 164 nameless of 1233)
 - PASS: DS2 RDFF chunks (1643)
 - PASS: DS2 creatures == 352 (352)
+- PASS: DS2 inventory entries == 698 (698)
+- PASS: DS2 dangling inventory ids == none ([])
 - PASS: DS2 negated-id anchors (1585/1585)
 - PASS: Umber Hulk 405 (hp 50, ac 2, hd 8, thac0 11) (ok)
 - PASS: Umber Hulk 405 alignment CE (9) (align)
@@ -340,4 +342,7 @@ Levels: number = spell level; P = psionic; S = stat power; I = innate monster po
 - PASS: obj 603 ~ Longsword (Longsword)
 - PASS: spell 0 ~ Armor (ARMOR)
 - PASS: elevator 5807 sprite == BMP 951 (951)
+- PASS: ds2 placements == 13559 (13559)
+- PASS: ds2 region count == 20 (20)
+- PASS: ds2 MAS ids == region ids minus Limbo, plus 99 (extra [99], missing [255])
 

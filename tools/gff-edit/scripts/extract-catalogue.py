@@ -21,7 +21,9 @@ Exit codes: 0 ok, 1 selftest failure, 2 anchor/data failure,
 from __future__ import annotations
 
 import argparse
+import json
 import struct
+import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -370,6 +372,36 @@ class Mini:
     flags: int
 
 
+@dataclass
+class InvEntry:
+    item_id: int
+    quantity: int
+    value: int
+    charges: int
+    name_idx: int
+    stats_index: int
+
+
+@dataclass
+class Inventory:
+    owner_id: int
+    owner_kind: str  # "creature" or "container"
+    lists: list  # of [from_value, [InvEntry]]
+
+
+@dataclass
+class RegionDump:
+    game: str
+    region_id: int
+    name: str
+    file: str
+    tile_count: int
+    placements: list  # of dict
+    grid: dict
+    triggers: list  # of dict
+    trigger_source: str
+
+
 # --------------------------------------------------------------------------
 # Corpus extraction
 
@@ -385,6 +417,9 @@ class GameData:
     monr: list[tuple[int, list[tuple[int, int]]]] = field(default_factory=list)
     checks: list[tuple[str, bool, str]] = field(default_factory=list)
     stats: dict[str, object] = field(default_factory=dict)
+    inventories: dict[int, Inventory] = field(default_factory=dict)
+    name_pool: list[str] = field(default_factory=list)
+    regions: list[RegionDump] = field(default_factory=list)
 
 
 def extract_objects(
@@ -395,10 +430,11 @@ def extract_objects(
     list[Mini],
     dict[int, bytes],
     dict[str, int],
+    dict[int, Inventory],
 ]:
     """Walk the object database. Returns creatures, items, minis, the
-    DS2 15-byte template blocks keyed by header index, and invariant
-    counts."""
+    DS2 15-byte template blocks keyed by header index, invariant
+    counts, and the container/creature inventory chains."""
     gff = parse_gff(objdb)
     bmp_ids = {cid for cid, _ in resolve_type(gff, "BMP")}
     stats = {
@@ -413,6 +449,27 @@ def extract_objects(
     items: dict[int, Item] = {}
     minis: list[Mini] = []
     templates: dict[int, bytes] = {}
+    inventories: dict[int, Inventory] = {}
+
+    def entry_of(payload: bytes) -> InvEntry:
+        if game == "ds1":
+            return InvEntry(
+                -i16(payload, 0),
+                u16(payload, 2),
+                u16(payload, 6),
+                u8(payload, 14),
+                u8(payload, 18),
+                i16(payload, 10),
+            )
+        return InvEntry(
+            -i16(payload, 0),
+            u16(payload, 2),
+            u16(payload, 6),
+            u16(payload, 14),
+            u8(payload, 20),
+            i16(payload, 10),
+        )
+
     for cid, payload in resolve_type(gff, "RDFF"):
         stats["total"] += 1
         try:
@@ -453,41 +510,66 @@ def extract_objects(
                     game, cid, combat.payload, charrec.payload, combat.index
                 )
             )
-            continue
-        item_block = next(
-            (b for b in blocks if b.type == TYPE_ITEM and b.load_action in (1, 2, 4)),
-            None,
-        )
-        if item_block is not None:
-            iid = -i16(item_block.payload, 0)
-            if item_block.load_action == LA_OBJECT:
-                stats["id_ok"] += i16(item_block.payload, 0) == -cid
-            stats["sprite_ok"] += item_block.index in bmp_ids
-            item = decode_item(
-                game,
-                iid,
-                item_block.payload,
-                item_block.index,
-                item_block.load_action,
+        else:
+            item_block = next(
+                (
+                    b
+                    for b in blocks
+                    if b.type == TYPE_ITEM and b.load_action in (1, 2, 4)
+                ),
+                None,
             )
-            if iid not in items or items[iid].load_action != LA_OBJECT:
-                items[iid] = item
-            if item_block.load_action == LA_OBJECT:
-                stats["item_la1"] += 1
-        mini = next(
-            (b for b in blocks if b.type == TYPE_MINI and len(b.payload) >= 23),
-            None,
-        )
-        if mini is not None:
-            minis.append(
-                Mini(
-                    obj_id=cid,
-                    name=cstr(mini.payload[5:21]),
-                    priority=u8(mini.payload, 4),
-                    flags=u8(mini.payload, 21),
+            if item_block is not None:
+                iid = -i16(item_block.payload, 0)
+                if item_block.load_action == LA_OBJECT:
+                    stats["id_ok"] += i16(item_block.payload, 0) == -cid
+                stats["sprite_ok"] += item_block.index in bmp_ids
+                item = decode_item(
+                    game,
+                    iid,
+                    item_block.payload,
+                    item_block.index,
+                    item_block.load_action,
                 )
+                if iid not in items or items[iid].load_action != LA_OBJECT:
+                    items[iid] = item
+                if item_block.load_action == LA_OBJECT:
+                    stats["item_la1"] += 1
+            mini = next(
+                (b for b in blocks if b.type == TYPE_MINI and len(b.payload) >= 23),
+                None,
             )
-    return creatures, items, minis, templates, stats
+            if mini is not None:
+                minis.append(
+                    Mini(
+                        obj_id=cid,
+                        name=cstr(mini.payload[5:21]),
+                        priority=u8(mini.payload, 4),
+                        flags=u8(mini.payload, 21),
+                    )
+                )
+        # Inventory chains: la=2 starts a list (and carries its first
+        # item); la=4 appends one item to the current list. The owner
+        # is the chunk itself (creature-headed or item-headed).
+        lists: list = []
+        current = None
+        for b in blocks:
+            if b.type != TYPE_ITEM or b.load_action not in (LA_CONTAINER, LA_NEXT):
+                continue
+            if len(b.payload) < 21:
+                continue
+            if b.load_action == LA_CONTAINER:
+                current = [b.source, []]
+                lists.append(current)
+            elif current is None:
+                # measured: DS1 chunk 1378 only; writer residue
+                current = [b.source, []]
+                lists.append(current)
+            current[1].append(entry_of(b.payload))
+        if lists:
+            kind = "creature" if combat is not None else "container"
+            inventories[cid] = Inventory(cid, kind, lists)
+    return creatures, items, minis, templates, stats, inventories
 
 
 def attach_ds1_item_stats(out: GameData, gpldata: Path) -> None:
@@ -496,6 +578,7 @@ def attach_ds1_item_stats(out: GameData, gpldata: Path) -> None:
     rows = len(it1r) // 20
     name_raw = get_chunk(gff, "NAME", 1)
     pool = [cstr(name_raw[k * 25 : (k + 1) * 25]) for k in range(len(name_raw) // 25)]
+    out.name_pool = pool
     joined = stats_ok = sentinels = out_of_range = 0
     for iid, item in out.items.items():
         if item.stats_index == NULL16:
@@ -541,6 +624,7 @@ def attach_ds2_item_names(out: GameData, resource: Path) -> None:
     gff = parse_gff(resource)
     text_raw = get_chunk(gff, "TEXT", 1000)
     pool = text_raw.split(b"\r\n")
+    out.name_pool = [cstr(s) for s in pool]
     joined = unnamed = 0
     for iid, item in out.items.items():
         if item.name_idx == 0:
@@ -584,12 +668,26 @@ def _spell_name(spells: list[dict], idx: int) -> str:
     return next((s["name"] for s in spells if s["index"] == idx), "<none>")
 
 
+def inventory_stats(out: GameData) -> tuple[int, list[int]]:
+    """Entry count and dangling item ids across all inventory chains."""
+    entries = 0
+    dangling = set()
+    for inv in out.inventories.values():
+        for _frm, es in inv.lists:
+            for e in es:
+                entries += 1
+                if e.item_id not in out.items:
+                    dangling.add(e.item_id)
+    return entries, sorted(dangling)
+
+
 def extract_ds1(games_dir: Path) -> GameData:
     out = GameData("ds1")
-    creatures, items, minis, _templates, stats = extract_objects(
+    creatures, items, minis, _templates, stats, inventories = extract_objects(
         "ds1", games_dir / "ds1" / "SEGOBJEX.GFF"
     )
     out.creatures, out.items, out.minis = creatures, items, minis
+    out.inventories = inventories
     attach_ds1_item_stats(out, games_dir / "ds1" / "GPLDATA.GFF")
 
     resource = parse_gff(games_dir / "ds1" / "RESOURCE.GFF")
@@ -599,6 +697,7 @@ def extract_ds1(games_dir: Path) -> GameData:
     out.monr = decode_monr(get_chunk(resource, "MONR", 1))
 
     wyvern = next((c.name for c in creatures if c.obj_id == 5), "")
+    inv_entries, dangling = inventory_stats(out)
     out.checks.extend(
         [
             ("DS1 RDFF chunks", stats["total"] == 1046, str(stats["total"])),
@@ -611,6 +710,16 @@ def extract_ds1(games_dir: Path) -> GameData:
                 "DS1 negated-id anchors",
                 stats["id_ok"] == stats["combat"] + stats["item_la1"],
                 f"{stats['id_ok']}/{stats['combat'] + stats['item_la1']}",
+            ),
+            (
+                "DS1 inventory entries == 595",
+                inv_entries == 595,
+                str(inv_entries),
+            ),
+            (
+                "DS1 dangling inventory ids == [2643, 2644]",
+                dangling == [2643, 2644],
+                str(dangling),
             ),
             (
                 "Silt Runner 291 (hp 8, thac0 19)",
@@ -641,10 +750,11 @@ def extract_ds1(games_dir: Path) -> GameData:
 
 def extract_ds2(games_dir: Path) -> GameData:
     out = GameData("ds2")
-    creatures, items, minis, templates, stats = extract_objects(
+    creatures, items, minis, templates, stats, inventories = extract_objects(
         "ds2", games_dir / "ds2" / "OBJEX.GFF"
     )
     out.creatures, out.items, out.minis = creatures, items, minis
+    out.inventories = inventories
     attach_ds2_item_stats(out, templates)
     attach_ds2_item_names(out, games_dir / "ds2" / "RESOURCE.GFF")
 
@@ -657,10 +767,17 @@ def extract_ds2(games_dir: Path) -> GameData:
 
     n = len(creatures)
     item5807 = out.items.get(5807)
+    inv_entries, dangling = inventory_stats(out)
     out.checks.extend(
         [
             ("DS2 RDFF chunks", stats["total"] == 1643, str(stats["total"])),
             ("DS2 creatures == 352", n == 352, str(n)),
+            (
+                "DS2 inventory entries == 698",
+                inv_entries == 698,
+                str(inv_entries),
+            ),
+            ("DS2 dangling inventory ids == none", dangling == [], str(dangling)),
             (
                 "DS2 negated-id anchors",
                 stats["id_ok"] == stats["combat"] + stats["item_la1"],
@@ -711,6 +828,184 @@ def decode_monr(data: bytes) -> list[tuple[int, list[tuple[int, int]]]]:
         ]
         rows.append((region, entries))
     return rows
+
+
+# --------------------------------------------------------------------------
+# World dump (regions: placements, grids, triggers)
+
+
+TRIGGER_OPS = {
+    27: "inlostrigger",
+    28: "notinlostrigger",
+    101: "attacktrigger",
+    102: "looktrigger",
+    104: "move tiletrigger",
+    105: "door tiletrigger",
+    106: "move boxtrigger",
+    107: "door boxtrigger",
+    108: "pickup itemtrigger",
+    109: "usetrigger",
+    110: "talktotrigger",
+    111: "noorderstrigger",
+    112: "usewithtrigger",
+}
+
+
+def extract_triggers(
+    disasm: Path | None, gpldata: Path, rid: int
+) -> tuple[list[dict], str]:
+    """Trigger registrations from the region's MAS chunk, via the
+    gpl-disasm --json contract (the same one gpl-asm and
+    dialog-extract consume). Absent binary = documented skip."""
+    if disasm is None or not disasm.is_file():
+        return [], "skipped (gpl-disasm binary not built)"
+    proc = subprocess.run(
+        [str(disasm), str(gpldata), "--kind", "MAS", "--id", str(rid), "--json"],
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode != 0:
+        return [], f"failed: {proc.stderr.strip()[:80]}"
+    data = json.loads(proc.stdout)
+    rows = []
+    for ins in data.get("instructions", []):
+        op = ins.get("opcode")
+        if op not in TRIGGER_OPS:
+            continue
+        params = ins.get("params", [])
+        flat = [p[0].get("value") if p else None for p in params]
+        objects = [
+            p[0].get("value")
+            for p in params
+            if p and p[0].get("kind") == "immediate_name"
+        ]
+        target = [
+            p[0].get("value") for p in params if p and p[0].get("kind") == "immediate14"
+        ]
+        rows.append(
+            {
+                "kind": TRIGGER_OPS[op],
+                "objects": objects,
+                "target": target,
+                "values": flat,
+            }
+        )
+    return rows, f"MAS {rid}"
+
+
+def extract_world(
+    game: str, games_dir: Path, out: GameData, disasm: Path | None
+) -> list[RegionDump]:
+    """Per-region geography: placements (ETAB), passability grids
+    (GMAP), tile counts, and trigger registrations (MAS chunks). The
+    record layouts are docs/region-formats.md."""
+    objdb = games_dir / game / ("SEGOBJEX.GFF" if game == "ds1" else "OBJEX.GFF")
+    gff = parse_gff(objdb)
+    ojff_bmp = {cid: u16(p, 12) for cid, p in resolve_type(gff, "OJFF")}
+    creature_names = {c.obj_id: c.name for c in out.creatures}
+    mini_names = {m.obj_id: m.name for m in out.minis}
+    gpldata = games_dir / game / "GPLDATA.GFF"
+    gp = parse_gff(gpldata)
+    mas_ids = {cid for cid, _ in resolve_type(gp, "MAS")}
+    mapkind = "RMAP" if game == "ds1" else "MAP"
+    regions = []
+    for path in sorted((games_dir / game).glob("RGN*.GFF")):
+        rg = parse_gff(path)
+        maps = resolve_type(rg, mapkind)
+        if not maps:
+            continue
+        rid = maps[0][0]
+        etab = get_chunk(rg, "ETAB", rid)
+        gmap = get_chunk(rg, "GMAP", rid)
+        tiles = len(resolve_type(rg, "TILE"))
+        name = ""
+        if game == "ds2":
+            rn = [p for cid, p in resolve_type(rg, "RNME") if cid == rid]
+            if rn:
+                name = cstr(rn[0]).rstrip(".")
+        placements = []
+        for k in range(len(etab) // 8):
+            off = k * 8
+            x = i16(etab, off)
+            y = i16(etab, off + 2)
+            zpos = struct.unpack_from("<b", etab, off + 4)[0]
+            flags = u8(etab, off + 5)
+            oid = abs(i16(etab, off + 6))
+            if oid in creature_names:
+                kind, pname = "creature", creature_names[oid]
+            elif oid in mini_names:
+                kind, pname = "mini", mini_names[oid]
+            elif oid in out.items:
+                kind, pname = "item", out.item_names.get(oid, "")
+            else:
+                kind = "sprite"
+                bmp = ojff_bmp.get(oid, 0)
+                pname = f"BMP {bmp}" if bmp else ""
+            placements.append(
+                {
+                    "x": x,
+                    "y": y,
+                    "tile": (x // 16, y // 16),
+                    "zpos": zpos,
+                    "flags": flags,
+                    "oid": oid,
+                    "kind": kind,
+                    "name": pname,
+                    "mirrored": bool(flags & 0x80),
+                    "prio": flags & 7,
+                }
+            )
+        blocked = sum(1 for b in gmap if b & 0x40)
+        los_only = sum(1 for b in gmap if b & 0x80 and not b & 0x40)
+        walls = sum(1 for b in gmap if b & 0x1F) if game == "ds1" else 0
+        triggers, tsrc = [], "no MAS chunk for this region"
+        if rid in mas_ids:
+            triggers, tsrc = extract_triggers(disasm, gpldata, rid)
+        regions.append(
+            RegionDump(
+                game=game,
+                region_id=rid,
+                name=name,
+                file=path.name,
+                tile_count=tiles,
+                placements=placements,
+                grid={
+                    "tiles": len(gmap),
+                    "blocked": blocked,
+                    "los_only": los_only,
+                    "wall_indexed": walls,
+                    "walkable": len(gmap) - blocked,
+                },
+                triggers=triggers,
+                trigger_source=tsrc,
+            )
+        )
+    total = sum(len(r.placements) for r in regions)
+    expect_placements, expect_regions = (13028, 33) if game == "ds1" else (13559, 20)
+    out.checks.append(
+        (
+            f"{game} placements == {expect_placements}",
+            total == expect_placements,
+            str(total),
+        )
+    )
+    out.checks.append(
+        (
+            f"{game} region count == {expect_regions}",
+            len(regions) == expect_regions,
+            str(len(regions)),
+        )
+    )
+    region_ids = {r.region_id for r in regions}
+    out.checks.append(
+        (
+            f"{game} MAS ids == region ids minus Limbo, plus 99",
+            mas_ids == (region_ids - {255}) | {99},
+            f"extra {sorted(mas_ids - region_ids)},"
+            f" missing {sorted(region_ids - mas_ids)}",
+        )
+    )
+    return regions
 
 
 # --------------------------------------------------------------------------
@@ -1075,6 +1370,150 @@ def emit_items(out: GameData, lines: list[str]) -> None:
 
 
 # --------------------------------------------------------------------------
+# Inventory and world-dump emission
+
+
+def _entry_name(out: GameData, e: InvEntry) -> str:
+    if out.game == "ds1":
+        if 0 <= e.name_idx < len(out.name_pool):
+            return out.name_pool[e.name_idx]
+    else:
+        if 1 <= e.name_idx <= len(out.name_pool):
+            return out.name_pool[e.name_idx - 1]
+    return ""
+
+
+def _list_label(game: str, frm: int) -> str:
+    if game == "ds2":
+        return {17: "readied", 16: "worn", 4: "pack/stock"}.get(frm, f"list{frm}")
+    return "inventory"
+
+
+def _emit_inventory_doc(out: GameData, lines: list[str], kind: str) -> None:
+    label = "Shattered Lands" if out.game == "ds1" else "Wake of the Ravager"
+    title = "Container contents" if kind == "container" else "Creature inventories"
+    lines.append(f"# {title}: Dark Sun: {label}")
+    lines.append("")
+    lines.append(
+        "<!-- machine-generated by tools/gff-edit/scripts/"
+        "extract-catalogue.py; do not edit -->"
+    )
+    lines.append("")
+    if out.game == "ds2":
+        lines.append(
+            "List kinds (the la=2 block's from value): readied ="
+            " weapons and ammo, worn = armor slots in template order,"
+            " pack/stock = everything else; shop stock is a shopkeeper"
+            " creature's pack list. DS1 ships one undifferentiated list"
+            " per owner. Encoding: docs/object-formats.md section 1."
+        )
+    else:
+        lines.append(
+            "DS1 ships one undifferentiated inventory list per owner"
+            " (the la=2 block starts it and carries the first item;"
+            " la=4 blocks chain the rest). Encoding:"
+            " docs/object-formats.md section 1."
+        )
+    lines.append("")
+    lines.append(
+        "| owner | name | list | item id | item name | qty | value | charges |"
+    )
+    lines.append("|---:|---|---|---:|---|---:|---:|---:|")
+    creature_names = {c.obj_id: c.name for c in out.creatures}
+    for oid in sorted(out.inventories):
+        inv = out.inventories[oid]
+        if inv.owner_kind != kind:
+            continue
+        owner = (
+            creature_names.get(oid, "")
+            if kind == "creature"
+            else out.item_names.get(oid, "")
+        )
+        for frm, entries in inv.lists:
+            lab = _list_label(out.game, frm)
+            for e in entries:
+                qty = e.quantity if e.quantity else 1
+                lines.append(
+                    f"| {oid} | {owner} | {lab} | {e.item_id} "
+                    f"| {_entry_name(out, e)} | {qty} | {e.value} "
+                    f"| {e.charges or '-'} |"
+                )
+    lines.append("")
+
+
+def emit_containers(out: GameData, lines: list[str]) -> None:
+    _emit_inventory_doc(out, lines, "container")
+
+
+def emit_creature_inventories(out: GameData, lines: list[str]) -> None:
+    _emit_inventory_doc(out, lines, "creature")
+
+
+def emit_world(out: GameData, lines: list[str]) -> None:
+    label = "Shattered Lands" if out.game == "ds1" else "Wake of the Ravager"
+    lines.append(f"# World dump: Dark Sun: {label}")
+    lines.append("")
+    lines.append(
+        "<!-- machine-generated by tools/gff-edit/scripts/"
+        "extract-catalogue.py; do not edit -->"
+    )
+    lines.append("")
+    lines.append(
+        "Every region's entity placements (ETAB), passability summary"
+        "(GMAP), and trigger registrations (the region's MAS chunk,"
+        " decoded via gpl-disasm --json). Record layouts and the full"
+        " grid byte semantics: docs/region-formats.md; the grids"
+        " themselves regenerate from the game files via this script."
+        " Coordinates are pixels on the 2048x1568 grid; tile = px // 16."
+        " Sprites are OJFF-only decorations labelled by their BMP."
+    )
+    lines.append("")
+    for r in out.regions:
+        kinds = [p["kind"] for p in r.placements]
+        lines.append(f"## Region {r.region_id}: {r.name or '(unnamed)'} ({r.file})")
+        lines.append("")
+        g = r.grid
+        lines.append(
+            f"{len(r.placements)} placements"
+            f" ({kinds.count('creature')} creatures,"
+            f" {kinds.count('item')} items/props,"
+            f" {kinds.count('mini')} minis,"
+            f" {kinds.count('sprite')} sprites);"
+            f" {r.tile_count} tiles;"
+            f" walkable {g['walkable']}/{g['tiles']}"
+            f" (blocked {g['blocked']}, los-only {g['los_only']}"
+            f", wall-indexed {g['wall_indexed']});"
+            f" {len(r.triggers)} triggers ({r.trigger_source})."
+        )
+        lines.append("")
+        lines.append("### placements")
+        lines.append("")
+        lines.append("| x | y | tile | id | kind | name | prio | flags |")
+        lines.append("|---:|---:|---|---:|---|---|---:|---:|")
+        for p in r.placements:
+            lines.append(
+                f"| {p['x']} | {p['y']} | {p['tile'][0]},{p['tile'][1]} "
+                f"| {p['oid']} | {p['kind']} | {p['name']} "
+                f"| {p['prio']} | 0x{p['flags']:02x} |"
+            )
+        lines.append("")
+        if r.triggers:
+            lines.append("### triggers")
+            lines.append("")
+            lines.append("| kind | objects | target chunk@offset | raw operands |")
+            lines.append("|---|---|---|---|")
+            for t in r.triggers:
+                tgt = ", ".join(
+                    f"{t['target'][i + 1]}@{t['target'][i]}"
+                    for i in range(0, len(t["target"]) - 1, 2)
+                )
+                objs = ", ".join(str(v) for v in t["objects"])
+                raw = ", ".join(str(v) for v in t["values"])
+                lines.append(f"| {t['kind']} | {objs} | {tgt} | {raw} |")
+            lines.append("")
+
+
+# --------------------------------------------------------------------------
 # Selftest (synthetic fixtures; live anchors run inside the extractors)
 
 
@@ -1191,15 +1630,20 @@ def main(argv: list[str] | None = None) -> int:
 
     games: list[GameData] = []
     docs: dict[str, list[str]] = {}
+    disasm = REPO_ROOT / "target" / "debug" / "gpl-disasm"
     for game, extractor in (("ds1", extract_ds1), ("ds2", extract_ds2)):
         if args.game not in (game, "both"):
             continue
         g = extractor(args.games)
+        g.regions = extract_world(game, args.games, g, disasm)
         games.append(g)
         for kind, emitter in (
             ("bestiary", emit_bestiary),
             ("item-catalogue", emit_items),
             ("spell-catalogue", emit_spells),
+            ("container-contents", emit_containers),
+            ("creature-inventories", emit_creature_inventories),
+            ("world-dump", emit_world),
         ):
             lines: list[str] = []
             emitter(g, lines)
