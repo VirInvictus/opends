@@ -262,3 +262,84 @@ when the VM's second stream selector switches; Passtime's and
 Continue's overlay bodies; whether any overlay writes the stop
 flag directly; the resume path's caller (suspected: dialog
 completion, overlay-side).
+
+## 7. World-interaction, UI, and string opcodes (wave 4)
+
+The rest of the table, same conventions. `stub N` = overlay stub
+in the stub segment (DS1 0x4251 / DS2 0x4702, order-identical
+tables); engine-service segments DS1 0x1a0a / DS2 0x1d40.
+Selectors seen across the family: 0x7FFE = whole party (the
+engine iterates the four 49-byte party records), 0x7FFF = no-op/
+self, negative = object-group enumeration, 32766 = the party
+selector in Tport.
+
+World-object ops:
+
+| op | semantics |
+|---|---|
+| 0x22 Request code, obj, arg2, arg3 | dispatches into an overlay-local table: DS1 bounds 20 codes, DS2 bounds 53. P1 is the object selector, P2/P3 dword args, result to accum. The full per-code map is in the wave-4 ledger (roadmap); highlights: 1/4 rest (with the NO RESTING DURING COMBAT strings), 5 activate, 9 set state (also rewrites the visible-object record owner), 17 coordinate-place, 37 elevator-operate (3-case), 39 = a literal byte write to the elevator-state cell in overlay data, 49 set quantity; DS2 arms 18/22/23/24/32/40/49 apply resident function pointers per object |
+| 0x25 Clone obj, count, a, b, c, d | clones `count` copies; accum = success count |
+| 0x5E Tport a, b, c, d, flag | a == 32766: party teleport via stub 0xac(b, c, d); a < 0: enumerate the group and stub 0xa7 per handle; else single stub 0xa7(a, b, c, d, 0, flag). Limbo is region 255 |
+| 0x32 Fetch / 0x08 Hunt / 0x37 Follow / 0x3A Go / 0x3C Goxy / 0x36 Flee | all enqueue movement/orders through the same dialog-module service with per-opcode kind codes (Fetch 0x0A, Follow 0x0B, Go 0x0D, Goxy 0x0F, Hunt 0x12, Flee 1) |
+| 0x33 Search target, fA, fB, {quals...} | the query engine: iterate target (party via 32766, group via negative, single otherwise); per object resolve field selectors through the engine field resolver; per-entry type byte picks an aggregate: 0 min, 1 max, 2/3 sum, 4/5/6 or; types 4..6 also parse a conditional operand. DS1 has 5 conditional operator forms, DS2 10 (the one other semantic divergence besides Request) |
+| 0x40 Setrecord | mode 0: complex write, then re-write walking the party; negative mode: write to consecutive handles; mode > 0x8000: single complex write |
+| 0x41 Setother v | sets the OTHER-object register (VM:0x361; NAME(-N) resolved via the engine resolver); accum 1 on success |
+| 0x49 Setthing a, b | engine pair-setter; accum = (result != 9999) |
+| 0x47 Lockdoor | sets the VM flag byte 0x325; nothing else |
+| 0x34 Getparty | party enumerator (seed 9999 = first); also sets the VM:0x363 register |
+| 0x45/0x46 Join/Leaveparty | stubs 0x2f / 0x34 |
+| 0x1A Nextto a, b | engine distance <= 1 |
+| 0x35 Fight | enters combat at the precomputed tile (the words the Getxy service writes) |
+| 0x24 Shop | stub 0x98 |
+| 0x21 Award who, amount | 0x7FFE awards the FULL amount to EACH party member (no split); 0x7FFF no-op |
+| 0x39 Give / 0x5C Take / 0x2F Drop | inventory transfer stubs; Take with 0x7FFE sums across the party up to the count; Drop retries per member while unsuccessful |
+| 0x0B PDamage / 0x2D Damage who, n | NO dice evaluation in the VM: n is passed as a plain value to the combat stubs (0x3e / 0x39); dice live overlay-side or in the caller's expressions |
+
+UI and strings:
+
+| op | semantics |
+|---|---|
+| 0x48 Menu | title string, then up to 24 entries of (label, jump-target expression, enable expression); terminator byte 0x4A; asks until a valid pick; accum = the chosen entry's target expression. Two new VM state arrays: menu labels 0x27d..0x2ac, enable flags 0x2f9..0x310 |
+| 0x38 Getyn | yes/no prompt; accum = answer |
+| 0x42 InputString | up to 40 chars into the variable's result sink (no-op when the sink is the accum) |
+| 0x43/0x44 InputNumber/Money | numeric inputs into the sink |
+| 0x2C Log | decode packed string, display via stub 0x89 (string sub-types 1 = append into the work buffer, 2/5 = other readers) |
+| 0x4F/0x50/0x51 prints | style + text (0x4F passes the SINK pointer, not the value); 0x51 newline |
+| 0x2A/0x54 Clearpic/Showpic | picture slot management; id space overlay-side |
+| 0x5D/0x5F Sound/Music | one word argument to the audio services (DS1 0x1a0a:0x663/0x672, DS2 0x1d40:0xb00/0xb0f) |
+| 0x58/0x59 Skillroll/Statroll who, a, b | overlay dice; 0x7FFE = any party member succeeds |
+| 0x0A StringCopy dst, src | copies between the two result sinks (string variables) |
+| 0x5A StringCompare a, b | equality 0/1 (0 if either operand is the accum) |
+| 0x5B MatchString a, b | pattern match between the two operand strings; no third pool involved |
+
+### The complex-variable grammar (0xB1)
+
+`access_complex := base_selector, count:byte, field_id:byte x count`.
+The base selector is an expression: values < 0x8000 are NAME ids
+(negated, resolved to handles); `0x8000 | k` selects one of six
+current-object registers (VM words 0x369/0x367/0x365/0x363/
+0x361/0x35f; 0x363 is written by Getparty, 0x361 by Setother).
+Each field id walks one structure deeper (chained). The walk
+resolves through runtime-built tables: a 3-byte-per-object
+region/struct table, per-region record-array bases and strides,
+a field-offset table holding **198 fields per structure group**,
+a datatype table (widths 1/2/4; datatype >= 0x80 returns a far
+pointer, so string fields redirect the expression sink exactly
+like IMMED_STRING). All those tables are BSS on disk: the
+concrete field numbering is runtime-initialized and remains a
+runtime-capture question; the grammar itself is VB in both games.
+
+### Divergences (wave 4, completing section 6)
+
+Exactly two semantic divergences exist in the VM: the Request
+code space (20 DS1 vs 53 DS2 codes, renumbered) and the Search
+conditional-operator count (5 vs 10). Everything else, including
+the stub offsets for shared services, is identical modulo
+addresses.
+
+Wave-4 open questions: the DS2 request arms' eight resident
+applier services (relocation-dependent segment constants); the
+runtime field-table initializers (see above); producers of four
+of the six current-object registers; the Skillroll/Statroll/
+Damage dice bodies (overlay); Log string sub-types 2 and 5; the
+Menu post-selection tail.

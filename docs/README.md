@@ -71,6 +71,8 @@ attribute-everything policy; see also the repo-root
 | [`object-formats.md`](object-formats.md) | Object database records (creatures, items, OJFF), the spell power tables, MONR. |
 | [`region-formats.md`](region-formats.md) | Maps and geography: RMAP/GMAP bits, ETAB placements, trigger registrations. |
 | [`gpl-vm.md`](gpl-vm.md) | The GPL VM execution and data-model spec (the reimplementation keystone). |
+| [`presentation-formats.md`](presentation-formats.md) | Images, UI resources (BUTN/WIND/APFM/FONT), audio, cinematics; the asset census. |
+| [`dialogs.md`](dialogs.md) | The dialog machinery, the full text corpus census, and the conversion shape. |
 | [`bestiary-ds1.md`](bestiary-ds1.md) / [`bestiary-ds2.md`](bestiary-ds2.md) | Machine-generated: every creature record, per game. |
 | [`item-catalogue-ds1.md`](item-catalogue-ds1.md) / [`item-catalogue-ds2.md`](item-catalogue-ds2.md) | Machine-generated: every item record, per game. |
 | [`container-contents-ds1.md`](container-contents-ds1.md) / [`container-contents-ds2.md`](container-contents-ds2.md) | Machine-generated: every chest/container's contents. |

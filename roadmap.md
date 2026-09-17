@@ -2308,3 +2308,46 @@ grids, and every trigger registration via gpl-disasm --json):
 `creature-inventories-ds{1,2}.md`. DIRECT ANSWERS: yes, we now
 have the maps, every placement, every chest, and every creature
 inventory as anchor-gated generated docs.
+
+Wave 4 (executed 2026-09-16, four read-only agents; the final
+static-mining wave). SHIPPED: `docs/gpl-vm.md` section 7 (the
+world-interaction, UI and string opcodes: the Request maps
+(20 DS1 / 53 DS2 codes, per-arm actions; code 39 is literally a
+byte write to the elevator-state cell), Tport/Clone/Search (the
+aggregate query engine), the party/item/UI families, and the
+complex-variable grammar with its runtime 198-field-per-group
+tables); `docs/presentation-formats.md` (all image formats
+corpus-decoded, the WIND/BUTN/APFM/FONT UI layouts with the
+byte-identical shared font, the audio inventory incl. DJ.DAT and
+the VOC/BVOC sfx, cinematics: only DS1's BMA/ACF codecs remain
+undecoded anywhere in the asset stack; DS2's are standard FLI);
+`docs/dialogs.md` (46,053 strings / 1.71M chars over 531 fully
+aligned chunks, 32 unresolved LSTR reads, and the conversion
+shape for a Godot dialog system).
+
+THE VERDICT (the mining boundary, evidence-backed):
+- Static mining is DONE as a bulk activity. The enumerated
+  remainder: gpl-vm section 6's open questions (RNG range,
+  complex-field runtime tables, GNAME producers, string
+  sub-types); the FBOV exeinfo decode (the one static route to
+  the spell cast/apply handlers); DS1 final-battle variant-1
+  (P8); the 12 unshipped DS2 dead rows. Everything else that
+  looks like digging (elevator mechanism, first/last-wins,
+  save-field semantics, live BSS state) is runtime-capture
+  territory by the docs' own record.
+- Patch tooling: every surface has a closed author -> verify ->
+  apply chain. Two small named buildables, neither urgent: an
+  exe-patch MZ-relocation overlap check BEFORE the first real
+  EXE fix (classify() never consults the 4,853/4,703-entry
+  relocation table; an edit on a relocated word would verify on
+  disk and silently revert at load), and the ratified
+  opcode-fuzz JSON recipe loop (calendar-gated). Explicitly not
+  worth building: the DSO matcher, segmented-GFF builder,
+  extract.sh, DOSBox-X.
+- "Deep patching is the last thing": TRUE for darkfix v1 (both
+  games have shipped fixes; Phases 7-10 are gated on played-save
+  sessions and captures, not understanding; the elevator's fix
+  shape is pre-decided and its capture recipes are written). For
+  the engine-conversion path the frontier is now runtime
+  semantics and from-scratch AD&D rules, not data: the data side
+  is mined.
