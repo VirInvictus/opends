@@ -2284,3 +2284,27 @@ in-install SSI clue books (facts only), and libgff.
       allegiance values 3/6, DS2 SPST length rule, the
       named-shield AC check, and the runtime-capture route
       to the cast/apply handlers.)
+
+Wave 3 (executed 2026-09-16, four read-only agents; the
+Godot-conversion wave). SHIPPED: `docs/gpl-vm.md`, the complete
+GPL VM execution and data-model spec read from both engines (one
+VM, identical semantics: the 50-slot IP ring, the 16-slot LRU
+chunk arena with the ExitGpl sentinel-byte termination, the
+variable model with GFLAG 808 / GNUM 200 and fresh-per-chunk
+locals, the full expression-evaluator algorithm with its 15
+left-to-right 32-bit operators, the compare/branch/call machines
+with exact limits, RETVAL mechanics, per-opcode pseudocode for
+the arithmetic and engine-call families, the debug family
+confirmed residue, and the engine-quirks 7 correction that
+VM:0x33b is LFLAG not GFLAG). `docs/region-formats.md`: RMAP/
+GMAP bit layouts (DS1-only wall index; DS2 wall layer empty by
+design), the 8-byte ETAB record with per-game index sign, and
+the trigger operand shapes with MAS-id-equals-region-id extended
+to DS1. The generator gained container/inventory extraction
+(595 + 698 entries; dangling exactly {2643, 2644} DS1, none DS2)
+and the per-region world dumps (13,028 + 13,559 placements,
+grids, and every trigger registration via gpl-disasm --json):
+`world-dump-ds{1,2}.md`, `container-contents-ds{1,2}.md`,
+`creature-inventories-ds{1,2}.md`. DIRECT ANSWERS: yes, we now
+have the maps, every placement, every chest, and every creature
+inventory as anchor-gated generated docs.
