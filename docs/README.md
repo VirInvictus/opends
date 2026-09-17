@@ -69,9 +69,14 @@ attribute-everything policy; see also the repo-root
 |---|---|
 | [`file-formats.md`](file-formats.md) | The GFF container and every chunk layout we've locked. |
 | [`object-formats.md`](object-formats.md) | Object database records (creatures, items, OJFF), the spell power tables, MONR. |
+| [`region-formats.md`](region-formats.md) | Maps and geography: RMAP/GMAP bits, ETAB placements, trigger registrations. |
+| [`gpl-vm.md`](gpl-vm.md) | The GPL VM execution and data-model spec (the reimplementation keystone). |
 | [`bestiary-ds1.md`](bestiary-ds1.md) / [`bestiary-ds2.md`](bestiary-ds2.md) | Machine-generated: every creature record, per game. |
 | [`item-catalogue-ds1.md`](item-catalogue-ds1.md) / [`item-catalogue-ds2.md`](item-catalogue-ds2.md) | Machine-generated: every item record, per game. |
+| [`container-contents-ds1.md`](container-contents-ds1.md) / [`container-contents-ds2.md`](container-contents-ds2.md) | Machine-generated: every chest/container's contents. |
+| [`creature-inventories-ds1.md`](creature-inventories-ds1.md) / [`creature-inventories-ds2.md`](creature-inventories-ds2.md) | Machine-generated: what every creature carries. |
 | [`spell-catalogue-ds1.md`](spell-catalogue-ds1.md) / [`spell-catalogue-ds2.md`](spell-catalogue-ds2.md) | Machine-generated: every spell power record, per game. |
+| [`world-dump-ds1.md`](world-dump-ds1.md) / [`world-dump-ds2.md`](world-dump-ds2.md) | Machine-generated: every region's placements, grids, and triggers. |
 | [`engine-quirks.md`](engine-quirks.md) | Surprising engine behaviors that affect modding. |
 | [`gpl-bytecode.md`](gpl-bytecode.md) | The GPL scripting language and its bytecode encoding. |
 | [`gpl-opcodes.md`](gpl-opcodes.md) | The 129-entry GPL opcode table. |
