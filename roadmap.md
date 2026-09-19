@@ -1069,7 +1069,18 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       > by the overlay loader), not static data. Both findings
       > close the box. The descriptor chain walk (ovr-map's
       > approach) remains the only way to enumerate overlay
-      > segments.)
+      > segments.
+      >
+      > CORRECTED 2026-09-19, superseded by
+      > docs/overlay-formats.md: `exeinfo` is the SEGMENT LOAD
+      > TABLE (word0 = load paragraph, word1 = byte size,
+      > word2 = class 0/1/3/4, one MZ relocation per record),
+      > not a symbol table; and the per-module relocation
+      > tables ARE static file data immediately after each
+      > module's code (8,232 DS1 / 8,262 DS2 word entries,
+      > validated on all 101 modules). The 4,853/4,703 figures
+      > are the MZ resident-image relocation counts, a
+      > different table.)
 
 - [x] **Decode SAVE/1** (the ~10 KB probable master state
       table) against libgff's object/region structs, seeded

@@ -41,27 +41,31 @@
 [[function]]
 name = "load_resource"
 segment = "resident"
-offset = 0x58b4
+offset = 0x29ea4
 confidence = "verified"
-evidence = "docs/dsun-exe-re.md 2; docs/dsun-exe-survey.md 3.3 (0001:04a4 = file 0x58b4)"
+evidence = "docs/overlay-formats.md 7 (worked example 3): the overlay-side call seg word bytes 00 01 = 0x0100 is a segtab BYTE OFFSET (record 32, start_para 0x2460), giving file 0x5400 + 0x24600 + 0x4a4; prologue 55 8B EC 39 26 9C 00 byte-verified 2026-09-19. The old 0x58b4 was an endian misread of the seg word as segment value 1"
 notes = """
 The four-CC resource loader, `load_resource(fourcc, id, far *buf)`. \
 Identified by the CMAT/CPAL fallback call shape and the FOURCC push \
-census; carries a resident-side call-site census (96 sites, zero \
-overlay callers).
+census. CORRECTED 2026-09-19: 0x58b4 (from reading '0001:04a4' as \
+segment 1) is mid-function bytes; the real entry is 0x29ea4 via the \
+segtab-byte-offset reading in docs/overlay-formats.md. 96 overlay-side \
+call sites plus 14 resident-side raw 0x2460:0x4a4 calls.
 """
 
 [[function]]
 name = "overlay_manager"
 segment = "resident"
-offset = 0x466e0
-confidence = "probable"
-evidence = "docs/dsun-exe-survey.md 3.2"
+offset = 0x3be27
+confidence = "verified"
+evidence = "docs/overlay-formats.md 5: INT 3Fh handler entry (segment 0x3653 = segtab record 80, offset 0x4f7); prologue 55 8B EC F7 C5 01 00 74 05 EA DF 02 00 00 (push bp; mov bp,sp; test bp,1; odd-BP abort via jmp far 0000:0x2df) byte-verified 2026-09-19; iret at 0x3be8c"
 notes = """
 The Borland VROOM overlay dispatch body (INT 3Fh handler side). \
-Bounds how many segments stay resident; directly relevant to the \
-Phase 7 elevator race. One confirming observable (a runtime trace \
-of a paging event) short of verified.
+CORRECTED 2026-09-19 from 0x466e0, which is a degenerate 5-byte \
+CD 3F 00 00 00 null-stub block in resident data, not code. The old \
+'bounds how many segments stay resident' question is now answered \
+qualitatively (LRU chain via descriptor +0x1c; see docs/overlay- \
+formats.md 5 step 3); the resident-set bound itself remains open.
 """
 
 [[function]]

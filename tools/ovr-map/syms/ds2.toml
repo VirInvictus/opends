@@ -41,31 +41,32 @@
 [[function]]
 name = "load_resource"
 segment = "resident"
-offset = 0x692b
+offset = 0x2e69b
 confidence = "verified"
-evidence = "docs/dsun-exe-re.md 2; docs/dsun-exe-survey.md 3.3 and 9 (0128:04ab = header 0x5200 + 0x128*16 + 0x4ab)"
+evidence = "docs/overlay-formats.md 7 (worked example 2): the overlay-side call seg word 0x0128 is a segtab BYTE OFFSET (record 37, start_para 0x28ff), giving file 0x5200 + 0x28ff0 + 0x4ab; prologue 55 8B EC 39 26 9C 00 byte-verified 2026-09-19"
 notes = """
 The four-CC resource loader, `load_resource(fourcc, id, far *buf)`. \
-Same call shape as DS1's loader; all 96 DS2 call sites are \
-resident-side, which is what pins the segment arithmetic.
+Same call shape as DS1's loader. CORRECTED 2026-09-19: 0x692b lands \
+mid-instruction (83 D2 00) and the interim 0x6902 guess was a \
+different function (see buffer_capacity_helper); the real entry is \
+0x2e69b. 91 overlay-side call sites (9A AB 04 28 01) plus \
+resident-side raw 0x28ff:0x4ab calls.
 """
 
 [[function]]
 name = "overlay_manager"
 segment = "resident"
-offset = 0x404c4
+offset = 0x40544
 confidence = "verified"
-evidence = "docs/dsun-exe-re.md (overlay manager, corrected 2026-09-05); roadmap 5.6.1 decode: reads the INT 3Fh trap frame's entry offset at [es:bx+2] and dispatches into the stub region; byte at 0x405a9 is the handler's iret. The survey's old 0x4aff0 is a null descriptor (CD 3F 00 00 + zero payload) plus manager data, not code"
+evidence = "docs/overlay-formats.md 5: INT 3Fh handler entry (segment 0x3ae5 = segtab record 85, offset 0x4f4); prologue 55 8B EC F7 C5 01 00 74 05 EA DF 02 00 00 (push bp; mov bp,sp; test bp,1; odd-BP abort via jmp far 0000:0x2df) byte-verified 2026-09-19; iret at 0x405a9. The survey's 0x4aff0 is a null stub (CD 3F 00 00 00), not code"
 notes = """
 The Borland VROOM overlay dispatch body (INT 3Fh handler side). \
-CORRECTED 2026-09-06 from 0x4aff0: the 2026-09-05 decode proved \
-that address holds a null descriptor + manager data (the 'VDISK \
-FAKE' string and the segment-translation table at 0x4b088) and \
-the real handler is at file 0x404c4 (second entry at 0x40544, \
-iret at 0x405a9). Rewrites the interrupt frame's return CS:IP so \
-IRET resumes at loaded_segment:entry_offset. Bounds how many \
-segments stay resident; directly relevant to the Phase 7 \
-elevator race.
+CORRECTED 2026-09-19: 0x404c4 (this row's home since 2026-09-06) is \
+a neighboring body (opens mov ax,0x4b75), not the handler entry; \
+the row's own behavioral evidence (trap-frame read at [es:bx+2], \
+iret 0x405a9) belongs to the function starting at 0x40544, whose \
+prologue is byte-identical to DS1's 0x3be27. Rewrites the interrupt \
+frame's return CS:IP so IRET resumes at loaded_segment:entry_offset.
 """
 
 [[function]]
@@ -223,9 +224,9 @@ The teleport path of the same gpldisk.c module.
 [[function]]
 name = "save_record_writer"
 segment = 18
-offset = 0x08e5
+offset = 0x08e3
 confidence = "verified"
-evidence = "subagent boundary scan: same SAVE fourCC + count pattern as load_game_from_disk, but calls 0x118:0x5C5 (write API) instead of 0x128:0x4AB (read API); writes computed values into segment 0x378"
+evidence = "subagent boundary scan: same SAVE fourCC + count pattern as load_game_from_disk, but calls 0x118:0x5C5 (write API) instead of 0x128:0x4AB (read API); writes computed values into segment 0x378. Offset CORRECTED 2026-09-19 (docs/overlay-formats.md 7, worked example 6): the stub entry and prologue are at 0x8e3 (file 0x70713), not 0x8e5"
 notes = """
 The save-writer twin of load_game_from_disk. Same 'SAVE' fourCC and 17-slot loop, but calls the WRITE API and writes into segment 0x378 rather than reading into a stack buffer. Deserves its own syms row (was missing from the catalogue).
 """
@@ -234,10 +235,13 @@ The save-writer twin of load_game_from_disk. Same 'SAVE' fourCC and 17-slot loop
 name = "buffer_capacity_helper"
 segment = "resident"
 offset = 0x6902
-confidence = "probable"
-evidence = "subagent verification: the file offset 0x692b (previously 'verified' as load_resource) lands mid-instruction (83 D2 00 = adc dx,0); the real prologue is at 0x6902, which grows segment bx to hold dx:ax bytes"
+confidence = "verified"
+evidence = "prologue 55 8B EC + segment-grow shape byte-verified 2026-09-19; docs/overlay-formats.md 7 (worked example 2 note)"
 notes = """
-The load_resource entry at 0x692b needs re-derivation. The current formula (survey 9.5) may have a segment-arith error. Downgraded from verified to open question.
+Segment-grow helper (grows segment bx to hold dx:ax bytes), prologue \
+at 0x6902. RESOLVED 2026-09-19: this is NOT load_resource; the real \
+load_resource entry is 0x2e69b (see this file's load_resource row). \
+The open question below is closed.
 """
 
 [[function]]

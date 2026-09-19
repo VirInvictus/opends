@@ -31,11 +31,13 @@ inline so every number is reproducible.
    on only 336 / 345 distinct resident targets. Naming those
    ~340 functions names the majority of what overlays do, by
    weight.
-3. **The Borland overlay manager is located.** Exactly one
-   `INT 3Fh` instruction exists outside the descriptor/stub
-   region: DS1 at file `0x466e0`, DS2 at `0x404c4 (corrected 2026-09-05; see roadmap)`. That is the
-   handler body of the overlay loader; the `'Runtime overlay
-   error'` string rides with it in both binaries.
+3. **The Borland overlay manager is located.** CORRECTED
+   2026-09-19 ([`overlay-formats.md`](overlay-formats.md) 5): the
+   one outside-table `cd 3f` sites (`0x466e0` DS1, `0x4aff0` DS2)
+   are degenerate null-stub blocks (`CD 3F 00 00 00`) in resident
+   data, and `0x404c4` was a neighboring body. The real handler
+   entries are file `0x3be27` (DS1) / `0x40544` (DS2), now read
+   instruction-by-instruction.
 4. **`load_resource` is never called from an overlay.** The
    known FOURCC loader (`0001:04a4` DS1, `0128:04ab` DS2) has
    all 96 call sites in the resident image. Chunk loading is a
@@ -130,18 +132,21 @@ consistent with its interface work between the games.
 
 ### 3.2 The overlay manager
 
-Exactly one `cd 3f` occurs outside the descriptor/stub region:
-
-| Game | `INT 3Fh` handler body | Nearby marker |
+| Game | `INT 3Fh` handler entry | Nearby marker |
 |---|---|---|
-| DS1 | file `0x466e0` | `'Runtime overlay error'` at `0x56c8` |
-| DS2 | file `0x404c4 (corrected 2026-09-05; see roadmap)` | `'Runtime overlay error'` at `0x54c8` |
+| DS1 | file `0x3be27` (corrected 2026-09-19; `0x466e0` is a null stub) | `'Runtime overlay error'` at `0x56c8` |
+| DS2 | file `0x40544` (corrected 2026-09-19; `0x404c4` a neighboring body, `0x4aff0` a null stub) | `'Runtime overlay error'` at `0x54c8` |
 
 This is the function the 994 / 904 stub `INT 3Fh`s trap into.
-It has not been read instruction-by-instruction yet; when it
-is, we get the segment cache/swap policy, which bounds how
-many overlay segments can be resident at once (relevant to
-races like the mines elevator).
+READ 2026-09-19, instruction-by-instruction:
+[`overlay-formats.md`](overlay-formats.md) 5 has the full
+mechanics (trap-frame rewind, ensure-loaded + LRU, the reader,
+the relocation applier with its segtab-byte-offset scheme, stub
+patch/restore, the iret-onto-patched-stub transfer). The cache
+policy is qualitatively decoded there (LRU chain, lock counts,
+allocations from a high-water segment); the exact resident-set
+bound, which gates races like the mines elevator, remains the
+one open piece (overlay-formats.md 8).
 
 ### 3.3 The resident API surface (the headline census)
 
@@ -181,11 +186,13 @@ individually named yet. UPDATE 2026-09-06: the hot-target
 cluster now hosts the decoded palette subsystem
 (`dsun-exe-re.md` 4.5.5-4.5.6).
 
-`load_resource` specifically (`0001:04a4` DS1 = file `0x58b4`;
-`0128:04ab` DS2 = file `0x692b`) shows **zero** overlay
-callers; its 96 call sites are all resident-side. Same
-expected for the other low-level services: overlays consume
-higher-level resident wrappers.
+`load_resource` specifically (file `0x29ea4` DS1 / `0x2e69b`
+DS2; corrected 2026-09-19, [`overlay-formats.md`](overlay-formats.md)
+7) is called heavily from BOTH sides: 96 overlay-side `9A A4 04
+00 01` sites plus 14 resident raw calls (DS1), 91 overlay-side
+`9A AB 04 28 01` plus resident raw twins (DS2). The old
+"resident-only service" reading was an artifact of the seg-word
+misparse.
 
 ### 3.4 String-table breadcrumbs
 
@@ -466,9 +473,10 @@ Against `dsun-exe-re.md` 5 ("What we still don't know"):
    refs, int usage, callees), and match against the DSO name
    list. Even 100 named functions would transform binary RE
    into lookup.
-2. **Read the overlay manager** (`0x466e0` / `0x404c4 (corrected 2026-09-05; see roadmap)`): cache
-   policy, how many segments stay resident, eviction rules.
-   Directly relevant to any region-transition race.
+2. ~~**Read the overlay manager**~~ DONE 2026-09-19: read and
+   decoded end-to-end; see [`overlay-formats.md`](overlay-formats.md)
+   5 (the eviction/LRU policy is qualitative; the exact
+   resident-set bound is in its section 8).
 3. **Read the dispatcher segments**: DS1 overlay segment 25,
    DS2 segments 21 / 35 / 42 hold the concentrated indirect
    far-call sites; these are the function-pointer tables that

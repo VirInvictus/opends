@@ -225,12 +225,15 @@ Each 32-byte descriptor:
 ```
 +0x00  CD 3F 00 00   INT 3Fh signature
 +0x04  dword         payload offset, relative to the overlay area
-+0x08  word          segment size
-+0x0a  word          relocation count
++0x08  word          segment size (code bytes)
++0x0a  word          relocation-table size IN BYTES (entry count = value/2)
 +0x0c  dword         entry-stub count
 ```
 
-then exactly that many 5-byte stubs (`CD 3F <entry_offset:2> <ovr:1>`),
+then exactly that many 5-byte stubs (`CD 3F <entry_offset:2> <reserved:1>`;
+the 5th byte is always 0 on disk and the handler never reads it: overlay
+identity comes from the stub's SEGMENT, see
+[`docs/overlay-formats.md`](../../docs/overlay-formats.md)),
 then padding to a 16-byte boundary.
 
 ⚠ **Two things make a naive parse wrong**, both of which cost a pass

@@ -113,17 +113,22 @@ elsewhere, verify per site.)
 
 ### Two distinct loader entry points
 
-| Game | Far-call target | Call sites (push FOURCC + call) |
-|---|---|---|
-| DS1 | `0001:04a4` | 96 total: CMAT 1, CPAL 1, PAL 4, GMAP 2, etc. |
-| DS2 | `0128:04ab` | Used by all FOURCC pushes; CMAT/CPAL absent. |
+| Game | Encoded call (overlay-side form) | True file entry | Call sites |
+|---|---|---|---|
+| DS1 | `9A A4 04 00 01` (seg word `0x0100`) | `0x29ea4` | 96 overlay-side + 14 resident raw `0x2460:0x4a4` |
+| DS2 | `9A AB 04 28 01` (seg word `0x0128`) | `0x2e69b` | 91 overlay-side + resident raw `0x28ff:0x4ab` twins |
 
 Both engines route every FOURCC-keyed lookup through one
-function. DS1's target is at logical address `0001:04a4`; DS2's
-is at `0128:04ab`. Treat them as the canonical
-`load_resource`. Mapping the segment to a file offset is the next
-step (would let us name DS2 functions from `.dso-online`'s symbol
-table by call-graph shape).
+function, the canonical `load_resource`. The old readings
+`0001:04a4` / `0128:04ab` treated the call's segment word as a
+segment VALUE; it is a segtab BYTE OFFSET resolved through the
+segment load table ([`overlay-formats.md`](overlay-formats.md) 6):
+DS1 `0x0100` = record 32 (start_para `0x2460`, giving `0x5400 +
+0x24600 + 0x4a4 = 0x29ea4`), DS2 `0x0128` = record 37
+(start_para `0x28ff`, giving `0x5200 + 0x28ff0 + 0x4ab =
+0x2e69b`). Both entries carry the prologue `55 8B EC 39 26 9C
+00` (byte-verified 2026-09-19). The earlier file targets
+`0x58b4` / `0x692b` were misparses of that seg word.
 
 ## 3. Per-region palette + remap (DS1 only)
 
@@ -289,7 +294,7 @@ DS1 ships exactly **one** code site that pushes `'CMAT'` or
 The 29 bytes between them are the inter-call branch:
 
 ```
-9a a4 04 00 01   call far 0001:04a4   ; load CMAT
+9a a4 04 00 01   call far [segtab 0x0100 -> 0x2460:04a4, file 0x29ea4]   ; load CMAT
 83 c4 0c          add  esp, 12
 0b c0             or   ax, ax
 75 7b             jne  short +0x7b    ; if CMAT failed, skip CPAL
@@ -746,7 +751,10 @@ entity render loop); `0x23067` was never it either.
 > ([`dsun-exe-survey.md`](dsun-exe-survey.md), 2026-08-28) adds
 > measured structure to several items below: the resident API
 > surface is ~340 functions (census in survey §3.3), the overlay
-> manager body is at file `0x466e0` (DS1) / `0x404c4` (DS2; the survey's 0x4aff0 was data, not code; corrected 2026-09-05), the
+> manager (INT 3Fh handler) entries are at file `0x3be27` (DS1) /
+> `0x40544` (DS2; corrected 2026-09-19, [`overlay-formats.md`](overlay-formats.md)
+> 5: the earlier `0x466e0`/`0x404c4` were a null stub and a
+> neighboring body), the
 > save/region module is string-anchored via `gpldisk.c` breadcrumbs,
 > and item 5 is resolved to a file offset. See survey §9 for the
 > item-by-item answers.
@@ -779,10 +787,14 @@ order of value to the toolkit:
    `'PAL '` push sites (`0x2b770`, `0x68ab5`, `0x71f94`,
    `0x8db24`) against the DSO symbol table to identify the
    region-render path vs. the menu/title path.
-5. **RESOLVED: the DS2 `load_resource` segment** maps to file
-   `0x692b` (`0128:04ab` with header `0x5200`; survey §9.5), and
-   the function is named in `syms/ds2.toml` (verified). Its DS1
-   counterpart `0x58b4` is catalogued alongside.
+5. **RESOLVED 2026-09-19 (re-resolved): the DS2 `load_resource`
+   segment** maps to file `0x2e69b` via the segtab-byte-offset
+   reading ([`overlay-formats.md`](overlay-formats.md) 7); the
+   earlier `0x692b`, and the interim `0x6902` guess, were
+   misparses (`0x6902` is a segment-grow helper, retained in
+   `syms/ds2.toml` as buffer_capacity_helper). DS1's counterpart
+   is `0x29ea4` (not `0x58b4`). Both are catalogued in
+   `syms/*.toml`.
 
 ## 6. How to reproduce the findings on this page
 
