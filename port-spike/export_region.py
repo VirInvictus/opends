@@ -1,21 +1,16 @@
 #!/usr/bin/env python3
-"""Export one Dark Sun region to the Godot 4 spike project.
+"""Export the Draj demo regions (Arena + Slave Pens) for the Godot demo.
 
-Pipeline proof-of-life for the port (docs/godot-port-readiness.md,
-section C): reads the region's own data with the repo's Python GFF
-reader, decodes DS1-RLE bitmaps directly (the codec spec is
-docs/presentation-formats.md 1 and tools/image-extract's
-decode_ds1_rle), recolors through PAL 1000, and emits:
+Pipeline for the port demo (port-spike/): reads the two opening regions
+of Dark Sun: Shattered Lands with the repo's Python GFF reader, decodes
+DS1-RLE bitmaps directly (spec: docs/presentation-formats.md 1),
+recolors through the engine-default CPAL 200, and emits per-region
+assets plus demo.json (start tile, party, and the region transitions,
+pinned from the games' own GPL handlers: see README).
 
-    generated/tiles_atlas.png   16x16-tile atlas (RGBA)
-    generated/tileset.tres      Godot TileSet over the atlas
-    generated/sprites/*.png     entity + wall sprites (RGBA, index 0 = transparent)
-    generated/region.json       cells, blocked rows, walls, entities
+Stdlib-only; no game file is modified. Usage:
 
-Everything lands in generated/ (gitignored); the Godot project files
-live beside this script. Stdlib-only; no game file is modified.
-
-Usage: python3 export_region.py [region file name, default RGN02.GFF]
+    python3 export_region.py            # export + write demo.json + BFS checks
 """
 
 from __future__ import annotations
@@ -30,8 +25,50 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
 OUT = HERE / "generated"
 GAME = REPO / ".games" / "ds1"
-REGION_FILE = sys.argv[1] if len(sys.argv) > 1 else "RGN02.GFF"
-PALETTE_KIND, PALETTE_ID = "CPAL", 200  # the engine-default palette (what region-render falls back to)
+PALETTE_KIND, PALETTE_ID = "PAL", 1000  # the world palette (CPAL 200 is the engine's pink fallback)
+
+# The demo's maps: the opening of Shattered Lands.
+#   41 = RGN29.GFF  Slave Pens (Scar, Merzol, Dinos; 117 triggers)
+#   42 = RGN2A.GFF  the Arena (crowd sprites, the Announcer; boot special-case)
+REGIONS = [(41, "RGN29.GFF", "Slave Pens"), (42, "RGN2A.GFF", "Arena")]
+START = {"region": 41, "x": 79, "y": 70}  # pens, just south of the arrival zone
+PARTY_OIDS = [300, 305, 307, 313]  # Cermak, Saria, Cilla, K'ratchek
+
+# Transitions pinned from the shipped GPL handlers (see README for the
+# disassembly evidence). Tiles/boxes in the FROM region; landing tile in
+# the TO region.
+TRANSITIONS = [
+    {
+        "name": "escape tunnel",
+        "region": 42,
+        "tiles": [[5, 32], [6, 31], [7, 30]],
+        "to": {"region": 41, "x": 79, "y": 66},
+    },
+    {
+        "name": "holding gate",
+        "region": 42,
+        "box": [28, 11, 5, 1],
+        "to": {"region": 41, "x": 113, "y": 27},
+    },
+    {
+        "name": "arena stair",
+        "region": 41,
+        "box": [112, 27, 3, 1],
+        "to": {"region": 42, "x": 30, "y": 13},
+    },
+    {
+        "name": "arrival zone (story beat, no exit)",
+        "region": 41,
+        "box": [79, 65, 1, 6],
+        "to": None,
+    },
+]
+
+# The shipped GMAP locks the arena's west escape door (the pens escape
+# script, GPL chunk 3 @ 0x6b4: "Gladiators escaping! Guards! Sound the
+# alarms!", opens it in play). The demo starts post-escape, so unblock
+# exactly the three tunnel tiles.
+DEMO_UNBLOCK = {42: [[5, 32], [6, 31], [7, 30]]}
 
 # The generator script's name has hyphens; import it under a module name.
 _spec = importlib.util.spec_from_file_location(
@@ -49,11 +86,17 @@ import pngio  # noqa: E402
 # DS1-RLE bitmap decoding (spec: presentation-formats.md 1; reference:
 # tools/image-extract/src/lib.rs decode_ds1_rle)
 
-def decode_frame(data: bytes, off: int) -> tuple[int, int, bytes]:
-    """Decode one bitmap-container frame to (w, h, palette indices)."""
+def decode_frame(data: bytes, off: int, flip: bool = True) -> tuple[int, int, bytes]:
+    """Decode one bitmap-container frame to (w, h, palette indices).
+
+    flip=True gives the libgff orientation (correct for TILE and WALL);
+    SEGOBJEX entity BMPs come out vertically inverted relative to
+    in-game rendering unless flipped AGAIN (region-render flips them at
+    load; here we just skip the first flip).
+    """
     w, h = struct.unpack_from("<HH", data, off)
     if data[off + 5 : off + 9] in (b"PLNR", b"PLAN"):
-        raise NotImplementedError("PLNR/PLAN frame (spike covers DS1 RLE only)")
+        raise NotImplementedError("PLNR/PLAN frame (the demo covers DS1 RLE only)")
     img = bytearray(w * h)
     cpos = off + 4  # RLE stream starts at +4; the tag bytes are stream data
     rows = 0
@@ -62,7 +105,7 @@ def decode_frame(data: bytes, off: int) -> tuple[int, int, bytes]:
         cpos += 1
         if row_num == 0xFF:
             break
-        base = (h - row_num - 1) * w  # engine rows are bottom-up
+        base = ((h - row_num - 1) if flip else row_num) * w
         rows += 1
         while True:
             startx = data[cpos]
@@ -98,13 +141,12 @@ def decode_frame(data: bytes, off: int) -> tuple[int, int, bytes]:
     return w, h, bytes(img)
 
 
-def first_frame(data: bytes) -> tuple[int, int, bytes]:
-    """Decode frame 0 of a universal bitmap container."""
+def first_frame(data: bytes, flip: bool = True) -> tuple[int, int, bytes]:
     _size, frame_count = struct.unpack_from("<IH", data, 0)
     if frame_count < 1:
         raise ValueError("empty bitmap container")
     (off,) = struct.unpack_from("<I", data, 6)
-    return decode_frame(data, off)
+    return decode_frame(data, off, flip)
 
 
 # ---------------------------------------------------------------------------
@@ -128,25 +170,18 @@ def indices_to_rgba(img: bytes, pal, transparent_index0: bool) -> bytes:
 
 
 # ---------------------------------------------------------------------------
+# Region export
 
+def export_region(rid: int, fname: str, label: str, rg, gp, objdb, pal) -> dict:
+    out = OUT / f"r{rid}"
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "sprites").mkdir(exist_ok=True)
 
-def main() -> None:
-    OUT.mkdir(exist_ok=True)
-    (OUT / "sprites").mkdir(exist_ok=True)
-
-    rg = ec.parse_gff(GAME / REGION_FILE)
-    res = ec.parse_gff(GAME / "RESOURCE.GFF")
-    objdb = ec.parse_gff(GAME / "SEGOBJEX.GFF")
-    gp = ec.parse_gff(GAME / "GPLDATA.GFF")
-    pal = load_palette(res)
-
-    (rid,) = {cid for cid, _ in ec.resolve_type(rg, "RMAP")}
     rmap = ec.get_chunk(rg, "RMAP", rid)
     gmap = ec.get_chunk(rg, "GMAP", rid)
     etab = ec.get_chunk(rg, "ETAB", rid)
     assert len(rmap) == len(gmap) == 128 * 98
 
-    # --- tiles: the region's own TILE chunks, atlas-ified -----------------
     tile_chunks = dict(ec.resolve_type(rg, "TILE"))
     used = sorted({b for b in rmap if b and b in tile_chunks})
     slot = {t: i for i, t in enumerate(used)}
@@ -159,31 +194,24 @@ def main() -> None:
         col, row = slot[t] % atlas_cols, slot[t] // atlas_cols
         for py in range(h):
             o = ((row * 16 + py) * atlas_cols * 16 + col * 16) * 4
-            atlas[o : o + 64] = indices_to_rgba(
-                img[py * 16 : py * 16 + 16], pal, False
-            )
-    pngio.write_rgba(OUT / "tiles_atlas.png", atlas_cols * 16, atlas_rows * 16, atlas)
-    print(f"tiles: {len(used)} distinct -> atlas {atlas_cols*16}x{atlas_rows*16}")
+            atlas[o : o + 64] = indices_to_rgba(img[py * 16 : py * 16 + 16], pal, False)
+    pngio.write_rgba(out / "tiles_atlas.png", atlas_cols * 16, atlas_rows * 16, atlas)
 
-    # --- walls: GPLDATA WALL[rid*100 + w - 1], bottom-anchored ------------
     wall_ids = sorted({b & 0x1F for b in gmap if b & 0x1F})
     wall_files = {}
     for w in wall_ids:
         cid = rid * 100 + w - 1
-        fw, fh, img = first_frame(ec.get_chunk(gp, "WALL", cid))
-        name = f"sprites/wall_{w:02d}.png"
-        pngio.write_rgba(OUT / name, fw, fh, indices_to_rgba(img, pal, True))
+        fw, fh, img = first_frame(ec.get_chunk(gp, "WALL", cid))  # walls keep the libgff flip
+        name = f"wall_{w:02d}.png"
+        pngio.write_rgba(out / "sprites" / name, fw, fh, indices_to_rgba(img, pal, True))
         wall_files[w] = (name, fw, fh)
-    print(f"walls: {len(wall_ids)} distinct wall indices")
 
-    # --- entity sprites: ETAB -> OJFF -> SEGOBJEX BMP ---------------------
     ojff = {cid: p for cid, p in ec.resolve_type(objdb, "OJFF")}
     bmp_chunks = dict(ec.resolve_type(objdb, "BMP"))
     sprite_files = {}
     entities = []
     skipped_oob = 0
-    n_placements = len(etab) // 8
-    for k in range(n_placements):
+    for k in range(len(etab) // 8):
         x, y = struct.unpack_from("<hh", etab, k * 8)
         zpos = struct.unpack_from("<b", etab, k * 8 + 4)[0]
         flags = etab[k * 8 + 5]
@@ -191,15 +219,16 @@ def main() -> None:
         o = ojff.get(oid)
         if o is None:
             continue
-        ox, oy, bmp = struct.unpack_from("<HH", o, 0)[0], struct.unpack_from("<H", o, 2)[0], struct.unpack_from("<H", o, 12)[0]
+        ox, oy = struct.unpack_from("<HH", o, 0)
+        (bmp,) = struct.unpack_from("<H", o, 12)
         dx, dy = x - ox, y - oy - zpos
         if dx < 0 or dy < 0 or dx >= 2048 or dy >= 1568 or bmp not in bmp_chunks:
             skipped_oob += 1
             continue
         if bmp not in sprite_files:
-            sw, sh, img = first_frame(bmp_chunks[bmp])
-            name = f"sprites/bmp_{bmp:04d}.png"
-            pngio.write_rgba(OUT / name, sw, sh, indices_to_rgba(img, pal, True))
+            sw, sh, img = first_frame(bmp_chunks[bmp], flip=False)  # entity BMPs: see decode_frame
+            name = f"bmp_{bmp:04d}.png"
+            pngio.write_rgba(out / "sprites" / name, sw, sh, indices_to_rgba(img, pal, True))
             sprite_files[bmp] = (name, sw, sh)
         name, sw, sh = sprite_files[bmp]
         entities.append(
@@ -214,13 +243,7 @@ def main() -> None:
                 "oid": oid,
             }
         )
-    print(
-        f"entities: {len(entities)} drawn, {skipped_oob} skipped "
-        f"(off-grid or unresolved) of {n_placements} placements; "
-        f"{len(sprite_files)} distinct sprites"
-    )
 
-    # --- map data ----------------------------------------------------------
     cells = []
     for ty in range(98):
         for tx in range(128):
@@ -231,6 +254,8 @@ def main() -> None:
         "".join("#" if gmap[ty * 128 + tx] & 0x40 else "." for tx in range(128))
         for ty in range(98)
     ]
+    for tx, ty in DEMO_UNBLOCK.get(rid, []):
+        blocked_rows[ty] = blocked_rows[ty][:tx] + "." + blocked_rows[ty][tx + 1 :]
     walls_out = []
     for ty in range(98):
         for tx in range(128):
@@ -242,26 +267,21 @@ def main() -> None:
                 )
     json.dump(
         {
-            "region_file": REGION_FILE,
             "region_id": rid,
+            "label": label,
             "tile": 16,
             "cells": cells,
             "blocked_rows": blocked_rows,
             "walls": walls_out,
             "entities": entities,
         },
-        open(OUT / "region.json", "w"),
+        open(out / "region.json", "w"),
     )
-    blocked_n = sum(r.count("#") for r in blocked_rows)
-    print(
-        f"map: {len(cells)} tiled cells, {blocked_n} blocked, {len(walls_out)} wall sprites"
-    )
-    print(f"wrote {OUT}/ (atlas, tileset.tres, sprites/, region.json)")
-
-    with open(OUT / "tileset.tres", "w") as f:
+    with open(out / "tileset.tres", "w") as f:
         f.write('[gd_resource type="TileSet" load_steps=3 format=3]\n\n')
         f.write(
-            '[ext_resource type="Texture2D" path="res://generated/tiles_atlas.png" id="1"]\n\n'
+            '[ext_resource type="Texture2D" path="res://generated/'
+            f"r{rid}/tiles_atlas.png\" id=\"1\"]\n\n"
         )
         f.write('[sub_resource type="TileSetAtlasSource" id="atlas"]\n')
         f.write("texture = ExtResource(\"1\")\n")
@@ -269,6 +289,121 @@ def main() -> None:
             f.write(f"{i % atlas_cols}:{i // atlas_cols}/0 = 0\n")
         f.write("\n[resource]\ntile_size = Vector2i(16, 16)\n")
         f.write("sources/0 = SubResource(\"atlas\")\n")
+
+    blocked_n = sum(r.count("#") for r in blocked_rows)
+    print(
+        f"region {rid} ({label}): {len(used)} tiles, {len(entities)} entities drawn "
+        f"({skipped_oob} off-grid skipped), {blocked_n} blocked, {len(walls_out)} walls"
+    )
+    return {
+        "id": rid,
+        "label": label,
+        "dir": f"r{rid}",
+        "blocked_rows": blocked_rows,
+    }
+
+
+def walkable(reg: dict, x: int, y: int) -> bool:
+    return 0 <= x < 128 and 0 <= y < 98 and reg["blocked_rows"][y][x] == "."
+
+
+def bfs(reg: dict, src: tuple[int, int], dst: tuple[int, int]) -> int | None:
+    """Tile length of a 4-dir path, or None."""
+    if not (walkable(reg, *src) and walkable(reg, *dst)):
+        return None
+    seen = {src}
+    frontier = [src]
+    dist = 0
+    while frontier:
+        nxt = []
+        for x, y in frontier:
+            if (x, y) == dst:
+                return dist
+            for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                if walkable(reg, nx, ny) and (nx, ny) not in seen:
+                    seen.add((nx, ny))
+                    nxt.append((nx, ny))
+        frontier = nxt
+        dist += 1
+    return None
+
+
+def zone_tiles(tr) -> list[tuple[int, int]]:
+    if "tiles" in tr:
+        return [tuple(t) for t in tr["tiles"]]
+    bx, by, bw, bh = tr["box"]
+    return [(bx + dx, by + dy) for dx in range(bw) for dy in range(bh)]
+
+
+def main() -> None:
+    OUT.mkdir(exist_ok=True)
+    res = ec.parse_gff(GAME / "RESOURCE.GFF")
+    objdb = ec.parse_gff(GAME / "SEGOBJEX.GFF")
+    gp = ec.parse_gff(GAME / "GPLDATA.GFF")
+    pal = load_palette(res)
+
+    (party_bmp,) = (None,)
+    ojff = {cid: p for cid, p in ec.resolve_type(objdb, "OJFF")}
+    party_bmps = []
+    for oid in PARTY_OIDS:
+        (bmp,) = struct.unpack_from("<H", ojff[oid], 12)
+        party_bmps.append(bmp)
+
+    regions = {}
+    for rid, fname, label in REGIONS:
+        rg = ec.parse_gff(GAME / fname)
+        regions[str(rid)] = export_region(rid, fname, label, rg, gp, objdb, pal)
+
+    # The party sprites are not ETAB-placed; make sure every region ships
+    # them so the demo can use the same files everywhere.
+    bmp_chunks = dict(ec.resolve_type(objdb, "BMP"))
+    for rid, _, _ in REGIONS:
+        for bmp in party_bmps:
+            if bmp in bmp_chunks and bmp not in {  # already written?
+                int(p.stem.split("_")[1]) for p in (OUT / f"r{rid}" / "sprites").glob("bmp_*.png")
+            }:
+                sw, sh, img = first_frame(bmp_chunks[bmp], flip=False)
+                pngio.write_rgba(
+                    OUT / f"r{rid}" / "sprites" / f"bmp_{bmp:04d}.png",
+                    sw,
+                    sh,
+                    indices_to_rgba(img, pal, True),
+                )
+
+    # BFS sanity: the start reaches every exit zone of its region, and
+    # each destination tile is walkable.
+    start_reg = regions[str(START["region"])]
+    assert walkable(start_reg, START["x"], START["y"]), "start tile is blocked"
+    for tr in TRANSITIONS:
+        reg = regions[str(tr["region"])]
+        zone = zone_tiles(tr)
+        open_tiles = [t for t in zone if walkable(reg, *t)]
+        assert open_tiles, f"transition {tr['name']}: no walkable source tile"
+        if tr["to"]:
+            dest = regions[str(tr["to"]["region"])]
+            assert walkable(dest, tr["to"]["x"], tr["to"]["y"]), (
+                f"transition {tr['name']}: dest blocked"
+            )
+        if tr["region"] == START["region"]:
+            path = bfs(start_reg, (START["x"], START["y"]), open_tiles[0])
+            if path is None:
+                print(f"WARN: transition {tr['name']}: no path from start to {open_tiles[0]}")
+            else:
+                print(f"transition {tr['name']}: reachable in {path} steps from start")
+        else:
+            print(f"transition {tr['name']}: source zone in the other region")
+
+    json.dump(
+        {
+            "start": START,
+            "party_bmps": party_bmps,
+            "regions": {k: {"id": v["id"], "label": v["label"], "dir": v["dir"]} for k, v in regions.items()},
+            "transitions": TRANSITIONS,
+        },
+        open(OUT / "demo.json", "w"),
+        indent=1,
+    )
+    print(f"wrote {OUT}/demo.json")
 
 
 if __name__ == "__main__":

@@ -1,55 +1,70 @@
-# port-spike: one Dark Sun region, live in Godot
+# port-spike: the Draj demo — the Slave Pens and the Arena in Godot 4
 
-The proof-of-life for the Godot port (docs/godot-port-readiness.md
-section C, realized 2026-09-19): export one region's tiles, walls, and
-entity sprites straight from the game files, rebuild it as a real Godot
-4 TileMap scene, and screenshot it. This is not the port and not a
-shipped tool; it is the smallest end-to-end walk of the data pipeline
-the port will use. It consumes only decoded, documented formats and
-modifies nothing.
+A working demo of Dark Sun: Shattered Lands' opening maps: walk the four
+preset gladiators through the Slave Pens and out into the Arena of Draj.
+Built on the region pipeline proven by the port-mining campaign
+(docs/godot-port-readiness.md); consumes only decoded, documented formats
+and modifies nothing in the game install.
 
 ## Run it
 
 ```sh
-python3 export_region.py                 # exports RGN02.GFF (DS1 start region)
+python3 export_region.py                 # exports regions 41 + 42 + demo.json
 godot --headless --import --path .      # first run only: import textures
-SPIKE_SHOT=/tmp/shot.png godot --path . # windowed run; saves a screenshot and quits
+godot --path .                           # play
 ```
 
-Requires the games under `.games/ds1/` and Godot 4.x on PATH. Stdlib-only
-Python; no cargo, no assets committed (generated/ is gitignored).
+Walk with arrow keys / WASD (hold to keep stepping) or click a tile to
+path there. Step on the exits and the demo switches regions, exactly
+where the real game's doors are. `SPIKE_SHOT=<file> godot --path .`
+saves a screenshot and quits; `SPIKE_DEMO=1` runs a scripted
+pens -> arena verification walk with screenshots.
 
-## What it proves
+Requires the games under `.games/ds1/` and Godot 4.x. Stdlib-only
+Python; `generated/` is gitignored.
 
-- The repo's Python GFF reader (`tools/gff-edit/scripts/extract-catalogue.py`)
-  parses regions and the SEGOBJEX object database well enough to drive a
-  real engine scene.
-- The DS1-RLE bitmap codec is fully reproducible from the docs
-  (presentation-formats.md 1): tiles, walls, and sprites decode to
-  palette indices; recolored through the engine-default CPAL 200 the
-  output matches region-render's composite of the same region.
-- The placement -> OJFF -> BMP binding (asset-bindings.md 1) puts every
-  entity at its correct world position.
-- The export is verifiable against the world dump: Region 2's 558
-  placements = 465 drawn + the 93 documented off-grid staging
-  placements; 6,598 blocked tiles; 645 wall sprites.
+## The maps and the exits (all pinned from the shipped bytecode)
+
+| Region | File | What it is |
+|---|---|---|
+| 41 | RGN29.GFF | the Slave Pens: Scar, Merzol, Dinos, the fountain; 117 triggers |
+| 42 | RGN2A.GFF | the Arena: crowd stands, the Announcer's booth, the central monster grate; the engine boot-cases this region |
+
+Transitions, decoded with tools/gpl-disasm from the regions' own move
+triggers:
+
+- Arena tiles (5,32)/(6,31)/(7,30), the west escape tunnel (GPL 3
+  @ 0x6b4, "Gladiators escaping! Guards! Sound the alarms!") ->
+  Pens tile (79,66).
+- Arena box (28,11,5x1), the holding gate (GPL 3 @ 0x73e) ->
+  Pens tile (113,27).
+- Pens box (112,27,3x1), the arena stair (GPL 137 @ 0xbc5, which asks
+  "Enter the arena?") -> Arena tile (30,13).
+- Pens box (79,65,1x6) is arrival-only: its handler (GPL 137 @ 0xd45)
+  is the story beat "The doors to the arena slam shut behind you."
+
+## Two rendering facts the demo pins down
+
+- Entity BMPs from SEGOBJEX decode vertically inverted relative to
+  in-game rendering; walls and tiles do not (region-render's source
+  says the same). The exporter flips tiles/walls and skips the flip
+  for entity sprites.
+- The world palette is RESOURCE.GFF `PAL` 1000. The CPAL 200 fallback
+  is the engine's pink lookup, not the Draj look.
 
 ## What it fakes (on purpose)
 
-- Static: entity frame 0 only, no SCMD animation, no triggers, no
-  movement, no palette cycling (region-render 0.8.0 already animates
-  those).
-- Region 2's 93 off-grid staging placements are skipped (they sit
-  outside the 2048x1568 world by design).
-- PLNR/PLAN frames would abort the export; Region 2 needs none (all its
-  tiles, walls, and sprites are DS1 RLE).
-- Camera starts at the region center; there is no input.
+No combat, no GPL execution (the transitions above are the decoded
+Tport sites, hard-wired), no door mechanics (the pens' cell doors stay
+locked; the escape tunnel is unblocked as the post-escape state), entity
+frame 0 only, no palette cycling. The start is pens tile (79,70), next
+to the arrival zone.
 
 ## Files
 
 | file | role |
 |---|---|
-| export_region.py | the exporter: RGN -> atlas + sprites + region.json + tileset.tres |
+| export_region.py | exports both regions (atlas, sprites, region.json, tileset.tres) + demo.json with the transition table and BFS reachability checks |
 | pngio.py | minimal RGBA PNG writer (stdlib) |
-| project.godot / main.tscn / main.gd | the Godot side: TileMapLayer + walls + y-sorted entities + camera |
+| project.godot / main.tscn / main.gd | the demo: TileMapLayer, y-sorted entities, party trail, click-to-walk BFS, region transitions |
 | generated/ | gitignored exporter output |
