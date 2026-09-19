@@ -262,8 +262,17 @@ def export_region(rid: int, fname: str, label: str, rg, gp, objdb, pal) -> dict:
             w = gmap[ty * 128 + tx] & 0x1F
             if w and w in wall_files:
                 name, fw, fh = wall_files[w]
+                # Placement per region-render (RegionTool.java 289-290):
+                # centered horizontally on the tile, bottom-aligned to
+                # the tile's own bottom edge.
                 walls_out.append(
-                    {"x": tx * 16, "y": (ty + 1) * 16 - fh, "w": fw, "h": fh, "png": name}
+                    {
+                        "x": tx * 16 + 8 - fw // 2,
+                        "y": (ty + 1) * 16 - fh,
+                        "w": fw,
+                        "h": fh,
+                        "png": name,
+                    }
                 )
     json.dump(
         {
@@ -355,15 +364,13 @@ def main() -> None:
         regions[str(rid)] = export_region(rid, fname, label, rg, gp, objdb, pal)
 
     # The party sprites are not ETAB-placed; make sure every region ships
-    # them so the demo can use the same files everywhere.
+    # them so the demo can use the same files everywhere. Always
+    # overwrite: a stale file here survives codec/palette/flip fixes.
     bmp_chunks = dict(ec.resolve_type(objdb, "BMP"))
     for rid, _, _ in REGIONS:
         for bmp in party_bmps:
-            if bmp in bmp_chunks and bmp not in {  # already written?
-                int(p.stem.split("_")[1]) for p in (OUT / f"r{rid}" / "sprites").glob("bmp_*.png")
-            }:
-                sw, sh, img = first_frame(bmp_chunks[bmp], flip=False)
-                pngio.write_rgba(
+            sw, sh, img = first_frame(bmp_chunks[bmp], flip=False)
+            pngio.write_rgba(
                     OUT / f"r{rid}" / "sprites" / f"bmp_{bmp:04d}.png",
                     sw,
                     sh,

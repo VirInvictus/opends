@@ -16,9 +16,13 @@ godot --path .                           # play
 
 Walk with arrow keys / WASD (hold to keep stepping) or click a tile to
 path there. Step on the exits and the demo switches regions, exactly
-where the real game's doors are. `SPIKE_SHOT=<file> godot --path .`
-saves a screenshot and quits; `SPIKE_DEMO=1` runs a scripted
-pens -> arena verification walk with screenshots.
+where the real game's doors are. For verification, capture the whole
+scripted pens -> arena walk as video (Movie Maker mode) and watch it:
+
+```sh
+SPIKE_DEMO=1 godot --path . --write-movie demo.avi --fixed-fps 30
+ffmpeg -i demo.avi -c:v libx264 -crf 26 -preset fast demo.mp4
+```
 
 Requires the games under `.games/ds1/` and Godot 4.x. Stdlib-only
 Python; `generated/` is gitignored.
@@ -51,6 +55,10 @@ triggers:
   for entity sprites.
 - The world palette is RESOURCE.GFF `PAL` 1000. The CPAL 200 fallback
   is the engine's pink lookup, not the Draj look.
+
+Occlusion: every wall, entity, and party sprite is bottom-anchored
+(position at the feet, texture lifted by the offset) inside recursive
+y-sort, so walls correctly hide whoever stands behind them.
 
 ## What it fakes (on purpose)
 

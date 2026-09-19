@@ -61,9 +61,9 @@ func _enter_region(rid: int, at: Vector2i) -> void:
 			parent.remove_child(n)
 			n.queue_free()
 	for w in data["walls"]:
-		_add_sprite($Walls, "%s/sprites/%s" % [dir, w["png"]], Vector2(w["x"], w["y"]))
+		_add_sprite($Walls, "%s/sprites/%s" % [dir, w["png"]], Vector2(w["x"], w["y"] + w["h"]))
 	for e in data["entities"]:
-		var s := _add_sprite($Entities, "%s/sprites/%s" % [dir, e["png"]], Vector2(e["x"], e["y"]))
+		var s := _add_sprite($Entities, "%s/sprites/%s" % [dir, e["png"]], Vector2(e["x"], e["y"] + e["h"]))
 		s.flip_h = bool(e["flip"])
 
 	trail.clear()
@@ -77,18 +77,22 @@ func _enter_region(rid: int, at: Vector2i) -> void:
 		var s := Sprite2D.new()
 		s.texture = load("res://generated/%s/sprites/bmp_%04d.png" % [dir, int(bmps[i])])
 		s.centered = false
+		s.offset = Vector2(0, -s.texture.get_height())
 		s.flip_h = i % 2 == 1
 		$Party.add_child(s)
-		s.position = Vector2(at * 16) + spread[i]
+		s.position = Vector2(at * 16) + spread[i] + Vector2(0, s.texture.get_height())
 		party.append(s)
 	$Camera.position = Vector2(at * 16)
 
 
-func _add_sprite(parent: Node2D, res: String, pos: Vector2) -> Sprite2D:
+func _add_sprite(parent: Node2D, res: String, bottom_left: Vector2) -> Sprite2D:
+	# Bottom-anchored: position sits at the sprite's bottom edge (offset
+	# lifts the texture), so the y-sort orders occlusion by the feet.
 	var s := Sprite2D.new()
 	s.texture = load("res://generated/" + res)
 	s.centered = false
-	s.position = pos
+	s.offset = Vector2(0, -s.texture.get_height())
+	s.position = bottom_left
 	parent.add_child(s)
 	return s
 
@@ -138,7 +142,7 @@ func _process(delta: float) -> void:
 	cooldown = maxf(0.0, cooldown - delta)
 	$UI/Label.text = label_text
 	if party.size() > 0:
-		$Camera.position = party[0].position + Vector2(8, 8)
+		$Camera.position = party[0].position + Vector2(8, -8)
 	if busy:
 		return
 	if not path.is_empty():
@@ -171,15 +175,15 @@ func _step(target: Vector2i) -> void:
 		path.clear()
 		return
 	busy = true
-	var from := Vector2(tile * 16)
-	var to := Vector2(target * 16)
+	var from := Vector2(tile * 16) + Vector2(0, 16)   # feet at the tile's bottom edge
+	var to := Vector2(target * 16) + Vector2(0, 16)
 	trail.push_front(from)
 	trail = trail.slice(0, 8)
 	var tw := create_tween()
-	tw.tween_property(party[0], "position", to, STEP_TIME)
+	tw.tween_property(party[0], "position", to + Vector2(2, 0), STEP_TIME)
 	for i in range(1, party.size()):
 		if trail.size() > i:
-			tw.parallel().tween_property(party[i], "position", trail[i] + Vector2(2, 2), STEP_TIME)
+			tw.parallel().tween_property(party[i], "position", trail[i] + Vector2(2, 0), STEP_TIME)
 	await tw.finished
 	tile = target
 	busy = false
