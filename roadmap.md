@@ -2362,3 +2362,77 @@ THE VERDICT (the mining boundary, evidence-backed):
   the engine-conversion path the frontier is now runtime
   semantics and from-scratch AD&D rules, not data: the data side
   is mined.
+
+### The port-mining campaign (2026-09-19; the Godot-readiness lane)
+
+Brandon directed the follow-up to the bestiary campaign's verdict the
+same week: set subagents on "the rest of what we need to start building
+a port to Godot", four at a time, GLM-5.3 on the hard jobs and
+GLM-5.3-Flash on structured breadth. Three waves of four read-only
+agents, integrated and committed wave by wave (1e9e59f..f525da7).
+
+Wave 1 (FBOV/exeinfo, rules tables, asset bindings, combat flow):
+docs/overlay-formats.md (the Borland overlay apparatus decoded end to
+end; the per-module relocation tables are static file data, superseding
+5.6.2's BSS claim; a static far-pointer resolution procedure with worked
+examples; the real load_resource entries 0x29ea4/0x2e69b and handler
+entries 0x3be27/0x40544, correcting ovr-map's syms and two docs),
+docs/rules-tables.md (the 168-byte rules block: class-group HP/THAC0
+rates, the class-to-save-group map, the 4x5 save table with formula and
+the dwarf/mul CON*2/7 bonus, the ability tables; no 2E-style additive
+CON bonus exists), docs/combat-flow.md (the combat loop to pseudocode:
+no initiative table, probabilistic priority vs d20, morale-threshold
+ordering, the 3-attacks-per-2-rounds parity alternator, XP = charrec+4
+dword over party count), docs/asset-bindings.md (item icons = OJFF
+bmp_id, spell icons = 20999 + spell id, portraits as dialog-service
+operands, DS2 has NO palette cycling, CBMP = BMP id space with a boolean
+flag).
+
+Wave 2 (spell/effect machinery, frame sweep, audio, screen flow):
+docs/spell-effects.md (module ownership, the cast engine step by step,
+the active-effect list, the enumerated dispatch surfaces, the in-combat
+save chain, the two-level special-attack enum, the duration formula) -
+and the wave-1 "module frame wall" DISSOLVED: every small segment word
+is an ordinary segtab byte-offset, verified by relocation-table
+membership; docs/audio-routing.md (DJ.DAT fully decoded, the driver
+dispatch, sound id -> BVOC id mappings, and the proved negative that
+DS1's music opcode is never emitted: no static music mapping exists);
+docs/screen-flow.md (the window manager is an active list, the screen
+inventory with open sites, the mode enum, input dispatch, dialog print
+service commands). Corrections: DS2's XP table exists (RESOURCE.GFF
+DATA:1000), the runtime save path uses the charrec descriptor byte (the
+five stored saves are write-only outside level-up), STATE holds 320
+slots, fight_enter's kick is the combat-music starter.
+
+Wave 3 (cinematics, chargen, exploration, small opens):
+docs/cinematics-ds1.md (the BMA frame codec: a row-addressed delta
+format over the existing DS1-RLE primitive, validated 708/708 frames and
+visually verified on renders; the ACF script opcodes; the player chain;
+the 19 CINE stills are BMA-codec containers image-extract misparses
+today), docs/chargen-flow.md (best-of-4 x (4d4 + racial + 4) stat
+generation with prime-stat floor 17, the DATA:1001 race x class grid,
+humans cannot multiclass, DS1 starts at level 3 / DS2 at 6-7, the
+dual-class 15/17 rule, level caps 9/15 with the DS2 XP bank cap, rest =
+8 hours on a seconds-scale master clock, and the RNG: Borland rand(),
+0..32767, deterministic - srand has no callers), docs/exploration-flow.md
+(click-to-move, greedy + wall-follow pathfinding with no A*, formation
+boxes and the gridlock-escape quirk, LOS = the 2D 0x80 bit, step-on-tile
+trigger firing, and no engine-side encounter roll in DS1). Corrections:
+XP row labels fixed through the class remap (the dips are psionicist/
+ranger; DS2 fixed its ranger tail), the DS2 cb14 high byte is the
+damage-resistance table index, the DS2 allegiance hostility matrix
+decoded, DS2 SPST is 15/34/1 bytes and save-file-only, menu flag
+polarity is ==1, INTRODUCE renders the speaker name, the TEXT bands are
+random-name banks, Getxy writes GSTATE not GNAME, the DS2 combat-music
+starter found, MONR offset corrected to 0x80be4.
+
+THE VERDICT: the knowledge side of a Godot port is mined out. The
+layer-by-layer checklist and the honest remainder live in
+docs/godot-port-readiness.md: every layer consumes decoded, generated,
+anchor-gated sources; what remains is engineering (image-extract's BMA
+extension, asset exporters, the Godot project itself) plus an explicit
+runtime-capture list of BSS-resident behaviors (walk speed, scroll
+margins, cine tick rate, GNAME init, the memorized-slot model, ~35
+status bits, the morale-flee transition, loot creation, order kinds,
+region-load save/restore). The zero-new-RE starting point is the one-
+region render spike: every input it consumes already exists.
