@@ -76,6 +76,14 @@ feature.
 ### C. Where to start (zero new RE needed)
 
 The proof-of-life spike: export one region's tiles/walls/sprites to
-atlases, drop the world-dump placements into a Godot tilemap, render a
-static region with entities standing in it. Everything that spike
+atlases, drop the world-dump placements into a Godot tilemap, and render
+a static region with entities standing in it. Everything that spike
 consumes is already decoded, generated, and anchor-gated.
+
+DONE 2026-09-19: the spike exists and works. `port-spike/` exports DS1
+RGN02 (the start region) to a Godot 4 TileMap scene; the render matches
+region-render's composite of the same area, and the export counts
+reconcile with the world dump (558 placements = 465 drawn + the 93
+documented off-grid staging records; 6,598 blocked; 645 walls). The
+next engineering step beyond it is the image-extract BMA extension and
+the exporters' graduation from spike to tool.
