@@ -34,6 +34,20 @@ REGIONS = [(41, "RGN29.GFF", "Slave Pens"), (42, "RGN2A.GFF", "Arena")]
 START = {"region": 41, "x": 79, "y": 70}  # pens, just south of the arrival zone
 PARTY_OIDS = [300, 305, 307, 313]  # Cermak, Saria, Cilla, K'ratchek
 
+# The first arena fight. The shipped spawn scripts place object 2039
+# (request 7) at tiles (59,15)/(53,21)/(6,18)/(11,23); its combat record
+# is a pool reference (action 3, index 315) rather than inline data, so
+# the demo assigns spawn stats (documented as demo values, not mined
+# data). Fight N spawns 2+N monsters, capped.
+FIGHT = {
+    "monster_oid": 2039,
+    "monster": {"bmp": 2205, "hp": 12, "ac": 6, "thac0": 19,
+                "dice": 1, "sides": 6, "bonus": 0, "speed_s": 0.45,
+                "attack_s": 1.2},
+    "spawn_tiles": [[59, 15], [53, 21], [6, 18], [11, 23]],
+    "zone_box": [22, 18, 16, 10],  # arena floor: entering starts the fight
+}
+
 # Transitions pinned from the shipped GPL handlers (see README for the
 # disassembly evidence). Tiles/boxes in the FROM region; landing tile in
 # the TO region.
@@ -352,7 +366,8 @@ def main() -> None:
     pal = load_palette(res)
 
     (party_bmp,) = (None,)
-    ojff = {cid: p for cid, p in ec.resolve_type(objdb, "OJFF")}
+    ojff = {c: p for c, p in ec.resolve_type(objdb, "OJFF")}
+    rdff = {c: p for c, p in ec.resolve_type(objdb, "RDFF")}
     party_bmps = []
     for oid in PARTY_OIDS:
         (bmp,) = struct.unpack_from("<H", ojff[oid], 12)
@@ -366,16 +381,18 @@ def main() -> None:
     # The party sprites are not ETAB-placed; make sure every region ships
     # them so the demo can use the same files everywhere. Always
     # overwrite: a stale file here survives codec/palette/flip fixes.
+    # Also ship the arena fight monster's sprite (FIGHT.monster_oid).
     bmp_chunks = dict(ec.resolve_type(objdb, "BMP"))
+    extra = party_bmps + [FIGHT["monster"]["bmp"]]
     for rid, _, _ in REGIONS:
-        for bmp in party_bmps:
+        for bmp in extra:
             sw, sh, img = first_frame(bmp_chunks[bmp], flip=False)
             pngio.write_rgba(
-                    OUT / f"r{rid}" / "sprites" / f"bmp_{bmp:04d}.png",
-                    sw,
-                    sh,
-                    indices_to_rgba(img, pal, True),
-                )
+                OUT / f"r{rid}" / "sprites" / f"bmp_{bmp:04d}.png",
+                sw,
+                sh,
+                indices_to_rgba(img, pal, True),
+            )
 
     # BFS sanity: the start reaches every exit zone of its region, and
     # each destination tile is walkable.
@@ -400,12 +417,38 @@ def main() -> None:
         else:
             print(f"transition {tr['name']}: source zone in the other region")
 
+    # Party stats: hp/psp from charrec (+8), AC from the combat block
+    # (+26, current incl. their kit), THAC0 from combat (+31). Attack
+    # dice are demo values (the presets' shipped attack slot is the
+    # unarmed 1x1d1).
+    party_stats = []
+    for oid in PARTY_OIDS:
+        blocks = ec.walk_rdff(rdff[oid], oid)
+        charrec = next((b.payload for b in blocks
+                        if b.load_action == 3 and b.type == 4 and len(b.payload) > 40), None)
+        combat = next((b.payload for b in blocks
+                       if b.type == 2 and b.load_action == 1 and len(b.payload) >= 58), None)
+        hp = ec.u16(charrec, 8)
+        ac = ec.i8(combat, 26) if combat else 10
+        thac0 = ec.i8(combat, 31) if combat else 20
+        party_stats.append({"oid": oid, "hp": hp, "max_hp": hp,
+                            "ac": ac, "thac0": thac0,
+                            "dice": 1, "sides": 8, "bonus": 1})
+
+    # Transitions: the break-out (escape tunnel) stays GATED until the
+    # arena loop is done, per the demo scope.
+    gated = [tr for tr in TRANSITIONS if tr["name"] == "escape tunnel"]
+    live = [tr for tr in TRANSITIONS if tr["name"] != "escape tunnel"]
+
     json.dump(
         {
             "start": START,
             "party_bmps": party_bmps,
+            "party_stats": party_stats,
+            "fight": FIGHT,
             "regions": {k: {"id": v["id"], "label": v["label"], "dir": v["dir"]} for k, v in regions.items()},
-            "transitions": TRANSITIONS,
+            "transitions": live,
+            "gated_transitions": gated,
         },
         open(OUT / "demo.json", "w"),
         indent=1,

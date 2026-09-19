@@ -19,6 +19,11 @@ y_sort_enabled = true
 [node name="Party" type="Node2D" parent="."]
 y_sort_enabled = true
 
+[node name="Monsters" type="Node2D" parent="."]
+y_sort_enabled = true
+
+[node name="Floats" type="Node2D" parent="."]
+
 [node name="Camera" type="Camera2D" parent="."]
 zoom = Vector2(2, 2)
 position = Vector2(1264, 1128)
@@ -28,6 +33,30 @@ position = Vector2(1264, 1128)
 [node name="Label" type="Label" parent="UI"]
 offset_left = 12.0
 offset_top = 8.0
-offset_right = 400.0
-offset_bottom = 32.0
+offset_right = 500.0
+offset_bottom = 40.0
+theme_override_font_sizes/font_size = 22
 text = "Draj"
+
+[node name="Banner" type="Label" parent="UI"]
+offset_left = 60.0
+offset_top = 40.0
+offset_right = 1220.0
+offset_bottom = 96.0
+theme_override_font_sizes/font_size = 26
+text = " "
+
+[node name="Intro" type="CanvasLayer" parent="."]
+layer = 5
+
+[node name="BG" type="ColorRect" parent="Intro"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 1)
+
+[node name="Frame" type="TextureRect" parent="Intro"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+stretch_mode = 5
