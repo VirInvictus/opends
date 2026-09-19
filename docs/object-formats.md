@@ -110,7 +110,7 @@ read straight from the shipped data.
 | 29 | u8 | allegiance enum: 1 = party (PC templates + joinables), 2 = hostile placement, 4 = neutral/friendly default | VB + wave-2 census |
 | 30 | u8 | data (2 dominant) | LA |
 | 31 | i8 | THAC0 | VB+XC (tracks level inversely; DS1 Manual anchors: Dune Reaper 13, Mountain Stalker 11, Sand Howler 17) |
-| 32 | u8 | priority (5/6/7) | LA |
+| 32 | u8 | priority (5/6/7); initiative-like: the per-tick act test compares it against a d20 (0..19), higher acts more often (combat-flow.md 4) | LA + instruction |
 | 33 | u8 | flags (0x20 in 255/291) | LA |
 | 34..39 | u8[6] | stats STR DEX CON INT WIS CHA | VB (Cilla == played save) |
 | 40..55 | char[16] | name, NUL-padded (14 + 2 spill; tail bytes past NUL can hold stale bytes) | VB |
@@ -130,7 +130,7 @@ ready/weapon/pack is 9999; PCs in CHARSAVE carry `0x8000|n` at
 | 20 | u8 | status (1 in 347/352) | VB |
 | 21 | u8 | allegiance enum: 0 = party, 7 = hostile, 4 = friendly/neutral, 1 = placed-neutral (city faction / hostile-later), 5 = mercenaries/wild attackables; 3 and 6 singletons | VB + wave-2 census |
 | 22 | i8 | **THAC0** (wave 2: the engine reads it at DS2 EXE file 0x5c6e9: `imul ax,ax,0x31; les bx,[0x19c9]; mov al,[es:bx+0x16]`, the byte-for-byte mirror of DS1's +31 read at 0x58113; warrior PCs carry 21 - level; Umber Hulk/Mindflayer 11 = the 2e Manual value; Tarrasque stores -5) | VB (instruction) + XC |
-| 23 | u8 | priority (DS1's +32 byte relocated: same {5,6,7} domain, 6-dominant; 7 = PC templates, 5 = big monsters) | VB distribution |
+| 23 | u8 | priority (DS1's +32 byte relocated: same {5,6,7} domain, 6-dominant; 7 = PC templates, 5 = big monsters); same per-tick act-test role as DS1 (combat-flow.md 4) | VB distribution + instruction |
 | 24 | u8 | flags (0/0x20, mirrors DS1 +33) | VB |
 | 25..30 | u8[6] | stats STR DEX CON INT WIS CHA | VB (== charrec stats, all sampled pairs) |
 | 31..32 | u16 | constant 4 in 335/352; unknown | H |
@@ -149,8 +149,8 @@ byte, and matches `file-formats.md` 3.4 (SAVE/6).
 
 | Off | Type | Field | Conf |
 |---:|---|---|---|
-| 0 | u32 | XP value | XC-partial (several filler-1000 rows) |
-| 4 | u32 | high/next XP | LA |
+| 0 | u32 | XP value | XC-partial (several filler-1000 rows); NEVER read on the combat XP-award path |
+| 4 | u32 | high/next XP for PCs; for MONSTER rows this is the dword the engine awards on death, divided by party count (combat-flow.md 8; DS1 0x592c2, DS2 0x5d105..0x5d11c) | LA + instruction |
 | 8 | u16 | base HP | VB (== combat hp) |
 | 10 | u16 | high HP | VB |
 | 12 | u16 | base PSP | VB |
@@ -312,6 +312,15 @@ DS1: `GPLDATA.GFF` chunk `IT1R` id 1 (the corpus's only IT1R),
 115 records x 20 bytes. The EXE caches it by pushing FOURCC
 `IT1R` res id 1 and `NAME` id 1 (loader at DS1 EXE file
 0x565f5ff.; libgff `gff_manager_ds1_read_name` agrees).
+
+> **Correction 2026-09-19** ([`asset-bindings.md`](asset-bindings.md)
+> 6, byte audit of the shipped chunk): this table's column map
+> needs re-pinning before item-editor work. Offset 6 is omitted
+> from the table but exists in the data (heavily populated, 250
+> dominant); col 5 is nonzero in 15 rows {1,2,7,11,15} (listed
+> here as always-0); and the col 19 "0 (VB)" claim is wrong (45
+> rows carry {0,1,2,6}). None of these columns is the icon index
+> (that comes from the OJFF layer, asset-bindings.md 1).
 
 | Off | Type | Field | Conf |
 |---:|---|---|---|

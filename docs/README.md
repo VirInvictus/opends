@@ -70,6 +70,10 @@ attribute-everything policy; see also the repo-root
 | [`file-formats.md`](file-formats.md) | The GFF container and every chunk layout we've locked. |
 | [`object-formats.md`](object-formats.md) | Object database records (creatures, items, OJFF), the spell power tables, MONR. |
 | [`region-formats.md`](region-formats.md) | Maps and geography: RMAP/GMAP bits, ETAB placements, trigger registrations. |
+| [`overlay-formats.md`](overlay-formats.md) | The Borland overlay apparatus: segment load table, module descriptors, relocation tables, the INT 3Fh dispatcher, static far-pointer resolution. |
+| [`rules-tables.md`](rules-tables.md) | The AD&D 2E rules data: the rules block, saving throws, THAC0 derivation, XP tables, ability-score tables. |
+| [`combat-flow.md`](combat-flow.md) | The native combat loop: entry, rounds, initiative, attack resolution, death, XP, morale. |
+| [`asset-bindings.md`](asset-bindings.md) | Engine-side asset bindings: item/spell icons, portraits, palette cycling, CBMP. |
 | [`gpl-vm.md`](gpl-vm.md) | The GPL VM execution and data-model spec (the reimplementation keystone). |
 | [`presentation-formats.md`](presentation-formats.md) | Images, UI resources (BUTN/WIND/APFM/FONT), audio, cinematics; the asset census. |
 | [`dialogs.md`](dialogs.md) | The dialog machinery, the full text corpus census, and the conversion shape. |

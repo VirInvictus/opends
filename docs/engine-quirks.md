@@ -23,6 +23,14 @@ but he did 1 damage per hit. The cached weapon was `1d1`; STR
 the top index, the lookup likely returns 0 or hits whatever's
 at that memory location (which evaluated to 0 in this case).
 
+**Correction 2026-09-19** ([`rules-tables.md`](rules-tables.md) 4):
+the ability tables are static DGROUP arrays read as
+`table[base + stat]` with NO clamp (getters DS1 0x5ea2d..0x5eaaa,
+table bases 0x7a8..0x843). STR 99 reads `0x7a8 + 99`, which lands
+inside the NEIGHBOURING DEX AC table (values in the -3..-5
+range): a negative bonus, not +0. The observed "1 damage" is the
+damage floor, not a zero lookup. The modding advice below stands.
+
 **Where it matters**:
 - `ds1-party-edit.py` documents this in the cookbook.
 - `save-inspect edit-pc` could grow a warning if a stat flag is

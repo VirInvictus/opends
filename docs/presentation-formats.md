@@ -26,8 +26,9 @@ through the encoder):
 Palette: PAL/CPAL = 768 bytes of 6-bit RGB. One known bad frame
 corpus-wide (DS1 RESOURCE ICON 0x7f9 frame 2, noted in
 image-extract). VGA colour cycling is implemented in
-region-render 0.8.0 (four boot-time ranges, DS1; DS2
-approximates, init site still open).
+region-render 0.8.0 (four boot-time ranges, DS1). DS2 has NO
+palette cycling: the pump machinery ships but nothing ever
+registers a range (asset-bindings.md 4).
 
 Per-kind facts: BMP world sprites 2,543 DS1 / 3,974 DS2; TILE
 16x16 tiles 6,370 / 3,043; WALL 664 DS1-only; ICON 292 / 400
@@ -64,10 +65,14 @@ BMP, 24-byte title). The struct definitions are libgff
   index bytes) from +776; ink palette indices 0xFE/0x14.
 - EBOX (168 bytes) and ACCL (accelerator table) match libgff.
 
-Open: which record field indexes PORT (dialog portraits), and
-the item/spell inventory-icon mapping (ICON ids do not derive
-from BMP ids; the base-stat tables have no icon column: the
-mapping is engine-side).
+RESOLVED 2026-09-19 ([`asset-bindings.md`](asset-bindings.md)):
+the item inventory ICON id is the OJFF record's `bmp_id` field
+(numerically the item's world-sprite id, read from the ICON chunk
+type and cached per template); spell icons are `20999 +
+spell_id`; the PORT id is a per-dialog-line operand of the
+dialog print service, sourced from the GPL opcode arguments, not
+a field of any record table; CBMP ids share the BMP id space,
+selected by a boolean load flag.
 
 ## 3. Audio
 
