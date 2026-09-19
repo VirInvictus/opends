@@ -73,7 +73,10 @@ attribute-everything policy; see also the repo-root
 | [`overlay-formats.md`](overlay-formats.md) | The Borland overlay apparatus: segment load table, module descriptors, relocation tables, the INT 3Fh dispatcher, static far-pointer resolution. |
 | [`rules-tables.md`](rules-tables.md) | The AD&D 2E rules data: the rules block, saving throws, THAC0 derivation, XP tables, ability-score tables. |
 | [`combat-flow.md`](combat-flow.md) | The native combat loop: entry, rounds, initiative, attack resolution, death, XP, morale. |
+| [`spell-effects.md`](spell-effects.md) | The spell/effect machinery: cast path, dispatch surfaces, the active-effect list, saves, special attacks, durations. |
 | [`asset-bindings.md`](asset-bindings.md) | Engine-side asset bindings: item/spell icons, portraits, palette cycling, CBMP. |
+| [`audio-routing.md`](audio-routing.md) | How ids become sound and music: DJ.DAT, the driver dispatch, SFX id spaces, speech. |
+| [`screen-flow.md`](screen-flow.md) | The window manager, the screen inventory, mode transitions, input dispatch, the dialog print service. |
 | [`gpl-vm.md`](gpl-vm.md) | The GPL VM execution and data-model spec (the reimplementation keystone). |
 | [`presentation-formats.md`](presentation-formats.md) | Images, UI resources (BUTN/WIND/APFM/FONT), audio, cinematics; the asset census. |
 | [`dialogs.md`](dialogs.md) | The dialog machinery, the full text corpus census, and the conversion shape. |

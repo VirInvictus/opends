@@ -130,8 +130,9 @@ it.
   captured, runtime-built like the gpl-vm.md field tables).
 - The per-row key of the DS1 3000-family / DS2 21235-family icon sites
   (structure offsets and bases pinned; the row key inferred).
-- Which dialog command index (0..4) maps to the portrait case (the cs
-  jump table lives at an unresolved segment base).
+- RESOLVED (screen-flow.md 6): the dialog command indices are pinned and
+  the portrait case is command 1 (jump table file 0x7D616 DS1 / 0x884B7
+  DS2).
 - The DS2 RESOURCE CBMP 11001/11005/13009 id composition.
 - The DS1 combat-block +24 "icon" field (18 nonzero rows per
   object-formats.md) could not be independently checked against the ICON
