@@ -74,6 +74,9 @@ attribute-everything policy; see also the repo-root
 | [`rules-tables.md`](rules-tables.md) | The AD&D 2E rules data: the rules block, saving throws, THAC0 derivation, XP tables, ability-score tables. |
 | [`combat-flow.md`](combat-flow.md) | The native combat loop: entry, rounds, initiative, attack resolution, death, XP, morale. |
 | [`spell-effects.md`](spell-effects.md) | The spell/effect machinery: cast path, dispatch surfaces, the active-effect list, saves, special attacks, durations. |
+| [`chargen-flow.md`](chargen-flow.md) | Character creation, dual/multi-class, level-up, rest and memorization, the RNG, the DATA chunks. |
+| [`exploration-flow.md`](exploration-flow.md) | Exploration movement: click-to-move, blocking, pathfinding, line of sight, triggers, region transitions, viewport. |
+| [`cinematics-ds1.md`](cinematics-ds1.md) | The DS1 BMA frame codec, the ACF script opcodes, and the cinematic player chain. |
 | [`asset-bindings.md`](asset-bindings.md) | Engine-side asset bindings: item/spell icons, portraits, palette cycling, CBMP. |
 | [`audio-routing.md`](audio-routing.md) | How ids become sound and music: DJ.DAT, the driver dispatch, SFX id spaces, speech. |
 | [`screen-flow.md`](screen-flow.md) | The window manager, the screen inventory, mode transitions, input dispatch, the dialog print service. |

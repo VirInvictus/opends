@@ -57,7 +57,7 @@ games (VB):
 
 | Offset | Size | Meaning |
 |---|---|---|
-| 0x000..0x03b | 13 far ptrs | GNAME pseudo-array slots (n = 0x20..0x2e; written by engine services such as Getxy) |
+| 0x000..0x03b | 13 far ptrs | GNAME pseudo-array slots (n = 0x20..0x2e; CORRECTED 2026-09-19: wave 3 found NO engine writer of these slots - Getxy writes GSTATE tile cells, not GNAME; who initializes the 13 pointers is runtime-capture territory) |
 | 0x034/0x074 | 0x40 each | the two RETVAL param-block save slots |
 | 0x0b4..0x0d3 | 8 dwords | parameter registers P0..P7 (expression results) |
 | 0x0d4..0x0f3 | 8 far ptrs | per-param result sinks (defaults to &accum) |
@@ -215,11 +215,11 @@ Value-producing engine calls:
 
 | op | semantics |
 |---|---|
-| 0x52 Rand N | r = RNG(); A = (r * (N+1)) / 32768 (both games share the trampoline `far 0:0x822`; raw RNG range unverified) |
+| 0x52 Rand N | r = RNG(); A = (r * (N+1)) / 32768 (RESOLVED 2026-09-19: `far 0:0x822` is an MZ-relocated call to Borland rand() at file 0x5c22 DS1 / 0x5a22 DS2: seed = seed*0x15A4E35 + 1; return (seed >> 16) & 0x7FFF. Range 0..32767 inclusive; srand has ZERO callers, so the stream is deterministic from 0 per run) |
 | 0x20 Bitsnoop a, b | A = ((a & b) == b) (all bits of b set in a) |
 | 0x1E/0x1F Nametonum/Numtoname | A = -eval() (byte-identical pair; NAME(-N) conversion) |
 | 0x0F Getstatus v | A = engine_call(v) |
-| 0x09 Getxy v | engine_call writes the GNAME pseudo-array x/y slots (accum untouched) |
+| 0x09 Getxy v | engine_call writes the x/y tile words (CORRECTED 2026-09-19: the service, DS2 0x1d40:0x6e6 = file 0x22ce6, writes GSTATE cells 0x3c10:0x1b/0x1d/0x1f, not GNAME slots; the Fight handler's pushed [VMCFG+0x1b/0x1d] words are those GSTATE cells) (accum untouched) |
 | 0x80 GetRange a, b | A = engine_call(a, b) |
 | 0x0C Changemoney v | engine money service |
 | 0x3D Readorders S | reads the in-flight request-table slot S into the accum (RETVAL-safe for this reason) |
@@ -289,7 +289,7 @@ World-object ops:
 | 0x34 Getparty | party enumerator (seed 9999 = first); also sets the VM:0x363 register |
 | 0x45/0x46 Join/Leaveparty | stubs 0x2f / 0x34 |
 | 0x1A Nextto a, b | engine distance <= 1 |
-| 0x35 Fight | enters combat at the precomputed tile (the words the Getxy service writes) |
+| 0x35 Fight | enters combat at the precomputed tile (the GSTATE words the Getxy service writes) |
 | 0x24 Shop | stub 0x98 |
 | 0x21 Award who, amount | 0x7FFE awards the FULL amount to EACH party member (no split); 0x7FFF no-op |
 | 0x39 Give / 0x5C Take / 0x2F Drop | inventory transfer stubs; Take with 0x7FFE sums across the party up to the count; Drop retries per member while unsuccessful |
@@ -303,7 +303,7 @@ UI and strings:
 | 0x38 Getyn | yes/no prompt; accum = answer |
 | 0x42 InputString | up to 40 chars into the variable's result sink (no-op when the sink is the accum) |
 | 0x43/0x44 InputNumber/Money | numeric inputs into the sink |
-| 0x2C Log | decode packed string, display via stub 0x89 (string sub-types 1 = append into the work buffer, 2/5 = other readers) |
+| 0x2C Log | decode packed string, display via stub 0x89 (sub-types RESOLVED 2026-09-19: 5 = the 16-bit-window codec with output sanitized to 0x20..0x7e (control codes render as spaces) and the 0x03 terminator replaced by NUL, cap 299 bytes; 2 = uncompressed with each payload byte ROTATED LEFT 2 bits, terminator = stored 0xC0; 1 = INTRODUCE: appends the current combatant's name (combat_array[idx]+0x28 of VM:0x369) into the sink) |
 | 0x4F/0x50/0x51 prints | style + text (0x4F passes the SINK pointer, not the value); 0x51 newline |
 | 0x2A/0x54 Clearpic/Showpic | picture slot management; id space overlay-side |
 | 0x5D/0x5F Sound/Music | one word argument to the audio services (DS1 0x1a0a:0x663/0x672, DS2 0x1d40:0xb00/0xb0f) |

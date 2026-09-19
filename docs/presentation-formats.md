@@ -102,6 +102,10 @@ selected by a boolean load flag.
 
 ## 4. Cinematics
 
+(DECODED 2026-09-19: the DS1 BMA/ACF codecs are fully specified in
+[`cinematics-ds1.md`](cinematics-ds1.md); the section below is the
+pre-decode inventory, its open item resolved.)
+
 - **DS1**: CINE.GFF is self-contained: BMA 11 (2.5 MB, ids
   2..12), ACF scripts 13 (pairs with BMA N), 19 static
   320x200 stills, palettes, cinematic music (GSEQ 26..29). BMA

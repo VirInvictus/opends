@@ -24,7 +24,7 @@ its open caveat).
 | Combat driver overlay (entry gate, placement orders, teardown) | ovr22 (0x6a3b0..0x6bb96), 49 stubs | ovr19 (0x72ea0..0x747e6), 49 stubs, order-identical |
 | Combat resolution library (round init, AI, resolver, damage, death, XP) | ovr5 (0x56cc0..0x5a031), 43 stubs | ovr4 (0x5a920..0x5ea7c), same 43 + 3 extra |
 | Combatant placement (writes the position table) | ovr21: 0x69446, 0x6970c | ovr18: 0x70f22, 0x711d4 |
-| MONR random-encounter selection | ovr38 local 0xcb4 (file 0x80bc4) | ovr35 (~0x8d32e pushes) |
+| MONR random-encounter selection | ovr38 local 0xcb4 (file 0x80be4; Request code 8, fired via the GPL Request bridge 0xa9aa) | ovr35 (~0x8d32e pushes) |
 | Resident combat executors (attack/AI glue) | 0x9a00..0xd663, 0x1ae40..0x26cd6 | 0xd100..0xf900, 0x1e000..0x2b000 |
 
 The ovr5/ovr22 and ovr4/ovr19 stub tables are position-by-position twins.
@@ -84,7 +84,7 @@ local 0x13b4 (file 0x58074) picks a default victim when GSTATE[0x19] == 0.
 Encounter sources:
 
 - Script triggers: GPL fight and attacktrigger-registered scripts.
-- MONR random encounters (DS1 ovr38 local 0xcb4, file 0x80bc4): loads MONR
+- MONR random encounters (DS1 ovr38 local 0xcb4, file 0x80be4; wave 3: there is NO engine-side per-step roll in DS1's resident movement code - the chance/conditions are script-side, via Request code 8): loads MONR
   chunk 1, count = size/0x2a (42-byte records); per record walks three
   4-byte candidate slots (rec+si*4+{2,4}, si 0..2), rolls d10
   (RNG*10/32768), keeps the candidate nearest a key; group count =
@@ -118,7 +118,7 @@ for slot in 0..0x2f where STATE[slot].type == 2:
   ci = STATE[slot].combat_idx
   if combat[ci].status(+0x1c) != 1: morale=-1; movepts=0; continue
   if slot >= 5 and enumerate(...,0x180001,...) <= 0: continue   ; needs a target
-  if combat[ci].allegiance & 3 == 0: continue                   ; NEUTRALS (4) never act
+  if combat[ci].allegiance & 3 == 0: continue                   ; DS1: neutrals (4) never act; DS2's gate is a 1<<allegiance mask test instead (see below)
   CSTATE2[ci*4+0xd9] = 20 (DS1) / 30 (DS2) + dex_reaction(slot) + status_flags(slot)
       ; dex_reaction = 0x508:0x66 = ovr10 stub 14 (0x5ea5f): the rules-tables DEX missile table
       ; status_flags  = 0x5b8:0xe8 = ovr32 stub 40 (0x7c3b1): -2/+2 per active-effect flag bits (DS2's twin at ovr28 stub 13 is richer, incl. a +40 category)
@@ -352,7 +352,7 @@ Still open after wave 2:
 - No surprise-round dice roll; only the one-shot first-round flag and the
   directional ambush bonus.
 - The combat modules never read XP thresholds or level-up tables.
-- Neutral combatants (allegiance & 3 == 0) never act; monsters with no
+- DS1 neutral combatants (allegiance & 3 == 0) never act (DS2 uses the hostility-mask form; the full DS2 allegiance hostility matrix is decoded in object-formats.md 2.2); monsters with no
   0x180001 target are inert.
 - HP floors at 0; the hp+10 band is status, not negative HP.
 - The XP award path never reads charrec+0, only +4.

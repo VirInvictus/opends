@@ -131,5 +131,9 @@ Fine looping lives inside MEL/AIL, invisible at this boundary.
 3. The DS2 per-song enable flags' runtime writer (BSS-filled; port can
    ignore).
 4. The FVOC "foreground" trigger condition ([0x3411+0x3a] device flag).
-5. Which overlay callers set DJ mode 1 vs 3 and the combat subclass
-   argument (the state machine itself is fully decoded).
+5. ~~Which overlay callers set DJ mode 1 vs 3~~ RESOLVED (wave 3): DS2's
+   combat-music starter is the combat resolution library ovr4 (case arm
+   0x5af46: `push 3; call far 0x5d8:0xf2` = ovr19 stub 42 -> DJ mode
+   setter 0x1834:0x0001), with companions `push 2` (stop) at ovr4 0x5b0a5
+   and GSTATE-conditional restorers at ovr31 0x8864b / ovr35 0x8b47a.
+   Mode 1 vs 2 site identities remain unattributed.

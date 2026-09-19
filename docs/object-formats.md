@@ -123,12 +123,12 @@ ready/weapon/pack is 9999; PCs in CHARSAVE carry `0x8000|n` at
 
 | Off | Type | Field | Conf |
 |---:|---|---|---|
-| 14..15 | u16 | special-attack candidate: low byte = index into the DS2 special-attack scheme, high byte = secondary parameter (1..16, present on multi-ability monsters); DS2 anchors: Mindflayers 12, Verini spit 15, Giant Skeleton 17, Umber Hulk 19, fear 8 | H-leaning (book-correlated rows) |
+| 14..15 | u16 | special-attack word: low byte = index into the DS2 special-attack scheme (mapped to effect ids through ovr29's jump tables, spell-effects.md 5); high byte CORRECTED (wave 3): the DEFENSE-side resistance table index - indexes an 18-word damage-type resistance/immunity bitmask table at file 0x4F588 (companion +0x24), tested against attacker damage-type bits with halving arithmetic (0x8513a); elementals carry nonzero hi (Fire Elemental 9 -> bits {3,4,5,12}, Rybochka 16 -> 0xffff = skip); this is DS1's +23 special_defense slot surviving inside the +14 word | H-leaning + instruction (wave 3) |
 | 16..17 | u16 | data remnant (0 in 336/352) | H |
 | 18 | i8 | AC (current) | VB+XC (drakes -2/-4/-3 == charrec base) |
 | 19 | u8 | move (current) | VB |
 | 20 | u8 | status (1 in 347/352) | VB |
-| 21 | u8 | allegiance enum: 0 = party, 7 = hostile, 4 = friendly/neutral, 1 = placed-neutral (city faction / hostile-later), 5 = mercenaries/wild attackables; 3 and 6 singletons | VB + wave-2 census |
+| 21 | u8 | allegiance enum (wave 3: a 12-value enum consumed as `1 << allegiance` against hostility MASKS; the directed matrix at DS2 0x237dd: bucket {0,4,5,6} hostile to {7,8,9,10,11}; {2,7,8} hostile to {3,4,6,8,9,10,11}; {3,9,10} hostile to {2,5,6,8,11}; XP award mask 0xf80 = allegiances 7..11 only): 0 = party, 7 = hostile, 4 = friendly/neutral, 1 = placed-neutral (city faction / hostile-later), 5 = mercenaries/wild attackables; 6 = a party-side ally monsters attack but whose kills award no XP (4 rows: Jestris + Warriors 458-460); 3 = an infighting wildcard monster faction member (Surrakina, id 10) | VB + wave-3 instruction |
 | 22 | i8 | **THAC0** (wave 2: the engine reads it at DS2 EXE file 0x5c6e9: `imul ax,ax,0x31; les bx,[0x19c9]; mov al,[es:bx+0x16]`, the byte-for-byte mirror of DS1's +31 read at 0x58113; warrior PCs carry 21 - level; Umber Hulk/Mindflayer 11 = the 2e Manual value; Tarrasque stores -5) | VB (instruction) + XC |
 | 23 | u8 | priority (DS1's +32 byte relocated: same {5,6,7} domain, 6-dominant; 7 = PC templates, 5 = big monsters); same per-tick act-test role as DS1 (combat-flow.md 4) | VB distribution + instruction |
 | 24 | u8 | flags (0/0x20, mirrors DS1 +33) | VB |

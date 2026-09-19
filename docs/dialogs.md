@@ -90,7 +90,14 @@ A Godot dialog system takes:
 5. The static text assets (section 2), with the 19 packed
    strings that carry real control codes preserved.
 
-Open: menu flag polarity; INTRODUCE's exact rendering; whether
-computed-writer strings should be reproduced or frozen; the
-TEXT-pool consumers (engine random naming); speaker-mutating
-opcodes beyond setother (setthing never appears in GPLDATA).
+RESOLVED 2026-09-19 (wave 3): menu availability polarity is `flag == 1`
+(nonzero, literally 1) = show the entry, 0 = hide (DS1 0xcbcc, DS2
+0xf21e; the evaluator only produces 0/1 in practice). INTRODUCE renders
+as the current speaker's name: the sub-type-1 string arm appends the
+combat-array name field of the VM:0x369 combatant into the sink at decode
+time (gpl-vm.md 0x2C row has the details). The three unused TEXT-pool
+bands are the engine's RANDOM-NAME banks: a three-case selector (arg 8 ->
+1d8 + 199 -> ids 200..207; arg 1 -> 1d33 -> ids 0..32; else 1d19 + 99 ->
+ids 100..118), position-identical in both games (DS1 ~0x67e8x in ovr19,
+DS2 ~0x6fcdx in module 17). Still open: whether computed-writer strings
+should be reproduced or frozen; speaker-mutating opcodes beyond setother.

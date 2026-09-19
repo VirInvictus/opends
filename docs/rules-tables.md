@@ -143,53 +143,31 @@ roll (0x87250) -> PSP recompute (0x875df) -> THAC0 derive+store (0x87666)
 
 ## 3. XP advancement
 
-DS1 XP table: file 0x3e5a4..0x3e6e4, 8 records x 20 u16 (40-byte stride),
-entry k = threshold for level k+2 (slot 0 = level 2 = 0), scaled x100.
-Consumers: character creation (DS1 0x645df..0x64870: single-class starts at
-LEVEL 3 with XP = T[class][3]; dual starts 2/2 with XP = T[class][2]; the
-Dark Sun start-at-3rd rule, engine-proven) and the level-up gate
-(0x87b67..0x87c00, which blocks XP-driven gains at level >= 9 per class
-slot; shipped data exceeds this cap, i.e. the cap is a creation/level-up
-gate, not a data truth).
+CORRECTED 2026-09-19 (wave 3; the authoritative version with the full
+tables and DS2 differences is chargen-flow.md sections 0-1). Summary: DS1
+carries a 10-row table at file 0x3e57c..0x3e70c (record 104 + 0x27c): row
+0 filler, rows 1..8 = cleric, DRUID, FIGHTER, GLADIATOR (copy of the
+fighter row), preserver, PSIONICIST, RANGER, thief, row 9 all-0xFFFF
+(never level). Entry k = the minimum XP for LEVEL k+1 (not k+2). The
+non-monotonic dips (level 19 below level 18) sit in the PSIONICIST and
+RANGER rows. The earlier labels in this section's first table ("fighter/
+gladiator/ranger/thief/preserver/defiler") were shifted by reading the
+rows in the creation-class-name order instead of resolving them through
+the class remap. DS2's table is RESOURCE.GFF `DATA` id 1000 (8 rows, own
+order): cleric, druid, fighter, gladiator (own DS2 curve, tail 20000+),
+preserver, psionicist (the 21000 -> 14000 dip PRESERVED), ranger (dip
+FIXED: 21000 -> 24000), thief.
 
-```
-rec0 cleric:    0,15,30,60,130,275,550,1100,2250,4500,6750,9000,11250,13500,15750,18000,20250,22500,24750,27000
-rec1 fighter:   0,20,40,75,125,200,350,600,900,1250,6750,9000,11250,13500,15750,18000,20250,22500,24750,27000
-rec2 gladiator: 0,20,40,80,160,320,640,1250,2500,5000,7500,10000,12500,15000,17500,20000,22500,25000,27500,30000
-rec3 ranger:    0,20,40,80,160,320,640,1250,2500,5000,7500,10000,12500,15000,17500,20000,22500,25000,27500,30000
-rec4 thief:     0,25,50,100,200,400,600,900,1350,2500,3750,7500,11250,15000,18750,22500,26250,30000,33750,37500
-rec5 preserver: 0,22,44,88,165,300,550,1000,2000,4000,6000,8000,10000,12000,15000,18000,21000,14000,17000,30000
-rec6 defiler:   0,22,45,90,180,360,750,1500,3000,6000,9000,12000,15000,18000,21000,14000,17000,30000,33000,36000
-rec7 psionicist:0,12,25,50,100,200,400,700,1100,1600,2200,4400,6600,8800,11000,13200,15400,17600,19800,22000
-```
-
-(record values x100 = actual XP; rec2/rec3 tails as extracted. The
-21000 -> 14000 dips in rec5/rec6 are level-19 thresholds BELOW level-18's:
-SSI data bugs, preserved here, and DS2 preserves row 5's dip too.) The
-file source: 10 rows at DS1 file 0x3e57c..0x3e70c (record 104 + 0x27c):
-row 0 is classless filler, rows 1..8 are the eight curves above (the
-section's rows are off by one from the raw table), row 9 is all 0xFFFF
-(a never-level band). Class-name strings at DGROUP 0x1250..0x12d0
-("Cleric, Druid, Fighter, Gladiator, Preserver, Psionic, Ranger, Thief";
-far-pointer table 0x11dc..0x1238). The level-up gate indexes via the
-class remap (RESOLVED, wave 2): DS1 = stride-2 bytes at record 103 + 0xca
-(frame constant 0x338), `[0,1,1,1,1,2,2,2,2,3,4,5,6,7,7,7,7,8,0,0,2,4,6,
-8,9,9,10,10,11,11,12,12]`; DS2 = same shape at record 108 + 0x9d (frame
-0x360), 1-BASED (the gate decrements first).
-
-DS2: the XP table EXISTS after all (wave 2 correction): RESOURCE.GFF
-FOURCC `DATA` id 1000, 320 bytes = 8 rows x 20 u16, row-for-row near-
-identical to DS1's curves (the preserver dip preserved in row 5); the
-search that missed it was looking at the wrong FOURCC set. The "helper"
-is ovr16 (frame constant 0x5c8), a 1-stub 185-byte module: a generic
-DATA-chunk lookup, `id 1000 -> u16 buf[a*0x28 + b*2]`, with callers
-applying the x100 scaling. Sites: 0x95b76/0x95bc9/0x95c78 (level-up),
-0x6bb04/0x6c3d8/0x6c47e/0x6c4c0/0x6fb7f (XP synthesis, writing XP = sum-
-over-classes x50). `DATA:1001` (576 B signed bytes, [class_band]
-[class_slot][sub], consumers in ovr14 at 0x6bb01/0x6bb76) and `DATA:1002`
-(168 B, consumer not found) ride in the same family. AddXP (DS1
-0x6b817..0x6b8ff): party-split XP, clamps at 2,000,000,000, maintains
-charrec+4 >= charrec+0.
+Consumers: character creation (DS1 0x645df..0x64870: single-class starts
+at LEVEL 3 with XP = T[class][2] * 100; dual 2/2 with XP = max(T[c1][1],
+T[c2][1]) * 100 plus a bump of any class whose T[c][2] <= XP to level 3;
+DS2 starts at LEVEL 7/6) and the level-up gate (DS1 0x87b67..0x87c00,
+promotes when T[row][current_level] * 100 <= XP). The level-up gate
+indexes via the class remap (stride-2 bytes at DS1 record 103 + 0xca /
+DS2 record 108 + 0x9d, consumed 1-BASED in DS2): classes 1..4 -> row 1,
+5..8 -> row 2, 9 -> 3, 10 -> 4, 11 -> 5, 12 -> 6, 13..16 -> 7, 17 -> 8,
+18/19 -> 0, 20 -> 2. AddXP (DS1 0x6b817..0x6b8ff): party-split XP,
+clamps at 2,000,000,000, maintains charrec+4 >= charrec+0.
 
 ## 4. Ability-score tables
 
@@ -250,11 +228,17 @@ post_level_gain after the row's last_rolling_level. The recompute chain
    descriptor byte, not the five stored saves.
 2. ~~DS2 XP helper~~ RESOLVED (section 3): DATA:1000 + the ovr16 lookup.
 3. ~~Rules-block +0x30~~ RESOLVED (section 1): legal-item entries 12..18.
-4. Exact DS1 class-id -> name binding within families (the DGROUP 0x11dc
-   pointer table does not align with engine ids under any base tried).
-5. Whether any path bypasses the DS1 level-9 gate at 0x87be6.
+4. ~~Exact DS1 class-id -> name binding~~ RESOLVED (wave 3,
+   chargen-flow.md 0): DGROUP 0x11dc is the display-NAME table indexed
+   [real_class + 8]; the x4 band runs are the sphere variants and the
+   first 9 entries are condition strings.
+5. ~~Level-9 gate bypass~~ RESOLVED (wave 3, chargen-flow.md 3): no
+   bypass exists; the DS2 cap is level 15 plus an XP bank cap at
+   T[row][level+3].
 6. The mode-4 (WIS) table's true consumer.
-7. DATA:1002's consumer (168 B, DS2).
+7. ~~DATA:1002's consumer~~ strong negative (wave 3, chargen-flow.md 6):
+   no instruction pushes id 1002; resident-cache or dead; its contents
+   key SPIN ids {1, 50..69} to u32 values.
 8. Pool placeholder semantics across builds (cosmetic; noted so nobody
    re-derives address math against them). Note: the PSP citation in
    section 1 ("DS1 0x875a8..0x875dc") lands inside the shared additive

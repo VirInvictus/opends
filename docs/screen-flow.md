@@ -110,8 +110,9 @@ Request 0x35 -> GSTATE = 1 + engine-drawn combat HUD; victory -> GSTATE =
   3008/12501 (pairing medium confidence).
 - 0x24 Shop: opens no window; shop mode = 13500 with SELL/DROP/SPLIT/MORE
   enabled.
-- 0x22 codes 1/4 rest: message strings only ('THE PARTY RESTS' DS1
-  0x4AE84); no rest screen.
+- 0x22 codes 1/4 rest: message strings only ('THE PARTY RESTS' is DS1
+  0x4ae9d; 0x4ae84 is 'NO RESTING DURING COMBAT' - wave 3 correction,
+  chargen-flow.md 4 has the rest pipeline); no rest screen.
 - 0x35 Fight / 0x39 elevator / picture codes: engine state, no windows.
 
 ## 5. Input dispatch (data-driven end to end)

@@ -24,7 +24,7 @@ applier's `(size>>4):(size&15)` segment:offset form), not at the next
 | Special-attack enum tables | resident record 120 (file 0x43850) + ovr33 predicate | ovr29, frame 0x630 |
 | Per-round effect processing | ovr30, 0x780c0..0x78adc, 12 stubs (0x5a8) | not read (same role, module not pinned) |
 | Power table | resident record 118 (byte-offset 0x3b0), records at file 0x41f70, stride 32 | RESOURCE.GFF via the cached DATA-chunk getter at record 23 offset 3 (file 0x217f3); the real referent of the "0xb8:3" anchor: DS2-only, 80+ call sites, generic by chunk id |
-| SPST/PSST/PSIN readers | ovr19 stub0 (0x67a46): 138 B SPST to 0x2f8:0x168+ci*0x8a; 34 B PSST; 7 B PSIN | ovr17 stub0 (0x6f8b6), position-identical twin |
+| SPST/PSST/PSIN readers | ovr19 stub0 (0x67a46): 138 B SPST to 0x2f8:0x168+ci*0x8a; 34 B PSST; 7 B PSIN | ovr17 stub0 (0x6f8b6): 15 B SPST to 0x320:0x39c+ci*0xF; 34 B PSST; 1 B PSIN (wave 3 correction: DS2's engine field is 15 bytes, not 138; and these chunks exist ONLY in save files - no shipped GFF carries SPST/PSST/PSIN) |
 | SPIN text reader | ovr49+0x1864 | ovr44+0x183b |
 | Roll service (all dice) | ovr16 stub21 (0x648c1), frame 0x538 | via 0x568:0x66 (ovr4 stub14) |
 
