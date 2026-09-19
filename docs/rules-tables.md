@@ -53,8 +53,11 @@ the item-usability gate DS1 0x86f3f..0x86f9a.
 
 ### +0x30: 7 bytes `08 02 02 02 02 10 04`
 
-No consumer found statically (open). (These bytes equal legal-item bit
-table entries 12..18 plus a leading 8; coincidence unproven.)
+RESOLVED (wave 2): not a separate table. The legal-item table ends
+exactly at +0x38, and these bytes ARE legal-item entries 12..18 (the
+monster/bard class band), consumed by the same usability gate (DS1
+0x86f3f..0x86f9a), whose index is unclamped (class ids 20..31 read into
+the CON-floor table, same bug family as the ability getters).
 
 ### +0x38: 26-entry CON-indexed HP floor
 
@@ -107,11 +110,17 @@ Spell save categories map onto the five stored bytes via the packed damage
 word (object-formats.md save_type 1-8: poison/paral/death -> byte 0, wands
 -> 1, petr -> 2, breath -> 3, spells/magic -> 4).
 
-Save roll consumption (d20 vs the byte): NOT FOUND statically. The only
-readers of charrec+0x37..0x3b (DS1) / +0x31..0x35 (DS2) outside the
-recompute walk: none. Combat consumes saves through a pool-resident helper
-or cached copy reached by runtime-patched far calls (see combat-flow.md 4);
-settling it wants a DOSBox read-watchpoint on the charrec save bytes.
+Save roll consumption (RESOLVED, wave 2): the five stored bytes have NO
+reader in normal play (an exhaustive fixed-offset read scan of both
+binaries confirms it; they are write-only outside level-up). The RUNTIME
+save path uses a different byte: the default-save DESCRIPTOR at DS1
+charrec +0x3d (61) / DS2 +0x37 (55), the byte object-formats.md labels
+"size" (packed category + modifier; DS1 splits it &7 // 8, DS2 &0xf //
+0x10). The d20 comparison itself lives in the spell/effect machinery
+(spell-effects.md 4): gate on the savable bit, 1d20 vs the save number
+(nat 1 auto-fails, nat 20 auto-saves), `special & 0x86` doubles the roll
+as a penalty. The in-combat RDFF-keyed chains are DS1 ovr22 local 0xa44
+(file 0x6adf4) and DS2 ovr19 local 0xc00 (file 0x73aa0).
 
 ## 2. THAC0
 
@@ -154,23 +163,33 @@ rec6 defiler:   0,22,45,90,180,360,750,1500,3000,6000,9000,12000,15000,18000,210
 rec7 psionicist:0,12,25,50,100,200,400,700,1100,1600,2200,4400,6600,8800,11000,13200,15400,17600,19800,22000
 ```
 
-(record values x100 = actual XP; rec2/rec3 tails abbreviated as read. The
+(record values x100 = actual XP; rec2/rec3 tails as extracted. The
 21000 -> 14000 dips in rec5/rec6 are level-19 thresholds BELOW level-18's:
-SSI data bugs, preserved here.) Records map to the 8 class-name strings at
-DGROUP 0x1250..0x12d0 ("Cleric, Druid, Fighter, Gladiator, Preserver,
-Psionic, Ranger, Thief"; far-pointer table 0x11dc..0x1238). The level-up
-gate indexes via the runtime pool remap `[0x338:0xca + class*2]` (engine
-class id -> XP record 0..7); the file source of the remap is not located.
+SSI data bugs, preserved here, and DS2 preserves row 5's dip too.) The
+file source: 10 rows at DS1 file 0x3e57c..0x3e70c (record 104 + 0x27c):
+row 0 is classless filler, rows 1..8 are the eight curves above (the
+section's rows are off by one from the raw table), row 9 is all 0xFFFF
+(a never-level band). Class-name strings at DGROUP 0x1250..0x12d0
+("Cleric, Druid, Fighter, Gladiator, Preserver, Psionic, Ranger, Thief";
+far-pointer table 0x11dc..0x1238). The level-up gate indexes via the
+class remap (RESOLVED, wave 2): DS1 = stride-2 bytes at record 103 + 0xca
+(frame constant 0x338), `[0,1,1,1,1,2,2,2,2,3,4,5,6,7,7,7,7,8,0,0,2,4,6,
+8,9,9,10,10,11,11,12,12]`; DS2 = same shape at record 108 + 0x9d (frame
+0x360), 1-BASED (the gate decrements first).
 
-DS2: NO XP table exists in the EXE or any GFF (searched OBJEX/RESOURCE/
-GPLDATA by shape). DS2 computes thresholds via pool helper "0x5c8:0x20"
-called as `f(1000, X, level)` then x100, X derived from `[0x360:0x9d +
-2*class]`. Sites: 0x95b76/0x95bc9/0x95c78 (level-up), 0x6bb04/0x6c3d8/
-0x6c47e/0x6c4c0/0x6fb7f (XP synthesis, writing XP = sum-over-classes x50).
-The helper's closed form is open (pool-resident; the DS1 curve is
-hand-tuned data, so f is almost certainly a lookup into a runtime-built
-class table, not a formula). AddXP (DS1 0x6b817..0x6b8ff): party-split XP,
-clamps at 2,000,000,000, maintains charrec+4 >= charrec+0.
+DS2: the XP table EXISTS after all (wave 2 correction): RESOURCE.GFF
+FOURCC `DATA` id 1000, 320 bytes = 8 rows x 20 u16, row-for-row near-
+identical to DS1's curves (the preserver dip preserved in row 5); the
+search that missed it was looking at the wrong FOURCC set. The "helper"
+is ovr16 (frame constant 0x5c8), a 1-stub 185-byte module: a generic
+DATA-chunk lookup, `id 1000 -> u16 buf[a*0x28 + b*2]`, with callers
+applying the x100 scaling. Sites: 0x95b76/0x95bc9/0x95c78 (level-up),
+0x6bb04/0x6c3d8/0x6c47e/0x6c4c0/0x6fb7f (XP synthesis, writing XP = sum-
+over-classes x50). `DATA:1001` (576 B signed bytes, [class_band]
+[class_slot][sub], consumers in ovr14 at 0x6bb01/0x6bb76) and `DATA:1002`
+(168 B, consumer not found) ride in the same family. AddXP (DS1
+0x6b817..0x6b8ff): party-split XP, clamps at 2,000,000,000, maintains
+charrec+4 >= charrec+0.
 
 ## 4. Ability-score tables
 
@@ -206,21 +225,38 @@ Also present, no consumer found: u16 power-of-two arrays at DGROUP 0x718/
 
 ## 5. Level-1 / starting HP
 
-Creation sets level 3 (or 2/2 dual) and XP from the table (section 3). Base
-HP is computed by a pool helper ("0x628:0x2a") at the recompute site (DS1
-0x86d50..0x86d61); its body is not statically reachable. The per-level gain
-rule is fully decoded: group die rolled once per level, max(roll, CON
-floor), flat post_level_gain after the row's last_rolling_level.
+Creation sets level 3 (or 2/2 dual) and XP from the table (section 3). The
+base-HP helper is RESOLVED (wave 2): ovr46 stub 2, entry 0x260, file
+0x874b0:
+
+```
+base_hp(si):
+  A  = sum of the 3 signed level bytes at charrec+0x24
+  B  = sum of the 3 signed high_level bytes at +0x3f
+  hp = (A * charrec[si].high_HP(+0xa)) / B
+  hp /= class_count(si)            ; race==1 -> 1; else count of nonzero real_class[3]
+  hp += additive(si)               ; the shared helper at 0x8757c: the +0x52 PSP-formula shape
+  return max(hp, B)
+```
+
+The multiclass HP division is explicit. The per-level gain rule stands:
+group die rolled once per level, max(roll, CON floor), flat
+post_level_gain after the row's last_rolling_level. The recompute chain
+0x628:{0x2a, 0x39, 0x3e, 0x4d} = base-HP, PSP, THAC0, saves in order.
 
 ## 6. Open items
 
-1. Save-roll consumption site (runtime watchpoint candidate).
-2. DS2 XP threshold helper closed form + the runtime class tables at
-   "0x360:0x9d" (DS2) / "0x338:0xca" (DS1).
-3. Rules-block +0x30 bytes (08 02 02 02 02 10 04).
+1. ~~Save-roll consumption~~ RESOLVED (section 5 note + spell-effects.md 4):
+   descriptor byte, not the five stored saves.
+2. ~~DS2 XP helper~~ RESOLVED (section 3): DATA:1000 + the ovr16 lookup.
+3. ~~Rules-block +0x30~~ RESOLVED (section 1): legal-item entries 12..18.
 4. Exact DS1 class-id -> name binding within families (the DGROUP 0x11dc
    pointer table does not align with engine ids under any base tried).
 5. Whether any path bypasses the DS1 level-9 gate at 0x87be6.
 6. The mode-4 (WIS) table's true consumer.
-7. Pool placeholder semantics across builds (cosmetic; noted so nobody
-   re-derives address math against them).
+7. DATA:1002's consumer (168 B, DS2).
+8. Pool placeholder semantics across builds (cosmetic; noted so nobody
+   re-derives address math against them). Note: the PSP citation in
+   section 1 ("DS1 0x875a8..0x875dc") lands inside the shared additive
+   helper at 0x8757c..0x875de, which both the PSP recompute and the
+   base-HP additive use.

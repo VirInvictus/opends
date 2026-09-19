@@ -193,15 +193,21 @@ resolve_far_overlay(segword, off):             # far pointer inside an OVERLAY m
 Resident-vs-overlay decision for an arbitrary segment value: membership in
 `ovr_segs` (58 values DS1: 0x41a6..0x4354; 49 values DS2: 0x465c..0x47dd).
 
-CAVEAT (from the combat-flow work, same wave): far calls observed in overlay
-code that use SMALL segment words (DS1 `0x4e0:0xac`, `0x530:0x9d`; DS2
-`0x570:0xa7`, `0x630:0x20`) are also segtab byte-offsets under this scheme
-(0x4e0>>3 = record 156, 0x530>>3 = record 166), so they resolve the same
-way. What is NOT yet pinned is the mapping from a segtab record to its
-RUNTIME segment number for calls made from one overlay module into another
-module's pool-resident data ("module frame" constants like 0x420/0x5c8 in
-the rules code): the record arithmetic is deterministic, the runtime frame
-origin still wants one observed capture. See combat-flow.md section 10.
+RESOLVED 2026-09-19 (wave 2): the earlier caveat about "module frame"
+constants needing an observed capture is DISSOLVED. Every small segment
+word observed in overlay code (DS1 `0x4e0:*`, `0x530:*`, `0x4e8:*`,
+`0x5a8:*`, `0x5b8:*`, `0x598:*`, `0x600:*`, `0x628:*`; DS2 `0x570:*`,
+`0x630:*` and the rest) is an ordinary segtab byte-offset under
+`resolve_far_overlay` (record = segword >> 3). Wave 2 located the raw
+`9A <off:2> <seg:2>` bytes for 30+ flagged sites and confirmed every
+segment word is a member of its module's per-module relocation table;
+all stub indices came out integral and in range. The mapping of frame
+constants to modules: combat-flow.md section 1 and spell-effects.md
+section 1. The ONLY runtime unknown left is the absolute EXE load-base
+segment, which cancels in every file-level cross-reference. Note also
+that the placeholder constants 0x420 (DS1) / 0x4d0 (DS2) in the rules
+code are literally the rules-block segtab records, and GSTATE/MISC/
+CSTATE2/STATE are frame constants to their own data records.
 
 ## 7. Worked examples (byte-verified)
 
@@ -249,3 +255,9 @@ origin still wants one observed capture. See combat-flow.md section 10.
 - Why DS1's resident code calls load_resource via raw 0x2460:0x4a4 (14
   sites) while the documented 96 counted sites are all overlay-side: same
   target, unreconciled site composition.
+
+Wave 2 addendum: the per-module relocation table sits at
+`module_file_start + code_size` directly (the applier's
+`(size>>4):(size&15)` form), not at the next 16-byte boundary; and the
+DS2 rules-code placeholder 0x5c8 resolves to ovr16, a 1-stub 185-byte
+module that is the DATA-chunk table lookup helper (spell-effects.md 1).

@@ -172,9 +172,9 @@ byte, and matches `file-formats.md` 3.4 (SAVE/6).
 | 46..48 | u8[3] | damage dice per slot | XC |
 | 49..51 | u8[3] | damage sides per slot | XC |
 | 52..54 | u8[3] | damage bonus per slot | XC |
-| 55..59 | u8[5] | saving throws: paralyzation, wand, petrification, breath, spell | LA+VB |
+| 55..59 | u8[5] | saving throws: paralyzation, wand, petrification, breath, spell; WRITE-ONLY at runtime outside the level-up recompute (wave 2 read scan: no consumer in normal play) | LA+VB |
 | 60 | u8 | allegiance (== combat +29 in 249/290) | VB |
-| 61 | u8 | size | LA |
+| 61 | u8 | CORRECTED (wave 2, spell-effects.md 4): the DEFAULT SAVE DESCRIPTOR read by the in-combat effect chains (DS1 ovr22 local 0xa44: category = val & 7, count = val / 8), previously labeled "size" | LA + instruction |
 | 62 | u8 | spell_group | LA |
 | 63..65 | u8[3] | high_level[3] | LA |
 | 66..67 | u16 | sound_fx | LA |
@@ -204,9 +204,10 @@ high HP, base PSP). Then:
 | 36 | u8 | num_blows | XC-shape |
 | 37..39 | u8[3] | attacks, half-rounds | XC (Mindflayer 8 = 4 tentacles) |
 | 40..42 / 43..45 / 46..48 | u8[3] x3 | damage dice / sides / bonus | XC |
-| 49..53 | u8[5] | saving throws (same order as DS1) | XC |
+| 49..53 | u8[5] | saving throws (same order as DS1); write-only at runtime outside level-up (wave 2) | XC |
 | 54 | u8 | allegiance | H |
-| 55..65 | u8[11] | tail: size, spell_group, high_level, sound slots | H positional |
+| 55 | u8 | CORRECTED (wave 2): the DEFAULT SAVE DESCRIPTOR (DS2 ovr19 local 0xc00: category = val & 0xf, count = val / 0x10), not "size" | H + instruction |
+| 56..65 | u8[10] | tail: spell_group, high_level, sound slots | H positional |
 
 ### 2.5 DS2 mini block (type 5, 23 bytes)
 

@@ -31,13 +31,20 @@ The ovr5/ovr22 and ovr4/ovr19 stub tables are position-by-position twins.
 
 ## 2. Runtime state
 
+(The "segment" values below are segtab data records reached via frame
+constants; see overlay-formats.md 6. Records: GSTATE = rec87 (DS1) / 92
+(DS2), MISC = rec88/93, CSTATE2 = rec92/97, STATE = rec108/113. Wave 2
+correction: STATE holds 320 stride-3 entries, not 48; the combat loops
+that walk it use the 48-slot range.)
+
 - GSTATE = 0x2b8 (DS1) / 0x2e0 (DS2): +0x19 word = combat-active flag.
 - MISC = 0x2c0 (DS1) / 0x2e8 (DS2): +0x35b dword = round counter (+60 per
   round), +0x357 treasure tally, +0x369 current leader (DS1).
 - STATE = 0x360 (DS1) / 0x388 (DS2): slot table at +0xc36 (DS1) / +0xc33
-  (DS2), 48 slots x 3 bytes {type:u8, combat_idx:u16}; type 0 empty, 1
-  party-out-of-combat, 2 active combatant; +0x333 = per-object-id status
-  shadow.
+  (DS2), 320 slots x 3 bytes {type:u8, combat_idx:u16} (wave 2
+  correction; the combat drivers walk 48, kick1 scans all 320); type 0
+  empty, 1 party-out-of-combat, 2 active combatant; +0x333 = per-
+  object-id status shadow.
 - CSTATE2 = 0x2e0 (DS1) / 0x308 (DS2), per-combatant scratch indexed by
   combat idx (DS2 cells all +3 vs DS1): +0x5b last-attack-direction,
   +0x85 AI state, +0xaf hit flag, +0x181 attacks-made tally (cap 99),
@@ -65,9 +72,10 @@ GPL fight (opcode 0x35), DS1 0xacfb / DS2 0xd70c:
 fight_enter(x, y):
   DS2 only: call UI(1)                   ; 0x73345 mode switch
   if GSTATE[0x19] != 0: return           ; already in combat
-  if !gate(): return                     ; module-frame 0x4e0:0xac (DS1) / 0x568:0xa7 (DS2); body behind the frame wall
+  if !gate(): return                     ; 0x4e0:0xac -> ovr5 stub 28 (0x594df): the section 8 victory/defeat poll, reused as the entry gate
   GSTATE[0x19] = 1
-  DS1: kick(x, y)                        ; 0x4e0:0xe3 then 0x530:0x9d(result)
+  DS1: kick1(x, y)                       ; 0x4e0:0xe3 -> ovr5 stub 39 (0x59c79): first hostile with dist <= 24 AND line of sight
+       kick2(slot)                       ; 0x530:0x9d -> ovr15 stub 25 (0x62f2a): the COMBAT MUSIC starter (per-slot bank byte off the active-music table)
 ```
 
 Out-of-combat scripted damage goes through the resolver directly: DS1 ovr5
@@ -111,7 +119,9 @@ for slot in 0..0x2f where STATE[slot].type == 2:
   if combat[ci].status(+0x1c) != 1: morale=-1; movepts=0; continue
   if slot >= 5 and enumerate(...,0x180001,...) <= 0: continue   ; needs a target
   if combat[ci].allegiance & 3 == 0: continue                   ; NEUTRALS (4) never act
-  CSTATE2[ci*4+0xd9] = 20 (DS1) / 30 (DS2) + 0x508:0x66(slot) + 0x5b8:0xe8(slot)   ; morale threshold
+  CSTATE2[ci*4+0xd9] = 20 (DS1) / 30 (DS2) + dex_reaction(slot) + status_flags(slot)
+      ; dex_reaction = 0x508:0x66 = ovr10 stub 14 (0x5ea5f): the rules-tables DEX missile table
+      ; status_flags  = 0x5b8:0xe8 = ovr32 stub 40 (0x7c3b1): -2/+2 per active-effect flag bits (DS2's twin at ovr28 stub 13 is richer, incl. a +40 category)
   CSTATE2[ci*4+0xdb] = d200()              ; r*200/32768 (DS2: one branch pins 200)
   CSTATE2[ci*2+0x22b] = combat[ci].move(+27/+19) * 10; haste/slow adjust
   reset +0x85, +0x5b, target=0x3ff, +0x181=0, +0x1ab=0, +0xaf
@@ -127,7 +137,10 @@ THERE IS NO PER-ROUND INITIATIVE LIST. Ordering is:
 2. AI actor selection (ovr5 local 0x9b6, file 0x57676): next monster actor
    = max morale threshold, tie-broken by the pre-rolled d200; guards on
    combat_active(); skips actors with no target; probes spell/psionic AI
-   x3 (0x88:0x34b6) unless combat+33 & 0x20.
+   (CORRECTED by wave 2: the 0x88:0x34b6 site is an animation/sprite
+   driver, not a spell probe; DS2's real AI spell rating is the all-320
+   loop in ovr4 local 0x3540..0x3687, gated by combat+33 & 0x20; DS1's
+   twin not pinned).
 
 Attacks per round: the resolver loops the per-round attack budget
 (+0x1ab); blow counts come from charrec+0x2a (melee) or ITR1[tpl+0xb]
@@ -188,15 +201,17 @@ Monster attackers (si >= 4) add `[0x11ae]-1` to the damage bonus (0x16b7).
 ## 6. Saving throws, special attacks, spells in combat
 
 - Saves: the five bytes are charrec+0x37..0x3b (DS1) / +0x31..0x35 (DS2,
-  stride 0x42). DS2's in-combat invocation is read: ovr19 local 0xc00
-  (file 0x73aa0) resolves the charrec row (0xc8:0x3e64), takes
-  charrec[+0x37] as the default save number, applies a status modifier
-  (0xc8:0x2410), and passes it into the check (local 0xaa8) and the
-  RDFF-keyed effect applier 0xf0:0x121; two categories attempted (di 0..1).
-  DS2 ovr4 file 0x25a75 is the library's own read. DS1's in-combat roll
-  site is behind the module-frame wall (DS1's only static read outside
-  level-up is ovr46 0x87910, the recompute). The threshold tables:
-  rules-tables.md.
+  stride 0x42). RESOLVED by wave 2 (spell-effects.md 4): the in-combat
+  spell/effect save is DS1 ovr32 stub3 (0x79a71): gate on the savable
+  bit, save_type -> column, save number = charrec[row + 0x36 + idx], 1d20
+  (nat 1 fails, nat 20 saves), `special & 0x86` doubles the roll as a
+  penalty, plus the situational modifier and the signed save_mod nibble;
+  saves when total >= number. The RDFF-keyed chains: DS1 ovr22 local
+  0xa44 (file 0x6adf4), DS2 ovr19 local 0xc00 (file 0x73aa0), both
+  defaulting the save number from the charrec DESCRIPTOR byte (DS1 +0x3d
+  / DS2 +0x37; object-formats.md labels it "size") + a status modifier.
+  The five stored save bytes have NO reader in normal play (write-only
+  outside level-up). Threshold tables: rules-tables.md.
 - Special attacks (DS1 33-value enum, combat+22 read as a word with +23;
   DS2 combat+14 low byte): identical dispatch shape. AI action selection
   (DS1 ovr5 ~0xe70-0xf22): if target word & 0x200 (armed), global
@@ -288,7 +303,9 @@ not found in statically readable bodies (frame wall). GPL flee (opcode
    (auto-pass category; identity a runtime question).
 4. XP gate: DS1 allegiance == 2; DS2 (1 << allegiance) & 0xf80. DS2
    divides unsigned, DS1 signed.
-5. DS2 fight_enter adds an explicit UI-mode call before gating.
+5. DS2 fight_enter adds an explicit UI-mode call before gating and DROPS
+   the kick pair entirely (no combat-music starter in fight_enter; where
+   DS2 starts combat music is open).
 6. DS2 ovr4 has 3 extra exports (0x2f1b last-hitter among them) and its
    round-init resets CSTATE2[0x6] = 0xff.
 7. ovr4's damage path adds an item bonus at item[+0x16] (23-byte items)
@@ -298,24 +315,35 @@ Everything else (gate structure, round-init skeleton, priority-roll
 initiative, hit/damage flow, statuses 3/5/8, hp+10 band, death queue, XP
 division, teardown) is structurally identical.
 
-## 11. Cannot be settled statically (runtime-capture candidates)
+## 11. Wave-2 status of the former runtime-capture list
 
-1. The module-frame segment mapping (one observed capture of any frame
-   origin resolves every overlay cross-call statically; highest-value
-   single capture).
-2. Special-attack execution per enum value (0x4e8:0x48 / 0x570:0x48 +
-   0x630:0x20 chains).
-3. fight_enter's gate/kick bodies (0x4e0:0xac/0xe3, 0x530:0x9d; 0x568:0xa7).
-4. The morale-failure -> flee transition; the modifier services
-   0x508:0x66 / 0x5b8:0xe8 (DS1), 0x98:0x2d9 / 0x628:0x61 (DS2).
-5. When round_init runs (tick-to-round cadence; the 60-unit counter is
-   confirmed, its driver is not).
-6. The party-count divisors (0x508:0x3e / 0x98:0x283) and MISC 0x35b's
-   tick source.
-7. DS1's in-combat save roll comparison (DS2's chain is read).
-8. Corpse/loot object creation on death (0x600:0x3e).
-9. Whether the 0x180001/0x180002 enumerate bits encode LOS+range exactly
-   as inferred.
+Wave 2 (spell-effects.md, overlay-formats.md 6) resolved most of this
+list statically:
+
+- RESOLVED: the module-frame mapping (the frame wall never existed; every
+  constant is a segtab byte-offset). The gate = the section 8 poll reused;
+  kick1 = first hostile within 24 tiles AND LOS; kick2 = the combat-music
+  starter. The morale modifiers = DEX reaction + active-effect flags.
+  party_count = the four fixed party slots. The round cadence = the
+  two-phase divider at record 116 (byte 0 counts 0..9, wraps byte 1
+  toward 60). The in-combat save comparison = spell-effects.md 4. The
+  death effect = corpse-sprite scatter animation (random pieces over a
+  rect, death module ovr41 stub 6). The enumerate "0x180001/0x180002"
+  dwords are TWO WORD ARGS: allegiance mask (1 party / 2 hostile), range
+  = 24 tiles, plus a separate LOS flag; monster scans pass LOS = 0 (the
+  mechanical root of "enemies engage through walls").
+
+Still open after wave 2:
+
+1. The special-attack enum bodies beyond the probe: the enum-to-effect
+   maps are decoded (spell-effects.md 5); full semantics of ~35 status
+   bits remain.
+2. The morale-failure -> flee transition.
+3. The exact driver that steps the round/tick clocks (the divider is
+   decoded; its interrupt/tick source is not).
+4. Loot OBJECT creation inside the rec7 placement services (the corpse
+   scatter is decoded; the item drops are not).
+5. Whether STATE slots 48..319 are ever populated (kick1 scans 320).
 
 ## 12. Confident negatives
 
