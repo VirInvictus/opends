@@ -38,6 +38,9 @@ func _ready() -> void:
 		ws = MapScreen.new(42)
 	elif screen == "popup":
 		ws = PopupScreen.new("EXIT GAME?", ["QUIT", "CANCEL"])
+	elif screen == "dialog":
+		var pages := [{"port": 119, "text": "Citizens of Draj!\nBefore you is a handful of gladiators. Watch\nand be entertained as they fight to the\ndeath with the denizens of our land."}]
+		ws = DialogScreen.new(pages)
 	elif screen == "combathud":
 		# defer: the window manager resizes us after the first frame;
 		# size the board from the settled viewport

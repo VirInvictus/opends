@@ -46,6 +46,7 @@ var state := State.INTRO
 var phase := Phase.PICK
 var fight_count := 0
 var fight_done := false
+var arena_intro_done := false
 var round_no := 0
 var queue: Array[Dictionary] = []
 var actor_i := -1
@@ -242,6 +243,15 @@ func _enter_region(rid: int, at: Vector2i) -> void:
 			"name": nm, "alive": true})
 	$Camera.position = Vector2(at * 16)
 	$UI/Label.text = label_text
+	if region_id == 42 and not arena_intro_done:
+		arena_intro_done = true
+		var leader: String = str(party[0].get("name", "")) if str(party[0].get("name", "")) != "" else PRESET_NAMES[0]
+		_say_sequence([
+			{"port": ANNOUNCER_PORT, "text": ANNOUNCER["citizens"]},
+			{"port": ANNOUNCER_PORT, "text": ANNOUNCER["gift"]},
+			{"port": ANNOUNCER_PORT, "text": ANNOUNCER["celgor"]},
+			{"port": ANNOUNCER_PORT, "text": ANNOUNCER["donotworry"] % leader},
+		], func() -> void: pass)
 
 
 func _add_sprite(parent: Node2D, res: String, bottom_left: Vector2) -> Sprite2D:
@@ -638,6 +648,30 @@ func _combat_step_member(target: Vector2i) -> void:
 		tile = target
 
 
+# The arena announcer's lines: real GPL-2 strings (docs/dialogs.md
+# machinery; extracted with dialog-extract), portrait PORT 119.
+const ANNOUNCER_PORT := 119
+const ANNOUNCER := {
+	"citizens": "Citizens of Draj!\nBefore you is a handful of gladiators. Watch\nand be entertained as they fight to the\ndeath with the denizens of our land.",
+	"gift": "Behold the gift of your king Tectuktitlay, vicious defender of Draj -- the gift of battle and death!",
+	"celgor": "This day the mage Celgor will battle a fearsome rampager. Watch and enjoy!",
+	"donotworry": "Do not worry, %s. Your turn will come soon. Stand back and watch the battle.",
+	"trainer": "Monster Trainer: release your horde!",
+	"stepforward": "Gladiators: Step forward, into the arena!",
+	"heal": "Attention gladiators: Go back to the pens to heal your wounds.",
+}
+
+
+func _say_sequence(pages: Array, then: Callable) -> void:
+	var auto := 1.2 if OS.get_environment("SPIKE_DEMO") != "" else 0.0
+	var dlg := DialogScreen.new(pages, auto)
+	dlg.finished.connect(then)
+	_close_ui()
+	ui_screen = dlg
+	ui_layer.add_child(dlg)
+	ui_open = true
+
+
 func _maybe_start_fight() -> void:
 	if region_id != 42 or state != State.PLAY or fight_done:
 		return
@@ -647,7 +681,15 @@ func _maybe_start_fight() -> void:
 		return
 	fight_done = true
 	round_no = 0
-	_show_banner("The Announcer rises: 'Slaves! Entertain the city of Draj!'")
+	var leader: String = str(party[0].get("name", "")) if str(party[0].get("name", "")) != "" else PRESET_NAMES[0]
+	_say_sequence([
+		{"port": ANNOUNCER_PORT, "text": ANNOUNCER["trainer"]},
+		{"port": ANNOUNCER_PORT, "text": ANNOUNCER["stepforward"]},
+	], _begin_fight)
+
+
+func _begin_fight() -> void:
+	var f: Dictionary = demo["fight"]
 	var m: Dictionary = f["monster"]
 	var count: int = mini(2 + fight_count, f["spawn_tiles"].size())
 	var spots := _spawn_ring(tile, count)
@@ -928,7 +970,8 @@ func _party_wiped() -> bool:
 func _victory() -> void:
 	fight_count += 1
 	state = State.VICTORY
-	_show_banner("VICTORY!  The crowd roars.  The pens' doors open.  (win %d)" % fight_count)
+	_say_sequence([{"port": ANNOUNCER_PORT, "text": ANNOUNCER["heal"]}],
+		func() -> void: pass)
 	await get_tree().create_timer(2.5).timeout
 	state = State.PLAY
 
@@ -996,10 +1039,16 @@ func _scripted() -> void:
 	await get_tree().create_timer(1.0).timeout
 	_walk_to_then(Vector2i(113, 27))
 	await _drain()
+	while ui_open:
+		await get_tree().process_frame
 	await get_tree().create_timer(0.3).timeout
 	if region_id == 42:
+		while ui_open:
+			await get_tree().process_frame
 		_walk_to_then(Vector2i(30, 22))
 		await _drain()
+		while ui_open:
+			await get_tree().process_frame
 		while state == State.COMBAT:
 			if phase == Phase.PARTY and attacks_left > 0:
 				var mi := _nearest_mon()

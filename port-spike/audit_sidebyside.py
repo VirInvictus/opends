@@ -33,6 +33,7 @@ SCREENS = {
     "load": ("res://wind_test.tscn", {"SPIKE_SCREEN": "load"}, "load_3009.png"),
     "map": ("res://wind_test.tscn", {"SPIKE_SCREEN": "map"}, "map_arena.png"),
     "popup": ("res://wind_test.tscn", {"SPIKE_SCREEN": "popup"}, "popup_14000_exitgame.png"),
+    "dialog": ("res://wind_test.tscn", {"SPIKE_SCREEN": "dialog"}, "dialog_3007_citizens.png"),
     "combathud": ("res://wind_test.tscn", {"SPIKE_SCREEN": "combathud"}, "combat_hud_ktarchek.png"),
 }
 

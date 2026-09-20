@@ -207,6 +207,55 @@ def export_overlays(pal) -> dict:
     out["map_plate"] = {"png": "map_10003.png", "w": w, "h": h}
     print(f"BMP {MAP_PLATE_BMP}: {w}x{h} map plate")
 
+    # dialog portraits: GPLDATA PORT chunks (32x32 faces). 119 is the
+    # arena Announcer (matched against the oracle dialog capture).
+    gpl = ec.parse_gff(DS1 / "GPLDATA.GFF")
+    ports = dict(ec.resolve_type(gpl, "PORT"))
+    for pid in (119,):
+        w, h, rgba = decode_container_frame(ports[pid], 0, pal, resource=True)
+        write_png(OUT / f"portrait_{pid}.png", w, h, rgba)
+        out[f"portrait_{pid}"] = {"png": f"portrait_{pid}.png", "w": w, "h": h}
+        print(f"PORT {pid}: {w}x{h} portrait")
+
+    # dialog strip (WIND 3007): the engine draws this plate itself, so
+    # regenerate it from the oracle capture with the EBOX text in-painted
+    # away; portrait face and frame stay baked (announcer-only for now)
+    import numpy as np
+    from PIL import Image
+
+    src = HERE / "oracle" / "dialog_3007_citizens.png"
+    im = Image.open(src).convert("RGB")
+    arr = np.asarray(im).copy()
+    x0, y0, x1, y1 = 56, 4, 306, 54
+    reg = arr[y0:y1, x0:x1, :3].astype(float)
+    r, g, b = reg[:, :, 0], reg[:, :, 1], reg[:, :, 2]
+    text = ((r > 120) & (g > 85) & (b < 150)) | ((r > 170) & (g > 170) & (b > 170)) | ((r < 45) & (g < 50) & (b < 80))
+    known = ~text
+    for _ in range(12):
+        if known.all():
+            break
+        Hh, Ww = reg.shape[:2]
+        padr = np.pad(reg, ((1, 1), (1, 1), (0, 0)), mode="edge")
+        padk = np.pad(known, 1, mode="edge")
+        sums = np.zeros((Hh, Ww, 3))
+        cnt = np.zeros((Hh, Ww))
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                if dy == 0 and dx == 0:
+                    continue
+                nk = padk[1 + dy:1 + dy + Hh, 1 + dx:1 + dx + Ww]
+                nv = padr[1 + dy:1 + dy + Hh, 1 + dx:1 + dx + Ww]
+                sums += nv * nk[:, :, None]
+                cnt += nk
+        fill = cnt > 0
+        todo = (~known) & fill
+        reg[todo] = (sums[todo] / cnt[todo][:, None]).astype(arr.dtype)
+        known |= todo
+    arr[y0:y1, x0:x1, :3] = np.clip(reg, 0, 255).astype(arr.dtype)
+    Image.fromarray(arr[0:58, 1:319]).save(OUT / "dialog_plate_3007.png")
+    out["dialog_plate"] = {"png": "dialog_plate_3007.png", "w": 318, "h": 58}
+    print("dialog plate 3007 regenerated")
+
     # LOAD-mode title art (the engine binds these onto 3009's buttons
     # in LOAD mode; the chunk faces ship as the SAVE variant)
     icons = dict(ec.resolve_type(res, "ICON"))

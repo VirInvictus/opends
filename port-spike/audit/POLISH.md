@@ -55,10 +55,12 @@ plus the dosbox-oracle-rig memory).
    resolution in combat) is not wired; the grid and class/LEVEL
    cyclers are parity-only so far. Casting needs the engine's
    spell-effect runtime (docs/spell-effects.md).
-3. Dialog 3007/3008 and interact 3020 are not built (oracle captures
-   exist for 3007 variants). Dialogs are full GPL conversations
-   (docs/dialogs.md); the pits loop needs the announcer sequence
-   (portrait + lines) at minimum.
+3. Interact 3020 and the dialog CHOICE strip 3008 are not built; the
+   announcer's question lines (the "Yell something back" GPL block)
+   would pair with them. The announcer SEQUENCE itself is built:
+   DialogScreen (WIND 3007) with the matched announcer portrait
+   (PORT 119), real GPL-2 lines, and the scripted arena intro wired
+   through it (audit/dialog.png).
 4. Message box 10501 (the transient GAME SAVED strip) is not built;
    the demo uses UI banners.
 5. Sheet class line prints one ink; the engine colours each class
@@ -76,6 +78,17 @@ plus the dosbox-oracle-rig memory).
    on the kill, grey puff on a miss) and the fight loop is proven in
    the QC movie, but the 0.7s splat window landed between capture
    samples; confirm visually in the next live demo run.
+
+## Covered by the third pass (2026-09-20 night)
+
+- DialogScreen (WIND 3007): stone plate regenerated from the oracle
+  capture with the EBOX text in-painted (portrait frame + announcer
+  face PORT 119 baked), wrapped FONT/100 lines at the measured
+  (60,6)/9px pitch, Enter/Space/click paging, auto-advance for
+  scripted QC. The scripted arena intro plays the real GPL-2
+  announcer lines (citizens, gift, Celgor exhibition, do-not-worry,
+  Monster Trainer, step forward) and victory says the
+  go-back-to-the-pens line; audit/dialog.png.
 
 ## Covered by the second pass (2026-09-20 evening)
 
