@@ -281,6 +281,12 @@ def _export_title_plates() -> None:
         _export_bmp_plate(bid)
 
 
+def _export_hud_art() -> None:
+    """Combat HUD furniture: gauge trough + fill, status panel, arc."""
+    for bid in (5012, 5016, 20106, 20107):
+        _export_bmp_plate(bid)
+
+
 def _export_spell_icons(res) -> None:
     """Spell and power faces for the sample known lists: spells 1..24
     (ICON 21000+id) and psionic powers 0..15 (ICON 3000+id)."""
@@ -437,6 +443,7 @@ def export_winds(res) -> dict:
             f" border={bb} items={count}"
         )
     _export_title_plates()
+    _export_hud_art()
     _export_spell_icons(res)
     (OUT / "winds.json").write_text(json.dumps(winds, indent=1))
     print(
