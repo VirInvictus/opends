@@ -12,7 +12,12 @@ func _ready() -> void:
 	bg.size = get_viewport_rect().size
 	add_child(bg)
 	var wid := int(OS.get_environment("SPIKE_WIND"))
-	var ws := WindScreen.new(wid)
+	var screen := OS.get_environment("SPIKE_SCREEN")
+	var ws: WindScreen
+	if screen == "creation":
+		ws = CreationScreen.new()
+	else:
+		ws = WindScreen.new(wid)
 	add_child(ws)
 	var spec := OS.get_environment("SPIKE_TEXT")
 	if spec != "":

@@ -207,12 +207,79 @@ def _export_bmp_plate(bmp_id: int) -> dict | None:
     return {"png": f"{name}.png", "w": w, "h": h}
 
 
+def _make_creation_bg() -> str:
+    """The creation backdrop regenerates from the committed oracle
+    capture with every dynamic text region patched over using clean
+    texture strips of the same capture (leather and parchment), so the
+    port's live TextBlitter rows do not ghost against baked pixels."""
+    import numpy as np
+    from PIL import Image
+
+    src = HERE / "oracle" / "creation_3011.png"
+    im = Image.open(src).convert("RGBA")
+
+    arr = np.asarray(im).copy()
+
+    def inpaint_text(x0: int, y0: int, x1: int, y1: int) -> None:
+        """Blank the engine-printed text inside a panel: pixels that are
+        neither parchment nor burned border get replaced by the local
+        parchment median, dilated until no holes remain."""
+        reg = arr[y0:y1, x0:x1, :3].astype(float)
+        r, g, b = reg[:,:,0], reg[:,:,1], reg[:,:,2]
+        # parchment is warm and bright; text is steel-blue or dark brown
+        text = ((b >= r) & (r > 90)) | ((r < 110) & (g < 75) & (b < 60))
+        known = ~text
+        for _ in range(12):
+            if known.all():
+                break
+            H, W = reg.shape[:2]
+            padr = np.pad(reg, ((1, 1), (1, 1), (0, 0)), mode="edge")
+            padk = np.pad(known, 1, mode="edge")
+            sums = np.zeros((H, W, 3))
+            cnt = np.zeros((H, W))
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    if dy == 0 and dx == 0:
+                        continue
+                    nk = padk[1 + dy:1 + dy + H, 1 + dx:1 + dx + W]
+                    nv = padr[1 + dy:1 + dy + H, 1 + dx:1 + dx + W]
+                    sums += nv * nk[:, :, None]
+                    cnt += nk
+            fill = cnt > 0
+            todo = (~known) & fill
+            reg[todo] = (sums[todo] / cnt[todo][:, None]).astype(arr.dtype)
+            known |= todo
+        arr[y0:y1, x0:x1, :3] = np.clip(reg, 0, 255).astype(arr.dtype)
+
+    # class list and discipline rows: engine-printed text on parchment
+    inpaint_text(216, 4, 314, 73)
+    inpaint_text(212, 74, 314, 101)
+
+    dst = OUT / "bg_3011.png"
+    Image.fromarray(arr).save(dst)
+    return "bg_3011.png"
+
+
 def export_winds(res) -> dict:
     """Dump all WIND windows: rect, border plate, and each item with its
     referenced chunk resolved (size, icon, shipped text)."""
     winds = {}
     icon_cache: dict[int, list[dict]] = {}
     plates: dict[int, dict | None] = {}
+    # Full-screen backdrop plates: BMP ids chosen to mirror their window
+    # ids where the engine ships one. 3011's leather-and-parchment
+    # backdrop has no pinned BMP, so it regenerates from the committed
+    # oracle capture (static furniture; dynamic layers draw over it).
+    bg_bmps = {
+        11500: 11000,
+        13500: 13001,
+        10500: 10000,
+        10501: 10001,
+        3009: 3009,
+        15500: 15000,
+        15502: 15001,
+        14000: 14000,
+    }
     for wid, raw in ec.resolve_type(res, "WIND"):
         items = []
         count = ec.u16(raw, 243)
@@ -244,6 +311,11 @@ def export_winds(res) -> dict:
             if bb not in plates:
                 plates[bb] = _export_bmp_plate(bb)
             wind["border_png"] = (plates[bb] or {}).get("png")
+        if wid in bg_bmps:
+            art = _export_bmp_plate(bg_bmps[wid])
+            wind["bg_png"] = art["png"] if art else None
+        elif wid == 3011:
+            wind["bg_png"] = _make_creation_bg()
         winds[str(wid)] = wind
         print(
             f"WIND {wid}: {wind['w']}x{wind['h']} at ({wind['x']},{wind['y']})"

@@ -25,6 +25,10 @@ static var _winds: Dictionary
 var window_id := 0
 var data: Dictionary = {}
 var _buttons: Array[Dictionary] = []
+## Items whose shipped faces are flash variants only: the resting art
+## is engine-printed text (e.g. the creation class list), so the port
+## draws no sprite for them.
+var no_resting_art: Array[int] = []
 var _hovered := 0
 var _pressed := 0
 var _board: Node2D
@@ -72,6 +76,13 @@ func item_by_id(iid: int) -> Dictionary:
 
 func _layout() -> void:
 	_origin = Vector2(float(data["x"]), float(data["y"]))
+	var bg: String = data.get("bg_png", "")
+	if bg != "":
+		var bgs := Sprite2D.new()
+		bgs.texture = load("res://generated/ui/" + bg)
+		bgs.centered = false
+		bgs.position = _origin
+		_board.add_child(bgs)
 	var plate: String = data.get("border_png", "")
 	if plate != "":
 		var s := Sprite2D.new()
@@ -101,6 +112,19 @@ func _layout() -> void:
 					_board.add_child(t)
 				"BUTN":
 					var frames: Array = it.get("icon_frames", [])
+					var label: String = it.get("text", "")
+					if (frames.is_empty() and label == "") or int(it["id"]) in no_resting_art:
+						# invisible hot zone (race cycle, steppers): no art
+						_buttons.append({
+							"item": it,
+							"rect": Rect2(pos, Vector2(float(it.get("w", 8)), float(it.get("h", 8)))),
+							"sprite": null,
+							"frames": frames,
+							"frame": 0,
+							"id": int(it["id"]),
+							"userid": int(it.get("userid", 0)),
+						})
+						continue
 					var s := Sprite2D.new()
 					s.centered = false
 					s.position = pos
@@ -113,7 +137,6 @@ func _layout() -> void:
 						b2.seed_key = int(it["id"])
 						s.add_child(b2)
 					_board.add_child(s)
-					var label: String = it.get("text", "")
 					if label != "":
 						var lt := TextBlitter.new()
 						lt.position = Vector2(float(it.get("textx", 0)), float(it.get("texty", 0)))
