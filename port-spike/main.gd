@@ -1,44 +1,51 @@
 # The Draj demo: intro -> Slave Pens -> the Arena -> the first fight ->
-# back to the pens, repeatable.
+# back to the pens, repeatable. Combat follows the engine's structure
+# (docs/combat-flow.md + the turn-system research): a single-actor token
+# passes to the highest morale-threshold combatant each pick, party and
+# monsters share one stream, a round is one pass of that queue, movement
+# costs 10 (orthogonal) / 14 (diagonal) from move x 10, and attacks use
+# the parity alternator over the blows byte.
 #
-# Walking: arrow keys / WASD or click to BFS a path, on the exported
-# GMAP blocking. The intro plays the baked CINE.GFF timeline (Enter =
-# next part, Esc = skip). In the arena, entering the fight zone starts
-# the arena fight: monsters spawn at the shipped spawn tiles, and combat
-# uses the mined math (d20 vs THAC0 - AC, the bestiary attack dice).
-# Winning returns you to the pens and the loop repeats, scaling each
-# fight. The break-out options (escape tunnel, attacking guards) stay
-# gated. SPIKE_DEMO=1 plays the whole loop scripted; SPIKE_SHOT saves a
-# screenshot and quits.
+# Walking: arrow keys / WASD or click to BFS a path. The intro plays the
+# baked CINE.GFF timeline (Enter = next part, Esc = skip). SPIKE_DEMO=1
+# plays the whole opening loop scripted; SPIKE_SHOT saves a screenshot.
 extends Node2D
 
 const STEP_TIME := 0.11
 const WORLD := Vector2i(128, 98)
-const TICK := 1.0 / 12.0  # intro pacing: one cine tick per wait unit
+const TICK := 1.0 / 12.0
+const STEP_COST := [10, 14, 10, 14, 10, 14, 10, 14]  # N,NE,E,SE,S,SW,W,NW
 
 enum State { INTRO, PLAY, COMBAT, VICTORY, DEAD }
+enum Phase { PICK, PARTY, MONSTER }
 
 var demo: Dictionary
 var region_id: int
 var label_text := ""
 var tile := Vector2i.ZERO
-var party: Array[Dictionary] = []       # {sprite, bar_bg, bar_fg, hp, max_hp, ac, thac0, dice, sides, bonus, alive}
-var monsters: Array[Dictionary] = []    # {sprite, bar*, hp, max_hp, ac, thac0, ..., tile, move_t, attack_t}
+var party: Array[Dictionary] = []
+var monsters: Array[Dictionary] = []
 var trail: Array[Vector2] = []
 var path: Array[Vector2i] = []
 var armed := false
 var busy := false
 var cooldown := 0.0
 var state := State.INTRO
+var phase := Phase.PICK
 var fight_count := 0
 var fight_done := false
+var round_no := 0
+var queue: Array[Dictionary] = []
+var actor_i := -1
 var target_mon := -1
+var move_pts := 0
+var attacks_left := 0
+var acted := false
 var banner_t := 0.0
 var _region_cache := {}
 var _intro := {"parts": []}
 var _intro_part := 0
 var _intro_ev := 0
-var _intro_tex: Texture2D
 var _intro_wait := 0.0
 
 
@@ -95,8 +102,7 @@ func _intro_process(delta: float) -> void:
 		return
 	var ev: Dictionary = timeline[_intro_ev]
 	if ev["kind"] == "frame" or ev["kind"] == "still":
-		_intro_tex = load("res://generated/cine/" + str(ev["png"]))
-		$Intro/Frame.texture = _intro_tex
+		$Intro/Frame.texture = load("res://generated/cine/" + str(ev["png"]))
 		_intro_wait = float(ev.get("wait", 1)) * TICK
 	_intro_ev += 1
 
@@ -157,28 +163,18 @@ func _enter_region(rid: int, at: Vector2i) -> void:
 	var bmps: Array = demo["party_bmps"]
 	var spread := [Vector2(2, 6), Vector2(10, 2), Vector2(10, 10), Vector2(18, 6)]
 	party.clear()
-	var stats: Array = demo["party_stats"]
 	for i in bmps.size():
-		var s := _party_sprite(dir, int(bmps[i]), Vector2(at * 16) + spread[i])
-		party.append(s)
+		var st: Dictionary = demo["party_stats"][i]
+		var s := _add_sprite($Party, "%s/sprites/bmp_%04d.png" % [dir, int(bmps[i])], Vector2(at * 16) + spread[i])
+		s.flip_h = i % 2 == 1
+		var bars := _make_bars(s)
+		party.append({"sprite": s, "bar_bg": bars[0], "bar_fg": bars[1],
+			"hp": int(st["hp"]), "max_hp": int(st["max_hp"]), "ac": int(st["ac"]),
+			"thac0": int(st["thac0"]), "move": int(st["move"]), "blows": int(st["blows"]),
+			"dice": int(st["dice"]), "sides": int(st["sides"]), "bonus": int(st["bonus"]),
+			"alive": true})
 	$Camera.position = Vector2(at * 16)
 	$UI/Label.text = label_text
-
-
-func _party_sprite(dir: String, bmp: int, top_left: Vector2) -> Dictionary:
-	var st: Dictionary = demo["party_stats"][party.size()]
-	var s := Sprite2D.new()
-	s.texture = load("res://generated/%s/sprites/bmp_%04d.png" % [dir, bmp])
-	s.centered = false
-	s.offset = Vector2(0, -s.texture.get_height())
-	s.flip_h = party.size() % 2 == 1
-	s.position = top_left + Vector2(0, s.texture.get_height())
-	$Party.add_child(s)
-	var bars := _make_bars(s, s.texture.get_height())
-	return {"sprite": s, "bar_bg": bars[0], "bar_fg": bars[1], "hp": int(st["hp"]),
-		"max_hp": int(st["max_hp"]), "ac": int(st["ac"]), "thac0": int(st["thac0"]),
-		"dice": int(st["dice"]), "sides": int(st["sides"]), "bonus": int(st["bonus"]),
-		"alive": true, "attack_t": 0.0}
 
 
 func _add_sprite(parent: Node2D, res: String, bottom_left: Vector2) -> Sprite2D:
@@ -191,7 +187,7 @@ func _add_sprite(parent: Node2D, res: String, bottom_left: Vector2) -> Sprite2D:
 	return s
 
 
-func _make_bars(owner_node: Sprite2D, tex_h: float) -> Array:
+func _make_bars(owner_node: Sprite2D) -> Array:
 	var bg := Polygon2D.new()
 	bg.color = Color(0.1, 0.1, 0.1, 0.9)
 	bg.polygon = PackedVector2Array([Vector2(-1, -2), Vector2(15, -2), Vector2(15, 1), Vector2(-1, 1)])
@@ -256,22 +252,25 @@ func _in_zone(t: Vector2i) -> Dictionary:
 	return {}
 
 
-func _step(target: Vector2i) -> void:
+func _step_to(target: Vector2i, mover: Dictionary) -> void:
 	if not _walkable(target) or busy:
 		path.clear()
 		return
 	busy = true
+	var step_cost := 10 if (target.x == tile.x or target.y == tile.y) else 14
 	var from := Vector2(tile * 16) + Vector2(0, 16)
 	var to := Vector2(target * 16) + Vector2(0, 16)
 	trail.push_front(from)
 	trail = trail.slice(0, 8)
 	var tw := create_tween()
-	tw.tween_property(party[0]["sprite"], "position", to + Vector2(2, 0), STEP_TIME)
+	tw.tween_property(mover["sprite"], "position", to + Vector2(2, 0), STEP_TIME)
 	for i in range(1, party.size()):
-		if trail.size() > i:
+		if trail.size() > i and state == State.PLAY:
 			tw.parallel().tween_property(party[i]["sprite"], "position", trail[i] + Vector2(2, 0), STEP_TIME)
 	await tw.finished
-	tile = target
+	if state == State.PLAY:
+		tile = target
+		move_pts = maxi(0, move_pts - step_cost)
 	busy = false
 	var z := _in_zone(tile)
 	if z.is_empty():
@@ -282,28 +281,6 @@ func _step(target: Vector2i) -> void:
 		return
 	if state == State.PLAY:
 		_maybe_start_fight()
-
-
-func _spawn_ring(center: Vector2i, count: int) -> Array[Vector2i]:
-	# count walkable tiles ringing the party at BFS distance 3..6
-	var dist := {center: 0}
-	var q: Array[Vector2i] = [center]
-	var picked: Array[Vector2i] = []
-	var head := 0
-	while head < q.size() and picked.size() < count:
-		var t: Vector2i = q[head]
-		head += 1
-		var d: int = dist[t]
-		if d >= 3 and d <= 6 and not _monster_on(t) and t != tile:
-			picked.append(t)
-			if picked.size() == count:
-				break
-		for dd in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-			var n: Vector2i = t + dd
-			if _walkable(n) and not dist.has(n):
-				dist[n] = d + 1
-				q.append(n)
-	return picked
 
 
 func _bfs(src: Vector2i, dst: Vector2i) -> Array[Vector2i]:
@@ -341,14 +318,25 @@ func _process(delta: float) -> void:
 		State.INTRO:
 			_intro_process(delta)
 		State.PLAY, State.COMBAT, State.VICTORY:
-			if party.size() > 0 and party[0]["sprite"] != null:
+			if party.size() > 0:
 				$Camera.position = party[0]["sprite"].position + Vector2(8, -8)
-	if state == State.COMBAT:
-		_combat_tick(delta)
-	if (state != State.PLAY and state != State.COMBAT) or busy:
+	if state == State.COMBAT and phase == Phase.PARTY and not busy and cooldown <= 0.0:
+		var cdir := Vector2i.ZERO
+		if Input.is_key_pressed(KEY_LEFT) or Input.is_key_pressed(KEY_A):
+			cdir = Vector2i(-1, 0)
+		elif Input.is_key_pressed(KEY_RIGHT) or Input.is_key_pressed(KEY_D):
+			cdir = Vector2i(1, 0)
+		elif Input.is_key_pressed(KEY_UP) or Input.is_key_pressed(KEY_W):
+			cdir = Vector2i(0, -1)
+		elif Input.is_key_pressed(KEY_DOWN) or Input.is_key_pressed(KEY_S):
+			cdir = Vector2i(0, 1)
+		if cdir != Vector2i.ZERO:
+			cooldown = STEP_TIME
+			_combat_step_member(tile + cdir)
+	if state != State.PLAY or busy:
 		return
 	if not path.is_empty():
-		_step(path.pop_front())
+		_step_to(path.pop_front(), party[0])
 		return
 	var dir := Vector2i.ZERO
 	if Input.is_key_pressed(KEY_LEFT) or Input.is_key_pressed(KEY_A):
@@ -361,32 +349,45 @@ func _process(delta: float) -> void:
 		dir = Vector2i(0, 1)
 	if dir != Vector2i.ZERO and cooldown <= 0.0:
 		cooldown = STEP_TIME
-		_step(tile + dir)
+		_step_to(tile + dir, party[0])
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if state == State.INTRO:
 		_intro_input(event)
 		return
-	if state != State.PLAY and state != State.COMBAT:
+	if state == State.COMBAT and phase == Phase.PARTY and event is InputEventKey and event.pressed:
+		if event.keycode == KEY_ENTER:
+			_end_party_turn()
+		return
+	if state != State.PLAY or busy:
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var t := Vector2i((get_global_mouse_position() / 16.0).floor())
-		if state == State.COMBAT:
-			for mi in monsters.size():
-				if monsters[mi]["alive"] and monsters[mi]["tile"] == t:
-					target_mon = mi
-					$UI/Banner.text = " "
-					return
 		var p := _bfs(tile, t)
 		if not p.is_empty():
 			path = p
 
 
-# --------------------------------------------------------------- combat
+# --------------------------------------------- the actor-token machine
 
-func _fight_zone() -> Dictionary:
-	return demo["fight"]
+func _combat_tickless_guard(_delta: float) -> void:
+	pass  # per-frame combat upkeep placeholder (bars update on damage)
+
+
+func _combat_step_member(target: Vector2i) -> void:
+	# movement for whichever party member holds the token
+	var a: Dictionary = queue[actor_i]
+	var src := _party_tile(a["idx"])
+	var cost := 10 if (target.x == src.x or target.y == src.y) else 14
+	if not _walkable(target) or _monster_on(target) or move_pts < cost or busy:
+		return
+	move_pts -= cost
+	var s: Sprite2D = party[a["idx"]]["sprite"]
+	var tw := create_tween()
+	tw.tween_property(s, "position", Vector2(target * 16) + Vector2(2, 16), STEP_TIME)
+	if a["idx"] == 0:
+		tile = target
 
 
 func _maybe_start_fight() -> void:
@@ -397,128 +398,47 @@ func _maybe_start_fight() -> void:
 	if tile.x < int(b[0]) or tile.y < int(b[1]) or tile.x >= int(b[0]) + int(b[2]) or tile.y >= int(b[1]) + int(b[3]):
 		return
 	fight_done = true
-	state = State.COMBAT
-	var count: int = mini(2 + fight_count, f["spawn_tiles"].size())
+	round_no = 0
 	_show_banner("The Announcer rises: 'Slaves! Entertain the city of Draj!'")
 	var m: Dictionary = f["monster"]
+	var count: int = mini(2 + fight_count, f["spawn_tiles"].size())
 	var spots := _spawn_ring(tile, count)
 	for i in count:
 		var t: Vector2i = spots[i] if i < spots.size() else Vector2i(int(f["spawn_tiles"][i][0]), int(f["spawn_tiles"][i][1]))
 		_spawn_monster(t, int(m["hp"]) + 2 * fight_count, m)
-	target_mon = -1
+	_new_round()
+
+
+func _spawn_ring(center: Vector2i, count: int) -> Array[Vector2i]:
+	var dist := {center: 0}
+	var q: Array[Vector2i] = [center]
+	var picked: Array[Vector2i] = []
+	var head := 0
+	while head < q.size() and picked.size() < count:
+		var t: Vector2i = q[head]
+		head += 1
+		var d: int = dist[t]
+		if d >= 3 and d <= 6 and not _monster_on(t) and t != tile:
+			picked.append(t)
+			if picked.size() == count:
+				break
+		for dd in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n: Vector2i = t + dd
+			if _walkable(n) and not dist.has(n):
+				dist[n] = d + 1
+				q.append(n)
+	return picked
+
 
 func _spawn_monster(t: Vector2i, hp: int, m: Dictionary) -> void:
 	var dir: String = demo["regions"]["42"]["dir"]
 	var s := _add_sprite($Monsters, "%s/sprites/bmp_%04d.png" % [dir, int(m["bmp"])], Vector2(t * 16) + Vector2(0, 16))
 	s.flip_h = monsters.size() % 2 == 1
-	var bars := _make_bars(s, s.texture.get_height())
+	var bars := _make_bars(s)
 	monsters.append({"sprite": s, "bar_bg": bars[0], "bar_fg": bars[1], "hp": hp,
-		"max_hp": hp, "ac": int(m["ac"]), "thac0": int(m["thac0"]),
-		"dice": int(m["dice"]), "sides": int(m["sides"]), "bonus": int(m["bonus"]),
-		"tile": t, "alive": true, "move_t": 0.0, "attack_t": 0.0, "stuck": 0, "speed_s": float(m["speed_s"]),
-		"attack_s": float(m["attack_s"])})
-
-
-func _monsters_alive() -> bool:
-	for m in monsters:
-		if m["alive"]:
-			return true
-	return false
-
-
-func _combat_tick(delta: float) -> void:
-	for mi in monsters.size():
-		var m: Dictionary = monsters[mi]
-		if not m["alive"]:
-			continue
-		m["move_t"] -= delta
-		m["attack_t"] -= delta
-		var tgt := _nearest_party_tile(m["tile"])
-		if tgt.x < 0:
-			continue
-		var adjacent: bool = maxi(abs(m["tile"].x - tgt.x), abs(m["tile"].y - tgt.y)) <= 1
-		if adjacent:
-			if m["attack_t"] <= 0.0:
-				m["attack_t"] = m["attack_s"]
-				_monster_attack(mi, tgt)
-		elif m["move_t"] <= 0.0:
-			m["move_t"] = m["speed_s"]
-			_monster_step(mi, tgt)
-	for p in party:
-		if p["bar_fg"] != null:
-			_update_bar(p["bar_fg"], float(p["hp"]) / float(p["max_hp"]))
-	for m in monsters:
-		if m["alive"]:
-			_update_bar(m["bar_fg"], float(m["hp"]) / float(m["max_hp"]))
-	# party auto-attack against the current target
-	if target_mon >= 0 and target_mon < monsters.size():
-		var m2: Dictionary = monsters[target_mon]
-		if not m2["alive"]:
-			target_mon = -1
-		elif path.is_empty() and not busy and not _adjacent_to_monster(party[0], m2):
-			var best := Vector2i(-1, -1)
-			var bd := 9999
-			for dd in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-				var n: Vector2i = m2["tile"] + dd
-				if _walkable(n):
-					var d: int = abs(n.x - tile.x) + abs(n.y - tile.y)
-					if d < bd:
-						bd = d
-						best = n
-			if best.x >= 0:
-				path = _bfs(tile, best)
-		else:
-			for p in party:
-				if not p["alive"]:
-					continue
-				p["attack_t"] -= delta
-				if p["attack_t"] <= 0.0 and _adjacent_to_monster(p, m2):
-					p["attack_t"] = 1.0
-					_party_attack(p, m2)
-
-
-func _nearest_party_tile(from: Vector2i) -> Vector2i:
-	var best := Vector2i(-1, -1)
-	var best_d := 9999
-	for i in party.size():
-		if not party[i]["alive"]:
-			continue
-		var t := _occ_tile(party[i]["sprite"].position)
-		var d: int = abs(t.x - from.x) + abs(t.y - from.y)
-		if d < best_d:
-			best_d = d
-			best = t
-	return best
-
-
-func _occ_tile(pos: Vector2) -> Vector2i:
-	# occupancy tile of a bottom-anchored sprite (feet on a tile edge)
-	return Vector2i(int(pos.x / 16.0), int((pos.y - 1.0) / 16.0))
-
-
-func _monster_step(mi: int, tgt: Vector2i) -> void:
-	var m: Dictionary = monsters[mi]
-	var dx: int = signi(tgt.x - m["tile"].x)
-	var dy: int = signi(tgt.y - m["tile"].y)
-	var moved := false
-	for d in [Vector2i(dx, dy), Vector2i(dx, 0), Vector2i(0, dy), Vector2i(dx, -dy), Vector2i(-dx, dy)]:
-		if d == Vector2i.ZERO:
-			continue
-		var n: Vector2i = m["tile"] + d
-		if _walkable(n) and not _monster_on(n) and n != _leader_tile():
-			m["sprite"].position = Vector2(n * 16) + Vector2(0, 16)
-			m["tile"] = n
-			m["stuck"] = 0
-			moved = true
-			return
-	if not moved:
-		m["stuck"] = int(m.get("stuck", 0)) + 1
-		if m["stuck"] >= 4:  # greedy is wedged: path properly once
-			var route := _bfs(m["tile"], tgt)
-			if route.size() >= 1:
-				m["sprite"].position = Vector2(route[0] * 16) + Vector2(0, 16)
-				m["tile"] = route[0]
-				m["stuck"] = 0
+		"max_hp": hp, "ac": int(m["ac"]), "thac0": int(m["thac0"]), "move": int(m["move"]),
+		"blows": int(m["blows"]), "dice": int(m["dice"]), "sides": int(m["sides"]),
+		"bonus": int(m["bonus"]), "tile": t, "alive": true})
 
 
 func _monster_on(t: Vector2i) -> bool:
@@ -528,41 +448,189 @@ func _monster_on(t: Vector2i) -> bool:
 	return false
 
 
-func _leader_tile() -> Vector2i:
-	return Vector2i(party[0]["sprite"].position / 16.0)
+func _monsters_alive() -> bool:
+	for m in monsters:
+		if m["alive"]:
+			return true
+	return false
 
 
-func _adjacent_to_monster(p: Dictionary, m: Dictionary) -> bool:
-	var pt := _occ_tile(p["sprite"].position)
-	return maxi(abs(pt.x - m["tile"].x), abs(pt.y - m["tile"].y)) <= 1
+func _new_round() -> void:
+	round_no += 1
+	queue.clear()
+	var act_mods := [5, 0, -5, -10]
+	for i in party.size():
+		if party[i]["alive"]:
+			var thr: int = 20 + _d(10) + act_mods[i]
+			queue.append({"kind": "p", "idx": i, "thr": thr, "roll": _d(200),
+				"move_pts": party[i]["move"] * 10, "blows": _blows_this_round(party[i]["blows"]),
+				"done": false})
+	for mi in monsters.size():
+		if monsters[mi]["alive"]:
+			var thr2: int = 20 + _d(10)
+			queue.append({"kind": "m", "idx": mi, "thr": thr2, "roll": _d(200),
+				"move_pts": monsters[mi]["move"] * 10,
+				"blows": _blows_this_round(monsters[mi]["blows"]), "done": false})
+	queue.sort_custom(func(a, b):
+		if a["thr"] != b["thr"]:
+			return a["thr"] > b["thr"]
+		return a["roll"] > b["roll"])
+	actor_i = -1
+	_next_actor()
 
 
-func _party_attack(p: Dictionary, m: Dictionary) -> void:
+func _blows_this_round(base: int) -> int:
+	# the engine's parity alternator: blows = (base + odd/even round) / 2
+	return int((base + (round_no & 1)) / 2.0)
+
+
+func _actor_ok(a: Dictionary) -> bool:
+	if a["kind"] == "p":
+		return party[a["idx"]]["alive"]
+	return monsters[a["idx"]]["alive"]
+
+
+func _next_actor() -> void:
+	if state != State.COMBAT:
+		return
+	if not _monsters_alive():
+		_victory()
+		return
+	if _party_wiped():
+		_party_down()
+		return
+	actor_i += 1
+	if actor_i >= queue.size():
+		_new_round()
+		return
+	var a: Dictionary = queue[actor_i]
+	if not _actor_ok(a) or a["done"]:
+		_next_actor()
+		return
+	if a["kind"] == "p":
+		_party_turn(a)
+	else:
+		_monster_turn(a)
+
+
+func _party_turn(a: Dictionary) -> void:
+	phase = Phase.PARTY
+	move_pts = a["move_pts"]
+	attacks_left = a["blows"]
+	tile = _party_tile(0)
+	var nm: String = ["Cermak", "Saria", "Cilla", "K'ratchek"][a["idx"]] if a["idx"] < 4 else "Gladiator"
+	_show_banner("Round %d - %s  (move %d, %d attack%s)  [Enter = done]" % [
+		round_no, nm, int(move_pts / 10.0), attacks_left,
+		"s" if attacks_left != 1 else ""])
+
+
+func _end_party_turn() -> void:
+	queue[actor_i]["done"] = true
+	path.clear()
+	_next_actor()
+
+
+func _monster_turn(a: Dictionary) -> void:
+	phase = Phase.MONSTER
+	var mi: int = a["idx"]
+	var m: Dictionary = monsters[mi]
+	_show_banner("Round %d - the beast is upon you..." % round_no)
+	await get_tree().create_timer(0.35).timeout
+	var tgt := _nearest_party_tile(m["tile"])
+	var steps: int = int(a["move_pts"] / 10.0)
+	while steps > 0 and m["alive"] and state == State.COMBAT:
+		if _cheby(m["tile"], tgt) <= 1:
+			break
+		var route := _bfs(m["tile"], tgt)
+		if route.is_empty():
+			break
+		var n: Vector2i = route[0]
+		if not _walkable(n) or _monster_on(n) or _party_on(n):
+			break
+		m["sprite"].position = Vector2(n * 16) + Vector2(0, 16)
+		m["tile"] = n
+		steps -= 1
+		await get_tree().create_timer(0.12).timeout
+	if m["alive"] and state == State.COMBAT and _cheby(m["tile"], tgt) <= 1:
+		var pi := _party_index_at(tgt)
+		if pi >= 0:
+			for b in a["blows"]:
+				if not m["alive"] or not party[pi]["alive"]:
+					break
+				_monster_attack(m, party[pi])
+				await get_tree().create_timer(0.35).timeout
+	a["done"] = true
+	await get_tree().create_timer(0.2).timeout
+	_next_actor()
+
+
+func _cheby(a: Vector2i, b: Vector2i) -> int:
+	return maxi(abs(a.x - b.x), abs(a.y - b.y))
+
+
+func _party_tile(i: int) -> Vector2i:
+	return _occ_tile(party[i]["sprite"].position)
+
+
+func _party_on(t: Vector2i) -> bool:
+	for i in party.size():
+		if party[i]["alive"] and _party_tile(i) == t:
+			return true
+	return false
+
+
+func _nearest_party_tile(from: Vector2i) -> Vector2i:
+	var best := Vector2i(-1, -1)
+	var best_d := 9999
+	for i in party.size():
+		if not party[i]["alive"]:
+			continue
+		var t := _party_tile(i)
+		var d: int = _cheby(t, from)
+		if d < best_d:
+			best_d = d
+			best = t
+	return best
+
+
+func _occ_tile(pos: Vector2) -> Vector2i:
+	return Vector2i(int(pos.x / 16.0), int((pos.y - 1.0) / 16.0))
+
+
+func _party_index_at(t: Vector2i) -> int:
+	for i in party.size():
+		if party[i]["alive"] and _party_tile(i) == t:
+			return i
+	return -1
+
+
+func _party_attack(mi: int) -> void:
+	if attacks_left <= 0 or mi >= monsters.size() or not monsters[mi]["alive"]:
+		return
+	attacks_left -= 1
+	var p: Dictionary = party[0]
 	var roll: int = _d(20)
-	if roll == 20 or (roll != 1 and roll >= int(p["thac0"]) - int(m["ac"])):
-		var dmg: int = _d(int(p["sides"]), int(p["dice"])) + int(p["bonus"])
-		m["hp"] = maxi(0, m["hp"] - dmg)
-		_update_bar(m["bar_fg"], float(m["hp"]) / float(m["max_hp"]))
-		_float_text(m["sprite"].position, str(dmg), Color(1, 0.9, 0.3))
-		if m["hp"] <= 0:
-			m["alive"] = false
-			m["sprite"].modulate = Color(0.4, 0.4, 0.4, 0.7)
-			m["bar_bg"].visible = false
-			m["bar_fg"].visible = false
+	if roll == 20 or (roll != 1 and roll >= p["thac0"] - monsters[mi]["ac"]):
+		var dmg: int = _d(p["sides"], p["dice"]) + p["bonus"]
+		monsters[mi]["hp"] = maxi(0, int(monsters[mi]["hp"]) - dmg)
+		_update_bar(monsters[mi]["bar_fg"], float(monsters[mi]["hp"]) / float(monsters[mi]["max_hp"]))
+		_float_text(monsters[mi]["sprite"].position, str(dmg), Color(1, 0.9, 0.3))
+		if monsters[mi]["hp"] <= 0:
+			monsters[mi]["alive"] = false
+			monsters[mi]["sprite"].modulate = Color(0.4, 0.4, 0.4, 0.7)
+			monsters[mi]["bar_bg"].visible = false
+			monsters[mi]["bar_fg"].visible = false
 			if not _monsters_alive():
 				_victory()
+	else:
+		_float_text(monsters[mi]["sprite"].position, "miss", Color(0.8, 0.8, 0.8))
 
 
-func _monster_attack(mi: int, tgt: Vector2i) -> void:
-	var m: Dictionary = monsters[mi]
-	var pi := _party_index_at(tgt)
-	if pi < 0 or not party[pi]["alive"]:
-		return
-	var p: Dictionary = party[pi]
+func _monster_attack(m: Dictionary, p: Dictionary) -> void:
 	var roll: int = _d(20)
-	if roll == 20 or (roll != 1 and roll >= int(m["thac0"]) - int(p["ac"])):
-		var dmg: int = _d(int(m["sides"]), int(m["dice"])) + int(m["bonus"])
-		p["hp"] = maxi(0, p["hp"] - dmg)
+	if roll == 20 or (roll != 1 and roll >= m["thac0"] - p["ac"]):
+		var dmg: int = _d(m["sides"], m["dice"]) + m["bonus"]
+		p["hp"] = maxi(0, int(p["hp"]) - dmg)
 		_update_bar(p["bar_fg"], float(p["hp"]) / float(p["max_hp"]))
 		_float_text(p["sprite"].position, str(dmg), Color(1, 0.3, 0.3))
 		if p["hp"] <= 0:
@@ -570,24 +638,6 @@ func _monster_attack(mi: int, tgt: Vector2i) -> void:
 			p["sprite"].modulate = Color(0.3, 0.3, 0.3, 0.6)
 			p["bar_bg"].visible = false
 			p["bar_fg"].visible = false
-	if _party_wiped():
-		_show_banner("The party has fallen in the arena of Draj...")
-		state = State.DEAD
-		await get_tree().create_timer(3.0).timeout
-		for q in party:
-			q["hp"] = q["max_hp"]
-			q["alive"] = true
-			q["sprite"].modulate = Color(1, 1, 1)
-			_update_bar(q["bar_fg"], 1.0)
-		_enter_region(41, Vector2i(int(demo["start"]["x"]), int(demo["start"]["y"])))
-		state = State.PLAY
-
-
-func _party_index_at(t: Vector2i) -> int:
-	for i in party.size():
-		if party[i]["alive"] and _occ_tile(party[i]["sprite"].position) == t:
-			return i
-	return -1
 
 
 func _party_wiped() -> bool:
@@ -600,8 +650,21 @@ func _party_wiped() -> bool:
 func _victory() -> void:
 	fight_count += 1
 	state = State.VICTORY
-	_show_banner("VICTORY!  The crowd roars.  The pens' doors open.  (%d)" % fight_count)
+	_show_banner("VICTORY!  The crowd roars.  The pens' doors open.  (win %d)" % fight_count)
 	await get_tree().create_timer(2.5).timeout
+	state = State.PLAY
+
+
+func _party_down() -> void:
+	_show_banner("The party has fallen in the arena of Draj...")
+	state = State.DEAD
+	await get_tree().create_timer(3.0).timeout
+	for q in party:
+		q["hp"] = q["max_hp"]
+		q["alive"] = true
+		q["sprite"].modulate = Color(1, 1, 1)
+		_update_bar(q["bar_fg"], 1.0)
+	_enter_region(41, Vector2i(int(demo["start"]["x"]), int(demo["start"]["y"])))
 	state = State.PLAY
 
 
@@ -632,26 +695,30 @@ func _float_text(at: Vector2, text: String, color: Color) -> void:
 # ------------------------------------------------- scripted full loop
 
 func _scripted() -> void:
-	# Full-loop verification: intro beat -> skip -> pens -> arena stair
-	# -> fight zone -> combat -> victory -> holding gate -> pens.
 	await get_tree().create_timer(6.0).timeout
-	_intro_part = 99  # skip the rest of the intro
+	_intro_part = 99
+	_intro_wait = 0.0
 	await get_tree().create_timer(1.0).timeout
-	_walk_to_then(Vector2i(113, 27))  # the pens' arena stair (triggers the transition)
+	_walk_to_then(Vector2i(113, 27))
 	await _drain()
 	await get_tree().create_timer(0.3).timeout
 	if region_id == 42:
-		_walk_to_then(Vector2i(30, 22))  # into the fight zone
+		_walk_to_then(Vector2i(30, 22))
 		await _drain()
 		while state == State.COMBAT:
-			if target_mon < 0 or not monsters[target_mon]["alive"]:
-				target_mon = _nearest_mon()
+			if phase == Phase.PARTY and attacks_left > 0:
+				var mi := _nearest_mon()
+				if mi >= 0 and _cheby(_party_tile(0), monsters[mi]["tile"]) <= 1:
+					_party_attack(mi)
+					await get_tree().create_timer(0.4).timeout
+					if attacks_left <= 0:
+						_end_party_turn()
+				else:
+					_end_party_turn()
 			await get_tree().process_frame
-		while state == State.VICTORY:
-			await get_tree().process_frame
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(1.0).timeout
 		if region_id == 42:
-			_walk_to_then(Vector2i(30, 11))  # the holding gate back to the pens
+			_walk_to_then(Vector2i(30, 11))
 			await _drain()
 			await get_tree().create_timer(0.5).timeout
 	get_tree().quit()
@@ -663,7 +730,7 @@ func _nearest_mon() -> int:
 	for mi in monsters.size():
 		if not monsters[mi]["alive"]:
 			continue
-		var d: int = abs(monsters[mi]["tile"].x - tile.x) + abs(monsters[mi]["tile"].y - tile.y)
+		var d: int = _cheby(monsters[mi]["tile"], tile)
 		if d < bd:
 			bd = d
 			best = mi
@@ -675,7 +742,6 @@ func _walk_to_then(t: Vector2i) -> void:
 
 
 func _drain() -> void:
-	# the walk may hand control to a transition or a fight mid-path
 	while (not path.is_empty() or busy) and state == State.PLAY:
 		await get_tree().process_frame
 
@@ -688,10 +754,6 @@ func _snap(p: String) -> void:
 # ------------------------------------------------- exploration tour
 
 func _tour() -> void:
-	# Landmark walk for the exploration record: start -> fountain ->
-	# templar room -> kitchen -> monster pens -> gladiator pens ->
-	# Scar's corner -> arena stair -> arena floor. Each stop: banner +
-	# pause, so the Movie Maker capture doubles as the survey.
 	_start_game()
 	await get_tree().create_timer(0.6).timeout
 	var stops := [

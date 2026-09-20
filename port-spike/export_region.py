@@ -41,9 +41,9 @@ PARTY_OIDS = [300, 305, 307, 313]  # Cermak, Saria, Cilla, K'ratchek
 # data). Fight N spawns 2+N monsters, capped.
 FIGHT = {
     "monster_oid": 2039,
-    "monster": {"bmp": 2205, "hp": 12, "ac": 6, "thac0": 19,
-                "dice": 1, "sides": 6, "bonus": 0, "speed_s": 0.45,
-                "attack_s": 1.2},
+    "monster": {"bmp": 2205, "hp": 12, "ac": 6, "thac0": 19, "move": 12,
+                "blows": 1,
+                "dice": 1, "sides": 6, "bonus": 0},
     "spawn_tiles": [[59, 15], [53, 21], [6, 18], [11, 23]],
     "zone_box": [22, 18, 16, 10],  # arena floor: entering starts the fight
 }
@@ -435,8 +435,11 @@ def main() -> None:
         hp = ec.u16(charrec, 8)
         ac = ec.i8(combat, 26) if combat else 10
         thac0 = ec.i8(combat, 31) if combat else 20
+        move = ec.u8(combat, 27) if combat else 12
+        blows = ec.u8(charrec, 0x2A) if charrec else 1
         party_stats.append({"oid": oid, "hp": hp, "max_hp": hp,
-                            "ac": ac, "thac0": thac0,
+                            "ac": ac, "thac0": thac0, "move": move,
+                            "blows": max(1, blows),
                             "dice": 1, "sides": 8, "bonus": 1})
 
     # Transitions: the break-out (escape tunnel) stays GATED until the

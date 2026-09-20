@@ -77,10 +77,15 @@ triggers:
 
 ## Demo simplifications (on purpose)
 
-- Combat is a live skirmish, not the engine's phased fight: monsters
-  converge and trade blows with the mined THAC0/damage math; no GPL
-  execution (the flow above is hard-wired from the decoded handlers),
-  no SCMD animation (frame 0 only), no door mechanics (cell doors stay
+- Combat follows the engine's actor-token structure (the turn-system
+  research: combat_step 0x4a7 + scheduler 0x9b6): each round every
+  alive combatant gets the token in morale-threshold order (20 + d10 +
+  act modifier, tie by d200), with move points (move x 10; a step costs
+  10 orthogonal / 14 diagonal) and attacks (the parity alternator over
+  the blows byte). Party tokens wait for your move/attack/skip
+  (Enter); monster tokens run their chase-and-attack AI. No GPL
+  execution (the flow is hard-wired from the decoded handlers), no
+  SCMD animation (frame 0 only), no door mechanics (cell doors stay
   locked; the pens heal the party on return).
 - The intro bakes palette fades into the frames and drops music/sound
   cues (recorded in the timeline JSON, unplayed); the real tick rate
