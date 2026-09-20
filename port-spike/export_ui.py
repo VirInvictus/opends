@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
-"""Export the DS1 main-menu UI from the game's own data.
+"""Export the DS1 UI from the game's own data.
 
 - WIND/3000's items: the four BUTN placements (init positions in the
   320x200 menu space) and the ACCL/8100 accelerator.
 - The button faces are ICON/2048..2051 (the flaming menu text), decoded
   to PNG with the game palette via tools/image-extract.
 - ACCL/8100 keys: S/C/L/E upper+lower -> userids 8100..8107.
+- EVERY WIND (27 of them) dumps to winds.json: window rect, border
+  plate, and per-item type/id/pos plus the resolved BUTN/EBOX/APFM
+  geometry, icon ids and shipped text. Referenced ICON faces (every
+  frame, unflattened) and border BMP plates export as PNGs.
 
-Writes generated/ui/ui.json + the button PNGs. Stdlib-only; shells out
-to image-extract.
+Writes generated/ui/ui.json + winds.json + the art PNGs. Stdlib-only;
+shells out to image-extract, post-fixes PNGs with Pillow.
 """
 
 from __future__ import annotations
@@ -71,10 +75,23 @@ def _postfix_png(path: Path) -> None:
 def _export_bitmap(kind: str, bid: int, name: str) -> dict:
     out_png = OUT / f"{name}.png"
     rr = subprocess.run(
-        [str(IMAGE_EXTRACT), str(RESOURCE), "--kind", kind,
-         "--id", str(bid), "--frame", "0",
-         "-o", str(out_png), "--palette", "1000"],
-        capture_output=True, text=True)
+        [
+            str(IMAGE_EXTRACT),
+            str(RESOURCE),
+            "--kind",
+            kind,
+            "--id",
+            str(bid),
+            "--frame",
+            "0",
+            "-o",
+            str(out_png),
+            "--palette",
+            "1000",
+        ],
+        capture_output=True,
+        text=True,
+    )
     if rr.returncode != 0:
         print(f"{kind} {bid} failed:", rr.stderr[-160:])
         return {}
@@ -82,6 +99,162 @@ def _export_bitmap(kind: str, bid: int, name: str) -> dict:
     w, h = struct.unpack_from(">II", d, 16)
     _postfix_png(out_png)
     return {"png": f"{name}.png", "w": w, "h": h}
+
+
+def _resolve_item(res, kind: str, iid: int) -> dict:
+    """Pull the geometry/icon/text payload out of a BUTN/EBOX/APFM item
+    chunk. BUTN and APFM keep their hot-zone frame at +40/+42; the EBOX
+    frame sits at +34/+36 instead."""
+    try:
+        c = ec.get_chunk(res, kind, iid)
+    except Exception:
+        return {}
+    out: dict = {"chunk_len": len(c)}
+    if kind == "EBOX":
+        out["w"], out["h"] = ec.i16(c, 34), ec.i16(c, 36)
+        return out
+    out["w"] = ec.i16(c, 40)
+    out["h"] = ec.i16(c, 42)
+    if kind == "BUTN":
+        # field-by-field gates: shipped BUTN chunks run 110..114+ bytes
+        if len(c) >= 90:
+            out["flags"] = ec.u16(c, 88)
+        if len(c) >= 92:
+            out["userid"] = ec.u16(c, 90)
+        if len(c) >= 104:
+            out["iconx"] = ec.i16(c, 92)
+            out["icony"] = ec.i16(c, 94)
+            out["textx"] = ec.i16(c, 96)
+            out["texty"] = ec.i16(c, 98)
+            out["icon_id"] = ec.u32(c, 100)
+        if len(c) >= 110:
+            out["hotkey"] = ec.u8(c, 108)
+            tlen = ec.u8(c, 109)
+            out["text"] = c[110 : 110 + tlen].decode("ascii", "replace").rstrip("\x00")
+    return out
+
+
+def _export_icon_frames(res, icon_id: int) -> list[dict]:
+    """Every frame of an ICON, named icon<id>_f<n>.png (state frames
+    stay unflattened: the state model, not animation, decides which
+    frame a button shows)."""
+    pngs = []
+    try:
+        icon = ec.get_chunk(res, "ICON", icon_id)
+    except Exception:
+        return pngs
+    count = ec.u16(icon, 4)
+    for fi in range(count):
+        name = f"icon{icon_id}_f{fi}"
+        out_png = OUT / f"{name}.png"
+        if not out_png.exists():
+            rr = subprocess.run(
+                [
+                    str(IMAGE_EXTRACT),
+                    str(RESOURCE),
+                    "--kind",
+                    "ICON",
+                    "--id",
+                    str(icon_id),
+                    "--frame",
+                    str(fi),
+                    "-o",
+                    str(out_png),
+                    "--palette",
+                    "1000",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            if rr.returncode != 0:
+                print(f"ICON {icon_id} f{fi} failed:", rr.stderr[-120:])
+                continue
+            _postfix_png(out_png)
+        d = out_png.read_bytes()
+        w, h = struct.unpack_from(">II", d, 16)
+        pngs.append({"png": f"{name}.png", "w": w, "h": h})
+    return pngs
+
+
+def _export_bmp_plate(bmp_id: int) -> dict | None:
+    name = f"bmp{bmp_id}"
+    out_png = OUT / f"{name}.png"
+    if not out_png.exists():
+        rr = subprocess.run(
+            [
+                str(IMAGE_EXTRACT),
+                str(RESOURCE),
+                "--kind",
+                "BMP",
+                "--id",
+                str(bmp_id),
+                "--frame",
+                "0",
+                "-o",
+                str(out_png),
+                "--palette",
+                "1000",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        if rr.returncode != 0:
+            print(f"BMP {bmp_id} failed:", rr.stderr[-120:])
+            return None
+        _postfix_png(out_png)
+    d = out_png.read_bytes()
+    w, h = struct.unpack_from(">II", d, 16)
+    return {"png": f"{name}.png", "w": w, "h": h}
+
+
+def export_winds(res) -> dict:
+    """Dump all WIND windows: rect, border plate, and each item with its
+    referenced chunk resolved (size, icon, shipped text)."""
+    winds = {}
+    icon_cache: dict[int, list[dict]] = {}
+    plates: dict[int, dict | None] = {}
+    for wid, raw in ec.resolve_type(res, "WIND"):
+        items = []
+        count = ec.u16(raw, 243)
+        for k in range(count):
+            o = 261 + 30 * k
+            fourcc = raw[o + 4 : o + 8].decode("ascii", "replace").rstrip("\x00 ")
+            iid = ec.u32(raw, o + 8)
+            ix, iy = ec.i16(raw, o + 12), ec.i16(raw, o + 14)
+            item: dict = {"type": fourcc, "id": iid, "x": ix, "y": iy}
+            if fourcc in ("BUTN", "EBOX", "APFM"):
+                item.update(_resolve_item(res, fourcc, iid))
+                icon_id = item.get("icon_id") or 0
+                if fourcc == "BUTN" and icon_id:
+                    if icon_id not in icon_cache:
+                        icon_cache[icon_id] = _export_icon_frames(res, icon_id)
+                    item["icon_frames"] = icon_cache[icon_id]
+            items.append(item)
+        wind = {
+            "id": wid,
+            "x": ec.i16(raw, 150),
+            "y": ec.i16(raw, 152),
+            "w": ec.i16(raw, 190),
+            "h": ec.i16(raw, 192),
+            "border_bmp": ec.u32(raw, 194),
+            "items": items,
+        }
+        bb = wind["border_bmp"]
+        if bb:
+            if bb not in plates:
+                plates[bb] = _export_bmp_plate(bb)
+            wind["border_png"] = (plates[bb] or {}).get("png")
+        winds[str(wid)] = wind
+        print(
+            f"WIND {wid}: {wind['w']}x{wind['h']} at ({wind['x']},{wind['y']})"
+            f" border={bb} items={count}"
+        )
+    (OUT / "winds.json").write_text(json.dumps(winds, indent=1))
+    print(
+        f"wrote winds.json ({len(winds)} windows), "
+        f"{len(icon_cache)} icon faces, {len(plates)} plates"
+    )
+    return winds
 
 
 def main() -> None:
@@ -112,10 +285,23 @@ def main() -> None:
         for fi in range(count):
             out_png = OUT / f"menu_{NAMES[i]}_{fi}.png"
             rr = subprocess.run(
-                [str(IMAGE_EXTRACT), str(RESOURCE), "--kind", "ICON",
-                 "--id", str(bid), "--frame", str(fi),
-                 "-o", str(out_png), "--palette", "1000"],
-                capture_output=True, text=True)
+                [
+                    str(IMAGE_EXTRACT),
+                    str(RESOURCE),
+                    "--kind",
+                    "ICON",
+                    "--id",
+                    str(bid),
+                    "--frame",
+                    str(fi),
+                    "-o",
+                    str(out_png),
+                    "--palette",
+                    "1000",
+                ],
+                capture_output=True,
+                text=True,
+            )
             if rr.returncode != 0:
                 print(f"icon {bid} frame {fi} failed:", rr.stderr[-160:])
                 continue
@@ -125,27 +311,51 @@ def main() -> None:
             _postfix_png(out_png)
             pngs.append({"png": f"menu_{NAMES[i]}_{fi}.png", "w": w, "h": h})
             wh = (w, h)
-        pos = next((it["init"] for it in items
-                    if it["type"] == "BUTN" and it["id"] == bid), [0, 0])
-        ui["buttons"].append({"name": NAMES[i], "id": bid,
-                              "x": pos[0], "y": pos[1],
-                              "w": wh[0] if wh else 0, "h": wh[1] if wh else 0,
-                              "frames": pngs, "frame_count": len(pngs)})
-        print(f"button {NAMES[i]}: ICON {bid} {count} frames, "
-              f"{len(pngs)} exported at {pos}")
+        pos = next(
+            (it["init"] for it in items if it["type"] == "BUTN" and it["id"] == bid),
+            [0, 0],
+        )
+        ui["buttons"].append(
+            {
+                "name": NAMES[i],
+                "id": bid,
+                "x": pos[0],
+                "y": pos[1],
+                "w": wh[0] if wh else 0,
+                "h": wh[1] if wh else 0,
+                "frames": pngs,
+                "frame_count": len(pngs),
+            }
+        )
+        print(
+            f"button {NAMES[i]}: ICON {bid} {count} frames, "
+            f"{len(pngs)} exported at {pos}"
+        )
 
     pal_chunk = ec.get_chunk(res, "PAL", 1000)
-    pal = [(pal_chunk[j] * 255 // 63, pal_chunk[j + 1] * 255 // 63,
-            pal_chunk[j + 2] * 255 // 63) for j in range(0, 768, 3)]
+    pal = [
+        (
+            pal_chunk[j] * 255 // 63,
+            pal_chunk[j + 1] * 255 // 63,
+            pal_chunk[j + 2] * 255 // 63,
+        )
+        for j in range(0, 768, 3)
+    ]
     accl = ec.get_chunk(res, "ACCL", ACCL_ID)
     count = struct.unpack_from("<H", accl, 12)[0]
     for k in range(count):
         o = 14 + 5 * k
-        ui["keys"].append({"event": struct.unpack_from("<H", accl, o + 1)[0],
-                           "userid": struct.unpack_from("<H", accl, o + 3)[0]})
+        ui["keys"].append(
+            {
+                "event": struct.unpack_from("<H", accl, o + 1)[0],
+                "userid": struct.unpack_from("<H", accl, o + 3)[0],
+            }
+        )
 
     json.dump(ui, open(HERE / "generated" / "ui.json", "w"), indent=1)
     print(f"wrote {OUT}/ + ui.json")
+
+    export_winds(res)
 
 
 if __name__ == "__main__":
