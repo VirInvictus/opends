@@ -51,23 +51,43 @@ plus the dosbox-oracle-rig memory).
    blank card is BMP 13005 but the per-member figure art source is
    still unpinned (needs an EXE dig; likely why the mining never
    attached it).
-2. Spell USE mode: the oracle's USE screen is the character sheet in
-   spell-select mode (11500 with the spell grid and CLERIC/LEVEL
-   buttons); the port's SpellScreen is the 17500 learn scroll, which
-   has no oracle still. Building USE needs the known-spell data wiring
-   (SPST + the level-group table at 0x4512C).
-3. Effects screen (E, oracle effects_empty_ktarchek.png) and the
-   overhead map (O, oracle map_arena.png) are not built.
-4. Dialog 3007/3008, popups 14000-14002 and interact 3020 are not
-   built (oracle captures exist for 3007 and the EXIT popup).
+2. Spell casting (the USE picker's click-through into actual spell
+   resolution in combat) is not wired; the grid and class/LEVEL
+   cyclers are parity-only so far. Casting needs the engine's
+   spell-effect runtime (docs/spell-effects.md).
+3. Dialog 3007/3008 and interact 3020 are not built (oracle captures
+   exist for 3007 variants). Dialogs are full GPL conversations
+   (docs/dialogs.md); the pits loop needs the announcer sequence
+   (portrait + lines) at minimum.
+4. Message box 10501 (the transient GAME SAVED strip) is not built;
+   the demo uses UI banners.
 5. Sheet class line prints one ink; the engine colours each class
    separately (Fighter yellow, Druid red, Psionic yellow; table
    0x72D29). Needs multi-ink TextBlitter segments.
-6. Inventory stat rows sit within a couple px of the oracle but some
-   labels could shift 1-2px (compare PSI and the AC block).
+6. Combat detail rules not yet modelled: DEX reaction in the morale
+   threshold, rear/flank THAC0-2 with direction tracking, crit
+   blows adjust, monster damage bonus. Core structure (token
+   machine, 20+d10+mods threshold with d200 tie-break, blows
+   alternator, nat-20/nat-1 d20, 10/14 move costs) already matches
+   docs/combat-flow.md sections 4-5.
 7. Live side-by-side videos per surface (DOSBox left, Godot right):
    deferred; the stills here are the parity spec until that pass.
 8. Damage splats are wired (hits: small/big red by damage, gold star
    on the kill, grey puff on a miss) and the fight loop is proven in
    the QC movie, but the 0.7s splat window landed between capture
    samples; confirm visually in the next live demo run.
+
+## Covered by the second pass (2026-09-20 evening)
+
+- Spell USE mode (sheet in spell-select mode): grid at the measured
+  5x2 / (168,52) pitch (19,21), icons 21000+id, DRUID/LEVEL bars on
+  the strip bars 11319/11320; oracle use_spells_ktarchek.png.
+- EFFECTS mode (sheet, name-only panel); oracle
+  effects_empty_ktarchek.png.
+- Overhead map (O): BMP 10003 plate + region minimap 2:1 cropped to
+  the interior from the region origin; oracle map_arena.png.
+- Popups: WIND 14000 modal with first-letter/click dispatch; EXIT and
+  LOAD/SAVE flows with combat/peace variants; oracle
+  popup_14000_exitgame.png.
+- Known-spell seeds per member (icon-matched from the oracle USE
+  grid) on PartyData.
