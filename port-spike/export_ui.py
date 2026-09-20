@@ -275,6 +275,91 @@ def _make_creation_bg() -> str:
     return "bg_3011.png"
 
 
+def _export_title_plates() -> None:
+    """Per-screen flame title plates (EFFECTS / VIEW CHARACTER / MAP)."""
+    for bid in (20075, 20079, 20080, 20087):
+        _export_bmp_plate(bid)
+
+
+def _make_inventory_bg() -> str:
+    """Inventory backdrop from the committed oracle capture with the
+    dynamic text (party HP/status, stat values, money, name) in-painted
+    away; those rows draw live. Static furniture stays baked."""
+    import numpy as np
+    from PIL import Image
+
+    src = HERE / "oracle" / "inventory_13500_ktarchek.png"
+    im = Image.open(src).convert("RGBA")
+    arr = np.asarray(im).copy()
+
+    def inpaint_light(x0: int, y0: int, x1: int, y1: int) -> None:
+        reg = arr[y0:y1, x0:x1, :3].astype(float)
+        r, g, b = reg[:,:,0], reg[:,:,1], reg[:,:,2]
+        text = (r > 140) & (g > 140) & (b > 140)
+        known = ~text
+        for _ in range(12):
+            if known.all():
+                break
+            H, W = reg.shape[:2]
+            padr = np.pad(reg, ((1, 1), (1, 1), (0, 0)), mode="edge")
+            padk = np.pad(known, 1, mode="edge")
+            sums = np.zeros((H, W, 3))
+            cnt = np.zeros((H, W))
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    if dy == 0 and dx == 0:
+                        continue
+                    nk = padk[1 + dy:1 + dy + H, 1 + dx:1 + dx + W]
+                    nv = padr[1 + dy:1 + dy + H, 1 + dx:1 + dx + W]
+                    sums += nv * nk[:, :, None]
+                    cnt += nk
+            fill = cnt > 0
+            todo = (~known) & fill
+            reg[todo] = (sums[todo] / cnt[todo][:, None]).astype(arr.dtype)
+            known |= todo
+        arr[y0:y1, x0:x1, :3] = np.clip(reg, 0, 255).astype(arr.dtype)
+
+    # party strip HP/status under each of the four slots
+    for i in range(4):
+        inpaint_light(2, 39 + 48 * i, 46, 55 + 48 * i)
+    # right stat panel: yellow engine-printed values, labels, PSI and
+    # the weapon readout lines - mask catches yellow, bright and dark
+    # relief pixels, stone grey survives
+    stat = (225, 48, 318, 152)
+    reg = arr[stat[1]:stat[3], stat[0]:stat[2], :3].astype(float)
+    r, g, b = reg[:,:,0], reg[:,:,1], reg[:,:,2]
+    text = ((r > 165) & (g > 140) & (b < 135)) | ((r > 170) & (g > 170) & (b > 170)) \
+        | ((r < 85) & (g < 85) & (b < 85))
+    known = ~text
+    for _ in range(12):
+        if known.all():
+            break
+        H, W = reg.shape[:2]
+        padr = np.pad(reg, ((1, 1), (1, 1), (0, 0)), mode="edge")
+        padk = np.pad(known, 1, mode="edge")
+        sums = np.zeros((H, W, 3))
+        cnt = np.zeros((H, W))
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                if dy == 0 and dx == 0:
+                    continue
+                nk = padk[1 + dy:1 + dy + H, 1 + dx:1 + dx + W]
+                nv = padr[1 + dy:1 + dy + H, 1 + dx:1 + dx + W]
+                sums += nv * nk[:, :, None]
+                cnt += nk
+        fill = cnt > 0
+        todo = (~known) & fill
+        reg[todo] = (sums[todo] / cnt[todo][:, None]).astype(arr.dtype)
+        known |= todo
+    arr[stat[1]:stat[3], stat[0]:stat[2], :3] = np.clip(reg, 0, 255).astype(arr.dtype)
+    # money readout and name plate text
+    inpaint_light(50, 178, 130, 198)
+    inpaint_light(56, 0, 160, 16)
+    dst = OUT / "bg_13500.png"
+    Image.fromarray(arr).save(dst)
+    return "bg_13500.png"
+
+
 def export_winds(res) -> dict:
     """Dump all WIND windows: rect, border plate, and each item with its
     referenced chunk resolved (size, icon, shipped text)."""
@@ -329,6 +414,8 @@ def export_winds(res) -> dict:
         if wid in bg_bmps:
             art = _export_bmp_plate(bg_bmps[wid])
             wind["bg_png"] = art["png"] if art else None
+        elif wid == 13500:
+            wind["bg_png"] = _make_inventory_bg()
         elif wid == 3011:
             wind["bg_png"] = _make_creation_bg()
         winds[str(wid)] = wind
@@ -336,6 +423,7 @@ def export_winds(res) -> dict:
             f"WIND {wid}: {wind['w']}x{wind['h']} at ({wind['x']},{wind['y']})"
             f" border={bb} items={count}"
         )
+    _export_title_plates()
     (OUT / "winds.json").write_text(json.dumps(winds, indent=1))
     print(
         f"wrote winds.json ({len(winds)} windows), "

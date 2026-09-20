@@ -16,6 +16,10 @@ func _ready() -> void:
 	var ws: WindScreen
 	if screen == "creation":
 		ws = CreationScreen.new()
+	elif screen == "inventory":
+		ws = InventoryScreen.new()
+	elif screen == "sheet":
+		ws = SheetScreen.new()
 	else:
 		ws = WindScreen.new(wid)
 	add_child(ws)
