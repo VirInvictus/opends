@@ -802,11 +802,21 @@ func _party_attack(mi: int) -> void:
 		_float_text(monsters[mi]["sprite"].position, "miss", Color(0.8, 0.8, 0.8))
 
 
+func _hud_refresh_member(idx: int) -> void:
+	if not combat_hud.visible or idx >= party.size():
+		return
+	var p: Dictionary = party[idx]
+	var nm: String = str(p.get("name", "")) if str(p.get("name", "")) != "" else _preset_name(idx)
+	combat_hud.set_actor(nm, int(p["hp"]), int(p["max_hp"]), int(p["move"]) * 10,
+		"Okay" if bool(p["alive"]) else "Dead")
+
+
 func _monster_attack(m: Dictionary, p: Dictionary) -> void:
 	var roll: int = _d(20)
 	if roll == 20 or (roll != 1 and roll >= m["thac0"] - p["ac"]):
 		var dmg: int = _d(m["sides"], m["dice"]) + m["bonus"]
 		p["hp"] = maxi(0, int(p["hp"]) - dmg)
+		_hud_refresh_member(party.find(p))
 		_update_bar(p["bar_fg"], float(p["hp"]) / float(p["max_hp"]))
 		_float_text(p["sprite"].position, str(dmg), Color(1, 0.3, 0.3))
 		if p["hp"] <= 0:
