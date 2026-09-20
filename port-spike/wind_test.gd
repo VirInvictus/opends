@@ -15,7 +15,7 @@ func _ready() -> void:
 	add_child(bg)
 	var wid := int(OS.get_environment("SPIKE_WIND"))
 	var screen := OS.get_environment("SPIKE_SCREEN")
-	var ws: WindScreen
+	var ws: Node2D
 	if screen == "creation":
 		ws = CreationScreen.new()
 	elif screen == "inventory":
@@ -30,6 +30,14 @@ func _ready() -> void:
 		ws = PrefsScreen.new()
 	elif screen == "load":
 		ws = LoadScreen.new()
+	elif screen == "use":
+		ws = SheetScreen.new(SheetScreen.Mode.USE)
+	elif screen == "effects":
+		ws = SheetScreen.new(SheetScreen.Mode.EFFECTS)
+	elif screen == "map":
+		ws = MapScreen.new(42)
+	elif screen == "popup":
+		ws = PopupScreen.new("EXIT GAME?", ["QUIT", "CANCEL"])
 	elif screen == "combathud":
 		# defer: the window manager resizes us after the first frame;
 		# size the board from the settled viewport

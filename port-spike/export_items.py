@@ -55,6 +55,7 @@ KITS = {
 CELL_BMP = 13007
 SPLAT_BMP = 5014
 PARCHMENT_BMP = 13005
+MAP_PLATE_BMP = 10003
 # Frame ids inside BMP 13007 (see the module docstring for the proven map).
 FRAME_SELECT_YELLOW = 4
 FRAME_ILLEGAL = 6
@@ -198,6 +199,13 @@ def export_overlays(pal) -> dict:
     write_png(OUT / "parchment_13005.png", w, h, rgba)
     out["parchment"] = {"png": "parchment_13005.png", "w": w, "h": h}
     print(f"BMP {PARCHMENT_BMP}: {w}x{h} parchment")
+
+    # overhead-map plate (the engine's O-key frame; no WIND carries it)
+    plate = bmps[MAP_PLATE_BMP]
+    w, h, rgba = decode_container_frame(plate, 0, pal, resource=True)
+    write_png(OUT / "map_10003.png", w, h, rgba)
+    out["map_plate"] = {"png": "map_10003.png", "w": w, "h": h}
+    print(f"BMP {MAP_PLATE_BMP}: {w}x{h} map plate")
 
     # LOAD-mode title art (the engine binds these onto 3009's buttons
     # in LOAD mode; the chunk faces ship as the SAVE variant)

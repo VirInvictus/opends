@@ -57,12 +57,14 @@ func _activate(iid: int) -> void:
 			screen_requested.emit("sheet")
 		11304:
 			screen_requested.emit("inventory")
-		11305, 11306:
-			screen_requested.emit("spells")
+		11305:
+			screen_requested.emit("sheet:USE")
+		11306:
+			screen_requested.emit("sheet:EFFECTS")
 		10301:
 			_popup_exit()
 		10302:
-			screen_requested.emit("loadsave")
+			screen_requested.emit("popup:loadsave")
 		10303:
 			screen_requested.emit("prefs")
 		10305:
@@ -78,4 +80,4 @@ func _activate(iid: int) -> void:
 
 func _popup_exit() -> void:
 	# combat shows QUIT/CANCEL; peace adds SAVE (screen-flow.md 8.7)
-	screen_requested.emit("exit_popup")
+	screen_requested.emit("popup:exit")

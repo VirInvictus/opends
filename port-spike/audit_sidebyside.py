@@ -24,37 +24,16 @@ FRAMES = 12  # 0.4 s at 30 fps; last frame is the settled one
 # name -> (scene, env, oracle file)
 SCREENS = {
     "menu": ("res://menu.tscn", {}, "menu_3000.png"),
-    "creation": (
-        "res://wind_test.tscn",
-        {"SPIKE_SCREEN": "creation"},
-        "creation_3011.png",
-    ),
-    "inventory": (
-        "res://wind_test.tscn",
-        {"SPIKE_SCREEN": "inventory"},
-        "inventory_13500_ktarchek.png",
-    ),
-    "sheet": (
-        "res://wind_test.tscn",
-        {"SPIKE_SCREEN": "sheet"},
-        "sheet_11500_ktarchek.png",
-    ),
-    "spells": (
-        "res://wind_test.tscn",
-        {"SPIKE_SCREEN": "spells"},
-        "use_spells_ktarchek.png",
-    ),
-    "gamemenu": (
-        "res://wind_test.tscn",
-        {"SPIKE_SCREEN": "gamemenu"},
-        "gamemenu_10500.png",
-    ),
+    "creation": ("res://wind_test.tscn", {"SPIKE_SCREEN": "creation"}, "creation_3011.png"),
+    "inventory": ("res://wind_test.tscn", {"SPIKE_SCREEN": "inventory"}, "inventory_13500_ktarchek.png"),
+    "sheet": ("res://wind_test.tscn", {"SPIKE_SCREEN": "sheet"}, "sheet_11500_ktarchek.png"),
+    "use": ("res://wind_test.tscn", {"SPIKE_SCREEN": "use"}, "use_spells_ktarchek.png"),
+    "effects": ("res://wind_test.tscn", {"SPIKE_SCREEN": "effects"}, "effects_empty_ktarchek.png"),
+    "gamemenu": ("res://wind_test.tscn", {"SPIKE_SCREEN": "gamemenu"}, "gamemenu_10500.png"),
     "load": ("res://wind_test.tscn", {"SPIKE_SCREEN": "load"}, "load_3009.png"),
-    "combathud": (
-        "res://wind_test.tscn",
-        {"SPIKE_SCREEN": "combathud"},
-        "combat_hud_ktarchek.png",
-    ),
+    "map": ("res://wind_test.tscn", {"SPIKE_SCREEN": "map"}, "map_arena.png"),
+    "popup": ("res://wind_test.tscn", {"SPIKE_SCREEN": "popup"}, "popup_14000_exitgame.png"),
+    "combathud": ("res://wind_test.tscn", {"SPIKE_SCREEN": "combathud"}, "combat_hud_ktarchek.png"),
 }
 
 

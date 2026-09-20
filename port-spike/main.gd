@@ -35,7 +35,7 @@ var armed := false
 # engine's UI order: CERMAK, K'RATCHEK, SARIA, SILLA) so records and
 # names stay aligned.
 var ui_layer: Node2D
-var ui_screen: WindScreen
+var ui_screen: Node2D
 var ui_open := false
 var combat_hud: CombatHud
 const PRESET_NAMES := ["CERMAK", "K'RATCHEK", "SARIA", "SILLA"]
@@ -442,7 +442,13 @@ func _unhandled_input(event: InputEvent) -> void:
 				_open_screen("inventory")
 				return
 			KEY_U, KEY_C:
-				_open_screen("spells")
+				_open_screen("sheet:USE")
+				return
+			KEY_E:
+				_open_screen("sheet:EFFECTS")
+				return
+			KEY_O:
+				_open_screen("map")
 				return
 	if state == State.INTRO:
 		_intro_input(event)
@@ -500,7 +506,7 @@ func _load_from(path: String) -> void:
 
 func _open_screen(which: String) -> void:
 	_sync_party_data()
-	var ws: WindScreen
+	var ws: Node2D
 	match which:
 		"gamemenu":
 			var gm := GameMenuScreen.new()
@@ -511,19 +517,80 @@ func _open_screen(which: String) -> void:
 			ls.load_requested.connect(_load_from)
 			ws = ls
 		"sheet":
-			ws = SheetScreen.new()
+			ws = SheetScreen.new(SheetScreen.Mode.VIEW)
 		"inventory":
 			ws = InventoryScreen.new()
 		"spells":
 			ws = SpellScreen.new()
 		"prefs":
 			ws = PrefsScreen.new()
+		"map":
+			ws = MapScreen.new(region_id)
 		_:
-			return
+			if which.begins_with("sheet:"):
+				var mode_name: String = which.get_slice(":", 1)
+				ws = SheetScreen.new(SheetScreen.Mode[mode_name])
+			elif which.begins_with("popup:"):
+				_open_game_popup(which.get_slice(":", 1))
+				return
+			else:
+				return
 	_close_ui()
 	ui_screen = ws
 	ui_layer.add_child(ws)
 	ui_open = true
+
+
+## The game menu's modals (screen-flow.md 8.7): EXIT asks SAVE/QUIT
+## in peace, QUIT/CANCEL in combat; LOAD/SAVE offers LOAD/SAVE/RESTART
+## in peace, LOAD/RESTART in combat.
+func _open_game_popup(kind: String) -> void:
+	var in_combat := state == State.COMBAT
+	var popup: PopupScreen
+	if kind == "exit":
+		popup = PopupScreen.new("EXIT: SAVE GAME?" if not in_combat else "EXIT GAME?",
+			["SAVE", "QUIT", "CANCEL"] if not in_combat else ["QUIT", "CANCEL"])
+		popup.chosen.connect(_on_exit_choice.bind(in_combat))
+	elif kind == "loadsave":
+		popup = PopupScreen.new("RESTART GAME?",
+			["LOAD", "SAVE", "RESTART"] if not in_combat else ["LOAD", "RESTART"])
+		popup.chosen.connect(_on_loadsave_choice)
+	else:
+		return
+	_close_ui()
+	ui_screen = popup
+	ui_layer.add_child(popup)
+	ui_open = true
+
+
+func _on_exit_choice(i: int, in_combat: bool) -> void:
+	match i:
+		1:
+			_close_ui()
+			_save_game()
+			if not in_combat:
+				get_tree().quit()
+		2:
+			_close_ui()
+			get_tree().quit()
+		_:
+			_close_ui()
+
+
+func _on_loadsave_choice(i: int) -> void:
+	match i:
+		1:
+			_close_ui()
+			_open_screen("loadscreen")
+		2:
+			_close_ui()
+			_save_game()
+		3:
+			_close_ui()
+			fight_count = 0
+			_enter_region(41, Vector2i(int(demo["start"]["x"]), int(demo["start"]["y"])))
+		_:
+			_close_ui()
 
 func _close_ui() -> void:
 	if ui_screen != null:
@@ -534,9 +601,6 @@ func _close_ui() -> void:
 func _menu_route(which: String) -> void:
 	if which == "close":
 		_close_ui()
-	elif which == "exit_popup":
-		_close_ui()
-		get_tree().quit()
 	else:
 		_open_screen(which)
 
