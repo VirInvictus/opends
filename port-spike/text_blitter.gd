@@ -21,6 +21,13 @@ var relief := Color(56 / 255.0, 56 / 255.0, 85 / 255.0):
 	set(v):
 		relief = v
 		queue_redraw()
+## Optional opaque backing behind the whole line: set when the row must
+## cover engine-printed text baked into a backdrop.
+var backing := Color(0, 0, 0, 0):
+	set(v):
+		backing = v
+		queue_redraw()
+var backing_size := Vector2.ZERO
 
 
 static func _ensure() -> void:
@@ -47,6 +54,11 @@ func _ready() -> void:
 
 func _draw() -> void:
 	_ensure()
+	if backing.a > 0.0 and text != "":
+		var bs := backing_size
+		if bs == Vector2.ZERO:
+			bs = Vector2(width_of(text) + 4, _metrics["height"] + 2)
+		draw_rect(Rect2(Vector2(-2, -1), bs), backing)
 	var cw: int = int(_metrics["cell_w"])
 	var h: int = int(_metrics["height"])
 	var pen := 0.0

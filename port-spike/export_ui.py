@@ -251,9 +251,24 @@ def _make_creation_bg() -> str:
             known |= todo
         arr[y0:y1, x0:x1, :3] = np.clip(reg, 0, 255).astype(arr.dtype)
 
+    # stat block + name row sit on leather; tile clean leather over them
+    def patch(band: tuple[int, int, int, int], tile: tuple[int, int, int, int]) -> None:
+        x0, y0, x1, y1 = band
+        tx, ty, tw, th = tile
+        strip = arr[ty:ty + th, tx:tx + tw].copy()
+        y = y0
+        while y < y1:
+            h = min(th, y1 - y)
+            x = x0
+            while x < x1:
+                w = min(tw, x1 - x)
+                arr[y:y + h, x:x + w] = strip[:h, :w]
+                x += tw
+            y += th
+
     # class list and discipline rows: engine-printed text on parchment
     inpaint_text(216, 4, 314, 73)
-    inpaint_text(212, 74, 314, 101)
+    inpaint_text(212, 102, 316, 128)
 
     dst = OUT / "bg_3011.png"
     Image.fromarray(arr).save(dst)

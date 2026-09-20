@@ -35,6 +35,7 @@ const ROW_INK := Color8(214, 214, 222)
 const ROW_RELIEF := Color8(24, 24, 40)
 const AVAILABLE_INK := Color8(138, 138, 162)
 const SELECTED_INK := Color8(65, 24, 8)
+const LEATHER := Color8(74, 74, 98)
 const DISC_NAMES := ["P-KINESIS", "P-METAB", "TELEPATHY"]
 const DISC_BITS := [0x80, 0x40, 0x20]
 
@@ -52,6 +53,7 @@ var disc_mask := 0x80
 var sphere_mask := 0
 var _rows: Array[TextBlitter] = []
 var _name_box: TextBlitter
+var _bullets: Node2D
 
 func _init() -> void:
 	window_id = 3011
@@ -63,6 +65,7 @@ func _ready() -> void:
 	super._ready()
 	_roll_all()
 	_build_rows()
+	_build_bullets()
 	_refresh()
 
 func _build_rows() -> void:
@@ -84,13 +87,22 @@ func _build_rows() -> void:
 	# psionic discipline rows (the PSI DISCIPLINES header and VIEW
 	# SPHERES stay baked in the backdrop - they never change)
 	for i in 3:
-		_rows.append(_make_row(layer, Vector2(212, 75 + 10 * i), AVAILABLE_INK))
+		_rows.append(_make_row(layer, Vector2(226, 101 + 8 * i), AVAILABLE_INK))
+
+func _build_bullets() -> void:
+	var bl := BulletLayer.new()
+	bl.cs = self
+	_bullets = bl
+	_bullets.name = "Bullets"
+	_board.add_child(_bullets)
 
 func _make_row(parent: Node2D, pos: Vector2, ink: Color) -> TextBlitter:
 	var row := TextBlitter.new()
 	row.position = pos
 	row.ink = ink
 	row.relief = ROW_RELIEF
+	row.backing = LEATHER
+	row.backing_size = Vector2(206, 11)
 	parent.add_child(row)
 	return row
 
@@ -129,6 +141,8 @@ func _thac0() -> int:
 	return 20 - (rate * 2) / 12
 
 func _refresh() -> void:
+	if _bullets != null:
+		_bullets.queue_redraw()
 	var prime: int = CLASS_PRIME[class_slot - 1] if class_slot > 0 else -1
 	for i in 6:
 		_set_row(i, "%s %s:%d" % ["*" if i == prime else "", ["STR", "DEX", "CON", "INT", "WIS", "CHR"][i], stats[i]])
@@ -147,6 +161,7 @@ func _refresh() -> void:
 	_set_row(11, "AC: %d  DAM: %s" % [10 - 2 + (2 if race_idx == 4 else 0), dam])
 	_set_row(12, "%d/%d" % [hp, hp_max])
 	_set_row(13, "%d/%d" % [psp, psp_max])
+	_bullets.queue_redraw()
 	# class list rows 2002..2009
 	for ci in 8:
 		var selected: bool = class_slot == ci + 1
@@ -243,3 +258,21 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif k.unicode >= 32 and k.unicode < 127 and cname.length() < 15:
 			cname += char(k.unicode)
 			_refresh()
+
+
+## Marker glyphs: a square ahead of each stat row, a diamond ahead of
+## the selected class and the selected discipline.
+class BulletLayer:
+	extends Node2D
+
+	var dark := Color8(65, 24, 8)
+	var cs: CreationScreen
+
+	func _draw() -> void:
+		for i in 6:
+			draw_rect(Rect2(Vector2(5, 137 + 7 * i), Vector2(4, 4)), dark)
+		if cs.class_slot > 0:
+			var ci: int = cs.class_slot - 1
+			draw_rect(Rect2(Vector2(219, 10 + 8 * ci), Vector2(5, 5)), dark)
+		if (cs.disc_mask & 0x80) != 0:
+			draw_rect(Rect2(Vector2(216, 103), Vector2(5, 5)), dark)
