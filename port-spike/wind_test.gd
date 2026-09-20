@@ -28,9 +28,19 @@ func _ready() -> void:
 		ws = GameMenuScreen.new()
 	elif screen == "prefs":
 		ws = PrefsScreen.new()
+	elif screen == "load":
+		ws = LoadScreen.new()
 	elif screen == "combathud":
+		# defer: the window manager resizes us after the first frame;
+		# size the board from the settled viewport
+		await get_tree().process_frame
+		await get_tree().process_frame
+		var vp := get_viewport_rect().size
+		var k := int(minf(vp.x / 320.0, vp.y / 200.0))
+		k = maxi(k, 1)
 		var board := Node2D.new()
-		board.scale = Vector2(4, 4)
+		board.scale = Vector2(k, k)
+		board.position = (vp - Vector2(320, 200) * k) / 2.0
 		add_child(board)
 		var hud := CombatHud.new()
 		board.add_child(hud)

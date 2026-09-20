@@ -35,7 +35,6 @@ const ROW_INK := Color8(214, 214, 222)
 const ROW_RELIEF := Color8(24, 24, 40)
 const AVAILABLE_INK := Color8(138, 138, 162)
 const SELECTED_INK := Color8(65, 24, 8)
-const LEATHER := Color8(74, 74, 98)
 const DISC_NAMES := ["P-KINESIS", "P-METAB", "TELEPATHY"]
 const DISC_BITS := [0x80, 0x40, 0x20]
 
@@ -73,22 +72,22 @@ func _build_rows() -> void:
 	layer.name = "TextLayer"
 	_board.add_child(layer)
 	for i in 6:
-		_rows.append(_make_row(layer, Vector2(5, 135 + 7 * i), ROW_INK))
-	_rows.append(_make_row(layer, Vector2(5, 125), ROW_INK))  # NAME:
+		_rows.append(_make_row(layer, Vector2(5, 137 + 7 * i), ROW_INK))
+	_rows.append(_make_row(layer, Vector2(5, 127), ROW_INK))  # NAME:
 	# right column: race/gender, alignment, class, level/EXP, AC/DAM,
 	# HP, PSP
 	for i in 7:
-		_rows.append(_make_row(layer, Vector2(76, 135 + 7 * i), ROW_INK))
+		_rows.append(_make_row(layer, Vector2(76, 137 + 7 * i), ROW_INK))
 	# class list: eight rows, ink goes light for available, dark for the
 	# selected row (the icon faces on 2002-2009 are flash variants, not
 	# the resting art); these sit on the parchment panel the in-painter
 	# already cleaned, so no backing
 	for i in 8:
-		_rows.append(_make_row(layer, Vector2(227, 8 + 8 * i), AVAILABLE_INK, false))
+		_rows.append(_make_row(layer, Vector2(227, 10 + 8 * i), AVAILABLE_INK, false))
 	# psionic discipline rows (the PSI DISCIPLINES header and VIEW
 	# SPHERES stay baked in the backdrop - they never change)
 	for i in 3:
-		_rows.append(_make_row(layer, Vector2(226, 101 + 8 * i), AVAILABLE_INK, false))
+		_rows.append(_make_row(layer, Vector2(226, 104 + 8 * i), AVAILABLE_INK, false))
 
 func _build_bullets() -> void:
 	var bl := BulletLayer.new()
@@ -97,14 +96,14 @@ func _build_bullets() -> void:
 	_bullets.name = "Bullets"
 	_board.add_child(_bullets)
 
-func _make_row(parent: Node2D, pos: Vector2, ink: Color, backed := true) -> TextBlitter:
+func _make_row(parent: Node2D, pos: Vector2, ink: Color, _backed := false) -> TextBlitter:
+	# no backings: bg_3011 is the in-painted oracle capture, and the
+	# engine prints these rows at a 7px pitch whose overlap backings
+	# would erase
 	var row := TextBlitter.new()
 	row.position = pos
 	row.ink = ink
 	row.relief = ROW_RELIEF
-	if backed:
-		row.backing = LEATHER
-		row.backing_size = Vector2(70, 11)
 	parent.add_child(row)
 	return row
 
@@ -272,9 +271,9 @@ class BulletLayer:
 
 	func _draw() -> void:
 		for i in 6:
-			draw_rect(Rect2(Vector2(5, 137 + 7 * i), Vector2(4, 4)), dark)
+			draw_rect(Rect2(Vector2(5, 139 + 7 * i), Vector2(4, 4)), dark)
 		if cs.class_slot > 0:
 			var ci: int = cs.class_slot - 1
-			draw_rect(Rect2(Vector2(219, 10 + 8 * ci), Vector2(5, 5)), dark)
+			draw_rect(Rect2(Vector2(219, 12 + 8 * ci), Vector2(5, 5)), dark)
 		if (cs.disc_mask & 0x80) != 0:
-			draw_rect(Rect2(Vector2(216, 103), Vector2(5, 5)), dark)
+			draw_rect(Rect2(Vector2(216, 106), Vector2(5, 5)), dark)

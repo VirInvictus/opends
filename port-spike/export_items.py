@@ -198,7 +198,111 @@ def export_overlays(pal) -> dict:
     write_png(OUT / "parchment_13005.png", w, h, rgba)
     out["parchment"] = {"png": "parchment_13005.png", "w": w, "h": h}
     print(f"BMP {PARCHMENT_BMP}: {w}x{h} parchment")
+
+    # LOAD-mode title art (the engine binds these onto 3009's buttons
+    # in LOAD mode; the chunk faces ship as the SAVE variant)
+    icons = dict(ec.resolve_type(res, "ICON"))
+    for bid in (6030, 6031):
+        icon = icons[bid]
+        frames = []
+        for fi in range(frame_count(icon)):
+            w, h, rgba = decode_container_frame(icon, fi, pal, resource=True)
+            png = f"load{bid}_f{fi}.png"
+            write_png(OUT / png, w, h, rgba)
+            frames.append({"png": png, "w": w, "h": h})
+        out[f"load{bid}"] = frames
+        print(f"ICON {bid}: {len(frames)} load-plate frames")
     return out
+
+
+# The preset party's world sprites (main.gd PARTY_ORDER over demo.json
+# party_bmps): Cermak, K'ratchek, Saria, Silla. The oracle party boxes
+# draw exactly these (bmp 2097 = K'ratchek's bug matched the capture).
+PARTY_BMPS = [2095, 2097, 2059, 2099]
+
+
+def export_party_sprites(pal) -> list[dict]:
+    objdb = ec.parse_gff(DS1 / "SEGOBJEX.GFF")
+    bmps = dict(ec.resolve_type(objdb, "BMP"))
+    out = []
+    for bid in PARTY_BMPS:
+        w, h, rgba = decode_container_frame(bmps[bid], 0, pal, resource=False)
+        png = f"party_{bid}.png"
+        write_png(OUT / png, w, h, rgba)
+        out.append({"bmp": bid, "png": png, "w": w, "h": h})
+        print(f"party sprite {bid}: {w}x{h}")
+    return out
+
+
+def make_inventory_bg() -> str:
+    """Regenerate the inventory backdrop from the committed oracle
+    capture: dynamic engine-printed text in-painted away (party HP/
+    status, stat panel, money, name) and the equipped Chatkcha cell
+    stamped back to its empty-slot glyph, so every cell and line can
+    draw live. Static furniture (cells, glyphs, parchment, figure,
+    party portraits) stays baked."""
+    import numpy as np
+    from PIL import Image
+
+    src = HERE / "oracle" / "inventory_13500_ktarchek.png"
+    im = Image.open(src).convert("RGB")
+    arr = np.asarray(im).copy()
+
+    def inpaint(x0: int, y0: int, x1: int, y1: int, mask_fn) -> None:
+        reg = arr[y0:y1, x0:x1, :3].astype(float)
+        r, g, b = reg[:, :, 0], reg[:, :, 1], reg[:, :, 2]
+        text = mask_fn(r, g, b)
+        known = ~text
+        for _ in range(12):
+            if known.all():
+                break
+            H, W = reg.shape[:2]
+            padr = np.pad(reg, ((1, 1), (1, 1), (0, 0)), mode="edge")
+            padk = np.pad(known, 1, mode="edge")
+            sums = np.zeros((H, W, 3))
+            cnt = np.zeros((H, W))
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    if dy == 0 and dx == 0:
+                        continue
+                    nk = padk[1 + dy : 1 + dy + H, 1 + dx : 1 + dx + W]
+                    nv = padr[1 + dy : 1 + dy + H, 1 + dx : 1 + dx + W]
+                    sums += nv * nk[:, :, None]
+                    cnt += nk
+            fill = cnt > 0
+            todo = (~known) & fill
+            reg[todo] = (sums[todo] / cnt[todo][:, None]).astype(arr.dtype)
+            known |= todo
+        arr[y0:y1, x0:x1, :3] = np.clip(reg, 0, 255).astype(arr.dtype)
+
+    # engine text inks: white, yellow, and the dark-blue relief under
+    # both; the stat panel keeps its dark clause off so the dragon
+    # engraving survives (its relief reads as panel anyway)
+    def text_mask(r, g, b):
+        return (
+            ((r > 140) & (g > 140) & (b > 140))
+            | ((r > 165) & (g > 140) & (b < 135))
+            | ((r < 60) & (g < 60) & (b < 90))
+        )
+
+    for i in range(4):
+        inpaint(2, 39 + 48 * i, 46, 55 + 48 * i, text_mask)
+    inpaint(50, 178, 130, 190, text_mask)
+    inpaint(56, 0, 160, 16, text_mask)
+
+    def stat_mask(r, g, b):
+        return ((r > 165) & (g > 140) & (b < 135)) | ((r > 170) & (g > 170) & (b > 170))
+
+    inpaint(225, 48, 318, 152, stat_mask)
+
+    # the equipped Chatkcha sat in missile cell (57,42); restore the
+    # empty-slot glyph there so the port can draw items over any cell
+    glyph = Image.open(OUT / "cell13007_f11.png").convert("RGB")
+    arr[42:60, 57:75] = np.asarray(glyph)
+
+    Image.fromarray(arr).save(OUT / "bg_13500.png")
+    print("regenerated bg_13500.png from the oracle capture")
+    return "bg_13500.png"
 
 
 def main() -> None:
@@ -206,7 +310,15 @@ def main() -> None:
     pal = load_palette()
     items = export_item_icons(pal)
     overlays = export_overlays(pal)
-    payload = {"items": {str(k): v for k, v in items.items()}, "kits": KITS, **overlays}
+    party = export_party_sprites(pal)
+    bg = make_inventory_bg()
+    payload = {
+        "items": {str(k): v for k, v in items.items()},
+        "kits": KITS,
+        "party": {str(p["bmp"]): p for p in party},
+        "bg": bg,
+        **overlays,
+    }
     (OUT / "item_icons.json").write_text(json.dumps(payload, indent=1))
     print(f"wrote {OUT}/item_icons.json ({len(items)} item icons)")
 

@@ -20,9 +20,23 @@ func _init() -> void:
 
 func _ready() -> void:
 	super._ready()
+	_bind_load_art()
 	_scan()
 	_build_rows()
 	_refresh()
+
+## The 3009 chunk ships with the SAVE faces; LOAD mode swaps title art
+## 6030 onto the header plate and 6031 onto the confirm button
+## (screen-flow.md 8.7).
+func _bind_load_art() -> void:
+	for b in _buttons:
+		match int(b["id"]):
+			2056:
+				(b["sprite"] as Sprite2D).texture = load(
+					"res://generated/ui/load6030_f0.png")
+			2057:
+				(b["sprite"] as Sprite2D).texture = load(
+					"res://generated/ui/load6031_f0.png")
 
 func _scan() -> void:
 	DirAccess.make_dir_recursive_absolute("user://saves")

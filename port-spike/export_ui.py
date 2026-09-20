@@ -46,9 +46,10 @@ ACCL_ID = 8100
 # a DOSBox capture of the real boot menu).
 ARC_BMP = 20028
 PANEL_BMP = 20029
-# Measured off the real menu: the arc sits above the panel, both centred.
-ARC_POS = [49, 38]
-PANEL_POS = [3, 55]
+# Measured off the real menu (Wave 4 audit deltas against the
+# committed oracle capture): the arc sits above the panel, both centred.
+ARC_POS = [47, 24]
+PANEL_POS = [3, 45]
 
 
 def _postfix_png(path: Path) -> None:
@@ -269,6 +270,10 @@ def _make_creation_bg() -> str:
     # class list and discipline rows: engine-printed text on parchment
     inpaint_text(216, 4, 314, 73)
     inpaint_text(212, 102, 316, 128)
+    # name row, stat block and the right info column: engine-printed
+    # white on leather; the port draws these live
+    inpaint_text(4, 123, 75, 190)
+    inpaint_text(76, 133, 205, 190)
 
     dst = OUT / "bg_3011.png"
     Image.fromarray(arr).save(dst)
@@ -296,85 +301,6 @@ def _export_spell_icons(res) -> None:
         _export_icon_frames(res, 3000 + pid)
 
 
-def _make_inventory_bg() -> str:
-    """Inventory backdrop from the committed oracle capture with the
-    dynamic text (party HP/status, stat values, money, name) in-painted
-    away; those rows draw live. Static furniture stays baked."""
-    import numpy as np
-    from PIL import Image
-
-    src = HERE / "oracle" / "inventory_13500_ktarchek.png"
-    im = Image.open(src).convert("RGBA")
-    arr = np.asarray(im).copy()
-
-    def inpaint_light(x0: int, y0: int, x1: int, y1: int) -> None:
-        reg = arr[y0:y1, x0:x1, :3].astype(float)
-        r, g, b = reg[:,:,0], reg[:,:,1], reg[:,:,2]
-        text = (r > 140) & (g > 140) & (b > 140)
-        known = ~text
-        for _ in range(12):
-            if known.all():
-                break
-            H, W = reg.shape[:2]
-            padr = np.pad(reg, ((1, 1), (1, 1), (0, 0)), mode="edge")
-            padk = np.pad(known, 1, mode="edge")
-            sums = np.zeros((H, W, 3))
-            cnt = np.zeros((H, W))
-            for dy in (-1, 0, 1):
-                for dx in (-1, 0, 1):
-                    if dy == 0 and dx == 0:
-                        continue
-                    nk = padk[1 + dy:1 + dy + H, 1 + dx:1 + dx + W]
-                    nv = padr[1 + dy:1 + dy + H, 1 + dx:1 + dx + W]
-                    sums += nv * nk[:, :, None]
-                    cnt += nk
-            fill = cnt > 0
-            todo = (~known) & fill
-            reg[todo] = (sums[todo] / cnt[todo][:, None]).astype(arr.dtype)
-            known |= todo
-        arr[y0:y1, x0:x1, :3] = np.clip(reg, 0, 255).astype(arr.dtype)
-
-    # party strip HP/status under each of the four slots
-    for i in range(4):
-        inpaint_light(2, 39 + 48 * i, 46, 55 + 48 * i)
-    # right stat panel: yellow engine-printed values, labels, PSI and
-    # the weapon readout lines - mask catches yellow, bright and dark
-    # relief pixels, stone grey survives
-    stat = (225, 48, 318, 152)
-    reg = arr[stat[1]:stat[3], stat[0]:stat[2], :3].astype(float)
-    r, g, b = reg[:,:,0], reg[:,:,1], reg[:,:,2]
-    text = ((r > 165) & (g > 140) & (b < 135)) | ((r > 170) & (g > 170) & (b > 170)) \
-        | ((r < 85) & (g < 85) & (b < 85))
-    known = ~text
-    for _ in range(12):
-        if known.all():
-            break
-        H, W = reg.shape[:2]
-        padr = np.pad(reg, ((1, 1), (1, 1), (0, 0)), mode="edge")
-        padk = np.pad(known, 1, mode="edge")
-        sums = np.zeros((H, W, 3))
-        cnt = np.zeros((H, W))
-        for dy in (-1, 0, 1):
-            for dx in (-1, 0, 1):
-                if dy == 0 and dx == 0:
-                    continue
-                nk = padk[1 + dy:1 + dy + H, 1 + dx:1 + dx + W]
-                nv = padr[1 + dy:1 + dy + H, 1 + dx:1 + dx + W]
-                sums += nv * nk[:, :, None]
-                cnt += nk
-        fill = cnt > 0
-        todo = (~known) & fill
-        reg[todo] = (sums[todo] / cnt[todo][:, None]).astype(arr.dtype)
-        known |= todo
-    arr[stat[1]:stat[3], stat[0]:stat[2], :3] = np.clip(reg, 0, 255).astype(arr.dtype)
-    # money readout and name plate text
-    inpaint_light(50, 178, 130, 198)
-    inpaint_light(56, 0, 160, 16)
-    dst = OUT / "bg_13500.png"
-    Image.fromarray(arr).save(dst)
-    return "bg_13500.png"
-
-
 def export_winds(res) -> dict:
     """Dump all WIND windows: rect, border plate, and each item with its
     referenced chunk resolved (size, icon, shipped text)."""
@@ -387,7 +313,6 @@ def export_winds(res) -> dict:
     # oracle capture (static furniture; dynamic layers draw over it).
     bg_bmps = {
         11500: 11000,
-        13500: 13001,
         10500: 10000,
         10501: 10001,
         3009: 3009,
@@ -430,7 +355,10 @@ def export_winds(res) -> dict:
             art = _export_bmp_plate(bg_bmps[wid])
             wind["bg_png"] = art["png"] if art else None
         elif wid == 13500:
-            wind["bg_png"] = _make_inventory_bg()
+            # the oracle-derived plate from export_items.make_inventory_bg
+            # (cells, glyphs, parchment and party portraits baked; the
+            # dynamic text in-painted away)
+            wind["bg_png"] = "bg_13500.png"
         elif wid == 3011:
             wind["bg_png"] = _make_creation_bg()
         # windows the engine opens at a fixed screen position (the
@@ -470,9 +398,6 @@ def main() -> None:
     ui: dict = {"menu_space": [320, 200], "buttons": [], "keys": []}
     ui["arc"] = dict(_export_bitmap("BMP", ARC_BMP, "menu_arc"), pos=ARC_POS)
     ui["panel"] = dict(_export_bitmap("BMP", PANEL_BMP, "menu_panel"), pos=PANEL_POS)
-    sys.path.insert(0, str(HERE))
-    import export_cine
-
     for i, bid in enumerate(BUTTON_IDS):
         icon = ec.get_chunk(res, "ICON", bid)
         count = struct.unpack_from("<H", icon, 4)[0]
@@ -528,15 +453,6 @@ def main() -> None:
             f"{len(pngs)} exported at {pos}"
         )
 
-    pal_chunk = ec.get_chunk(res, "PAL", 1000)
-    pal = [
-        (
-            pal_chunk[j] * 255 // 63,
-            pal_chunk[j + 1] * 255 // 63,
-            pal_chunk[j + 2] * 255 // 63,
-        )
-        for j in range(0, 768, 3)
-    ]
     accl = ec.get_chunk(res, "ACCL", ACCL_ID)
     count = struct.unpack_from("<H", accl, 12)[0]
     for k in range(count):

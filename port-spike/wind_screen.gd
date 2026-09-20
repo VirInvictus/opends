@@ -33,6 +33,10 @@ var no_resting_art: Array[int] = []
 ## and container cells only appear in their modes; 13200 is the centre
 ## card the port furnishes itself). Skipped at layout time.
 var skip_apfm: Array[int] = []
+## Per-button resting frame index: a few shipped faces rest on a later
+## frame (collapse-party 10313 rests on the coloured frame 2, the
+## silhouettes are its pressed art). Set before _ready.
+var resting_frames := {}
 var _hovered := 0
 var _pressed := 0
 var _board: Node2D
@@ -134,9 +138,10 @@ func _layout() -> void:
 						continue
 					var s := Sprite2D.new()
 					s.centered = false
+					var rest: int = int(resting_frames.get(int(it["id"]), 0))
 					s.position = pos
 					if not frames.is_empty():
-						s.texture = load("res://generated/ui/" + str(frames[0]["png"]))
+						s.texture = load("res://generated/ui/" + str(frames[rest]["png"]))
 					else:
 						var b2 := BevelPanel.new()
 						b2.rect = Rect2(Vector2.ZERO, Vector2(float(it.get("w", 8)), float(it.get("h", 8))))
@@ -155,10 +160,31 @@ func _layout() -> void:
 						"rect": Rect2(pos, Vector2(float(it.get("w", 8)), float(it.get("h", 8)))),
 						"sprite": s,
 						"frames": frames,
-						"frame": 0,
+						"frame": rest,
+						"rest": rest,
 						"id": int(it["id"]),
 						"userid": int(it.get("userid", 0)),
 					})
+
+
+## The party box art is the member's own world sprite (proven against
+## the oracle: bmp 2097 = K'ratchek's bug in the capture's yellow box).
+## Drawn as a child of each 11300-11303 button so the frame state
+## draws around it. party_pngs: {"<bmp>": {"png","w","h"}} from
+## item_icons.json.
+func attach_party_figures(members: Array, party_pngs: Dictionary) -> void:
+	for b in _buttons:
+		var iid: int = int(b["id"])
+		if iid < 11300 or iid > 11303 or b["sprite"] == null:
+			continue
+		var bmp := int(members[iid - 11300].get("bmp", 0))
+		var info: Dictionary = party_pngs.get(str(bmp), {})
+		if info.is_empty():
+			continue
+		var s := Sprite2D.new()
+		s.texture = load("res://generated/ui/" + str(info["png"]))
+		s.position = Vector2(17, 17)
+		b["sprite"].add_child(s)
 
 
 func accl_keys() -> Array[Dictionary]:
@@ -215,12 +241,14 @@ func _set_frame(b: Dictionary, f: int) -> void:
 		return
 	# 3-frame faces are ink swaps (0 normal, 1 highlight, 2 pressed);
 	# 4-frame faces: 0 normal, 1 hover, 2 blink/blank, 3 selected. Never
-	# show a 1x1 dummy frame (w < 8).
-	var n := frames.size()
-	var idx := clampi(f, 0, n - 1)
+	# show a 1x1 dummy frame (w < 8). State 0 means the button's own
+	# resting frame (some faces rest on a later frame).
+	var idx := clampi(f, 0, frames.size() - 1)
 	var fr: Dictionary = frames[idx]
 	if int(fr["w"]) < 8:
 		idx = 0
+	if f == 0:
+		idx = int(b.get("rest", 0))
 	if int(b["frame"]) == idx:
 		return
 	b["frame"] = idx

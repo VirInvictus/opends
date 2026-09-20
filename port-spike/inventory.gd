@@ -9,7 +9,6 @@
 extends WindScreen
 class_name InventoryScreen
 
-const STONE := Color8(112, 112, 134)
 const ROW_INK := Color8(214, 214, 222)
 const ROW_RELIEF := Color8(24, 24, 40)
 const ROW_GOLD := Color8(230, 200, 60)
@@ -18,6 +17,7 @@ static var _idb: Dictionary
 
 var members: Array = PartyData.MEMBERS
 var selected := 1
+var gold := 0
 var held := 0  # object id carried on the cursor, 0 = empty hands
 var _held_icon: Sprite2D
 var _cells := {}  # member index -> {slot: {"base": Sprite2D, "icon": Sprite2D}}
@@ -53,11 +53,13 @@ func _cell_pos(slot: int) -> Vector2:
 
 func _init() -> void:
 	window_id = 13500
-	# belt quick-cells and container cells stay unpainted outside their
-	# modes; the centre card is the parchment plate (figure art unpinned)
-	skip_apfm = [13200]
-	for i in range(11242, 11260):
+	# the whole stone/leather plate (cells, slot glyphs, parchment,
+	# party portraits, figure) regenerates from the oracle capture
+	# (bg_13500.png, drawn before layout); every APFM stays unpainted
+	skip_apfm = []
+	for i in range(11200, 11270):
 		skip_apfm.append(i)
+	skip_apfm.append(13200)
 
 
 func _ready() -> void:
@@ -66,6 +68,7 @@ func _ready() -> void:
 	_build_rows()
 	_build_cells()
 	_build_held_icon()
+	attach_party_figures(members, _db()["party"])
 	_refresh()
 
 
@@ -130,14 +133,6 @@ func _held_pos() -> Vector2:
 
 
 func _build_cells() -> void:
-	# the centre card: BMP 13005 parchment (the member figure art is
-	# unpinned; see the audit polish list)
-	var card := Sprite2D.new()
-	card.centered = false
-	var c13200 := item_by_id(13200)
-	card.position = Vector2(float(c13200.get("x", 75)), float(c13200.get("y", 36)))
-	card.texture = texture_for(str(_db()["parchment"]["png"]))
-	_board.add_child(card)
 	var layer := Node2D.new()
 	layer.name = "ItemLayer"
 	_board.add_child(layer)
@@ -183,8 +178,6 @@ func _make_row(parent: Node2D, pos: Vector2, ink: Color = ROW_INK) -> TextBlitte
 	row.position = pos
 	row.ink = ink
 	row.relief = ROW_RELIEF
-	row.backing = STONE
-	row.backing_size = Vector2(64, 11)
 	parent.add_child(row)
 	return row
 
@@ -241,6 +234,12 @@ func _refresh() -> void:
 	_set_row(18, wl[1])
 	_set_row(19, wl[2])
 	_set_row(20, wl[3])
+	_set_row(21, "%d$" % gold)
+	# selected member's party box takes the yellow frame (ICON 11100 f3)
+	for b in _buttons:
+		var iid: int = int(b["id"])
+		if iid >= 11300 and iid <= 11303:
+			_set_frame(b, 3 if iid - 11300 == selected else 0)
 	_refresh_cells()
 	if _held_icon != null:
 		var vis := held != 0

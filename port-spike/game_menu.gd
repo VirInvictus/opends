@@ -18,6 +18,9 @@ signal screen_requested(name: String)
 
 func _init() -> void:
 	window_id = 10500
+	# collapse-party rests on the coloured party art; the silhouettes
+	# are its pressed frame (oracle capture, 2026-09-20)
+	resting_frames = {10313: 2}
 
 var _tooltip: TextBlitter
 

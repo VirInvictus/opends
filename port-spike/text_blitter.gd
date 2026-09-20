@@ -76,4 +76,8 @@ func _draw() -> void:
 			_relief, Rect2(Vector2(pen, 0), Vector2(w, h)), r, relief)
 		draw_texture_rect_region(
 			_ink, Rect2(Vector2(pen, 0), Vector2(w, h)), r, ink)
+		# the engine double-strikes every glyph one pixel right, which
+		# is why its print reads chunkier than a single blit
+		draw_texture_rect_region(
+			_ink, Rect2(Vector2(pen + 1, 0), Vector2(w, h)), r, ink)
 		pen += w

@@ -175,6 +175,13 @@ func _start_game() -> void:
 		created_char = JSON.parse_string(
 			FileAccess.open("res://generated/created.json", FileAccess.READ).get_as_text()
 		)
+	# SPIKE_REGION+SPIKE_AT drop the party straight into a region/tile
+	# (fight QC without the cross-region walk)
+	if OS.get_environment("SPIKE_REGION") != "" and OS.get_environment("SPIKE_AT") != "":
+		var xy: PackedStringArray = OS.get_environment("SPIKE_AT").split(",")
+		_enter_region(int(OS.get_environment("SPIKE_REGION")),
+			Vector2i(int(xy[0]), int(xy[1])))
+		return
 	_enter_region(int(demo["start"]["region"]), Vector2i(int(demo["start"]["x"]), int(demo["start"]["y"])))
 
 
