@@ -167,3 +167,214 @@ portrait command index is 1. Dialog module home segments: DS1 overlay seg
    vs engine alert).
 6. Menu post-selection routing back through the pump's MENU window class
    (carried from gpl-vm.md).
+
+## 8. The screen behavior layer (UI-parity blitz, 2026-09-20)
+
+How each screen actually behaves, mined for the Godot port. All offsets
+are DS1 file offsets; DGROUP base 0x48960, DGROUP runtime segment
+0x4356. Where a claim rests on disassembly, the load-bearing offset is
+cited; the full evidence trails live in the blitz session transcript.
+
+### 8.1 Event dispatch (corrects section 1/5)
+
+- Open API (0x530:0x3E, body 0x62182) is `OpenWindow(id,
+  packed_xy_dword, handler_far)`: it sets the window xy from the dword
+  ((y<<16)|x fits every observed site), then stores the far handler at
+  win+0xF5 (`66 26 89 87 F5 00` at 0x2BFCD). The handler is an
+  argument; the ds:0xA11B copy at 0x2B89C is a separate capture-time
+  path. The observed "dw_arg" values in section 7 item 1 are xy pairs.
+- Event record (24 bytes, built by 0x2B075, dispatched through
+  0x2AE17/0x2AE4A, `call far [es:bx+0xf5]` at 0x2AEFA): +0 word event
+  type (1 = unmatched raw input, 2 = item activated, 3 = repeat,
+  6 = keyboard), +2 userid, +6..0x13 a 14-byte raw input record copy,
+  +0xC key code (scan<<8|ascii; 0x011B = ESC, checked 0x2B10C), +0x12
+  mouse button state word inside the raw block, +0x14 dword item
+  private data (from item record +0xC).
+- Item handler vectors: WindProc [0xA11B], item handler [0xA11F];
+  setters 0x2AB2D/0x2AB42; item dispatch `call far [0xa11f]` at
+  0x2AE7E.
+- Button state API: 0x2FCEA(win, uid, cmd) (stub 0x140:0x71A): cmd 0/1
+  clear/set disabled ([+0x58] bit 1, [+0xc] bit 0x4000), cmd 2/3
+  set/clear selected ([+0xc] bit 0x8000), cmd 4/5 press-flash
+  ([+0x58] bit 0). IsBStateOn = 0x640B7 (state == 2).
+- Screens that take per-item actions run a userid switch: a count +
+  linear-scan id table paired with a handler jump table (3011's at
+  file 0x663AB/0x663D7, dispatcher 0x6620E).
+
+### 8.2 Character creation (3011/3012/3013)
+
+Open 0x65D2A: `OpenWindow(0xbc3, 0, handler 0x540:0x43 = 0x6620E)`,
+handle cached [0x11A4/0x11A6]. Dispatcher 0x6620E: event 1 -> reject,
+event 6 -> only ESC (0x011B -> EXIT path), event 2 -> 22-entry userid
+switch.
+
+| id | role | handler / notes |
+|---|---|---|
+| 2001 + 2027 | race/gender cycle (invisible zone over the figure; left +1, right -1 via event+0x12 < 8) | 0x66277 -> 0x63263; scratch+0x18 wraps 0..13; race = idx>>1+1, gender = idx&1+1 |
+| 2002-2009 | class list toggles (ICON faces carry the names) | classSelect 0x63C95 fills/empties charrec+0x21..23 with race-mask + multi-grid legality; every class click re-runs DONE-enable 0x66403 (second switch 0x66377 for uids 2001..2009) |
+| 2010 | the stat reroll die | 0x6435A: 5-frame flip animation, then `rand()%6` resting face, then ShowStatClass(1) rerolls all six stats (GetStat 0x6490D x6, best of 4) |
+| 2011 | alignment stepper (charrec+0x1a cycles 1..9; druid forced N) | 0x66333 -> 0x63799 -> 0x649D4 |
+| 2012-2017 | six ability +/- steppers, clamp [class_min, racial+20], HP re-clamp | 0x66347 -> 0x637F8 -> 0x65480; row table 0x63A18 |
+| 2018 | HP stepper (charrec+8 wraps in [HPmin,HPmax] = [0x4998,0x4996]) | 0x6635B -> 0x63A24 |
+| 4003 | name entry (EBOX editor; buffer = combat+0x28, 16 bytes, max 15; empty seed = "Default Name" ds:0xE04) | 0x63AC8; "NAME:" label printed at (4,125) by the open routine |
+| 2000/2058 | DONE / EXIT: press-flash cmds 4,5 then 0x649C(slot, flag 1|0) | DONE runs the finalize chain (0x66AC4 sphere remap + party copy, 0x66CF1 discipline marker, 0x67016 free-slot find); EXIT (and ESC) frees the reserved slot unless editing ([0xE9C] != -1) |
+
+DONE legality (Enable 0x66403, sets BUTN 2000 cmd 0/1): a class slot
+is filled AND psionic discipline mask [0x4980] != 0; no cleric/druid
+slot with sphere mask [0x4982] == 0; psionicist selected requires
+[0x4980] == 0xE0 (all three disciplines).
+
+Pages: 3012 disciplines (open 0x67BD7, dispatcher 0x642F7: rows
+2038 psychokinesis/2039 psychometabolism/2040 telepathy -> PsiEvent
+0x63698 toggling bits 0x80/0x40/0x20 of [0x4980]; 2041
+psychoportation disabled at creation; 2046 VIEW SPHERES -> 0x640E4)
+and 3013 spheres (open inside 0x640E4 at (210,88), dispatcher
+0x64296: rows 2042-2045 air/earth/fire/water -> SphEvent 0x6373F
+toggling 0x80/0x40/0x20/0x10 of [0x4982]; 2047 VIEW PSIONICS reopens
+3012). No DONE on the pages; finalize derives real_class spheres from
+[0x4982] (0x66AC4, table 0x338:[creation_class*4+sphere+0xED], file
+0x3E140) and the discipline marker from [0x4980] (0x66CF1, writes the
+7-word array at 0x2F0:[slot*7+si]).
+
+Keyboard: ESC only (EXIT); typing goes to the name EBOX while it holds
+editor capture (editor family prologue 0x36B2F, instance table
+ds:0x16D4 stride 0x14). Everything else is mouse-driven; steppers
+direction = left/right via event+0x12 < 8 (+1) else -1.
+
+UI-state globals: [0x119C/0x119E] pending charrec (0x338:0x48),
+[0x11A0/0x11A2] pending combat (0x338:0x8F), [0x4980] discipline mask
+(init 0x80), [0x4982] sphere mask, [0x4996]/[0x4998] HP max/min,
+[0xE9C] -1 = creating new, else the slot being edited.
+
+### 8.3 Inventory (13500/13501/15500/15502)
+
+Open 0x6C243 (module 24/25). Cell arithmetic (GetCellRect 0x6F4DC):
+`APFM id = cell + 11212`; cell content = word [0x540C + cell*2]
+(-1 empty); slot byte on the 21-byte item row (+0x11) = cell - 4
+(write 0x6D7A5, read 0x6D8B8).
+
+| ids | cells | role |
+|---|---|---|
+| 11216-11229 | 4-17 | 14 paperdoll slots; body-slot table = 14 bytes at file 0x40A70: arm(3), ammo(11), missile(12), hand1(5), finger(9), waist(2), legs(10), head(6), neck(7), chest(1), hand2(5), finger2(9), cloak(8), foot(4); hands are cells 7 and 14 (legality 0x6EF52 reads exactly those), grasp triple {6,7,14} protected in pickup/place |
+| 11230-11241 | 18-29 | the 12 backpack slots (slots 14..25; CountUsedBackpackSlots 0x73B99) |
+| 11242-11247 | 30-35 | container contents display (only when opened on a container; placing refused 0x6E4D7) |
+| 11248-11259 | 36-47 | two 6-cell selection zones (A/B; enable 0x5C335/0x5C327, art 0x2BF0..0x2BFB), fed by items whose IT1R+15 & 0x8 (quick-item), zone A if IT1R+8 & 0xF == 5 |
+
+Buttons: 11300-11303 = party select (NOT paperdoll; si = di + 0xD43F
+wraps 11201..11204 and `sub ax,0x2c24` maps 11300); 11309-11312 =
+leader flags (ICON 11106), 11313-11316 = AI toggles (ICON 11111), one
+pair per member at (2,5/53/101/149) and (2,14/62/110/158); 13300
+DROP, 13302 SPLIT (stackable IT1R+15 & 0x2, qty > 1, halves via
+0x6F6C5), 13303 MORE (pages the container pick-list, [0x2ED0]),
+13304 SELL (only when 0x588:0x43() != 0, then 0x608:0x20 shop
+module), 11318 name plate over EBOX 4003.
+
+Click model: hands-empty click on a filled cell picks the item to the
+cursor (held row [0x17A0], legality 0x6F44B; grasp cells blocked for
+class/race codes {0x31,0x46,0x47,0x48}); click with a held item
+places/swaps (legality 0x6EF52 placement, carry 0x8:0x33F, swap
+worker 0x6ECFC; unequip strips granted effects via item +15 ->
+0x5B8:0x115/0x7F at 0x6F8B9); same-item stack merge (0x6E6F5);
+container cells refused. Party strip (or keys 1-4/SPACE) switches
+character and transfers a held item to that member (0x588:0x61/0x6B).
+Examine 15500 tracks the clicked instance via [0x360:0xC36+si*3]
+trio; INFO opens 15502, which reads the instance index directly
+(item +10 -> IT1R, effect byte +15, the 0x4a6a6/0x4a69e readouts).
+
+Keyboard dispatcher 0x71153: 33-entry (tag<<8)|ascii table at
+0x71C1B: ESC, 1-4, SPACE, Q/W/S/G/H/M and more. Leftover debug cheat:
+'T' (0x1454/0x1474, handler 0x71198) writes 10,000,000 XP to every
+tracked entity with state 2 (`mov dword [es:bx],0x989680`).
+
+Slot-byte writers (hole 2): the disk-load fixer 0x69DF0 (DS1's
+GplDiskFixItemSlot) assigns placement to unequipped rows at load
+(`mov [es:bx+0x11],al` 0x69EA6); the rebuild auto-assign 0x6D80B
+writes cell = slot+4 (0x6D7A5) and clears to 0xFF; the ready-slot
+module 0x5B8B9-0x5BF83 writes slot = cl+1 (0x5BA51) and
+[bp+6]+1 (0x5BF77); unequip clears to 0xFF and strips effects
+(0x6F8B9). Combat +8/+10/+12 derivation is NOT statically reachable
+(the 0x628:* derived-stats family runs at runtime segment numbers;
+leads: DS2 NpcReadyWeapon/GetMissileWeapon/usedhands/NumHands); the
+ready-slot module publishes the readied item into
+[0x360:0xC37+cur*3].
+
+Carry limits (hole 3), both in GiveHeldToChar 0x73C40 (module 26):
+'TOO BIG TO CARRY' (0x4A6F7) fires when IT1R+8 & 0x10 or & 0x20
+(0x73CBD/0x73CEB; the same bits block equipping at 0x6EFD0); 'TOO
+MANY ITEMS TO CARRY' (0x4A708) fires only when every party member
+fails both the 12-slot check (slots 14..25) and the 80-row pack cap
+(`cmp dx,0x50` 0x73D6D). There is no weight formula anywhere on this
+path. DS2 keeps the model verbatim (0x7CA45/0x7CB31, same 0x50 cap).
+
+### 8.4 Spell learn/train screens and the casting picker
+
+WIND 17500 is the level-up LEARN screen (not memorize): open 0x85771
+(highlight ICON 15104 cached at [0x348]:0x2F); cell list = 21 words
+at MISC[0x348]:0x7 + cell*2, filled by OVR9 stub2 0x5DD71: ascending
+SPST id per level group (level byte of the 7-byte spell table at
+0x4512C, class byte 0x01 preserver / 0xFE divine), starting at the
+char's max level = (OVR10 stub1(char)+1)>>1 stored at [0x4AEC].
+Icons = 21000 + spell id. Item dispatcher 0x85920 (si = id - 0x2BCD):
+hover draws the 15104 highlight + header 'LEARN <name>' (name = OVR9
+stub13 0x5E556); click LEARNS via 0x500:0x43 (0x5E3D7), header '<name>
+IS LEARNED!'; right-click opens 15503 with spell_id+1. EXIT 17301
+confirms 'YOU HAVEN'T CHOSEN' / EXIT / CANCEL (0x85B76). Placeholder
+17300 prints 'LEVEL %d' ([0x4AEC]) and CYCLES the level on click
+(0x85BAC), refilling the cells.
+
+WIND 17501 psionic train: open 0x85FF4; cell list = ds:0x9B86 +
+cell*2 (0-terminated, count at [0x9B84]), filled by 0x86107 from the
+34x8-byte power table at 0x44F90 (discipline = row byte 3 & 0x3F,
+name word row+6), filtered by OVR8 stub5 and the PSST mirror byte
+[0x2F0]:0x77+char*0x22+power; icons = 3000 + power id. BUTN 11319
+text = '  %d' level, 11320 = discipline name (table ds:0x30FA:
+Kinetics/Metabolic/Telepath/Psi-port; per-char discipline byte
+ds:0x9CE2+char). Click enhances: 'ENHANCE TO LEVEL %d' (0x86491).
+
+Casting picker (the 0x48 MENU in 3007): fill 0x89740, list type 1/2
+-> OVR9 stub4 0x5DF12 (class_bits 1 preserver / 2 divine, level
+[0x4AE0+char] / [0x4AE4+char]); type 3 -> 0x9A4F (psionics); row
+type byte [0x4AE8+char]; icon base at 0x897D0: 0x5208 for spells,
+0xBB8 for powers. Counts format '%d LEVEL %d SPELL%FsTO CAST'
+(0x4BB0F; cleric twin 0x4BB4D; ZERO variant 0x4BB30; 'YOU NEED TO
+REST' 0x4BB8D guarded on the cleric byte then GSTATE 0x19).
+
+15503 spell info (OVR49 stub3 0x8C5F6): icon bands: < 138 ->
+21000+id, [0x8A,0xAC) -> 3000+(id-0x8A), innate >= 0xF9 -> 3100+,
+stat band [0xC4..) -> 3044+, else 11103. EBOX 15400 gets the SPIN
+chunk verbatim (load_resource('SPIN', spell_id), 200-byte buffer,
+text at +5; failure prints '     UNKNOWN'). RESOURCE ships 180 SPIN
+chunks; name and description are one blob.
+
+### 8.5 Print formats the screens reuse
+
+Custom sprintf at 0x22932 (%d %u %s %2d %+d %03d %C %Fs); EBOX text
+draw 0x30D0D `(win, x, y, fmt, %C-args..., str, [0x3270], 0x14,
+[0x326E])`; universal scratch buffer 0x348:0x4B; width measure
+0x1E9F1. Stat-block helpers (OVR16 stubs): HP '%d/%d' (0x497BA) via
+0x64C6B (combat+0 vs charrec+8); PSP via 0x64CED (combat+2 vs
+charrec+0xC); 'AC: %2d' (0x497C0) via 0x64D70 calling the recompute
+0x4E0:0x7F; 'DAM: ' assembled by 0x64DB9: attacks = (charrec+0x2A)/2
+with '.5' if odd, '*', IT1R dice count (+13), 'D', sides (+12),
+bonus (+14 + instance+20). Name tables: ds:0xEAA = MALE/FEMALE,
+8 races, 10 creation classes, STR:..CHA:, 9 alignments;
+ds:0x11DC = 9 conditions then the real_class names (the sheet's
+multi-class line printer is OVR25 stub20 0x72B91 with per-class
+colors from 0x72D29; gender/race line 0x64B57; alignment 0x64BF8;
+condition 0x71D8B; 'EXP: ' 0x67CD9 -> dword drawer 0x651E7).
+Inventory right panel: abilities at x=260, y=53+7i (0x6F533); 'PSI:'
+at (236,99) with the value from stub7; money =
+dword [0x2C0]:0x357 drawn by 0x6DA12 with tiered '%d,%03d,%03d$'
+family (0x4A1BC..0x4A1E8) right-aligned to 12 at (60,185). Combat
+HUD 'Move : %d' (0x496E5) = CSTATE2 movement points / 10 (0x1EC49);
+there is no 'MOVES: %d' string in either game.
+
+### 8.6 Load/save slot lines (preview)
+
+Slots are 125-byte records at [0x388]:(idx*0x7D): +2 = filename
+('SAVE%.2d.SAV' via 0x746C1), +0x52 = 43-byte display label pushed
+verbatim to the BUTN text setter (0x140:0x7FA) for buttons
+2059+i by 0x74E36; occupied flag = byte at record+2. The label blob
+rides a PERF fourcc chunk id 100 (11 bytes across [0x11AE],
+[0x232E..0x2330], [0x11A8/0x11AA/0x11AC]; field split not fully
+proven).
