@@ -33,6 +33,7 @@ var armed := false
 var ui_layer: Node2D
 var ui_screen: WindScreen
 var ui_open := false
+var combat_hud: CombatHud
 const PRESET_NAMES := ["CERMAK", "SARIA", "SILLA", "K'RATCHEK"]
 var busy := false
 var cooldown := 0.0
@@ -71,6 +72,9 @@ func _ready() -> void:
 	ui_layer = Node2D.new()
 	ui_layer.name = "Screens"
 	$UI.add_child(ui_layer)
+	combat_hud = CombatHud.new()
+	combat_hud.visible = false
+	$UI.add_child(combat_hud)
 	if OS.get_environment("SPIKE_SHOT") != "":
 		_start_game()
 		if OS.get_environment("SPIKE_AT") != "":
@@ -408,6 +412,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			_close_ui()
 		return
 	if state == State.PLAY and not busy and event is InputEventKey and event.pressed:
+		if event.keycode == KEY_F1:
+			_save_game()
+			return
+		if event.keycode == KEY_F2:
+			_load_game()
+			return
 		match event.keycode:
 			KEY_TAB:
 				_open_screen("gamemenu")
@@ -435,6 +445,37 @@ func _unhandled_input(event: InputEvent) -> void:
 		var p := _bfs(tile, t)
 		if not p.is_empty():
 			path = p
+
+
+# --------------------------------------------- save / load (F1/F2)
+
+func _save_game() -> void:
+	DirAccess.make_dir_recursive_absolute("user://saves")
+	_sync_party_data()
+	var state := {
+		"label": "%s, the pens" % PartyData.MEMBERS[0]["name"],
+		"members": PartyData.MEMBERS,
+		"port": {"region": region_id, "tile": [tile.x, tile.y],
+			"fight_count": fight_count, "gold": 0},
+	}
+	var err: int = SaveIO.write_save("user://saves/SAVE01.SAV", state)
+	_show_banner("GAME SAVED" if err == OK else "SAVE FAILED")
+
+func _load_game() -> void:
+	var st := SaveIO.read_save("user://saves/SAVE01.SAV")
+	if st["port"].is_empty():
+		_show_banner("No saved game found")
+		return
+	var port: Dictionary = st["port"]
+	region_id = int(port["region"])
+	fight_count = int(port.get("fight_count", 0))
+	for mi in party.size():
+		party[mi]["hp"] = int(PartyData.MEMBERS[mi]["hp"])
+		party[mi]["max_hp"] = int(PartyData.MEMBERS[mi]["max"])
+		party[mi]["alive"] = str(PartyData.MEMBERS[mi]["status"]) == "Okay"
+	var t: Array = port["tile"]
+	_enter_region(region_id, Vector2i(int(t[0]), int(t[1])))
+	_show_banner("GAME LOADED")
 
 
 # --------------------------------------------- UI screens
@@ -616,9 +657,11 @@ func _next_actor() -> void:
 		return
 	if not _monsters_alive():
 		_victory()
+		combat_hud.visible = false
 		return
 	if _party_wiped():
 		_party_down()
+		combat_hud.visible = false
 		return
 	actor_i += 1
 	if actor_i >= queue.size():
@@ -634,15 +677,21 @@ func _next_actor() -> void:
 		_monster_turn(a)
 
 
+func _preset_name(idx: int) -> String:
+	var preset_names := ["Cermak", "Saria", "Cilla", "K'ratchek"]
+	return preset_names[idx] if idx < 4 else "Gladiator"
+
+
 func _party_turn(a: Dictionary) -> void:
 	phase = Phase.PARTY
 	move_pts = a["move_pts"]
 	attacks_left = a["blows"]
 	tile = _party_tile(0)
-	var preset_names := ["Cermak", "Saria", "Cilla", "K'ratchek"]
-	var nm: String = str(party[a["idx"]].get("name", ""))
-	if nm == "":
-		nm = preset_names[a["idx"]] if a["idx"] < 4 else "Gladiator"
+	var pm: Dictionary = party[a["idx"]]
+	combat_hud.visible = true
+	combat_hud.set_actor(str(pm.get("name", "")) if str(pm.get("name", "")) != "" else _preset_name(a["idx"]),
+		int(pm["hp"]), int(pm["max_hp"]), move_pts, "Okay")
+	var nm: String = _preset_name(a["idx"])
 	_show_banner("Round %d - %s  (move %d, %d attack%s)  [Enter = done]" % [
 		round_no, nm, int(move_pts / 10.0), attacks_left,
 		"s" if attacks_left != 1 else ""])
@@ -658,6 +707,9 @@ func _monster_turn(a: Dictionary) -> void:
 	phase = Phase.MONSTER
 	var mi: int = a["idx"]
 	var m: Dictionary = monsters[mi]
+	combat_hud.visible = true
+	combat_hud.set_actor(str(m.get("name", "the beast")), int(m["hp"]), int(m["max_hp"]),
+		int(a["move_pts"]), "Okay")
 	_show_banner("Round %d - the beast is upon you..." % round_no)
 	await get_tree().create_timer(0.35).timeout
 	var tgt := _nearest_party_tile(m["tile"])

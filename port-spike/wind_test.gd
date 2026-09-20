@@ -51,12 +51,15 @@ func _ready() -> void:
 	_snap()
 
 func _snap() -> void:
+	print("[SNAP] waiting frames")
 	for i in 6:
 		await RenderingServer.frame_post_draw
 	var out := OS.get_environment("SPIKE_OUT")
 	if out == "":
 		out = "/tmp/spike-oracle/wind_test.png"
+	print("[SNAP] saving to ", out)
 	get_viewport().get_texture().get_image().save_png(out)
+	print("[SNAP] saved")
 	get_tree().quit()
 
 func _find_blitter(root: Node, iid: int) -> TextBlitter:
