@@ -233,7 +233,10 @@ def export_region(rid: int, fname: str, label: str, rg, gp, objdb, pal) -> dict:
         o = ojff.get(oid)
         if o is None:
             continue
-        ox, oy = struct.unpack_from("<HH", o, 0)
+        # OJFF field map (engine-verified, wall/door research): word@2 =
+        # x offset, word@4 = y offset, word@0 = a baked placement x the
+        # engine ignores for drawing.
+        ox, oy = struct.unpack_from("<HH", o, 2)
         (bmp,) = struct.unpack_from("<H", o, 12)
         dx, dy = x - ox, y - oy - zpos
         if dx < 0 or dy < 0 or dx >= 2048 or dy >= 1568 or bmp not in bmp_chunks:
@@ -286,6 +289,7 @@ def export_region(rid: int, fname: str, label: str, rg, gp, objdb, pal) -> dict:
                         "w": fw,
                         "h": fh,
                         "png": name,
+                        "sort_y": (ty + 1) * 16 + 1,
                     }
                 )
     json.dump(

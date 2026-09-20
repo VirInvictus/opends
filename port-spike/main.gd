@@ -55,6 +55,9 @@ func _ready() -> void:
 	$Camera.limit_bottom = WORLD.y * 16
 	if OS.get_environment("SPIKE_SHOT") != "":
 		_start_game()
+		if OS.get_environment("SPIKE_AT") != "":
+			var xy: PackedStringArray = OS.get_environment("SPIKE_AT").split(",")
+			_enter_region(int(demo["start"]["region"]), Vector2i(int(xy[0]), int(xy[1])))
 		await get_tree().create_timer(0.4).timeout
 		await _snap(OS.get_environment("SPIKE_SHOT"))
 		get_tree().quit()
@@ -62,6 +65,8 @@ func _ready() -> void:
 	_intro_play()
 	if OS.get_environment("SPIKE_DEMO") != "":
 		_scripted()
+	elif OS.get_environment("SPIKE_TOUR") != "":
+		_tour()
 
 
 # ---------------------------------------------------------------- intro
@@ -134,7 +139,9 @@ func _enter_region(rid: int, at: Vector2i) -> void:
 			parent.remove_child(n)
 			n.queue_free()
 	for w in data["walls"]:
-		_add_sprite($Walls, "%s/sprites/%s" % [dir, w["png"]], Vector2(w["x"], w["y"] + w["h"]))
+		# sort feet one pixel past the row bottom: the engine's wall pass
+		# overdraws same-row entities
+		_add_sprite($Walls, "%s/sprites/%s" % [dir, w["png"]], Vector2(w["x"], float(w.get("sort_y", w["y"] + w["h"]))))
 	for e in data["entities"]:
 		var s := _add_sprite($Entities, "%s/sprites/%s" % [dir, e["png"]], Vector2(e["x"], e["y"] + e["h"]))
 		s.flip_h = bool(e["flip"])
@@ -676,3 +683,36 @@ func _drain() -> void:
 func _snap(p: String) -> void:
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png(p)
+
+
+# ------------------------------------------------- exploration tour
+
+func _tour() -> void:
+	# Landmark walk for the exploration record: start -> fountain ->
+	# templar room -> kitchen -> monster pens -> gladiator pens ->
+	# Scar's corner -> arena stair -> arena floor. Each stop: banner +
+	# pause, so the Movie Maker capture doubles as the survey.
+	_start_game()
+	await get_tree().create_timer(0.6).timeout
+	var stops := [
+		[Vector2i(68, 80), "the fountain court"],
+		[Vector2i(29, 88), "Pehtucl's quarters (southwest)"],
+		[Vector2i(14, 52), "the monster pens (west)"],
+		[Vector2i(86, 65), "Mirlon's corner (center)"],
+		[Vector2i(98, 95), "Dinos' kitchen (southeast)"],
+		[Vector2i(85, 78), "Scar's corner"],
+		[Vector2i(113, 27), "the arena stair"],
+	]
+	for s in stops:
+		_show_banner(String(s[1]))
+		_walk_to_then(s[0])
+		await _drain()
+		await get_tree().create_timer(1.2).timeout
+	_enter_region(42, Vector2i(30, 13))
+	await get_tree().create_timer(0.6).timeout
+	_show_banner("The Arena of Draj")
+	await get_tree().create_timer(1.5).timeout
+	_walk_to_then(Vector2i(30, 24))
+	await _drain()
+	await get_tree().create_timer(1.0).timeout
+	get_tree().quit()
