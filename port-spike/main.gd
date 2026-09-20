@@ -28,6 +28,12 @@ var monsters: Array[Dictionary] = []
 var trail: Array[Vector2] = []
 var path: Array[Vector2i] = []
 var armed := false
+# UI-parity screens (WindScreen family): opened by the mined hotkeys,
+# drawn over the world in a CanvasLayer, movement blocked while open
+var ui_layer: Node2D
+var ui_screen: WindScreen
+var ui_open := false
+const PRESET_NAMES := ["CERMAK", "SARIA", "SILLA", "K'RATCHEK"]
 var busy := false
 var cooldown := 0.0
 var state := State.INTRO
@@ -62,6 +68,9 @@ func _ready() -> void:
 	$Camera.limit_top = 0
 	$Camera.limit_right = WORLD.x * 16
 	$Camera.limit_bottom = WORLD.y * 16
+	ui_layer = Node2D.new()
+	ui_layer.name = "Screens"
+	$UI.add_child(ui_layer)
 	if OS.get_environment("SPIKE_SHOT") != "":
 		_start_game()
 		if OS.get_environment("SPIKE_AT") != "":
@@ -76,6 +85,18 @@ func _ready() -> void:
 	if Engine.has_meta("skip_intro"):
 		Engine.remove_meta("skip_intro")
 		_start_game()
+		return
+	# QC hook: SPIKE_UI=<screen> opens a UI screen over the running game
+	# and saves SPIKE_OUT once it is up.
+	if OS.get_environment("SPIKE_UI") != "":
+		_start_game()
+		var target: String = OS.get_environment("SPIKE_UI")
+		await get_tree().create_timer(1.0).timeout
+		_sync_party_data()
+		_open_screen(target)
+		await get_tree().create_timer(0.5).timeout
+		await _snap(OS.get_environment("SPIKE_OUT"))
+		get_tree().quit()
 		return
 	_intro_play()
 	if OS.get_environment("SPIKE_INTRO") != "":
@@ -382,6 +403,24 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if ui_open:
+		if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+			_close_ui()
+		return
+	if state == State.PLAY and not busy and event is InputEventKey and event.pressed:
+		match event.keycode:
+			KEY_TAB:
+				_open_screen("gamemenu")
+				return
+			KEY_V:
+				_open_screen("sheet")
+				return
+			KEY_I:
+				_open_screen("inventory")
+				return
+			KEY_U, KEY_C:
+				_open_screen("spells")
+				return
 	if state == State.INTRO:
 		_intro_input(event)
 		return
@@ -396,6 +435,59 @@ func _unhandled_input(event: InputEvent) -> void:
 		var p := _bfs(tile, t)
 		if not p.is_empty():
 			path = p
+
+
+# --------------------------------------------- UI screens
+
+func _open_screen(which: String) -> void:
+	_sync_party_data()
+	var ws: WindScreen
+	match which:
+		"gamemenu":
+			var gm := GameMenuScreen.new()
+			gm.screen_requested.connect(_menu_route)
+			ws = gm
+		"sheet":
+			ws = SheetScreen.new()
+		"inventory":
+			ws = InventoryScreen.new()
+		"spells":
+			ws = SpellScreen.new()
+		"prefs":
+			ws = PrefsScreen.new()
+		_:
+			return
+	_close_ui()
+	ui_screen = ws
+	ui_layer.add_child(ws)
+	ui_open = true
+
+func _close_ui() -> void:
+	if ui_screen != null:
+		ui_screen.queue_free()
+	ui_screen = null
+	ui_open = false
+
+func _menu_route(which: String) -> void:
+	if which == "close":
+		_close_ui()
+	elif which == "exit_popup":
+		_close_ui()
+		get_tree().quit()
+	else:
+		_open_screen(which)
+
+func _sync_party_data() -> void:
+	for i in party.size():
+		var p: Dictionary = party[i]
+		var m: Dictionary = PartyData.MEMBERS[i]
+		m["name"] = str(p["name"]) if str(p["name"]) != "" else PRESET_NAMES[i]
+		m["hp"] = int(p["hp"])
+		m["max"] = int(p["max_hp"])
+		m["ac"] = int(p["ac"])
+		m["thac0"] = int(p["thac0"])
+		m["moves"] = int(p["move"])
+		m["status"] = "Okay" if bool(p["alive"]) else "Dead"
 
 
 # --------------------------------------------- the actor-token machine
