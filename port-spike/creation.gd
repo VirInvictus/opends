@@ -81,13 +81,14 @@ func _build_rows() -> void:
 		_rows.append(_make_row(layer, Vector2(76, 135 + 7 * i), ROW_INK))
 	# class list: eight rows, ink goes light for available, dark for the
 	# selected row (the icon faces on 2002-2009 are flash variants, not
-	# the resting art)
+	# the resting art); these sit on the parchment panel the in-painter
+	# already cleaned, so no backing
 	for i in 8:
-		_rows.append(_make_row(layer, Vector2(227, 8 + 8 * i), AVAILABLE_INK))
+		_rows.append(_make_row(layer, Vector2(227, 8 + 8 * i), AVAILABLE_INK, false))
 	# psionic discipline rows (the PSI DISCIPLINES header and VIEW
 	# SPHERES stay baked in the backdrop - they never change)
 	for i in 3:
-		_rows.append(_make_row(layer, Vector2(226, 101 + 8 * i), AVAILABLE_INK))
+		_rows.append(_make_row(layer, Vector2(226, 101 + 8 * i), AVAILABLE_INK, false))
 
 func _build_bullets() -> void:
 	var bl := BulletLayer.new()
@@ -96,13 +97,14 @@ func _build_bullets() -> void:
 	_bullets.name = "Bullets"
 	_board.add_child(_bullets)
 
-func _make_row(parent: Node2D, pos: Vector2, ink: Color) -> TextBlitter:
+func _make_row(parent: Node2D, pos: Vector2, ink: Color, backed := true) -> TextBlitter:
 	var row := TextBlitter.new()
 	row.position = pos
 	row.ink = ink
 	row.relief = ROW_RELIEF
-	row.backing = LEATHER
-	row.backing_size = Vector2(206, 11)
+	if backed:
+		row.backing = LEATHER
+		row.backing_size = Vector2(70, 11)
 	parent.add_child(row)
 	return row
 
