@@ -462,7 +462,10 @@ func _save_game() -> void:
 	_show_banner("GAME SAVED" if err == OK else "SAVE FAILED")
 
 func _load_game() -> void:
-	var st := SaveIO.read_save("user://saves/SAVE01.SAV")
+	_load_from("user://saves/SAVE01.SAV")
+
+func _load_from(path: String) -> void:
+	var st: Dictionary = SaveIO.read_save(path)
 	if st["port"].is_empty():
 		_show_banner("No saved game found")
 		return
@@ -488,6 +491,10 @@ func _open_screen(which: String) -> void:
 			var gm := GameMenuScreen.new()
 			gm.screen_requested.connect(_menu_route)
 			ws = gm
+		"loadscreen":
+			var ls := LoadScreen.new()
+			ls.load_requested.connect(_load_from)
+			ws = ls
 		"sheet":
 			ws = SheetScreen.new()
 		"inventory":

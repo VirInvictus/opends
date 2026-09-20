@@ -122,10 +122,10 @@ static func write_save(path: String, state: Dictionary) -> int:
 		s6.append_array(char_row(m))
 	chunks.append({"kind": "SAVE", "id": 5, "bytes": s5})
 	chunks.append({"kind": "SAVE", "id": 6, "bytes": s6})
+	var port: Dictionary = state["port"]
+	port["label"] = str(state["label"])
 	chunks.append({"kind": "SAVE", "id": 60,
-		"bytes": str(JSON.stringify(state["port"])).to_utf8_buffer()})
-	chunks.append({"kind": "STXT", "id": 0,
-		"bytes": _str_field(str(state["label"]), 43)})
+		"bytes": str(JSON.stringify(port)).to_utf8_buffer()})
 	return _write_gffi(path, chunks)
 
 static func read_save(path: String) -> Dictionary:
