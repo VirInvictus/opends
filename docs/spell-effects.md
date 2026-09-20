@@ -221,6 +221,9 @@ exactly here, and the damage word's div/scale fields are SHARED with the
 duration formula (why Mirror Image and Stoneskin "group" by div).
 
 Storage: the active-effect record's +8 countdown; timer enqueue
+(turn-agent correction: ovr30 stub5 is a verified no-op - only stub6
+does work, and it is fed BY round_init; the record-116 divider counts
+rounds downstream and does not drive them).
 0xd0:0x20d(7, target, 0, clock + duration, 0) (ovr28 0x149f), cancel
 0xd0:0xc (0x1667). Clock = the DGROUP dword [0x9b72] divided by the word
 [0x9b70]. Round cadence: round init calls ovr30 stub5/stub6: a two-phase

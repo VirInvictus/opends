@@ -134,13 +134,28 @@ THERE IS NO PER-ROUND INITIATIVE LIST. Ordering is:
    `val = (s8)combat[ci + 0x22 + prio_sel]` (the combat+34 PRIORITY byte;
    the docs' {5,6,7}) plus a per-actor modifier `[0x358:other + 4]`; acts
    when `val + modifier > roll`. Higher priority = acts more often.
-2. AI actor selection (ovr5 local 0x9b6, file 0x57676): next monster actor
-   = max morale threshold, tie-broken by the pre-rolled d200; guards on
-   combat_active(); skips actors with no target; probes spell/psionic AI
-   (CORRECTED by wave 2: the 0x88:0x34b6 site is an animation/sprite
-   driver, not a spell probe; DS2's real AI spell rating is the all-320
-   loop in ovr4 local 0x3540..0x3687, gated by combat+33 & 0x20; DS1's
-   twin not pinned).
+2. THE TURN DRIVER (wave 3 correction; supersedes the "act test"
+   reading): combat is a single-actor TOKEN machine. ovr5 local 0x4a7
+   (file 0x57167, combat_step) runs once per frame from the master tick
+   0x1c7b3 and hands a global current-actor token to exactly one
+   combatant: the scheduler (ovr5 local 0x9b6) picks the type-2 slot
+   with the MAX morale threshold, tie-broken by the pre-rolled d200 -
+   party and monsters compete in the same stream. The holder's action
+   resolves, it marks itself done (target word cleared / morale -1),
+   and when NO valid actor remains, round_init fires IN THE SAME call
+   and the first actor of the new round activates immediately: no
+   round-boundary pause or UI exists. Player input is gated to the
+   token: resident 0x1ae40 blocks input whenever a MONSTER holds the
+   token ([0x4b75] > 4); there is no pause key (zero "pause" strings).
+   The morale threshold composition is 20 (DS1) / 30 (DS2) + d10 +
+   dex-reaction + status flags (the d10 sits INSIDE the threshold), and
+   "morale failure" as a dice event does not exist - demotion via
+   morale_adjust (ovr5 0x2514, clamp <= 10 and decrement) and the
+   dist<5 kind-1 withdrawal order are the flee-shaped behaviors. The
+   per-tick act test (ovr22 local 0x67d) is GPL opcode 0x59 (Statroll,
+   handler 0xb413): a script-side probabilistic gate, not the turn
+   driver; the party modifier table (rec107: act mods +5/0/-5/-10 for
+   slots 0..3) is the mechanical front-rank bias.
 
 Attacks per round: the resolver loops the per-round attack budget
 (+0x1ab); blow counts come from charrec+0x2a (melee) or ITR1[tpl+0xb]
