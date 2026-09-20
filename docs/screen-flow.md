@@ -378,3 +378,87 @@ verbatim to the BUTN text setter (0x140:0x7FA) for buttons
 rides a PERF fourcc chunk id 100 (11 bytes across [0x11AE],
 [0x232E..0x2330], [0x11A8/0x11AA/0x11AC]; field split not fully
 proven).
+
+### 8.7 Chrome screens (game menu, preferences, load/save, message box, popups, shop)
+
+Game menu 10500 (ovr14, open 0x61AF7, OpenWindow at 0x61B26 with
+dw_arg 0x2A0037, handle [0x11A4]). Event proc = ovr14 cs:0; item
+dispatch is a 14-entry scan (id table cs:0x46F, handlers cs:0x48B):
+
+| id | icon | action | handler |
+|---|---|---|---|
+| 10300 | 10100 | VIEW CHARACTER: opens 11500 for the leader (combat*0x3a + charrec*0x47) | 0x8A492 |
+| 11304 | 11102 | VIEW INVENTORY: opens 13500 with literal 9999 = no shop | 0x6C1AB |
+| 11305 | 11103 | CAST SPELLS/USE PSIONICS: 11500 spell-select mode, [0x4C2B]=3 | 0x88015 |
+| 11306 | 11104 | CURRENT SPELL/EFFECTS: 11500 effects mode | 0x7E8A7 |
+| 10301 | 10101 | EXIT: popup; peace = 'EXIT: SAVE GAME?' SAVE/QUIT/CANCEL, combat = 'EXIT GAME?' QUIT/CANCEL; SAVE -> save screen + quit-after, QUIT -> quit | 0x4D0:0x25 popup |
+| 10302 | 10102 | LOAD/SAVE: popup LOAD/SAVE/RESTART (combat: LOAD/RESTART); RESTART sets [0x116A]=1 | |
+| 10303 | 10103 | SET PREFERENCES -> PrefsOpen | 0x7F422 |
+| 10305 | 10105 | OVERHEAD MAP (no WIND) | 0x7E204 |
+| 10306 | 10106 | COLLAPSE PARTY (regroup on leader) | 0x420 |
+| 10310/10311/10312 | - | cursor modes move/look/attack = 1/2/4 via 0x88:0x2927 | 0x2BD+ |
+| 10313 | 10113 | CENTER ON LEADER: hard-disabled while GSTATE 0x2B8:0x19 != 0 (combat) | 0x93 |
+| 10308 | 10108 | X close | 0x407 |
+
+Hover tooltips: the APFM underlays 10202-10219 index a DGROUP far
+table at ds:0x0C4A ('EXIT TO DOS', 'LOAD/SAVE GAME', 'SET
+PREFERENCES', 'MOVE CURSOR', 'LOOK CURSOR', 'ATTACK CURSOR', 'COLLAPSE
+PARTY', '', 'OVERHEAD MAP', 'CENTER ON LEADER'), printed into item
+11270. Mouse-only; ESC closes.
+
+Preferences 16500 (ovr37, open 0x7F422): 16300 music toggle
+([0x11AA]), 16301 sound toggle ([0x11A8]), 16304/16305 music volume
+step 6 ([0x232E], max [0x2330]), 16306/16307 sound volume step 7
+range 0..127 ([0x232F]), 16308/16309 text speed 0..3 ([0x11AE],
+labels 'EASY'... table ds:0x2331), 16303 mouse toggle ([0x11AC],
+applies (16,16) vs (4,4) through 0x530:0x5C), 16302 = the credits
+page (9 copyright lines + '1.10'), 11308 = back to game menu
+(reopens 10500), 10308 close. State persists as the 14-byte 'PREF'
+chunk (id 100) inside each save; F4/F5/F6 hotkeys DO NOT EXIST in
+DS1 (binary-wide scan: no F-key handlers).
+
+Load/save (ovr27): LOAD and SAVE both open WIND 3009 (0x7454F);
+LOAD additionally binds title art 6030/6031 onto buttons
+2056/2057. **WIND 3024 is never opened in DS1** (zero references to
+0xBC8 or its scroll buttons) - it is dead shipped data; RESTART
+lives in the game-menu popup. Slots are DOS FILES, not DARKSAVE
+chunks: a 'SAVE??.SAV' findfirst scan fills records at
+[0x388]:(slot*0x7D+2); the display name comes from the save file's
+STXT chunk into +0x52 and is pushed verbatim to button 2059+si;
+empty slots dim in LOAD mode. Keys: ESC cancel, ENTER confirm,
+UP/DOWN move over occupied slots. SAVE confirm runs the modal name
+edit (EBOX 4001, 44 chars) then 0x560:0x89; LOAD runs 0x560:0x8E;
+both read/write the PREF chunk. F1/F2 hotkeys DO NOT EXIST.
+
+Message box 10501 is the engine's transient message strip (the whole
+192x28 face is BUTN 10309; click acknowledges), fed by 0x520:0x34
+('GAME SAVED', 'NO RESTING DURING COMBAT', ...) - not the GPL 0x2C
+log, which is the 3007 dialog array.
+
+Popups 14000/14001/14002: 14001 is the low-memory fallback of 14000
+(picked at 0x54DB0 when free < 0x2D20). One shared modal proc
+(0x55258) serves every generic popup: click table maps 10308->0 and
+the line buttons to 1..3; the keyboard path is CASE-INSENSITIVE
+FIRST-LETTER per line (letters cached at [0x493C..0x493E]) and ESC
+cancels only when the caller passed allow-ESC. So EXIT GAME accepts
+S/Q/C like any other popup; a first-letter miss means a flag or a
+colliding handler, not a different input model. 14002 is not a text
+popup: it is the party ADD/DROP slot picker (six 18x18 cells +
+11305 + X, opened at 0x55718 when a clicked member has combat+0x1C
+!= 1).
+
+Shop (hole 6): GPL opcode 0x24 stub (0xA962) calls 0x4251:0x98 ->
+ovr22 cs:0x8D2: resolves the operand to a STATE slot, then calls
+InventoryOpen(leader, shop) - the same 13500 opener with a real shop
+id ([0x179C]; 9999 = none, [0x11B2] = doingshop). Stock source: the
+STATE slot table at 0x360:0xC36 (3 bytes/slot {type, combat_idx}) ->
+the shopkeeper creature's combat record -> its item rows in the
+global instance array. There is no separate shop-stock chunk. SELL
+and MORE are dimmed to state 1 outside shop mode.
+
+MENU opcode 0x48 post-selection tail: the handler (0xCB5B) stores
+(id, flag) pairs at VMCFG+0x27D/+0x2F9, appends lines via dialog cmd
+0x5C8:0x25 (building the dynamic 'MENU %u' chunk, ds:0x3C0C), and
+after the pick fetches the 1-based selection (0x5C8:0x34), bounds it,
+and PUSHES THE STORED ID BACK ONTO THE GPL OPERAND STACK (0x99D5) -
+that number is what the script then tests.
