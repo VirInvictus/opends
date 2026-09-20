@@ -23,17 +23,28 @@ functions + 2,247 labels; Watcom debug names from the DSO v1.0
   (low value), plus the combat/rules families (`Cnd*` 16, `Spell*`
   9, `Psionic*` 14, `Combat*` 6).
 
-## The cheap win: the Decode* batch (~100 rows)
+## The Decode* batch: proposals exist, the curation rule gates them
 
 `tools/gpl-disasm/scripts/import-dso-symbols.py --opcodes-proposed`
-already emits 100 review-ready rows for `syms/opcodes.toml`; the
-dispatch-order study in `docs/dso-symbols.md` did the verification
-homework (111/115 Decode* names match libgff mnemonics with the
-systematic `*check` -> `*trigger` rename). Proven alias rows ready
-for provenance notes: `DecodeJump`/`DecodeWend` (0x3bb55, opcode
-0x64 shares 0x12's handler) and
-`DecodeNumtoname`/`DecodeNametonum` (0x3c121). `DecodeIfis` hints
-the 0x27 `ifcompare` semantics. Run, review, commit in batches.
+emits ~100 ready rows; the dispatch-order study in
+`docs/dso-symbols.md` did the identity homework (111/115 Decode*
+names match libgff mnemonics with the systematic
+`*check` -> `*trigger` rename; `DecodeJump`/`DecodeWend` and
+`DecodeNumtoname`/`DecodeNametonum` are aliases proven by shared
+handler addresses; `DecodeIfis` hints 0x27 semantics).
+
+**But do not bulk-land them.** `syms/opcodes.toml`'s curation rule
+(do not relax without surfacing it) says the DSO symbol table
+"does not enumerate opcode-byte->handler-name mappings... useful
+for correlating engine entry points, not opcode renames", and that
+cosmetic aliases do not meet the override bar. The proposals are
+aliases by construction, so a batch import would relax a written
+contract for a naming pass - flagged here rather than done
+(2026-09-20). Paths that WOULD satisfy rule 1 for specific rows:
+cross-checking individual handler semantics against bytecode
+behavior (the dead-trigger sweep outputs are exactly this shape
+for the `Gpl*Check` triggers), or finding cases where libgff's
+mnemonic is provably wrong rather than differently-styled.
 
 ## Tier A: highest per-name value (16 `Gpl*` names)
 
