@@ -29,12 +29,17 @@ var trail: Array[Vector2] = []
 var path: Array[Vector2i] = []
 var armed := false
 # UI-parity screens (WindScreen family): opened by the mined hotkeys,
-# drawn over the world in a CanvasLayer, movement blocked while open
+# drawn over the world in a CanvasLayer, movement blocked while open.
+# Party records sync into PartyData so every screen shows live HP/AC/
+# THAC0/moves. The world build order maps onto PartyData.MEMBERS (the
+# engine's UI order: CERMAK, K'RATCHEK, SARIA, SILLA) so records and
+# names stay aligned.
 var ui_layer: Node2D
 var ui_screen: WindScreen
 var ui_open := false
 var combat_hud: CombatHud
-const PRESET_NAMES := ["CERMAK", "SARIA", "SILLA", "K'RATCHEK"]
+const PRESET_NAMES := ["CERMAK", "K'RATCHEK", "SARIA", "SILLA"]
+const PARTY_ORDER := [0, 3, 1, 2]  # demo.json party row per UI member
 var busy := false
 var cooldown := 0.0
 var state := State.INTRO
@@ -212,8 +217,9 @@ func _enter_region(rid: int, at: Vector2i) -> void:
 	var spread := [Vector2(2, 6), Vector2(10, 2), Vector2(10, 10), Vector2(18, 6)]
 	party.clear()
 	for i in bmps.size():
-		var st: Dictionary = demo["party_stats"][i]
-		var bmp_i: int = int(bmps[i])
+		var src: int = PARTY_ORDER[i]
+		var st: Dictionary = demo["party_stats"][src]
+		var bmp_i: int = int(bmps[src])
 		var nm := ""
 		if created_char != null and i == 0 and bool(created_char.get("use_presets", true)) == false:
 			st = created_char.duplicate()
@@ -476,6 +482,8 @@ func _load_from(path: String) -> void:
 		party[mi]["hp"] = int(PartyData.MEMBERS[mi]["hp"])
 		party[mi]["max_hp"] = int(PartyData.MEMBERS[mi]["max"])
 		party[mi]["alive"] = str(PartyData.MEMBERS[mi]["status"]) == "Okay"
+		if mi < st["members"].size() and st["members"][mi].has("cells"):
+			PartyData.MEMBERS[mi]["cells"] = st["members"][mi]["cells"]
 	var t: Array = port["tile"]
 	_enter_region(region_id, Vector2i(int(t[0]), int(t[1])))
 	_show_banner("GAME LOADED")
@@ -797,8 +805,12 @@ func _party_attack(mi: int) -> void:
 		var dmg: int = _d(p["sides"], p["dice"]) + p["bonus"]
 		monsters[mi]["hp"] = maxi(0, int(monsters[mi]["hp"]) - dmg)
 		_update_bar(monsters[mi]["bar_fg"], float(monsters[mi]["hp"]) / float(monsters[mi]["max_hp"]))
-		_float_text(monsters[mi]["sprite"].position, str(dmg), Color(1, 0.9, 0.3))
-		if monsters[mi]["hp"] <= 0:
+		# splat frames by damage class (BMP 5014): small/big red hits,
+		# gold star on the kill; green is the poison frame, unused here
+		var killed: bool = monsters[mi]["hp"] <= 0
+		_spawn_splat(monsters[mi]["sprite"],
+			4 if killed else (1 if dmg >= 3 else 0))
+		if killed:
 			monsters[mi]["alive"] = false
 			monsters[mi]["sprite"].modulate = Color(0.4, 0.4, 0.4, 0.7)
 			monsters[mi]["bar_bg"].visible = false
@@ -806,7 +818,7 @@ func _party_attack(mi: int) -> void:
 			if not _monsters_alive():
 				_victory()
 	else:
-		_float_text(monsters[mi]["sprite"].position, "miss", Color(0.8, 0.8, 0.8))
+		_spawn_splat(monsters[mi]["sprite"], 3)  # grey puff = miss
 
 
 func _hud_refresh_member(idx: int) -> void:
@@ -825,12 +837,14 @@ func _monster_attack(m: Dictionary, p: Dictionary) -> void:
 		p["hp"] = maxi(0, int(p["hp"]) - dmg)
 		_hud_refresh_member(party.find(p))
 		_update_bar(p["bar_fg"], float(p["hp"]) / float(p["max_hp"]))
-		_float_text(p["sprite"].position, str(dmg), Color(1, 0.3, 0.3))
+		_spawn_splat(p["sprite"], 1 if dmg >= 3 else 0)
 		if p["hp"] <= 0:
 			p["alive"] = false
 			p["sprite"].modulate = Color(0.3, 0.3, 0.3, 0.6)
 			p["bar_bg"].visible = false
 			p["bar_fg"].visible = false
+	else:
+		_spawn_splat(p["sprite"], 3)  # grey puff = miss
 
 
 func _party_wiped() -> bool:
@@ -883,6 +897,23 @@ func _float_text(at: Vector2, text: String, color: Color) -> void:
 	tw.tween_property(l, "position:y", l.position.y - 24.0, 0.7)
 	tw.parallel().tween_property(l, "modulate:a", 0.0, 0.7)
 	tw.tween_callback(l.queue_free)
+
+
+## BMP 5014 splat over a hit target (frames: 0 small red, 1 big red,
+## 2 green, 3 grey puff, 4 gold star; the demo maps big hits, misses
+## and kills onto them).
+func _spawn_splat(target: Sprite2D, frame: int) -> void:
+	var s := Sprite2D.new()
+	s.texture = load("res://generated/ui/splat_f%d.png" % frame)
+	s.centered = false
+	var tw := target.texture.get_width() / 2.0 - s.texture.get_width() / 2.0
+	s.position = target.position + Vector2(tw,
+		-target.texture.get_height() - s.texture.get_height() / 2.0 + 8.0)
+	$Floats.add_child(s)
+	var anim := create_tween()
+	anim.tween_interval(0.45)
+	anim.tween_property(s, "modulate:a", 0.0, 0.25)
+	anim.tween_callback(s.queue_free)
 
 
 # ------------------------------------------------- scripted full loop

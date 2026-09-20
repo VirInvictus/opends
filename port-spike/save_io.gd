@@ -113,6 +113,9 @@ static func char_row(m: Dictionary) -> PackedByteArray:
 
 ## Writes the save file. state = {"label", "members" (PartyData.MEMBERS
 ## shape), "port": {"region", "tile", "fight_count", "gold"}}.
+## The label rides both an engine-style STXT/0 chunk (null-terminated,
+## zero-padded; what the original's slot list reads) and the SAVE/60
+## port JSON. Inventory cells travel in the port JSON.
 static func write_save(path: String, state: Dictionary) -> int:
 	var chunks: Array[Dictionary] = []
 	var s5 := PackedByteArray()
@@ -124,8 +127,18 @@ static func write_save(path: String, state: Dictionary) -> int:
 	chunks.append({"kind": "SAVE", "id": 6, "bytes": s6})
 	var port: Dictionary = state["port"]
 	port["label"] = str(state["label"])
+	var cells: Array = []
+	for m in state["members"]:
+		cells.append(m.get("cells", []))
+	port["cells"] = cells
 	chunks.append({"kind": "SAVE", "id": 60,
 		"bytes": str(JSON.stringify(port)).to_utf8_buffer()})
+	var text := str(state["label"]).to_ascii_buffer()
+	var label := PackedByteArray()
+	label.resize(44)  # null + zero padding beyond the text
+	for i in mini(text.size(), 43):
+		label[i] = text[i]
+	chunks.append({"kind": "STXT", "id": 0, "bytes": label})
 	return _write_gffi(path, chunks)
 
 static func read_save(path: String) -> Dictionary:
@@ -171,8 +184,14 @@ static func read_save(path: String) -> Dictionary:
 					payload.get_string_from_utf8())
 				if parsed is Dictionary:
 					out["port"] = parsed
+					var cells: Array = parsed.get("cells", [])
+					for mi in mini(cells.size(), out["members"].size()):
+						out["members"][mi]["cells"] = cells[mi]
 			elif kind == "STXT":
-				out["label"] = payload.get_string_from_ascii().rstrip(String.chr(0))
+				# engine save-name chunk: text up to the first null
+				var end := payload.find(0)
+				out["label"] = payload.slice(0, end if end >= 0 else payload.size()) \
+					.get_string_from_ascii()
 	return out
 
 static func _write_gffi(path: String, chunks: Array[Dictionary]) -> int:

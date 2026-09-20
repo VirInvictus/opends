@@ -48,6 +48,11 @@ func _ready() -> void:
 			var box := _find_blitter(ws, int(kv[0]))
 			if box != null:
 				box.text = kv[1]
+	# QC hook: force a held item so the cursor icon and drop-target
+	# highlight render in the still (SPIKE_HELD=<object id>)
+	if ws is InventoryScreen and OS.get_environment("SPIKE_HELD") != "":
+		ws.held = int(OS.get_environment("SPIKE_HELD"))
+		ws._refresh()
 	_snap()
 
 func _snap() -> void:

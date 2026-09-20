@@ -2,6 +2,10 @@
 # dynamic text in-painted away; the party strip, name plate, stat panel
 # and money draw live from the member records (screen-flow.md 8.3).
 # Member switching: click the four party slots or keys 1-4.
+# Items draw the engine way (export_items.py): icon = the base object's
+# OJFF bmp_id sprite; empty paperdoll cells show the BMP 13007 slot
+# glyphs (frames 9+slot); a held icon rides the cursor; f4 is the drop
+# target selection and f6 the illegal-drop X.
 extends WindScreen
 class_name InventoryScreen
 
@@ -10,82 +14,147 @@ const ROW_INK := Color8(214, 214, 222)
 const ROW_RELIEF := Color8(24, 24, 40)
 const ROW_GOLD := Color8(230, 200, 60)
 
+static var _idb: Dictionary
+
 var members: Array = PartyData.MEMBERS
 var selected := 1
-var gold := 0
-var held := ""  # name of the item carried on the cursor, "" = empty
-var held_kind := ""  # placement code of the held item
-var _held_tag: TextBlitter
-var _cell_tags := {}  # member index -> {slot: TextBlitter}
+var held := 0  # object id carried on the cursor, 0 = empty hands
+var _held_icon: Sprite2D
+var _cells := {}  # member index -> {slot: {"base": Sprite2D, "icon": Sprite2D}}
 var _rows: Array[TextBlitter] = []
+var _hover_slot := -1
 
 # slot -> placement code for the 14 paperdoll slots (mined table at
 # 0x40A70): arm, ammo, missile, hand, finger, waist, legs, head, neck,
 # chest, hand2, finger2, cloak, foot
 const PAPERDOLL_CODES := [3, 11, 12, 5, 9, 2, 10, 6, 7, 1, 5, 9, 8, 4]
-const DEMO_ITEMS := {
-	0: {"name": "Long Sword", "place": 5},
-	2: {"name": "Long Bow", "place": 12},
-}
+
+
+static func _db() -> Dictionary:
+	if _idb.is_empty():
+		var f := FileAccess.open("res://generated/ui/item_icons.json", FileAccess.READ)
+		_idb = JSON.parse_string(f.get_as_text())
+	return _idb
+
+
+static func obj_info(oid: int) -> Dictionary:
+	return _db()["items"].get(str(oid), {})
+
 
 func _cell_pos(slot: int) -> Vector2:
 	# cell id = slot + 11216 for the paperdoll (0..13) and
-	# slot + 11216 for the backpack (14..25): ids 11230..11241
+	# slot + 11214 for the backpack (14..25): ids 11230..11241
 	var id: int = 11216 + slot if slot < 14 else 11214 + slot
 	for it in data["items"]:
 		if it["type"] == "APFM" and int(it["id"]) == id:
 			return Vector2(float(it["x"]), float(it["y"]))
 	return Vector2.ZERO
 
+
 func _init() -> void:
 	window_id = 13500
+	# belt quick-cells and container cells stay unpainted outside their
+	# modes; the centre card is the parchment plate (figure art unpinned)
+	skip_apfm = [13200]
+	for i in range(11242, 11260):
+		skip_apfm.append(i)
+
 
 func _ready() -> void:
 	super._ready()
 	_seed_items()
 	_build_rows()
-	_build_cell_tags()
-	_build_held_tag()
+	_build_cells()
+	_build_held_icon()
 	_refresh()
 
-## Seed the demo inventories: two carried weapons on members 0 and 2.
-## The 26-slot cell model (14 paperdoll + 12 backpack) is the mined
-## structure; instances carry their placement code for legality.
-func _seed_items() -> void:
-	for m in members:
-		if not m.has("cells"):
-			m["cells"] = []
-			for i in 26:
-				m["cells"].append(null)
-	var cermak: Dictionary = members[0]
-	cermak["cells"][14] = {"name": "Long Sword", "place": 5}
-	var saria: Dictionary = members[2]
-	saria["cells"][14] = {"name": "Long Bow", "place": 12}
 
-func _build_held_tag() -> void:
-	_held_tag = TextBlitter.new()
-	_held_tag.ink = ROW_GOLD
-	_held_tag.relief = ROW_RELIEF
-	_held_tag.visible = false
-	_board.add_child(_held_tag)
+static func texture_for(png: String) -> Texture2D:
+	return load("res://generated/ui/" + png)
+
+
+## Seed the demo inventories from the exported kits (docs/
+## creature-inventories-ds1.md picks). Each item goes to the first
+## legal paperdoll slot for its placement code, else the backpack.
+func _seed_items() -> void:
+	for mi in members.size():
+		var m: Dictionary = members[mi]
+		if m.has("cells") and not (m["cells"] as Array).is_empty():
+			continue
+		var cells: Array = []
+		for i in 26:
+			cells.append(null)
+		for oid in _db()["kits"].get(str(mi), []):
+			var place := int(obj_info(int(oid)).get("place", 0))
+			var slot := -1
+			var s := PAPERDOLL_CODES.find(place)
+			while s >= 0:
+				if cells[s] == null:
+					slot = s
+					break
+				s = PAPERDOLL_CODES.find(place, s + 1)
+			if slot < 0:
+				for b in range(14, 26):
+					if cells[b] == null:
+						slot = b
+						break
+			if slot >= 0:
+				cells[slot] = {"obj": int(oid)}
+		m["cells"] = cells
+
+
+func _build_held_icon() -> void:
+	_held_icon = Sprite2D.new()
+	_held_icon.centered = false
+	_held_icon.visible = false
+	_board.add_child(_held_icon)
+
 
 func _process(_delta: float) -> void:
-	if _held_tag != null and held != "":
-		_held_tag.position = _held_pos()
+	if _held_icon == null:
+		return
+	if held == 0:
+		if _hover_slot != -1:
+			_hover_slot = -1
+			_refresh_cells()
+		return
+	_held_icon.position = _held_pos()
+	var s := _cell_at(_held_pos())
+	if s != _hover_slot:
+		_hover_slot = s
+		_refresh_cells()
+
 
 func _held_pos() -> Vector2:
 	return (_board.get_global_transform().affine_inverse() * get_global_mouse_position())
 
-func _build_cell_tags() -> void:
+
+func _build_cells() -> void:
+	# the centre card: BMP 13005 parchment (the member figure art is
+	# unpinned; see the audit polish list)
+	var card := Sprite2D.new()
+	card.centered = false
+	var c13200 := item_by_id(13200)
+	card.position = Vector2(float(c13200.get("x", 75)), float(c13200.get("y", 36)))
+	card.texture = texture_for(str(_db()["parchment"]["png"]))
+	_board.add_child(card)
+	var layer := Node2D.new()
+	layer.name = "ItemLayer"
+	_board.add_child(layer)
 	for mi in 4:
-		_cell_tags[mi] = {}
+		var per := {}
 		for slot in 26:
-			var t := TextBlitter.new()
-			t.ink = ROW_INK
-			t.relief = ROW_RELIEF
-			t.visible = false
-			_board.add_child(t)
-			_cell_tags[mi][slot] = t
+			var base := Sprite2D.new()
+			base.centered = false
+			base.visible = false
+			layer.add_child(base)
+			var icon := Sprite2D.new()
+			icon.centered = false
+			icon.visible = false
+			base.add_child(icon)
+			per[slot] = {"base": base, "icon": icon}
+		_cells[mi] = per
+
 
 func _build_rows() -> void:
 	var layer := Node2D.new()
@@ -108,6 +177,7 @@ func _build_rows() -> void:
 	# money
 	_rows.append(_make_row(layer, Vector2(60, 184)))
 
+
 func _make_row(parent: Node2D, pos: Vector2, ink: Color = ROW_INK) -> TextBlitter:
 	var row := TextBlitter.new()
 	row.position = pos
@@ -118,21 +188,40 @@ func _make_row(parent: Node2D, pos: Vector2, ink: Color = ROW_INK) -> TextBlitte
 	parent.add_child(row)
 	return row
 
+
 func _set_row(i: int, s: String) -> void:
 	_rows[i].text = s
 
-func _refresh_cell_tags() -> void:
+
+func _refresh_cells() -> void:
 	var m: Dictionary = members[selected]
-	var tags: Dictionary = _cell_tags[selected]
-	for slot in tags:
-		var t: TextBlitter = tags[slot]
+	var per: Dictionary = _cells[selected]
+	var cell: Dictionary = _db()["cell"]
+	var frames: Array = cell["frames"]
+	var glyph0 := int(cell["glyph_frame0"])
+	for slot in per:
+		var base: Sprite2D = per[slot]["base"]
+		var icon: Sprite2D = per[slot]["icon"]
+		base.position = _cell_pos(slot)
 		var item: Variant = m["cells"][slot]
-		if item == null:
-			t.visible = false
+		# base tile: drop-target selection/X while holding, plain under
+		# an item, the slot glyph when empty
+		var f: int = (glyph0 + slot) if slot < 14 else int(cell["plain"])
+		if item != null:
+			f = int(cell["plain"])
+		if slot == _hover_slot and held != 0:
+			f = int(cell["select_yellow"]) if _legal(slot, {"obj": held}) \
+				else int(cell["illegal"])
+		base.texture = texture_for(str(frames[f]["png"]))
+		base.visible = true
+		if item != null:
+			var info: Dictionary = obj_info(int(item["obj"]))
+			icon.texture = texture_for(str(info["png"]))
+			icon.position = (Vector2(18, 18) - Vector2(float(info["w"]), float(info["h"]))) / 2.0
+			icon.visible = true
 		else:
-			t.text = str(item["name"]).substr(0, 2).to_upper()
-			t.position = _cell_pos(slot) + Vector2(2, 2)
-			t.visible = true
+			icon.visible = false
+
 
 func _refresh() -> void:
 	for mi in 4:
@@ -152,10 +241,14 @@ func _refresh() -> void:
 	_set_row(18, wl[1])
 	_set_row(19, wl[2])
 	_set_row(20, wl[3])
-	_refresh_cell_tags()
-	if _held_tag != null:
-		_held_tag.text = held
-		_held_tag.visible = held != ""
+	_refresh_cells()
+	if _held_icon != null:
+		var vis := held != 0
+		_held_icon.visible = vis
+		if vis:
+			var info: Dictionary = obj_info(held)
+			_held_icon.texture = texture_for(str(info["png"]))
+
 
 ## slot under a board position, or -1. Paperdoll = slots 0..13
 ## (ids 11216..11229), backpack = slots 14..25 (ids 11230..11241).
@@ -176,33 +269,32 @@ func _cell_at(pos: Vector2) -> int:
 			return slot
 	return -1
 
+
 func _legal(slot: int, item: Dictionary) -> bool:
 	if slot >= 14:
 		return true  # backpack takes anything
-	return PAPERDOLL_CODES[slot] == int(item["place"])
+	var place := int(obj_info(int(item.get("obj", 0))).get("place", 0))
+	return PAPERDOLL_CODES[slot] == place
+
 
 func _click_cell(slot: int) -> void:
 	var m: Dictionary = members[selected]
 	var cells: Array = m["cells"]
-	if held == "":
+	if held == 0:
 		if cells[slot] != null:
-			held = str(cells[slot]["name"])
-			held_kind = str(cells[slot]["place"])
+			held = int(cells[slot]["obj"])
 			cells[slot] = null
 	elif cells[slot] == null:
-		if slot < 14 and PAPERDOLL_CODES[slot] != held_kind:
-			pass  # wrong body slot: the engine just refuses the drop
-		else:
-			cells[slot] = {"name": held, "place": held_kind}
-			held = ""
+		if _legal(slot, {"obj": held}):
+			cells[slot] = {"obj": held}
+			held = 0
 	else:
 		# swap if the occupant is legal where the held item came from
-		if slot < 14 and PAPERDOLL_CODES[slot] != held_kind:
-			pass
-		else:
+		if _legal(slot, {"obj": held}):
 			var tmp: Variant = cells[slot]
-			cells[slot] = {"name": held, "place": held_kind}
-			held = str(tmp["name"])
+			cells[slot] = {"obj": held}
+			held = int(tmp["obj"])
+	_hover_slot = -1
 	_refresh()
 
 
@@ -221,3 +313,6 @@ func _unhandled_input(event: InputEvent) -> void:
 				selected = iid - 11300
 				_refresh()
 				return
+		var slot := _cell_at(pos)
+		if slot >= 0:
+			_click_cell(slot)

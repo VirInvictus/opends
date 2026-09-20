@@ -45,15 +45,15 @@ func _read_label(path: String) -> String:
 	if f == null:
 		return ""
 	var data := f.get_buffer(f.get_length())
-	# the STXT chunk rides the DARKRUN copy inside the save; the port
-	# stores it as SAVE/60-style JSON with a "label" key
+	# the label lives in the engine's STXT chunk; SAVE/60's JSON label
+	# is the fallback for saves written before the STXT writer landed
 	if data.size() < 28 or data.slice(0, 4).get_string_from_ascii() != "GFFI":
 		return ""
 	var toc_location := data.decode_u32(12)
-	var toc_length := data.decode_u32(16)
 	var types_offset := data.decode_u32(toc_location)
 	var num_types := data.decode_u16(toc_location + types_offset)
 	var cursor := toc_location + types_offset + 2
+	var json_label := ""
 	for t in num_types:
 		var kind := data.slice(cursor, cursor + 4).get_string_from_ascii()
 		var count := data.decode_u32(cursor + 4) & 0xFFFF
@@ -63,12 +63,16 @@ func _read_label(path: String) -> String:
 			var loc := data.decode_u32(cursor + 4)
 			var length := data.decode_u32(cursor + 8)
 			cursor += 12
+			if kind == "STXT":
+				var end := data.slice(loc, loc + length).find(0)
+				return data.slice(loc, loc + (end if end >= 0 else length)) \
+					.get_string_from_ascii()
 			if kind == "SAVE" and rid == 60:
 				var parsed: Variant = JSON.parse_string(
 					data.slice(loc, loc + length).get_string_from_utf8())
 				if parsed is Dictionary:
-					return str(parsed.get("label", ""))
-	return ""
+					json_label = str(parsed.get("label", ""))
+	return json_label
 
 func _build_rows() -> void:
 	var layer := Node2D.new()

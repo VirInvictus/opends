@@ -1,9 +1,10 @@
 # Party data for the UI screens: the shipped preset party values as
 # captured in the oracle (K'ratchek's triple-class readout matches the
-# DOSBox capture exactly). Wave 3 swaps this for live records.
+# DOSBox capture exactly). Static VAR, not const: screens and the save
+# loader mutate these records in place (const containers are read-only).
 class_name PartyData
 
-const MEMBERS := [
+static var MEMBERS := [
 	{"name": "CERMAK", "hp": 54, "max": 54, "status": "Okay",
 		"race": "HUMAN", "gender": "MALE", "align": "TRUE NEUTRAL",
 		"classes": ["Fighter"], "levels": [3],

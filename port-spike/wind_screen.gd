@@ -29,6 +29,10 @@ var _buttons: Array[Dictionary] = []
 ## is engine-printed text (e.g. the creation class list), so the port
 ## draws no sprite for them.
 var no_resting_art: Array[int] = []
+## APFM ids the engine does not paint in normal play (belt quick-cells
+## and container cells only appear in their modes; 13200 is the centre
+## card the port furnishes itself). Skipped at layout time.
+var skip_apfm: Array[int] = []
 var _hovered := 0
 var _pressed := 0
 var _board: Node2D
@@ -100,6 +104,8 @@ func _layout() -> void:
 			var pos := _origin + Vector2(float(it["x"]), float(it["y"]))
 			match pass_kind:
 				"APFM":
+					if int(it["id"]) in skip_apfm:
+						continue
 					var b := BevelPanel.new()
 					b.position = pos
 					b.rect = Rect2(Vector2.ZERO, Vector2(float(it.get("w", 4)), float(it.get("h", 4))))
