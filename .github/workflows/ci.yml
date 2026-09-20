@@ -20,6 +20,7 @@ jobs:
   rust:
     name: rust — fmt + clippy + test
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     # Pure-Rust workspace: clap/anyhow/serde/toml/png (png pulls flate2 +
     # miniz_oxide, both pure Rust). No system libraries to install.
     env:
@@ -51,6 +52,7 @@ jobs:
   python:
     name: python — ruff + compile (${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       matrix:
         # 3.11 is the declared floor (spec 7a: tomllib); 3.14 is the
@@ -70,17 +72,17 @@ jobs:
         # The root ruff.toml pins required-version to this same
         # 0.15.20 and sets the py311 target, so a newer local ruff
         # refuses instead of silently diverging from CI.
-        run: ruff check tools ds1-patch
+        run: ruff check tools ds1-patch ds2-patch
 
       - name: ruff format --check
-        run: ruff format --check tools ds1-patch
+        run: ruff format --check tools ds1-patch ds2-patch
 
       - name: compile check
         # Stdlib-only single-file tools; no unittest/pytest suite exists,
-        # so byte-compilation is the syntax gate. ds1-patch is the
-        # player-distributed half (apply.py, darkfix/, fixes/*.py); it
-        # ships in every zip and gates like the tools do.
-        run: python -m compileall -q tools ds1-patch
+        # so byte-compilation is the syntax gate. Both patch halves are
+        # player-distributed (apply.py, darkfix/, fixes/*.py in each);
+        # they ship in every zip and gate like the tools do.
+        run: python -m compileall -q tools ds1-patch ds2-patch
 
       - name: tool selftests
         # The --selftest flag is the repo's Python test idiom (decided

@@ -23,10 +23,17 @@ on:
 permissions:
   contents: write
 
+# A release zip must never be built twice or half-cancelled; two tag
+# pushes queue instead of racing.
+concurrency:
+  group: release-zip-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   zip:
     name: build + attach the player zip
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
