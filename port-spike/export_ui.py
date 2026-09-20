@@ -281,6 +281,15 @@ def _export_title_plates() -> None:
         _export_bmp_plate(bid)
 
 
+def _export_spell_icons(res) -> None:
+    """Spell and power faces for the sample known lists: spells 1..24
+    (ICON 21000+id) and psionic powers 0..15 (ICON 3000+id)."""
+    for sid in range(1, 25):
+        _export_icon_frames(res, 21000 + sid)
+    for pid in range(0, 16):
+        _export_icon_frames(res, 3000 + pid)
+
+
 def _make_inventory_bg() -> str:
     """Inventory backdrop from the committed oracle capture with the
     dynamic text (party HP/status, stat values, money, name) in-painted
@@ -418,12 +427,17 @@ def export_winds(res) -> dict:
             wind["bg_png"] = _make_inventory_bg()
         elif wid == 3011:
             wind["bg_png"] = _make_creation_bg()
+        # windows the engine opens at a fixed screen position (the
+        # packed xy of the OpenWindow call), not the chunk's (0,0)
+        if wid == 10500 or wid == 16500:
+            wind["x"], wind["y"] = 55, 42
         winds[str(wid)] = wind
         print(
             f"WIND {wid}: {wind['w']}x{wind['h']} at ({wind['x']},{wind['y']})"
             f" border={bb} items={count}"
         )
     _export_title_plates()
+    _export_spell_icons(res)
     (OUT / "winds.json").write_text(json.dumps(winds, indent=1))
     print(
         f"wrote winds.json ({len(winds)} windows), "

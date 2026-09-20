@@ -101,7 +101,8 @@ func _layout() -> void:
 			match pass_kind:
 				"APFM":
 					var b := BevelPanel.new()
-					b.rect = Rect2(pos, Vector2(float(it.get("w", 4)), float(it.get("h", 4))))
+					b.position = pos
+					b.rect = Rect2(Vector2.ZERO, Vector2(float(it.get("w", 4)), float(it.get("h", 4))))
 					b.sunken = float(it.get("w", 0)) <= 24.0 and float(it.get("h", 0)) <= 24.0
 					b.seed_key = int(it["id"])
 					_board.add_child(b)

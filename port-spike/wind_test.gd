@@ -20,6 +20,10 @@ func _ready() -> void:
 		ws = InventoryScreen.new()
 	elif screen == "sheet":
 		ws = SheetScreen.new()
+	elif screen == "spells":
+		ws = SpellScreen.new()
+	elif screen == "gamemenu":
+		ws = GameMenuScreen.new()
 	else:
 		ws = WindScreen.new(wid)
 	add_child(ws)
