@@ -170,7 +170,10 @@ Standing on the shoulders of every prior attempt:
   ([dsun_music](https://github.com/JohnGlassmyer/dsun_music)): the
   GFF *writer* policy (in-place if it fits, append otherwise) and
   the GFFI segmented-chunk cross-reference layout
-  (`SecondaryGffiTable`) come from `GffFile.java`.
+  (`SecondaryGffiTable`) come from `GffFile.java`; the PLAN frame
+  decoder and the big-endian bit chomper behind PLNR from
+  `ImageReading.java` / `BitChomper.java`; region-render's
+  geometry and entity placement from `RegionTool.java`.
 - **Greg Kennedy**
   ([DarkSunOnline](https://github.com/greg-kennedy/DarkSunOnline)):
   DSO protocol RE; the v1.0 client's debug symbols cross-reference

@@ -16,9 +16,9 @@ comments next to the relevant code.
 | Feature | Upstream | License |
 |---------|----------|---------|
 | File header (7-field, 28-byte struct: identity / version / data_location / toc_location / toc_length / file_flags / data0) | `dsoageofheroes/libgff` `include/gff/common.h` `gff_file_header_s` | MIT |
-| TOC layout (toc_header → num_types → per-type chunk_list_header → indexed entries or segmented metadata) | `dsoageofheroes/libgff` `include/gff/common.h` + `src/gpl/gpl.c` `gff_read_headers` | MIT |
-| Segmented-flag mask (`0x80000000`) on `chunk_count` (not `chunk_type`) | `dsoageofheroes/libgff` `include/gff/common.h` `GFFSEGFLAGMASK` / `GFFMAXCHUNKMASK` + `src/gpl/gpl.c` line 293 | MIT |
-| Segmented chunk resolution (GFFI primary table at TOC level, secondary table at GFFI chunk's data offset, resource ids reconstructed from segment runs) | `dsoageofheroes/libgff` `src/gpl/gpl.c` `gff_find_chunk_header` + `JohnGlassmyer/dsun_music` `common/src/main/java/net/johnglassmyer/dsun/common/gff/GffFile.java` `createTables` + `SecondaryGffiTable.java` | MIT (both) |
+| TOC layout (toc_header → num_types → per-type chunk_list_header → indexed entries or segmented metadata) | `dsoageofheroes/libgff` `include/gff/common.h` + `src/gff.c` `gff_read_headers` | MIT |
+| Segmented-flag mask (`0x80000000`) on `chunk_count` (not `chunk_type`) | `dsoageofheroes/libgff` `include/gff/common.h` `GFFSEGFLAGMASK` / `GFFMAXCHUNKMASK` + `src/gff.c` line 293 | MIT |
+| Segmented chunk resolution (GFFI primary table at TOC level, secondary table at GFFI chunk's data offset, resource ids reconstructed from segment runs) | `dsoageofheroes/libgff` `src/gff.c` `gff_find_chunk_header` + `JohnGlassmyer/dsun_music` `common/src/main/java/net/johnglassmyer/dsun/common/gff/GffFile.java` `createTables` + `SecondaryGffiTable.java` | MIT (both) |
 | Writer policy (in-place if `new_size <= old_size`, append at end-of-file otherwise; update `(location, length)` in the TOC for indexed chunks or in the secondary table for segmented chunks) | `JohnGlassmyer/dsun_music` `common/src/main/java/net/johnglassmyer/dsun/common/gff/GffFile.java` `replaceResource` | MIT |
 | Chunk-type FOURCC catalogue (~70 entries: GFFI, FORM, GFRE, GTOC, PAL, BMP, BMAP, PORT, WALL, ICON, TILE, RMAP, GMAP, ETAB, RDFF, etc.) | `dsoageofheroes/libgff` `include/gff/gfftypes.h` | MIT |
 
@@ -49,7 +49,14 @@ comments next to the relevant code.
   `classify_branch`, `successors_for`, `write_dot`
 - `docs/gpl-opcodes.md`
 - `docs/gpl-bytecode.md` §5a (branch-opcode semantics)
-- `tools/dialog-extract/dialog-extract.py`: `decode_compressed_string`
+- `tools/gpl-disasm/src/lib.rs`: `read_text` (the packed-string
+  decoder; dialog-extract v0.2.0+ consumes it via
+  `gpl-disasm --json` rather than porting its own copy)
+- `tools/gpl-asm/src/lib.rs`: encoder-side constants (14-bit
+  immediate under `cop < 0x80`, BIGNUM `cval = (hi << 16) | lo`)
+  mirroring the libgff decoder semantics cited above
+- `tools/opcode-fuzz`: opcode universe and generator shape from
+  the same 129-entry catalogue
 
 ## Character data (CHARSAVE.GFF)
 
@@ -63,6 +70,7 @@ comments next to the relevant code.
 | `ds1_combat_t` (58 bytes): hp / psp / char_index / id / ready_item_index / weapon_index / pack_index / data_block[8] / special_attack / special_defense / icon / ac / move / status / allegiance / data / thac0 / priority / flags / stats / name[18] | `dsoageofheroes/libgff` `include/gff/object.h` `_ds_combat_t` | MIT |
 | `ds1_item_t` (~23 bytes computed; DS1 on-disk is 21): id / quantity / next / value / pack_index / item_index / icon / charges / special / slot / name_idx / bonus / priority / data0 | `dsoageofheroes/libgff` `include/gff/item.h` `ds1_item_s` | MIT (annotated "Not confirmed at all" by upstream) |
 | Positional sub-block reader for CHAR bodies (combat → character → item × N, terminated by RDFF_END): the engine reads sub-blocks by position, not by `rdff.type`. The first sub-block's `blocknum` gives the total count. | `dsoageofheroes/libsoloscuro` `src/entity.c` `sol_entity_load_from_gff` | MIT |
+| PSP cost table (3-byte stride, `mdark.bin` 0x10AA59): located via the upstream symbol label, consumed as data facts in `docs/object-formats.md` §"PSP costs" | `greg-kennedy/DarkSunOnline` `tools/symbols.txt` line 2223 `psionicDefs` | AGPL-3.0 (symbol-name fact citation; no source ported) |
 | `gff_race_e` (MONSTER / HUMAN / DWARF / ELF / HALFELF / HALFGIANT / HALFLING / MUL / THRIKREEN) | `dsoageofheroes/libgff` `include/gff/object.h` `enum gff_race_e` | MIT |
 | Item slot enum (ARM / AMMO / MISSILE / HAND0 / FINGER0 / WAIST / LEGS / HEAD / NECK / CHEST / HAND1 / FINGER1 / CLOAK / FOOT) | `dsoageofheroes/libgff` `include/gff/item.h` slot enum | MIT |
 | DS2 RDFF schemas (combat 49 bytes, character 66 bytes): defer; v0.2.0 surfaces character names heuristically and emits raw hex for DS2 sub-blocks rather than producing wrong-looking fields. | `dsoageofheroes/libsoloscuro` (TBD) | TBD |
@@ -77,11 +85,29 @@ comments next to the relevant code.
 | Palette parser (`PAL ` / `CPAL` chunk = 768 bytes = 256 × RGB 6-bit; scaled to 8-bit by `intensity_multiplier = 4`) | `dsoageofheroes/libgff` `src/gpl/image.c` `gff_palettes_read_type` | MIT |
 | Bitmap chunk header (6-byte preamble + `u16 frame_count` at +4 + `u32` per-frame offset table at +6; each frame at its offset is `u16 width + u16 height + 1 unknown byte + 4-byte frame_type tag`) | `dsoageofheroes/libgff` `src/gpl/image.c` `gff_get_frame_rgba_palette_img` + `gff_frame_info` | MIT |
 | DS1 RLE pixel decoder (per-row spans: `byte row_num` (0xFF terminates) + sub-spans of `startx / flags / unknown / compressed_length / RLE codes`; even RLE codes are direct palette indices, odd codes are repeat-single; image is stored bottom-up so rows go at `height - row_num - 1`) | `dsoageofheroes/libgff` `src/gpl/image.c` `create_ds1_rgba` | MIT |
-| PLNR bit-packed dictionary decoder (`bits_per_symbol` byte + `(1 << bits) byte dictionary` + bit-packed symbol stream via `plnr_get_next` / `plnr_get_bits`; 4-bit-rotated bit-order extraction within each byte) | `dsoageofheroes/libgff` `src/gpl/image.c` `plnr_get_next` + `plnr_get_bits` + `plnr_get_mask` | MIT |
+| PLNR bit-packed dictionary decoder (`bits_per_symbol` byte + `(1 << bits) byte dictionary` + bit-packed symbol stream via `plnr_get_next` / `plnr_get_bits`) — state machine | `dsoageofheroes/libgff` `src/gpl/image.c` `plnr_get_next` + `plnr_get_bits` + `plnr_get_mask` | MIT |
+| PLNR bit-extraction order (big-endian chomp; replaced libgff's 4-bit-rotated extraction in image-extract v0.2.0) | `JohnGlassmyer/dsun_music` `common/src/main/java/net/johnglassmyer/dsun/common/gff/image/BitChomper.java` (BIG_ENDIAN path) + `ImageReading.java` `PlnrSymbolSource` | MIT |
+| PLAN planar frame decoder (`readPlanarImageFrame`, RE'd by upstream at DSUN.EXE 0x1A1B0; planar row plan + per-plane bit chomping) | `JohnGlassmyer/dsun_music` `common/src/main/java/net/johnglassmyer/dsun/common/gff/image/ImageReading.java` lines 244-291 + `BitChomper.java` lines 41-78 | MIT |
 
 **OpenDS code that consumes the above:**
 - `tools/image-extract/src/lib.rs`: `Palette`, `Bitmap`,
-  `decode_ds1_rle`, `decode_plnr`, `plnr_get_next`, `plnr_get_bits`
+  `decode_ds1_rle`, `decode_plnr`, `plnr_get_next`,
+  `plnr_get_bits`, `BigEndianBitChomper`, `decode_plan`
+
+## Region rendering (region-render)
+
+| Feature | Upstream | License |
+|---------|----------|---------|
+| Region geometry (128x98 cells, 16px tiles) and the GMAP wall mask (bits 0-4 wall index) | `JohnGlassmyer/dsun_music` `region-tool/RegionTool.java` lines 167-172 | MIT |
+| Wall id rule (`region * 100 + wall_idx - 1`) and wall placement (+8 - w/2, +16 - h) | `JohnGlassmyer/dsun_music` `region-tool/RegionTool.java` lines 275, 289-290 | MIT |
+| ETAB entity records (8-byte layout incl. the mirrored bit 0x80 and negative-OJFF encoding) | `JohnGlassmyer/dsun_music` `region-tool/RegionTool.java` lines 300-317 | MIT |
+| OJFF entity anchor (+0x2 / +0x4 / +0xC fields) | `JohnGlassmyer/dsun_music` `region-tool/RegionTool.java` lines 319-331 | MIT |
+| Mirror compositing (west-wall mirror pass) | `JohnGlassmyer/dsun_music` `region-tool/RegionTool.java` line 346 | MIT |
+
+**OpenDS code that consumes the above:**
+- `tools/region-render/src/lib.rs`: geometry constants, wall
+  placement, ETAB decode, mirror compositing (per-line citations
+  in code)
 
 ## Influences (read but not yet ported)
 

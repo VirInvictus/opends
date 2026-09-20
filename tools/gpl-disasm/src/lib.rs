@@ -1933,8 +1933,8 @@ fn read_simple_num_var(bytes: &[u8], cursor: usize, extended: bool) -> (u16, usi
 ///
 /// Ported from `dsoageofheroes/soloscuro-archive`
 /// `src/gpl/gpl-string.c` `sol_gpl_read_text` + `read_compressed`
-/// (MIT). The Python port lives at
-/// `tools/dialog-extract/dialog-extract.py` `decode_compressed_string`.
+/// (MIT). Downstream consumers read it through `gpl-disasm --json`
+/// (dialog-extract v0.2.0+ and the sweep scripts).
 fn read_text(bytes: &[u8], cursor: usize) -> Option<(StringSubType, String, usize)> {
     if cursor >= bytes.len() {
         return None;

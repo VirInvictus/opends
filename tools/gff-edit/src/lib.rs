@@ -213,7 +213,9 @@ fn serialize_identity<S: Serializer>(id: &[u8; 4], s: S) -> Result<S::Ok, S::Err
     s.serialize_str(std::str::from_utf8(id).unwrap_or("?"))
 }
 
-/// GFF file header (28 bytes). See docs/file-formats.md §1.
+/// GFF file header (28 bytes). Port of libgff's `gff_file_header_s`
+/// (`dsoageofheroes/libgff` `include/gff/common.h` lines 43-51, MIT);
+/// field layout also in docs/file-formats.md §1.
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct FileHeader {
     /// Magic bytes; always "GFFI" for a valid file.
