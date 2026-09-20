@@ -314,23 +314,28 @@ DS1: `GPLDATA.GFF` chunk `IT1R` id 1 (the corpus's only IT1R),
 `IT1R` res id 1 and `NAME` id 1 (loader at DS1 EXE file
 0x565f5ff.; libgff `gff_manager_ds1_read_name` agrees).
 
-> **Correction 2026-09-19** ([`asset-bindings.md`](asset-bindings.md)
-> 6, byte audit of the shipped chunk): this table's column map
-> needs re-pinning before item-editor work. Offset 6 is omitted
-> from the table but exists in the data (heavily populated, 250
-> dominant); col 5 is nonzero in 15 rows {1,2,7,11,15} (listed
-> here as always-0); and the col 19 "0 (VB)" claim is wrong (45
-> rows carry {0,1,2,6}). None of these columns is the icon index
-> (that comes from the OJFF layer, asset-bindings.md 1).
+> **RESOLVED 2026-09-20** (exhaustive engine sweep, screen-flow.md 8.6
+> notes the printer side): every `imul r,r,0x14` site (135 relevant
+> ones) plus all `[0x1669]` loads was read, so the map below is now
+> instruction-proven. Headlines: +4 is a WORD (weight in tenths of a
+> pound; >30 = "heavy"; the 15 nonzero col-5 rows are weights > 255:
+> chests and doors at 750..3000); +6 and +7 and +19 are NEVER READ by
+> any engine code (authoring residue; carry them through untouched);
+> +0 is a word of equip-class bits (bit0 melee, 0x02 missile, 0x04
+> shield, 0x08 ammo, 0x10 thrown); +15 flags 0x02 missile / 0x40
+> two-handed / 0x80 armor; +16..17 word = legal-class mask driving
+> 'USEABLE BY:'; +18 = base AC ('AC BONUS:%d'). No icon column exists
+> (OJFF layer, asset-bindings.md 1); no name/value/charges columns
+> exist either (those are instance +18/+6/+14).
 
 | Off | Type | Field | Conf |
 |---:|---|---|---|
-| 0 | u8 | weapon/armor class bits (bit0 melee, 1 missile, 2 shield, 3 use-ammo, 4 thrown) | VB+LA |
+| 0 | u16 | weapon/equip class bits (bit0 melee, 0x02 missile, 0x04 shield, 0x08 ammo, 0x10 thrown; masks 0x1/0x13 seen) | engine-proven |
 | 1 | u8 | 0 always (alignment per libgff) | VB |
 | 2 | u16 | damage type bits (8 blunt, 0x10 slash, 0x20 pierce; magic weapons OR extra bits) | VB |
-| 4 | u8 | weight | VB+XC |
-| 5 | u8 | 0 | VB |
-| 7 | u8 | base_hp (0 everywhere in DS1) | VB |
+| 4 | u16 | weight, tenths of a pound (dagger 10, longsword 30, shield 50, two-hander 70, door 3000); "heavy weapon" threshold > 30 | engine-proven 2026-09-20 |
+| 6 | u8 | never read (authoring residue) | engine-proven |
+| 7 | u8 | never read (authoring residue) | engine-proven |
 | 8 | u8 | material (0..5, 64, 69, 80, 96, 128, 131..133; bit7 = metal/jewel variant flag?) | VB, semantics H |
 | 9 | u8 | placement/slot (1 chest, 3 arm, 5 hand/shield, 6 head, 7 neck, 8 cloak, 9 finger, 10 legs, 11 ammo, 12 missile weapon) | VB |
 | 10 | u8 | range (launcher and ammo rows use different scales) | VB, units H |
@@ -338,10 +343,10 @@ DS1: `GPLDATA.GFF` chunk `IT1R` id 1 (the corpus's only IT1R),
 | 12 | u8 | die sides | VB+XC |
 | 13 | u8 | dice count | VB+XC |
 | 14 | i8 | damage/to-hit bonus (matches the clue book's "+N to hit & damage") | VB+XC |
-| 15 | u8 | flags (0x80 armor, 0x40 two-handed, 0x02 missile; doors/chests reuse) | VB |
-| 16 | u16 | legal_class bitmask (bit-to-class map open) | VB |
+| 15 | u8 | flags (0x02 missile, 0x40 two-handed, 0x80 armor; doors/chests reuse) | engine-proven |
+| 16 | u16 | legal_class bitmask (drives 'USEABLE BY:' at 0x6EEFF) | engine-proven |
 | 18 | i8 | base AC (armor rows; doors 10) | VB+XC |
-| 19 | u8 | 0 | VB |
+| 19 | u8 | never read (authoring residue; 70x0, 35x1, 9x2, 1x6 on disk) | engine-proven |
 
 DS2: no IT1R; the 15-byte (la=3, type=4) template blocks inside
 OBJEX.GFF carry the base stats; only 82 distinct payloads exist
