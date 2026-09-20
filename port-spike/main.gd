@@ -47,6 +47,8 @@ var _intro := {"parts": []}
 var _intro_part := 0
 var _intro_ev := 0
 var _intro_wait := 0.0
+var _intro_qc := false
+var created_char = null
 
 
 func _ready() -> void:
@@ -69,8 +71,16 @@ func _ready() -> void:
 		await _snap(OS.get_environment("SPIKE_SHOT"))
 		get_tree().quit()
 		return
+	# The original boots into the intro and only then shows the menu;
+	# launching a game from the menu comes back here with the intro done.
+	if Engine.has_meta("skip_intro"):
+		Engine.remove_meta("skip_intro")
+		_start_game()
+		return
 	_intro_play()
-	if OS.get_environment("SPIKE_DEMO") != "":
+	if OS.get_environment("SPIKE_INTRO") != "":
+		_intro_qc = true
+	elif OS.get_environment("SPIKE_DEMO") != "":
 		_scripted()
 	elif OS.get_environment("SPIKE_TOUR") != "":
 		_tour()
@@ -92,6 +102,14 @@ func _intro_process(delta: float) -> void:
 		return
 	var parts: Array = _intro["parts"]
 	if _intro_part >= parts.size():
+		if _intro_qc:
+			print("[INTRO-QC] complete")
+			get_tree().quit()
+			return
+		if OS.get_environment("SPIKE_DEMO") == "" and OS.get_environment("SPIKE_TOUR") == "":
+			# Boot flow per the original: intro, then the main menu.
+			get_tree().change_scene_to_file("res://menu.tscn")
+			return
 		_start_game()
 		return
 	var timeline: Array = parts[_intro_part]["timeline"]
@@ -120,8 +138,13 @@ func _intro_input(event: InputEvent) -> void:
 # ------------------------------------------------------------- regions
 
 func _start_game() -> void:
+	print("[GAME] start_game, created=", created_char != null)
 	$Intro.visible = false
 	state = State.PLAY
+	if FileAccess.file_exists("res://generated/created.json"):
+		created_char = JSON.parse_string(
+			FileAccess.open("res://generated/created.json", FileAccess.READ).get_as_text()
+		)
 	_enter_region(int(demo["start"]["region"]), Vector2i(int(demo["start"]["x"]), int(demo["start"]["y"])))
 
 
@@ -165,14 +188,20 @@ func _enter_region(rid: int, at: Vector2i) -> void:
 	party.clear()
 	for i in bmps.size():
 		var st: Dictionary = demo["party_stats"][i]
-		var s := _add_sprite($Party, "%s/sprites/bmp_%04d.png" % [dir, int(bmps[i])], Vector2(at * 16) + spread[i])
+		var bmp_i: int = int(bmps[i])
+		var nm := ""
+		if created_char != null and i == 0 and bool(created_char.get("use_presets", true)) == false:
+			st = created_char.duplicate()
+			bmp_i = int(created_char["bmp"])
+			nm = str(created_char.get("name", ""))
+		var s := _add_sprite($Party, "%s/sprites/bmp_%04d.png" % [dir, bmp_i], Vector2(at * 16) + spread[i])
 		s.flip_h = i % 2 == 1
 		var bars := _make_bars(s)
 		party.append({"sprite": s, "bar_bg": bars[0], "bar_fg": bars[1],
 			"hp": int(st["hp"]), "max_hp": int(st["max_hp"]), "ac": int(st["ac"]),
 			"thac0": int(st["thac0"]), "move": int(st["move"]), "blows": int(st["blows"]),
 			"dice": int(st["dice"]), "sides": int(st["sides"]), "bonus": int(st["bonus"]),
-			"alive": true})
+			"name": nm, "alive": true})
 	$Camera.position = Vector2(at * 16)
 	$UI/Label.text = label_text
 
@@ -518,7 +547,10 @@ func _party_turn(a: Dictionary) -> void:
 	move_pts = a["move_pts"]
 	attacks_left = a["blows"]
 	tile = _party_tile(0)
-	var nm: String = ["Cermak", "Saria", "Cilla", "K'ratchek"][a["idx"]] if a["idx"] < 4 else "Gladiator"
+	var preset_names := ["Cermak", "Saria", "Cilla", "K'ratchek"]
+	var nm: String = str(party[a["idx"]].get("name", ""))
+	if nm == "":
+		nm = preset_names[a["idx"]] if a["idx"] < 4 else "Gladiator"
 	_show_banner("Round %d - %s  (move %d, %d attack%s)  [Enter = done]" % [
 		round_no, nm, int(move_pts / 10.0), attacks_left,
 		"s" if attacks_left != 1 else ""])
