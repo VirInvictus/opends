@@ -131,7 +131,8 @@ two containers, END without playing them.
 
 ## 5. Open (all non-blocking for a decoder)
 
-1. The tick rate in Hz (one timed DOSBox run of the intro settles it).
+1. ~~The tick rate in Hz~~ SETTLED by runtime capture (2026-09-19;
+   see section 6).
 2. Exact bodies of the unused ACF ops (17, 18, 2C, 3D, 3E, 50-5A, 5C-5E,
    67, 79-7E).
 3. The screen-slot table's non-fullscreen fields; slot 0 is the movie
@@ -140,3 +141,39 @@ two containers, END without playing them.
    ACF's palette ops).
 5. The `flags & 3` sprite path's clip arithmetic (unused by op 05).
 6. Poll result semantics: skip vs abort detail.
+
+## 6. Runtime capture: the Godot spike ground truth (2026-09-19)
+
+A timed DOSBox run of the real intro (dosbox-staging; the factory
+SOUND.CFG from the ds1-smoke fixture is required, DSUN aborts at boot
+with a MEL error without it) plus the port-spike re-render settled
+four questions:
+
+- **Tick rate: about 12 Hz.** The intro runs roughly 130-140 s wall
+  in DOSBox; the baked ACF timeline (1,497 wait ticks across 706
+  frames plus stills) at 12 Hz plays 125 s, the residual being the
+  engine's music-sync waits (the timeline drops music). One frame per
+  tick with waits of 1-2 dominating, exactly as section 3 says.
+- **Palette semantics.** ACF 2 stages 256 entries (op 14), commits
+  them (op 15), then issues 0x3C 1 before its 80 frames, and the
+  frames wear the COMMITTED palette: the starfield and dagger scene is
+  near-black, not PAL 1's bright red. A committed block wins over a
+  same-part later 0x3C load. The committed block is a built palette:
+  index 0 black, 1-7 a dark blue ramp, 8-15 dark reds, 32-47
+  browns and tans, 240-254 brights, 255 magenta.
+- **Still screens are top-down and palette-switched live.** BMP 1
+  (SSI) shows under PAL 1; BMP 2 (the full AD&D screen, all of its
+  text baked into the bitmap) and BMP 3 (the title tablet) show under
+  PAL 2, even though ACF 1 encodes the 0x3C 2 between still loads.
+  A palette load re-renders the displayed screen.
+- **The boot sequence** is: ACF 1 stills (SSI, AD&D, title), then
+  ACF 2-4 starfield and dagger, ACF 5-8 storm, planet and story
+  scrolls, ACF 9-12 gladiator/desert montage and closing text, then
+  the WIND 3000 menu.
+
+Two smaller catches from the same pass: the single dithered frame at
+the gladiator-to-desert cut is the shipped data's own dissolve step
+(CINE BMP 7), not a decode bug; and ACF op 19 takes note-and-channel
+style args (1, 80, 95) and reads as a music-note op rather than a
+hold, while op 40 takes pairs like (7,5) and (2,1) and is still
+unknown (fades or dissolves).
