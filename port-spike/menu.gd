@@ -2,7 +2,7 @@
 #
 # The menu screen is assembled entirely from the game's own data
 # (generated/ui.json): BMP 20029 stone panel + BMP 20028 burning arc as
-# the furniture, the four ICON/2048..2051 flickering text buttons at
+# the furniture, the four ICON/2048..2051 static flame-text buttons at
 # their WIND/3000 positions, accelerator keys S/C/L/E from ACCL/8100
 # (screen-flow.md 2). Creation mechanics follow the mined pipeline
 # (docs/chargen-flow.md): race list with class masks (record 104), stat
@@ -96,19 +96,14 @@ func _build_menu() -> void:
 		s.centered = false
 		s.position = Vector2(float(art["pos"][0]), float(art["pos"][1]))
 		_board.add_child(s)
+	# The real menu's buttons are STATIC flame-gradient faces: the
+	# oracle video shows no hover, no click flash and no flicker (the
+	# ICON's extra frames are never cycled on this screen), so frame 0
+	# is all the port draws.
 	for b in ui_data["buttons"]:
 		var frames: Array = b["frames"]
-		var stf := SpriteFrames.new()
-		stf.add_animation("flicker")
-		stf.set_animation_speed("flicker", 6.0)
-		stf.set_animation_loop("flicker", true)
-		for f in frames:
-			if int(f["w"]) < 8:  # some icons carry a 1x1 placeholder frame
-				continue
-			stf.add_frame("flicker", _tex(str(f["png"])))
-		var s := AnimatedSprite2D.new()
-		s.sprite_frames = stf
-		s.animation = "flicker"
+		var s := Sprite2D.new()
+		s.texture = _tex(str(frames[0]["png"]))
 		s.centered = false
 		s.position = Vector2(float(b["x"]), float(b["y"]))
 		s.name = str(b["name"])
