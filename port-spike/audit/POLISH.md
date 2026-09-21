@@ -107,11 +107,10 @@ landed 2026-09-21 (see the pits-parity pass section below).
    shared handlers, INFO toggles plate vs description, and the
    capability mask is per-creature runtime permission lists; steal
    is permission-gated with no thief roll on the path. The port's
-   cycle-to-browse mapping is a documented port affordance (the
-   engine never opens 15500 on a carried item); rebuilding it
-   engine-true (world-item examine with the capability mask) is
-   Brandon's call. Steal/give in the demo are a transfer-path job
-   (0x73725 take / 0x73C40 handoff), not a skill-check job.
+   cycle-to-browse mapping stays as a documented port affordance
+   (Brandon's call, 2026-09-21: keep; the engine never opens 15500
+   on a carried item). Steal/give in the demo are a transfer-path
+   job (0x73725 take / 0x73C40 handoff), not a skill-check job.
 
 ## Covered by the third pass (2026-09-20 night)
 
