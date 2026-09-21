@@ -47,6 +47,8 @@ var _class_segs: Array[TextBlitter] = []
 var _spell_cells: Array[Node2D] = []
 var _shown_ids: Array = []
 var _bar_texts: Array[TextBlitter] = []
+var _hover := -1  # spell cell under the cursor, -1 = none
+var _highlight: Sprite2D
 
 func _init(p_mode := Mode.VIEW) -> void:
 	window_id = 11500
@@ -94,6 +96,33 @@ func _build_spell_grid() -> void:
 		cell.add_child(icon)
 		_board.add_child(cell)
 		_spell_cells.append(cell)
+	# hover highlight = the engine's ICON 15104 (17500 hover frame)
+	_highlight = Sprite2D.new()
+	_highlight.texture = load("res://generated/ui/icon15104_f0.png")
+	_highlight.centered = false
+	_highlight.visible = false
+	_board.add_child(_highlight)
+
+## The SPIN chunk's name line (OVR9 stub13 equivalent; RESOURCE ships
+## 180 SPIN chunks with name and description as one blob).
+func _spell_name(id: int) -> String:
+	var spin: Dictionary = (InventoryScreen._db()["spins"] as Dictionary).get(str(id), {})
+	return String(spin.get("name", "UNKNOWN"))
+
+func _set_hover(i: int) -> void:
+	if i == _hover:
+		return
+	_hover = i
+	if _highlight == null:
+		return
+	if i >= 0:
+		_highlight.position = _spell_cells[i].position + Vector2(1, 1)
+		_highlight.visible = true
+		# engine hover model (17500 pattern): the header shows the name
+		_set_row(12, _spell_name(int(_shown_ids[i])))
+	else:
+		_highlight.visible = false
+		_set_row(12, str(_selected_member()["name"]))
 
 func _build_bar_texts() -> void:
 	for iid in [11319, 11320]:
@@ -232,6 +261,7 @@ func _refresh() -> void:
 			var casters := _caster_classes()
 			if cast_class == "" and not casters.is_empty():
 				cast_class = casters[0]
+			_set_hover(-1)
 			_set_spell_grid()
 			_set_bar_texts()
 
@@ -269,6 +299,17 @@ func _draw_class_line(m: Dictionary) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion and mode == Mode.USE and not _spell_cells.is_empty():
+		var mpos: Vector2 = _board.get_global_transform().affine_inverse() * event.position
+		var hit := -1
+		for i in mini(_shown_ids.size(), 10):
+			var cell_rect := Rect2(
+				SPELL_GRID_ORIGIN + Vector2(float(i % 5), float(i / 5)) * SPELL_GRID_PITCH,
+				Vector2(18, 18))
+			if cell_rect.has_point(mpos):
+				hit = i
+				break
+		_set_hover(hit)
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT \
 			and event.pressed and mode == Mode.USE:
 		# right-click a spell: the SPIN text in 15503 (screen-flow 8.4)

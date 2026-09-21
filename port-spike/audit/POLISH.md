@@ -4,9 +4,31 @@ Method: each surface rendered by the port at integer scale, cropped to
 the exact 320x200 board, and stacked against the committed DOSBox oracle
 capture (`audit_sidebyside.py` rebuilds every sheet; watch the PNG
 pairs). Live DOSBox driving was deferred this session at Brandon's
-call, so the oracle stills are the parity spec; the side-by-side video
-pass against a live game remains open (rig recipe: HANDOFF-wave3-4.md
-plus the dosbox-oracle-rig memory).
+call, so the oracle stills are the parity spec; the pits live pair
+landed 2026-09-21 (see the pits-parity pass section below).
+
+## Covered by the pits-parity pass (2026-09-21)
+
+- USE grid spell names: hovering a spell cell draws the engine's
+  15104 highlight and prints the SPIN name into the header plate
+  (the 17500 hover pattern, screen-flow.md 8.4). Engine-side proof
+  in the live take: the AI's own USE hover prints the name on the
+  message strip (take 3, ~130s), so both placements exist in the
+  engine; the port uses the header. QC: SPIKE_HOVER=<cell>.
+- Interact 3020 INFO opens the creature examine panel
+  (creature_examine.gd on the 15500 plate): the clicked entity's ETAB
+  object id through generated/ui/bestiary.json (export_bestiary.py,
+  the extract-catalogue decoder; 290 DS1 rows). Region 42's one
+  creature placement (318 Tied-up Prisoner) renders with art + row.
+  Steal/give stay dimmed: the capability mask never offers them in
+  the demo, and their handlers plus the mask source are unmined.
+- Live pits pair: audit/videos/pits_live.mp4 (240s). Left: the real
+  game driven by the padded AUTOTYPE recipe in live-capture/
+  (ds1-pits3.conf + pits3_run.sh carry the schedule and the content
+  map): story scroll, arena gate, announcer, exhibition fight, pens,
+  Kurzak dialog with the WHAT DO YOU SAY choice strip. Right: the
+  Godot cast demo (cast3.mp4) looped. Take 2's flat schedule died on
+  the menu (all 580s idle); repeats around every transition fixed it.
 
 ## Fixed this pass (verified against the sheets)
 
@@ -47,23 +69,23 @@ plus the dosbox-oracle-rig memory).
 
 ## Open polish items (deferred, in build order)
 
-1. Centre figure: every member shows K'tarchek's baked figure. The
-   blank card is BMP 13005 but the per-member figure art source is
-   still unpinned (needs an EXE dig; likely why the mining never
-   attached it).
-2. Spell casting (the USE picker's click-through into actual spell
-   resolution in combat) is not wired; the grid and class/LEVEL
-   cyclers are parity-only so far. Casting needs the engine's
-   spell-effect runtime (docs/spell-effects.md).
-3. Interact 3020 is not built. The dialog CHOICE strip 3008 IS built
-   and wired: after each victory the announcer asks "Yell something
-   back at the Announcer?" (real GPL-2 lines); a taunt releases
-   another horde, the compliment reopens the pens.
+1. Centre figure art is pinned and drawn per member (BMP 20000-20013,
+   20000 + (race-1)*2 + (gender-1), port-digs 2026-09-20 1). Still
+   open: per-character armour overlays (the engine layers worn gear
+   onto the figure; needs another dig).
+2. Spell casting from the USE picker is wired (2026-09-20 night, the
+   mined ovr32 handlers; SPST 39-138 fall through to the engine's
+   generic default). Remaining polish: the LEVEL cycler is still
+   parity-only (the engine cycles level on click, 0x85BAC).
+3. Interact 3020: TALK and INFO are wired (INFO -> creature examine,
+   2026-09-21). Steal/give need the thief skill check and a transfer
+   path; blocked on mining the capability-mask source (port-digs
+   2026-09-20 3) and the two handlers.
 4. Message box 10501 is built: save/load feedback ("GAME SAVED") now
    rides the 10001 plate strip with click/auto acknowledge.
-5. Sheet class line prints one ink; the engine colours each class
-   separately (Fighter yellow, Druid red, Psionic yellow; table
-   0x72D29). Needs multi-ink TextBlitter segments.
+5. Sheet class line: multi-ink segments are in (2026-09-20, e636163;
+   the 0x72D29 group table in CLASS_INK, printed per class with pale
+   separators).
 6. Combat detail rules modelled (2026-09-20 night): DEX missile table
    in the round threshold (docs/rules-tables.md 0x7dc), rear/flank
    THAC0-2 with per-round direction memory (CSTATE2 +0x5b), crit roll
@@ -71,22 +93,18 @@ plus the dosbox-oracle-rig memory).
    [0x11ae]-1 wired to the prefs text-speed setting. Live player
    attack input added: click an adjacent monster during the party's
    token (the attack cursor path).
-7. Live side-by-side videos: the MENU idle pair is captured live
-   (audit/videos/menu_live.mp4, DOSBox via the /tmp scratch rig +
-   AUTOTYPE left, Godot Movie Maker right). Deeper live driving
-   (story -> pits -> in-game screens) resisted the hands-off
-   AUTOTYPE pass: only the first key lands before the menu
-   transition eats the rest (dosbox-staging 0.82.2), and per-state
-   pacing needs the interactive driving that is currently
-   directive-banned. The oracle stills remain the parity spec for
-   the in-game surfaces; the rig + AUTOTYPE recipe in
-   /tmp/ds1-live.conf + /tmp/live_capture.sh are ready to rerun.
+7. Live side-by-side videos: the pits pair is cut (2026-09-21, see
+   the pits-parity pass above). Still open: a paired Godot take of
+   the SAME live stretch (story -> gate -> fight -> pens) so the two
+   sides correspond event for event; and the damage-splat 0.7s window
+   confirmation in a live Godot demo run.
 8. Damage splats are wired (hits: small/big red by damage, gold star
    on the kill, grey puff on a miss) and the fight loop is proven in
    the QC movie, but the 0.7s splat window landed between capture
    samples; confirm visually in the next live demo run.
-9. Spell casting resolution from the USE picker (click -> effect)
-   remains parity-only; needs docs/spell-effects.md wiring.
+9. Examine strip 15500: the middle arrow (15302) is mapped as cycle
+   forward pending the engine dispatcher dig (0x5EFC5 open); the RE
+   verdict lands in port-digs when mined.
 
 ## Covered by the third pass (2026-09-20 night)
 

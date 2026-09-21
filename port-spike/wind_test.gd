@@ -53,6 +53,8 @@ func _ready() -> void:
 		ws = SpellInfoScreen.new(6)
 	elif screen == "examinestrip":
 		ws = ExamineStrip.new([1011, 1010], 1)
+	elif screen == "creature":
+		ws = CreatureExamineScreen.new(318, "res://generated/r42/sprites/bmp_1877.png")
 	elif screen == "dialog":
 		var pages := [{"port": 119, "text": "Citizens of Draj!\nBefore you is a handful of gladiators. Watch\nand be entertained as they fight to the\ndeath with the denizens of our land."}]
 		ws = DialogScreen.new(pages)
@@ -89,6 +91,10 @@ func _ready() -> void:
 	if ws is InventoryScreen and OS.get_environment("SPIKE_HELD") != "":
 		ws.held = int(OS.get_environment("SPIKE_HELD"))
 		ws._refresh()
+	# QC hook: force a USE-grid hover so the 15104 frame and the spell
+	# name header render in the still (SPIKE_HOVER=<cell index>)
+	if ws is SheetScreen and OS.get_environment("SPIKE_HOVER") != "":
+		ws._set_hover(int(OS.get_environment("SPIKE_HOVER")))
 	_snap()
 
 func _snap() -> void:

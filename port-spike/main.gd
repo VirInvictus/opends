@@ -370,16 +370,16 @@ func _step_to(target: Vector2i, mover: Dictionary) -> void:
 		_maybe_start_fight()
 
 
-## Is a world entity standing on this tile? (entities carry pixel
-## positions; the tile is the top-left 16x16 block)
-func _entity_at(t: Vector2i) -> bool:
+## The world entity standing on this tile, or an empty Dictionary.
+## (entities carry pixel positions; the tile is the top-left 16x16 block)
+func _entity_obj_at(t: Vector2i) -> Dictionary:
 	for e in _region_json().get("entities", []):
 		if Vector2i(int(e["x"]) / 16, int(e["y"]) / 16) == t:
-			return true
-	return false
+			return e
+	return {}
 
 
-func _open_interact() -> void:
+func _open_interact(ent: Dictionary) -> void:
 	_close_ui()
 	var interact := InteractScreen.new(InteractScreen.CAP_TALK | 0x2)
 	interact.action.connect(func(kind: String) -> void:
@@ -389,6 +389,18 @@ func _open_interact() -> void:
 				{"port": ANNOUNCER_PORT, "text": ANNOUNCER["citizens"]},
 				{"port": ANNOUNCER_PORT, "text": ANNOUNCER["gift"]},
 			], func() -> void: pass)
+		elif kind == "info":
+			_close_ui()
+			var dir: String = demo["regions"][str(region_id)]["dir"]
+			var panel := CreatureExamineScreen.new(int(ent.get("oid", 0)),
+				"res://generated/%s/sprites/%s" % [dir, ent.get("png", "")])
+			panel.closed.connect(func() -> void:
+				if ui_screen == panel:
+					ui_screen = null
+					ui_open = false)
+			ui_screen = panel
+			ui_layer.add_child(panel)
+			ui_open = true
 		else:
 			_close_ui())
 	ui_screen = interact
@@ -516,8 +528,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var t := Vector2i((get_global_mouse_position() / 16.0).floor())
-		if _entity_at(t):
-			_open_interact()
+		var ent := _entity_obj_at(t)
+		if not ent.is_empty():
+			_open_interact(ent)
 			return
 		var p := _bfs(tile, t)
 		if not p.is_empty():
