@@ -71,8 +71,16 @@ plus the dosbox-oracle-rig memory).
    [0x11ae]-1 wired to the prefs text-speed setting. Live player
    attack input added: click an adjacent monster during the party's
    token (the attack cursor path).
-7. Live side-by-side videos per surface (DOSBox left, Godot right):
-   deferred; the stills here are the parity spec until that pass.
+7. Live side-by-side videos: the MENU idle pair is captured live
+   (audit/videos/menu_live.mp4, DOSBox via the /tmp scratch rig +
+   AUTOTYPE left, Godot Movie Maker right). Deeper live driving
+   (story -> pits -> in-game screens) resisted the hands-off
+   AUTOTYPE pass: only the first key lands before the menu
+   transition eats the rest (dosbox-staging 0.82.2), and per-state
+   pacing needs the interactive driving that is currently
+   directive-banned. The oracle stills remain the parity spec for
+   the in-game surfaces; the rig + AUTOTYPE recipe in
+   /tmp/ds1-live.conf + /tmp/live_capture.sh are ready to rerun.
 8. Damage splats are wired (hits: small/big red by damage, gold star
    on the kill, grey puff on a miss) and the fight loop is proven in
    the QC movie, but the 0.7s splat window landed between capture

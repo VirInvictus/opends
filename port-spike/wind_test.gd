@@ -51,6 +51,8 @@ func _ready() -> void:
 		ws = InteractScreen.new(InteractScreen.CAP_TALK | InteractScreen.CAP_STEAL | InteractScreen.CAP_GIVE | 0x2)
 	elif screen == "spellinfo":
 		ws = SpellInfoScreen.new(6)
+	elif screen == "examinestrip":
+		ws = ExamineStrip.new([1011, 1010], 1)
 	elif screen == "dialog":
 		var pages := [{"port": 119, "text": "Citizens of Draj!\nBefore you is a handful of gladiators. Watch\nand be entertained as they fight to the\ndeath with the denizens of our land."}]
 		ws = DialogScreen.new(pages)

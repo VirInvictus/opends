@@ -327,6 +327,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			selected = code - KEY_1
 			_refresh()
 	elif event is InputEventMouseButton and event.pressed \
+			and event.button_index == MOUSE_BUTTON_RIGHT:
+		# right-click an occupied cell: the examine strip (15500)
+		var rpos: Vector2 = _board.get_global_transform().affine_inverse() * event.position
+		var slot_r := _cell_at(rpos)
+		if slot_r >= 0 and members[selected]["cells"][slot_r] != null:
+			_open_examine_strip(slot_r)
+	elif event is InputEventMouseButton and event.pressed \
 			and event.button_index == MOUSE_BUTTON_LEFT:
 		var pos: Vector2 = _board.get_global_transform().affine_inverse() * event.position
 		for b in _buttons:
@@ -338,3 +345,25 @@ func _unhandled_input(event: InputEvent) -> void:
 		var slot := _cell_at(pos)
 		if slot >= 0:
 			_click_cell(slot)
+
+
+## The examine strip (15500) seeded at the clicked item; INFO opens
+## the view-item screen (15502).
+func _open_examine_strip(slot: int) -> void:
+	var m: Dictionary = members[selected]
+	var ids: Array = []
+	var start := 0
+	for i in 26:
+		var c: Variant = m["cells"][i]
+		if c != null:
+			ids.append(int(c["obj"]))
+			if i == slot:
+				start = ids.size() - 1
+	if ids.is_empty():
+		return
+	var strip := ExamineStrip.new(ids, start)
+	strip.info_requested.connect(func(oid: int) -> void:
+		var ex := ExamineScreen.new(oid)
+		ex.closed.connect(ex.queue_free)
+		get_parent().add_child(ex))
+	get_parent().add_child(strip)
