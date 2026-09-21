@@ -38,6 +38,15 @@ func _ready() -> void:
 		ws = MapScreen.new(42)
 	elif screen == "popup":
 		ws = PopupScreen.new("EXIT GAME?", ["QUIT", "CANCEL"])
+	elif screen == "choices":
+		ws = ChoiceScreen.new([
+			"Wounded rats, huh? Send out your worst!",
+			"You're the best announcer I've seen.",
+			"I want to fight again! Now!",
+		])
+	elif screen == "msgbox":
+		MessageBox.flash(get_tree().root.get_node("^root/MsgHost") if false else self, "GAME SAVED")
+		ws = null
 	elif screen == "dialog":
 		var pages := [{"port": 119, "text": "Citizens of Draj!\nBefore you is a handful of gladiators. Watch\nand be entertained as they fight to the\ndeath with the denizens of our land."}]
 		ws = DialogScreen.new(pages)

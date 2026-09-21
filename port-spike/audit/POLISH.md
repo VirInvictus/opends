@@ -55,29 +55,30 @@ plus the dosbox-oracle-rig memory).
    resolution in combat) is not wired; the grid and class/LEVEL
    cyclers are parity-only so far. Casting needs the engine's
    spell-effect runtime (docs/spell-effects.md).
-3. Interact 3020 and the dialog CHOICE strip 3008 are not built; the
-   announcer's question lines (the "Yell something back" GPL block)
-   would pair with them. The announcer SEQUENCE itself is built:
-   DialogScreen (WIND 3007) with the matched announcer portrait
-   (PORT 119), real GPL-2 lines, and the scripted arena intro wired
-   through it (audit/dialog.png).
-4. Message box 10501 (the transient GAME SAVED strip) is not built;
-   the demo uses UI banners.
+3. Interact 3020 is not built. The dialog CHOICE strip 3008 IS built
+   and wired: after each victory the announcer asks "Yell something
+   back at the Announcer?" (real GPL-2 lines); a taunt releases
+   another horde, the compliment reopens the pens.
+4. Message box 10501 is built: save/load feedback ("GAME SAVED") now
+   rides the 10001 plate strip with click/auto acknowledge.
 5. Sheet class line prints one ink; the engine colours each class
    separately (Fighter yellow, Druid red, Psionic yellow; table
    0x72D29). Needs multi-ink TextBlitter segments.
-6. Combat detail rules not yet modelled: DEX reaction in the morale
-   threshold, rear/flank THAC0-2 with direction tracking, crit
-   blows adjust, monster damage bonus. Core structure (token
-   machine, 20+d10+mods threshold with d200 tie-break, blows
-   alternator, nat-20/nat-1 d20, 10/14 move costs) already matches
-   docs/combat-flow.md sections 4-5.
+6. Combat detail rules modelled (2026-09-20 night): DEX missile table
+   in the round threshold (docs/rules-tables.md 0x7dc), rear/flank
+   THAC0-2 with per-round direction memory (CSTATE2 +0x5b), crit roll
+   4/1 doubling/halving the blow budget, and the monster damage bonus
+   [0x11ae]-1 wired to the prefs text-speed setting. Live player
+   attack input added: click an adjacent monster during the party's
+   token (the attack cursor path).
 7. Live side-by-side videos per surface (DOSBox left, Godot right):
    deferred; the stills here are the parity spec until that pass.
 8. Damage splats are wired (hits: small/big red by damage, gold star
    on the kill, grey puff on a miss) and the fight loop is proven in
    the QC movie, but the 0.7s splat window landed between capture
    samples; confirm visually in the next live demo run.
+9. Spell casting resolution from the USE picker (click -> effect)
+   remains parity-only; needs docs/spell-effects.md wiring.
 
 ## Covered by the third pass (2026-09-20 night)
 

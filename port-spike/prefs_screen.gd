@@ -12,7 +12,10 @@ var music_on := true
 var sound_on := true
 var music_vol := 90
 var sound_vol := 90
-var text_speed := 2
+# static: the engine keeps text speed in DGROUP [0x11ae], and the
+# combat damage resolver reads it back for the monster damage bonus
+# ([0x11ae]-1, combat-flow.md section 5) - a real SSI quirk
+static var text_speed := 2
 var mouse_on := true
 
 var _rows: Array[TextBlitter] = []

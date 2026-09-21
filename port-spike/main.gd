@@ -108,6 +108,15 @@ func _ready() -> void:
 		await _snap(OS.get_environment("SPIKE_OUT"))
 		get_tree().quit()
 		return
+	if OS.get_environment("SPIKE_SPLAT") != "":
+		# QC: fire one splat over the leader and snap it
+		_start_game()
+		await get_tree().create_timer(0.6).timeout
+		_spawn_splat(party[0]["sprite"], int(OS.get_environment("SPIKE_SPLAT")))
+		await get_tree().create_timer(0.2).timeout
+		await _snap(OS.get_environment("SPIKE_OUT"))
+		get_tree().quit()
+		return
 	_intro_play()
 	if OS.get_environment("SPIKE_INTRO") != "":
 		_intro_qc = true
@@ -240,6 +249,7 @@ func _enter_region(rid: int, at: Vector2i) -> void:
 			"hp": int(st["hp"]), "max_hp": int(st["max_hp"]), "ac": int(st["ac"]),
 			"thac0": int(st["thac0"]), "move": int(st["move"]), "blows": int(st["blows"]),
 			"dice": int(st["dice"]), "sides": int(st["sides"]), "bonus": int(st["bonus"]),
+			"dex": int(PartyData.MEMBERS[i]["stats"][1]),
 			"name": nm, "alive": true})
 	$Camera.position = Vector2(at * 16)
 	$UI/Label.text = label_text
@@ -467,6 +477,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.keycode == KEY_ENTER:
 			_end_party_turn()
 		return
+	if state == State.COMBAT and phase == Phase.PARTY and attacks_left > 0 \
+			and event is InputEventMouseButton and event.pressed \
+			and event.button_index == MOUSE_BUTTON_LEFT:
+		var t := Vector2i((get_global_mouse_position() / 16.0).floor())
+		if _cheby(_party_tile(0), t) <= 1:
+			var mi := _monster_at(t)
+			if mi >= 0:
+				_party_attack(mi)
+				return
 	if state != State.PLAY or busy:
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
@@ -488,7 +507,7 @@ func _save_game() -> void:
 			"fight_count": fight_count, "gold": 0},
 	}
 	var err: int = SaveIO.write_save("user://saves/SAVE01.SAV", state)
-	_show_banner("GAME SAVED" if err == OK else "SAVE FAILED")
+	MessageBox.flash($UI, "GAME SAVED" if err == OK else "SAVE FAILED")
 
 func _load_game() -> void:
 	_load_from("user://saves/SAVE01.SAV")
@@ -509,7 +528,7 @@ func _load_from(path: String) -> void:
 			PartyData.MEMBERS[mi]["cells"] = st["members"][mi]["cells"]
 	var t: Array = port["tile"]
 	_enter_region(region_id, Vector2i(int(t[0]), int(t[1])))
-	_show_banner("GAME LOADED")
+	MessageBox.flash($UI, "GAME LOADED")
 
 
 # --------------------------------------------- UI screens
@@ -659,6 +678,13 @@ const ANNOUNCER := {
 	"trainer": "Monster Trainer: release your horde!",
 	"stepforward": "Gladiators: Step forward, into the arena!",
 	"heal": "Attention gladiators: Go back to the pens to heal your wounds.",
+	"yell": "Yell something back at the Announcer?",
+	"worst": "Wounded rats, huh? Send out your worst!",
+	"best": "You're the best announcer I've seen.",
+	"again": "I want to fight again! Now!",
+	"wellthanks": "Well, thanks!",
+	"takethis": "What?! You upstarts! Take this!",
+	"release2": "Monster Trainer: Release the monsters!",
 }
 
 
@@ -696,6 +722,7 @@ func _begin_fight() -> void:
 	for i in count:
 		var t: Vector2i = spots[i] if i < spots.size() else Vector2i(int(f["spawn_tiles"][i][0]), int(f["spawn_tiles"][i][1]))
 		_spawn_monster(t, int(m["hp"]) + 2 * fight_count, m)
+	state = State.COMBAT
 	_new_round()
 
 
@@ -738,6 +765,13 @@ func _monster_on(t: Vector2i) -> bool:
 	return false
 
 
+func _monster_at(t: Vector2i) -> int:
+	for mi in monsters.size():
+		if monsters[mi]["alive"] and monsters[mi]["tile"] == t:
+			return mi
+	return -1
+
+
 func _monsters_alive() -> bool:
 	for m in monsters:
 		if m["alive"]:
@@ -751,7 +785,7 @@ func _new_round() -> void:
 	var act_mods := [5, 0, -5, -10]
 	for i in party.size():
 		if party[i]["alive"]:
-			var thr: int = 20 + _d(10) + act_mods[i]
+			var thr: int = 20 + _d(10) + _dex_reaction(int(party[i].get("dex", 10))) + act_mods[i]
 			queue.append({"kind": "p", "idx": i, "thr": thr, "roll": _d(200),
 				"move_pts": party[i]["move"] * 10, "blows": _blows_this_round(party[i]["blows"]),
 				"done": false})
@@ -765,6 +799,11 @@ func _new_round() -> void:
 		if a["thr"] != b["thr"]:
 			return a["thr"] > b["thr"]
 		return a["roll"] > b["roll"])
+	# round_init resets the rear-attack direction memory (+0x5b)
+	for mm in monsters:
+		mm["dir_last"] = -1
+	for pp in party:
+		pp["dir_last"] = -1
 	actor_i = -1
 	_next_actor()
 
@@ -913,25 +952,40 @@ func _party_attack(mi: int) -> void:
 		return
 	attacks_left -= 1
 	var p: Dictionary = party[0]
-	var roll: int = _d(20)
-	if roll == 20 or (roll != 1 and roll >= p["thac0"] - monsters[mi]["ac"]):
-		var dmg: int = _d(p["sides"], p["dice"]) + p["bonus"]
-		monsters[mi]["hp"] = maxi(0, int(monsters[mi]["hp"]) - dmg)
-		_update_bar(monsters[mi]["bar_fg"], float(monsters[mi]["hp"]) / float(monsters[mi]["max_hp"]))
+	var t: Dictionary = monsters[mi]
+	# rear/flank: hitting from the same direction twice grants THAC0-2
+	# (combat-flow.md section 5, CSTATE2 +0x5b direction memory)
+	var at := _party_tile(0)
+	var dir := _attack_dir(at, _occ_tile(t["sprite"].position))
+	var thac0: int = int(p["thac0"])
+	if int(t.get("dir_last", -1)) == dir:
+		thac0 -= 2
+	t["dir_last"] = dir
+	# crit-adjust: a crit roll of 4 doubles the blow budget, 1 halves it
+	# (1-blow attack -> the halve leaves nothing: the swing never lands)
+	var crit := _d(4)
+	var blows := 2 if crit == 4 else (0 if crit == 1 else 1)
+	for b in blows:
+		if not t["alive"]:
+			break
+		var roll: int = _d(20)
+		if roll != 20 and (roll == 1 or roll < thac0 - int(t["ac"])):
+			_spawn_splat(t["sprite"], 3)  # grey puff = miss
+			continue
+		var dmg: int = _d(int(p["sides"]), int(p["dice"])) + int(p["bonus"])
+		t["hp"] = maxi(0, int(t["hp"]) - dmg)
+		_update_bar(t["bar_fg"], float(t["hp"]) / float(t["max_hp"]))
 		# splat frames by damage class (BMP 5014): small/big red hits,
 		# gold star on the kill; green is the poison frame, unused here
-		var killed: bool = monsters[mi]["hp"] <= 0
-		_spawn_splat(monsters[mi]["sprite"],
-			4 if killed else (1 if dmg >= 3 else 0))
+		var killed: bool = int(t["hp"]) <= 0
+		_spawn_splat(t["sprite"], 4 if killed else (1 if dmg >= 3 else 0))
 		if killed:
-			monsters[mi]["alive"] = false
-			monsters[mi]["sprite"].modulate = Color(0.4, 0.4, 0.4, 0.7)
-			monsters[mi]["bar_bg"].visible = false
-			monsters[mi]["bar_fg"].visible = false
+			t["alive"] = false
+			t["sprite"].modulate = Color(0.4, 0.4, 0.4, 0.7)
+			t["bar_bg"].visible = false
+			t["bar_fg"].visible = false
 			if not _monsters_alive():
 				_victory()
-	else:
-		_spawn_splat(monsters[mi]["sprite"], 3)  # grey puff = miss
 
 
 func _hud_refresh_member(idx: int) -> void:
@@ -944,9 +998,25 @@ func _hud_refresh_member(idx: int) -> void:
 
 
 func _monster_attack(m: Dictionary, p: Dictionary) -> void:
-	var roll: int = _d(20)
-	if roll == 20 or (roll != 1 and roll >= m["thac0"] - p["ac"]):
-		var dmg: int = _d(m["sides"], m["dice"]) + m["bonus"]
+	var at := _occ_tile(m["sprite"].position)
+	var dir := _attack_dir(at, _party_tile(party.find(p)))
+	var thac0: int = int(m["thac0"])
+	if int(p.get("dir_last", -1)) == dir:
+		thac0 -= 2
+	p["dir_last"] = dir
+	# monster attackers add [0x11ae]-1 (the text-speed pref) to damage:
+	# the engine's own quirk (combat-flow.md section 5, 0x16b7)
+	var dmg_bonus: int = int(m["bonus"]) + PrefsScreen.text_speed - 1
+	var crit := _d(4)
+	var blows := 2 if crit == 4 else (0 if crit == 1 else 1)
+	for b in blows:
+		if not p["alive"]:
+			break
+		var roll: int = _d(20)
+		if roll != 20 and (roll == 1 or roll < thac0 - int(p["ac"])):
+			_spawn_splat(p["sprite"], 3)  # grey puff = miss
+			continue
+		var dmg: int = _d(int(m["sides"]), int(m["dice"])) + dmg_bonus
 		p["hp"] = maxi(0, int(p["hp"]) - dmg)
 		_hud_refresh_member(party.find(p))
 		_update_bar(p["bar_fg"], float(p["hp"]) / float(p["max_hp"]))
@@ -956,8 +1026,7 @@ func _monster_attack(m: Dictionary, p: Dictionary) -> void:
 			p["sprite"].modulate = Color(0.3, 0.3, 0.3, 0.6)
 			p["bar_bg"].visible = false
 			p["bar_fg"].visible = false
-	else:
-		_spawn_splat(p["sprite"], 3)  # grey puff = miss
+			break
 
 
 func _party_wiped() -> bool:
@@ -970,10 +1039,34 @@ func _party_wiped() -> bool:
 func _victory() -> void:
 	fight_count += 1
 	state = State.VICTORY
-	_say_sequence([{"port": ANNOUNCER_PORT, "text": ANNOUNCER["heal"]}],
-		func() -> void: pass)
-	await get_tree().create_timer(2.5).timeout
-	state = State.PLAY
+	_say_sequence([
+		{"port": ANNOUNCER_PORT, "text": ANNOUNCER["heal"]},
+		{"port": ANNOUNCER_PORT, "text": ANNOUNCER["yell"]},
+	], _offer_yell)
+
+
+func _offer_yell() -> void:
+	var replies := [ANNOUNCER["worst"], ANNOUNCER["best"], ANNOUNCER["again"]]
+	var auto := 1.5 if OS.get_environment("SPIKE_DEMO") != "" else 0.0
+	var pick := ChoiceScreen.new(replies, auto, 1)
+	pick.chosen.connect(_on_yell)
+	_close_ui()
+	ui_screen = pick
+	ui_layer.add_child(pick)
+	ui_open = true
+
+
+func _on_yell(i: int) -> void:
+	if i == 1:
+		# the compliment: the announcer is pleased, the pens open
+		_say_sequence([{"port": ANNOUNCER_PORT, "text": ANNOUNCER["wellthanks"]}],
+			func() -> void: state = State.PLAY)
+	else:
+		# taunts release another horde
+		_say_sequence([
+			{"port": ANNOUNCER_PORT, "text": ANNOUNCER["takethis"]},
+			{"port": ANNOUNCER_PORT, "text": ANNOUNCER["release2"]},
+		], _begin_fight)
 
 
 func _party_down() -> void:
@@ -987,6 +1080,23 @@ func _party_down() -> void:
 		_update_bar(q["bar_fg"], 1.0)
 	_enter_region(41, Vector2i(int(demo["start"]["x"]), int(demo["start"]["y"])))
 	state = State.PLAY
+
+
+## DEX missile table (docs/rules-tables.md, DGROUP 0x7dc): the engine
+## reads this same table for the round threshold's dex_reaction
+## (combat-flow.md section 4, ovr10 stub 14). Stat 3 -> -3 ... 25 -> +5.
+func _dex_reaction(dex: int) -> int:
+	var table := [-3, -2, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 3, 3, 4, 4, 4, 5, 5]
+	return table[clampi(dex, 3, 25) - 3]
+
+
+## 8-way direction code from the attacker to the target tile
+## (N=0, clockwise), used for the rear/flank rule.
+func _attack_dir(from: Vector2i, to: Vector2i) -> int:
+	var d := to - from
+	if d == Vector2i.ZERO:
+		return 0
+	return wrapi(int(round(atan2(float(d.x), float(-d.y)) / (PI / 4.0))), 0, 8)
 
 
 func _d(sides: int, count: int = 1) -> int:
