@@ -732,24 +732,26 @@ const ANNOUNCER := {
 #   22: effect 0x32 insert dur 60, strips effect 0x2f
 #   23: target counter drain (0x1d/0x24 dec) - no status insert
 const SPELL_EFFECTS := {
+	1: {"dur": 23, "effect": 0, "cleanse": true},
+	2: {"dur": 34, "effect": 0, "cleanse": true},
 	3: {"dur": 6, "effect": 66},
-	6: {"dur": 3, "dmg": 2, "move": 20, "name": "ENLARGE"},
+	6: {"dur": 3, "dmg": 2, "move": 20},
 	7: {"dur": 1, "effect": 6, "ac": 2},
-	10: {"dur": 8, "effect": 72},
+	9: {"dur": 8, "effect": 1},
+	10: {"dur": 3, "effect": 15},
+	12: {"dur": 3, "effect": 15},
 	15: {"dur": -1, "effect": 68, "debuff": true},
 	18: {"dur": 6, "effect": 2, "ac": 1},
 	19: {"dur": 8, "effect": 2, "ac": 3},
 	21: {"dur": 8, "effect": 3, "ac": 3},
-	22: {"dur": 60, "effect": 50, "ac": 2},
-	23: {"dur": 0, "effect": 0},
+	22: {"dur": 50, "effect": 50, "ac": 2, "cleanse": true},
+	27: {"dur": 6, "effect": 1},
+	28: {"dur": 2, "effect": 0},
 }
 
 var active_effects := {}  # member index -> Array of {spell, dur, ac, dmg}
 
 
-## Cast a known spell from the USE picker during combat: applies the
-## mined handler effects to the caster (buffs) or the nearest monster
-## (the level-steal), marks the spell used, and announces it.
 ## The party index holding the combat token, or -1.
 func _acting_member() -> int:
 	if state == State.COMBAT and actor_i >= 0 and actor_i < queue.size() \
@@ -761,24 +763,29 @@ func _acting_member() -> int:
 func _cast_spell(member_i: int, spell_id: int) -> void:
 	var spec: Dictionary = SPELL_EFFECTS.get(spell_id, {})
 	if spec.is_empty():
-		return
-	var m: Dictionary = PartyData.MEMBERS[member_i]
-	var level := int(m.get("levels", [1])[0])
+		# SPST 39-138 route to the engine's generic default handler
+		# (ovr32 0xc90): a plain effect insert at caster level
+		spec = {"dur": maxi(level_of(member_i), 1), "effect": 0}
 	var entry := {"spell": spell_id, "dur": int(spec["dur"]),
 		"ac": int(spec.get("ac", 0)), "dmg": int(spec.get("dmg", 0))}
 	if not active_effects.has(member_i):
 		active_effects[member_i] = []
 	active_effects[member_i].append(entry)
 	if int(spec.get("move", 0)) > 0:
-		party[member_i]["move"] = int(party[member_i].get("move", 0)) + int(spec["move"]) * level / 2
+		party[member_i]["move"] = int(party[member_i].get("move", 0)) \
+			+ int(spec["move"]) * level_of(member_i) / 2
 	if bool(spec.get("debuff", false)) and not monsters.is_empty():
 		var mi := _nearest_mon()
 		if mi >= 0:
-			monsters[mi]["dir_last"] = -1
-			monsters[mi]["ac"] = int(monsters[mi]["ac"]) + level
+			monsters[mi]["ac"] = int(monsters[mi]["ac"]) + level_of(member_i)
 	var spin: Dictionary = InventoryScreen._db()["spins"].get(str(spell_id), {})
 	var label: String = str(spin.get("name", "The spell"))
 	MessageBox.flash($UI, "%s CAST" % label.to_upper())
+
+
+func level_of(member_i: int) -> int:
+	var lv: Array = PartyData.MEMBERS[member_i].get("levels", [1])
+	return int(lv[0])
 
 
 func _say_sequence(pages: Array, then: Callable) -> void:
@@ -847,10 +854,10 @@ func _spawn_ring(center: Vector2i, count: int) -> Array[Vector2i]:
 
 func _spawn_monster(t: Vector2i, hp: int, m: Dictionary) -> void:
 	var dir: String = demo["regions"]["42"]["dir"]
-	var s := _add_sprite($Monsters, "%s/sprites/bmp_%04d.png" % [dir, int(m["bmp"])], Vector2(t * 16) + Vector2(0, 16))
-	s.flip_h = monsters.size() % 2 == 1
-	var bars := _make_bars(s)
-	monsters.append({"sprite": s, "bar_bg": bars[0], "bar_fg": bars[1], "hp": hp,
+	var sp := _add_sprite($Monsters, "%s/sprites/bmp_%04d.png" % [dir, int(m["bmp"])], Vector2(t * 16) + Vector2(0, 16))
+	sp.flip_h = monsters.size() % 2 == 1
+	var bars := _make_bars(sp)
+	monsters.append({"sprite": sp, "bar_bg": bars[0], "bar_fg": bars[1], "hp": hp,
 		"max_hp": hp, "ac": int(m["ac"]), "thac0": int(m["thac0"]), "move": int(m["move"]),
 		"blows": int(m["blows"]), "dice": int(m["dice"]), "sides": int(m["sides"]),
 		"bonus": int(m["bonus"]), "tile": t, "alive": true})
@@ -964,9 +971,8 @@ func _party_turn(a: Dictionary) -> void:
 	combat_hud.visible = true
 	combat_hud.set_actor(str(pm.get("name", "")) if str(pm.get("name", "")) != "" else _preset_name(a["idx"]),
 		int(pm["hp"]), int(pm["max_hp"]), move_pts, "Okay")
-	var nm: String = _preset_name(a["idx"])
 	_show_banner("Round %d - %s  (move %d, %d attack%s)  [Enter = done]" % [
-		round_no, nm, int(move_pts / 10.0), attacks_left,
+		round_no, _preset_name(a["idx"]), int(move_pts / 10.0), attacks_left,
 		"s" if attacks_left != 1 else ""])
 
 
@@ -1042,15 +1048,15 @@ func _nearest_party_tile(from: Vector2i) -> Vector2i:
 	return best
 
 
-func _occ_tile(pos: Vector2) -> Vector2i:
-	return Vector2i(int(pos.x / 16.0), int((pos.y - 1.0) / 16.0))
-
-
 func _party_index_at(t: Vector2i) -> int:
 	for i in party.size():
 		if party[i]["alive"] and _party_tile(i) == t:
 			return i
 	return -1
+
+
+func _occ_tile(pos: Vector2) -> Vector2i:
+	return Vector2i(int(pos.x / 16.0), int((pos.y - 1.0) / 16.0))
 
 
 func _party_attack(mi: int) -> void:
@@ -1132,7 +1138,6 @@ func _monster_attack(m: Dictionary, p: Dictionary) -> void:
 			p["sprite"].modulate = Color(0.3, 0.3, 0.3, 0.6)
 			p["bar_bg"].visible = false
 			p["bar_fg"].visible = false
-			break
 
 
 func _party_wiped() -> bool:
