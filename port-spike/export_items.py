@@ -139,6 +139,12 @@ def export_item_icons(pal) -> dict[int, dict]:
             )
             if 0 <= row.name_idx < len(pool):
                 name = pool[row.name_idx]
+        weight = 0
+        base_ac = 0
+        if row is not None and 0 <= row.stats_index < len(it1r) // 20:
+            st_row = ec.decode_ds1_it1r(it1r, row.stats_index)
+            weight = st_row.weight
+            base_ac = st_row.base_ac
         out[oid] = {
             "png": png,
             "w": w,
@@ -149,6 +155,8 @@ def export_item_icons(pal) -> dict[int, dict]:
             "sides": sides,
             "mod": mod,
             "attacks": attacks,
+            "weight": weight,
+            "base_ac": base_ac,
         }
         print(f"object {oid}: {name!r} bmp {bmp_id} {w}x{h} place {place}")
     return out
@@ -200,7 +208,33 @@ def export_overlays(pal) -> dict:
     out["parchment"] = {"png": "parchment_13005.png", "w": w, "h": h}
     print(f"BMP {PARCHMENT_BMP}: {w}x{h} parchment")
 
-    # overhead-map plate (the engine's O-key frame; no WIND carries it)
+    # the fourteen race/gender standing figures for the inventory
+    # centre card (port-digs-2026-09-20.md 1: 20000 + (race-1)*2 +
+    # (gender-1); BMP 20013 matched the oracle capture 100.0%)
+    for fid in range(20000, 20014):
+        fig = bmps[fid]
+        w, h, rgba = decode_container_frame(fig, 0, pal, resource=True)
+        write_png(OUT / f"figure_{fid}.png", w, h, rgba)
+    out["figures"] = {"first": 20000, "count": 14,
+        "rule": "20000 + (race_i - 1) * 2 + (gender_i - 1)",
+        "card_offset": [6, 13]}
+    print("figures 20000..20013 exported")
+
+    # SPIN spell descriptions (RESOURCE SPIN id = spell id; the text
+    # starts at byte 0: "NAME:  description ..."). 15503 shows these
+    # verbatim in its EBOX (screen-flow.md 8.4).
+    spins = {}
+    for cid, payload in ec.resolve_type(res, "SPIN"):
+        text = payload.decode("latin-1", errors="replace").replace("\x00", " ").strip()
+        if not text:
+            continue
+        name, _, desc = text.partition(":")
+        spins[str(cid)] = {"name": name.strip(), "text": text}
+    out["spins"] = spins
+    print(f"SPIN descriptions: {len(spins)}")
+
+    # LOAD-mode title art (the engine binds these onto 3009's buttons
+    # in LOAD mode; the chunk faces ship as the SAVE variant)
     plate = bmps[MAP_PLATE_BMP]
     w, h, rgba = decode_container_frame(plate, 0, pal, resource=True)
     write_png(OUT / "map_10003.png", w, h, rgba)
@@ -255,6 +289,19 @@ def export_overlays(pal) -> dict:
     Image.fromarray(arr[0:58, 1:319]).save(OUT / "dialog_plate_3007.png")
     out["dialog_plate"] = {"png": "dialog_plate_3007.png", "w": 318, "h": 58}
     print("dialog plate 3007 regenerated")
+
+    # SPIN spell descriptions (RESOURCE SPIN id = spell id; the text
+    # starts at byte 0: "NAME:  description ..."). 15503 shows these
+    # verbatim in its EBOX (screen-flow.md 8.4).
+    spins = {}
+    for cid, payload in ec.resolve_type(res, "SPIN"):
+        text = payload.decode("latin-1", errors="replace").replace("\x00", " ").strip()
+        if not text:
+            continue
+        name, _, desc = text.partition(":")
+        spins[str(cid)] = {"name": name.strip(), "text": text}
+    out["spins"] = spins
+    print(f"SPIN descriptions: {len(spins)}")
 
     # LOAD-mode title art (the engine binds these onto 3009's buttons
     # in LOAD mode; the chunk faces ship as the SAVE variant)
@@ -358,6 +405,17 @@ def make_inventory_bg() -> str:
     arr[42:60, 57:75] = np.asarray(glyph)
 
     Image.fromarray(arr).save(OUT / "bg_13500.png")
+
+    # the centre card: reset to the blank parchment 13005 so the live
+    # layer owns the card (the baked figure was K'tarchek's; the
+    # per-member figures now draw over the card instead)
+    card = OUT / "parchment_13005.png"
+    if card.exists():
+        base = Image.open(OUT / "bg_13500.png").convert("RGBA")
+        parch = Image.open(card).convert("RGBA")
+        base.alpha_composite(parch, (75, 36))
+        base.save(OUT / "bg_13500.png")
+        print("bg_13500 card reset to blank parchment")
     print("regenerated bg_13500.png from the oracle capture")
     return "bg_13500.png"
 

@@ -69,7 +69,29 @@ func _ready() -> void:
 	_build_cells()
 	_build_held_icon()
 	attach_party_figures(members, _db()["party"])
+	_ensure_figure()
 	_refresh()
+
+## The centre card shows the selected member's standing figure
+## (RESOURCE BMP 20000 + (race_i-1)*2 + (gender_i-1); the dig matched
+## BMP 20013 = K'tarchek against the oracle 100.0%).
+var _figure: Sprite2D
+
+func _ensure_figure() -> void:
+	if _figure != null:
+		return
+	_figure = Sprite2D.new()
+	_figure.centered = false
+	_figure.position = Vector2(81, 49)  # card (75,36) + (6,13)
+	_board.add_child(_figure)
+
+func _refresh_figure() -> void:
+	_ensure_figure()
+	var m: Dictionary = members[selected]
+	var fid := 20000 + (int(m.get("race_i", 1)) - 1) * 2 + (int(m.get("gender_i", 1)) - 1)
+	var tex_path := "res://generated/ui/figure_%d.png" % fid
+	if ResourceLoader.exists(tex_path):
+		_figure.texture = load(tex_path)
 
 
 static func texture_for(png: String) -> Texture2D:
@@ -235,6 +257,7 @@ func _refresh() -> void:
 	_set_row(19, wl[2])
 	_set_row(20, wl[3])
 	_set_row(21, "%d$" % gold)
+	_refresh_figure()
 	# selected member's party box takes the yellow frame (ICON 11100 f3)
 	for b in _buttons:
 		var iid: int = int(b["id"])

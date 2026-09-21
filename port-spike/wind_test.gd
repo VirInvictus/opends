@@ -47,6 +47,10 @@ func _ready() -> void:
 	elif screen == "msgbox":
 		MessageBox.flash(get_tree().root.get_node("^root/MsgHost") if false else self, "GAME SAVED")
 		ws = null
+	elif screen == "interact":
+		ws = InteractScreen.new(InteractScreen.CAP_TALK | InteractScreen.CAP_STEAL | InteractScreen.CAP_GIVE | 0x2)
+	elif screen == "spellinfo":
+		ws = SpellInfoScreen.new(6)
 	elif screen == "dialog":
 		var pages := [{"port": 119, "text": "Citizens of Draj!\nBefore you is a handful of gladiators. Watch\nand be entertained as they fight to the\ndeath with the denizens of our land."}]
 		ws = DialogScreen.new(pages)

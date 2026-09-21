@@ -78,7 +78,9 @@ func _wrap(text: String) -> Array:
 	var lines: Array = []
 	var cur := ""
 	for w in words:
-		var probe := cur + w if cur.is_empty() else cur + " " + w
+		var probe := w
+		if not cur.is_empty():
+			probe = cur + " " + w
 		if TextBlitter.width_of(probe) > LINE_WIDTH and not cur.is_empty():
 			lines.append(cur)
 			cur = w

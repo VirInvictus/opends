@@ -17,6 +17,16 @@ const TITLE_TEX := {
 	Mode.USE: "bmp20080.png",
 	Mode.EFFECTS: "bmp20075.png",
 }
+# per-class line inks sampled from the oracle sheet capture: the
+# engine's 0x72D29 groups 16 classes into four colours (warrior
+# gold, priest white, druid red, psionic gold)
+const CLASS_INK := {
+	"FIGHTER": Color8(230, 200, 60), "GLADIATOR": Color8(230, 200, 60),
+	"RANGER": Color8(230, 200, 60), "PSIONIC": Color8(230, 200, 60),
+	"PSIONICIST": Color8(230, 200, 60), "THIEF": Color8(230, 200, 60),
+	"CLERIC": Color8(214, 214, 222),
+	"DRUID": Color8(215, 70, 45), "PRESERVER": Color8(215, 70, 45),
+}
 const SPELL_GRID_ORIGIN := Vector2(168, 52)
 const SPELL_GRID_PITCH := Vector2(19, 21)
 # the sheet's right-hand cell APFMs are the spell grid; the engine
@@ -31,7 +41,9 @@ var selected := 1
 var mode := Mode.VIEW
 var cast_class := ""  # caster class whose spells the USE grid shows
 var _rows: Array[TextBlitter] = []
+var _class_segs: Array[TextBlitter] = []
 var _spell_cells: Array[Node2D] = []
+var _shown_ids: Array = []
 var _bar_texts: Array[TextBlitter] = []
 
 func _init(p_mode := Mode.VIEW) -> void:
@@ -68,7 +80,9 @@ func _build_spell_grid() -> void:
 		return
 	if cast_class == "" or not casters.has(cast_class):
 		cast_class = casters[0]
-	for i in 10:
+	var ids: Array = (_selected_member().get("spells", {}) as Dictionary).get(cast_class, [])
+	_shown_ids = ids
+	for i in mini(ids.size(), 10):
 		var cell := Node2D.new()
 		cell.position = SPELL_GRID_ORIGIN + Vector2(float(i % 5), float(i / 5)) * SPELL_GRID_PITCH
 		var icon := Sprite2D.new()
@@ -206,6 +220,7 @@ func _refresh() -> void:
 	_set_row(24, "HP:  %d/%d" % [m["hp"], m["max"]])
 	_set_row(25, "PSI: %d/%d" % [m["psi"][0], m["psi"][1]])
 	_set_row(26, "AC: %d  DAM: %s" % [m["ac"], m["dmg"]])
+	_draw_class_line(m)
 	if mode != Mode.VIEW:
 		# USE/EFFECTS: the info block gives way to the spell grid or an
 		# empty panel; only the name plate stays
@@ -218,7 +233,52 @@ func _refresh() -> void:
 			_set_spell_grid()
 			_set_bar_texts()
 
+## The engine prints each class in the multi-class line with its own
+## colour (0x72D29 group table); separators stay pale.
+func _draw_class_line(m: Dictionary) -> void:
+	for c in _class_segs:
+		c.queue_free()
+	_class_segs.clear()
+	if mode != Mode.VIEW:
+		return
+	var layer := _board.get_node("TextLayer")
+	var classes: Array = m.get("classes", [])
+	var x := 150.0
+	for i in classes.size():
+		var nm := String(classes[i])
+		var segs := [] if i == 0 else ["/"]
+		for sep in segs:
+			var slash := TextBlitter.new()
+			slash.ink = ROW_INK
+			slash.relief = ROW_RELIEF
+			slash.position = Vector2(x, 110)
+			slash.text = sep
+			layer.add_child(slash)
+			_class_segs.append(slash)
+			x += TextBlitter.width_of(sep) + 1.0
+		var seg := TextBlitter.new()
+		seg.ink = CLASS_INK.get(nm.to_upper(), ROW_GOLD)
+		seg.relief = ROW_RELIEF
+		seg.position = Vector2(x, 110)
+		seg.text = nm
+		layer.add_child(seg)
+		_class_segs.append(seg)
+		x += TextBlitter.width_of(nm) + 3.0
+
+
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT \
+			and event.pressed and mode == Mode.USE:
+		# right-click a spell: the SPIN text in 15503 (screen-flow 8.4)
+		var rpos: Vector2 = _board.get_global_transform().affine_inverse() * event.position
+		for i in mini(_shown_ids.size(), 10):
+			var cell_rect := Rect2(
+				SPELL_GRID_ORIGIN + Vector2(float(i % 5), float(i / 5)) * SPELL_GRID_PITCH,
+				Vector2(18, 18))
+			if cell_rect.has_point(rpos):
+				var info := SpellInfoScreen.new(int(_shown_ids[i]))
+				get_parent().add_child(info)
+				return
 	if event is InputEventKey and event.pressed and not event.echo:
 		var code: int = event.keycode
 		if code >= KEY_1 and code <= KEY_4:

@@ -370,6 +370,32 @@ func _step_to(target: Vector2i, mover: Dictionary) -> void:
 		_maybe_start_fight()
 
 
+## Is a world entity standing on this tile? (entities carry pixel
+## positions; the tile is the top-left 16x16 block)
+func _entity_at(t: Vector2i) -> bool:
+	for e in _region_json().get("entities", []):
+		if Vector2i(int(e["x"]) / 16, int(e["y"]) / 16) == t:
+			return true
+	return false
+
+
+func _open_interact() -> void:
+	_close_ui()
+	var interact := InteractScreen.new(InteractScreen.CAP_TALK | 0x2)
+	interact.action.connect(func(kind: String) -> void:
+		if kind == "talk":
+			_close_ui()
+			_say_sequence([
+				{"port": ANNOUNCER_PORT, "text": ANNOUNCER["citizens"]},
+				{"port": ANNOUNCER_PORT, "text": ANNOUNCER["gift"]},
+			], func() -> void: pass)
+		else:
+			_close_ui())
+	ui_screen = interact
+	ui_layer.add_child(interact)
+	ui_open = true
+
+
 func _bfs(src: Vector2i, dst: Vector2i) -> Array[Vector2i]:
 	var prev := {}
 	var seen := {src: true}
@@ -490,6 +516,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var t := Vector2i((get_global_mouse_position() / 16.0).floor())
+		if _entity_at(t):
+			_open_interact()
+			return
 		var p := _bfs(tile, t)
 		if not p.is_empty():
 			path = p
