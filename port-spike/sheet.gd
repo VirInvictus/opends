@@ -40,6 +40,8 @@ const SKIP_CELLS := [11213, 11214, 11215, 11216, 11217, 11218, 11219, 11220,
 var selected := 1
 var mode := Mode.VIEW
 var cast_class := ""  # caster class whose spells the USE grid shows
+var combat_member := -1  # when >= 0, grid clicks CAST (combat picker)
+signal spell_cast(member_i: int, spell_id: int)
 var _rows: Array[TextBlitter] = []
 var _class_segs: Array[TextBlitter] = []
 var _spell_cells: Array[Node2D] = []
@@ -278,6 +280,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			if cell_rect.has_point(rpos):
 				var info := SpellInfoScreen.new(int(_shown_ids[i]))
 				get_parent().add_child(info)
+				return
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT \
+			and event.pressed and mode == Mode.USE and combat_member >= 0:
+		var cpos: Vector2 = _board.get_global_transform().affine_inverse() * event.position
+		for i in mini(_shown_ids.size(), 10):
+			var cell_rect := Rect2(
+				SPELL_GRID_ORIGIN + Vector2(float(i % 5), float(i / 5)) * SPELL_GRID_PITCH,
+				Vector2(18, 18))
+			if cell_rect.has_point(cpos):
+				spell_cast.emit(combat_member, int(_shown_ids[i]))
 				return
 	if event is InputEventKey and event.pressed and not event.echo:
 		var code: int = event.keycode

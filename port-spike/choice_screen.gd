@@ -31,6 +31,16 @@ func _ready() -> void:
 	_page = 0
 	_show_page()
 
+func _pages() -> int:
+	return int(ceil(options.size() / 5.0))
+
+
+func _page_shift(dir: int) -> void:
+	var last := _pages() - 1
+	_page = wrapi(_page + dir, 0, maxi(_pages(), 1))
+	_show_page()
+
+
 func _show_page() -> void:
 	for c in _board.get_children():
 		if String(c.name).begins_with("Opts"):
@@ -66,6 +76,17 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseButton and event.pressed \
 			and event.button_index == MOUSE_BUTTON_LEFT:
 		var pos: Vector2 = _board.get_global_transform().affine_inverse() * event.position
+		# MORE arrows page the option list when it exceeds five
+		var up := item_by_id(2095)
+		var down := item_by_id(2096)
+		if not up.is_empty() and Rect2(_origin + Vector2(float(up.get("x", 305)), float(up.get("y", 4))),
+				Vector2(14, 14)).has_point(pos) and _page > 0:
+			_page_shift(-1)
+			return
+		if not down.is_empty() and Rect2(_origin + Vector2(float(down.get("x", 305)), float(down.get("y", 18))),
+				Vector2(14, 35)).has_point(pos) and _page < _pages() - 1:
+			_page_shift(1)
+			return
 		for b in _bars:
 			if (b["rect"] as Rect2).has_point(pos):
 				chosen.emit(int(b["index"]))

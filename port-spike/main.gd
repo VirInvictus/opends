@@ -587,7 +587,11 @@ func _open_screen(which: String) -> void:
 		_:
 			if which.begins_with("sheet:"):
 				var mode_name: String = which.get_slice(":", 1)
-				ws = SheetScreen.new(SheetScreen.Mode[mode_name])
+				var sh: SheetScreen = SheetScreen.new(SheetScreen.Mode[mode_name])
+				if mode_name == "USE" and _acting_member() >= 0:
+					sh.combat_member = _acting_member()
+					sh.spell_cast.connect(_cast_spell)
+				ws = sh
 			elif which.begins_with("popup:"):
 				_open_game_popup(which.get_slice(":", 1))
 				return
@@ -716,15 +720,80 @@ const ANNOUNCER := {
 	"release2": "Monster Trainer: Release the monsters!",
 }
 
+# Combat effects per known spell id, read off the ovr32 handlers:
+#   3: effect 0x42/0x43 insert, dur 6 (0x60001)
+#   6 ENLARGE: melee +2 and move points level*2*10 while active
+#   7: effect 6 insert, duration = caster level / 2, status bits 0x3|0x4
+#   10: protective insert chain (dur 8, effect family 0x48)
+#   15: level-steal debuff on the target + effect 0x44 (dur -1)
+#   18: effect 2 insert, dur 6 (0x60002)
+#   19: effect 2 insert, dur 8 + defence +3 (0x80003, add ax,3)
+#   21: effect 3 insert, dur 8 + defence +3 (0x80003)
+#   22: effect 0x32 insert dur 60, strips effect 0x2f
+#   23: target counter drain (0x1d/0x24 dec) - no status insert
+const SPELL_EFFECTS := {
+	3: {"dur": 6, "effect": 66},
+	6: {"dur": 3, "dmg": 2, "move": 20, "name": "ENLARGE"},
+	7: {"dur": 1, "effect": 6, "ac": 2},
+	10: {"dur": 8, "effect": 72},
+	15: {"dur": -1, "effect": 68, "debuff": true},
+	18: {"dur": 6, "effect": 2, "ac": 1},
+	19: {"dur": 8, "effect": 2, "ac": 3},
+	21: {"dur": 8, "effect": 3, "ac": 3},
+	22: {"dur": 60, "effect": 50, "ac": 2},
+	23: {"dur": 0, "effect": 0},
+}
+
+var active_effects := {}  # member index -> Array of {spell, dur, ac, dmg}
+
+
+## Cast a known spell from the USE picker during combat: applies the
+## mined handler effects to the caster (buffs) or the nearest monster
+## (the level-steal), marks the spell used, and announces it.
+## The party index holding the combat token, or -1.
+func _acting_member() -> int:
+	if state == State.COMBAT and actor_i >= 0 and actor_i < queue.size() \
+			and queue[actor_i]["kind"] == "p":
+		return int(queue[actor_i]["idx"])
+	return -1
+
+
+func _cast_spell(member_i: int, spell_id: int) -> void:
+	var spec: Dictionary = SPELL_EFFECTS.get(spell_id, {})
+	if spec.is_empty():
+		return
+	var m: Dictionary = PartyData.MEMBERS[member_i]
+	var level := int(m.get("levels", [1])[0])
+	var entry := {"spell": spell_id, "dur": int(spec["dur"]),
+		"ac": int(spec.get("ac", 0)), "dmg": int(spec.get("dmg", 0))}
+	if not active_effects.has(member_i):
+		active_effects[member_i] = []
+	active_effects[member_i].append(entry)
+	if int(spec.get("move", 0)) > 0:
+		party[member_i]["move"] = int(party[member_i].get("move", 0)) + int(spec["move"]) * level / 2
+	if bool(spec.get("debuff", false)) and not monsters.is_empty():
+		var mi := _nearest_mon()
+		if mi >= 0:
+			monsters[mi]["dir_last"] = -1
+			monsters[mi]["ac"] = int(monsters[mi]["ac"]) + level
+	var spin: Dictionary = InventoryScreen._db()["spins"].get(str(spell_id), {})
+	var label: String = str(spin.get("name", "The spell"))
+	MessageBox.flash($UI, "%s CAST" % label.to_upper())
+
 
 func _say_sequence(pages: Array, then: Callable) -> void:
 	var auto := 1.2 if OS.get_environment("SPIKE_DEMO") != "" else 0.0
 	var dlg := DialogScreen.new(pages, auto)
-	dlg.finished.connect(then)
 	_close_ui()
 	ui_screen = dlg
 	ui_layer.add_child(dlg)
 	ui_open = true
+	# the dialog self-frees on its last page: clear the modal flag, THEN
+	# run the follow-up (a fight start needs the flags already cleared)
+	dlg.finished.connect(func() -> void:
+		_close_ui()
+		if then.is_valid():
+			then.call_deferred())
 
 
 func _maybe_start_fight() -> void:
@@ -833,6 +902,14 @@ func _new_round() -> void:
 		mm["dir_last"] = -1
 	for pp in party:
 		pp["dir_last"] = -1
+	# active spell effects tick down and expire
+	for mi2 in active_effects:
+		var keep: Array = []
+		for fx in active_effects[mi2]:
+			fx["dur"] = int(fx["dur"]) - 1
+			if int(fx["dur"]) > 0 or int(fx["dur"]) == -1:
+				keep.append(fx)
+		active_effects[mi2] = keep
 	actor_i = -1
 	_next_actor()
 
@@ -1188,7 +1265,17 @@ func _scripted() -> void:
 		await _drain()
 		while ui_open:
 			await get_tree().process_frame
+		# QC: the token holder opens the USE picker and casts once
+		var cast_done := false
 		while state == State.COMBAT:
+			if not cast_done and attacks_left > 0 and phase == Phase.PARTY:
+				for pi in PartyData.MEMBERS.size():
+					var spells: Dictionary = PartyData.MEMBERS[pi].get("spells", {})
+					if not spells.is_empty():
+						_cast_spell(pi, int(spells.keys()[0]))
+						break
+				cast_done = true
+			await get_tree().process_frame
 			if phase == Phase.PARTY and attacks_left > 0:
 				var mi := _nearest_mon()
 				if mi >= 0 and _cheby(_party_tile(0), monsters[mi]["tile"]) <= 1:
