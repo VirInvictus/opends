@@ -1,8 +1,11 @@
-# ExamineStrip: WIND 15500, the item examine strip (111x87, bg 15000):
-# three arrow buttons (15301/15302/15303) cycle the selected member's
-# carried items, INFO (15304) opens the view-item screen 15502 for the
-# current item (screen-flow.md 8.3: the examine tracks the clicked
-# instance). Opened by right-clicking an occupied inventory cell.
+# ExamineStrip: WIND 15500, the item examine strip (111x87, bg 15000).
+# Engine truth (port-digs-2026-09-21.md): the three buttons are the
+# interact strip's talk/steal/give glyphs (15301/15303/15302, shared
+# handlers) and INFO 15304 toggles plate vs description; the engine
+# cycles nothing. The cycle-to-browse behaviour below is a port
+# affordance for opening the strip on a member's carried item, a
+# context the engine never uses; INFO opening the view-item screen
+# 15502 is likewise a port route onto a real engine surface.
 extends WindScreen
 class_name ExamineStrip
 

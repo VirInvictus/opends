@@ -102,9 +102,16 @@ landed 2026-09-21 (see the pits-parity pass section below).
    on the kill, grey puff on a miss) and the fight loop is proven in
    the QC movie, but the 0.7s splat window landed between capture
    samples; confirm visually in the next live demo run.
-9. Examine strip 15500: the middle arrow (15302) is mapped as cycle
-   forward pending the engine dispatcher dig (0x5EFC5 open); the RE
-   verdict lands in port-digs when mined.
+9. Examine strip 15500 dug (port-digs-2026-09-21.md): the three
+   buttons are the interact strip's talk/steal/give glyphs with
+   shared handlers, INFO toggles plate vs description, and the
+   capability mask is per-creature runtime permission lists; steal
+   is permission-gated with no thief roll on the path. The port's
+   cycle-to-browse mapping is a documented port affordance (the
+   engine never opens 15500 on a carried item); rebuilding it
+   engine-true (world-item examine with the capability mask) is
+   Brandon's call. Steal/give in the demo are a transfer-path job
+   (0x73725 take / 0x73C40 handoff), not a skill-check job.
 
 ## Covered by the third pass (2026-09-20 night)
 

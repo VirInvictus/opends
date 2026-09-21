@@ -278,8 +278,16 @@ worker 0x6ECFC; unequip strips granted effects via item +15 ->
 container cells refused. Party strip (or keys 1-4/SPACE) switches
 character and transfers a held item to that member (0x588:0x61/0x6B).
 Examine 15500 tracks the clicked instance via [0x360:0xC36+si*3]
-trio; INFO opens 15502, which reads the instance index directly
-(item +10 -> IT1R, effect byte +15, the 0x4a6a6/0x4a69e readouts).
+trio (state 1 item -> 15500, state 2 creature -> 3020). Its three
+glyph buttons are the interact strip's talk/steal/give, not arrows:
+the shared dispatcher at 0x5F2B7 (jump table 0x5F7F9) maps 15301 ->
+TALK 0x5F731, 15302 -> GIVE 0x5F754, 15303 -> STEAL 0x5F6BE, and
+INFO 15304 -> toggle item plate vs description list ([0x846],
+0x5F591); it does NOT open 15502 from here. 15502 still reads the
+instance index directly (item +10 -> IT1R, effect byte +15, the
+0x4a6a6/0x4a69e readouts) but its opener 0x8AF59 is reached from the
+inventory flow. Capability gating and the steal/give paths:
+port-digs-2026-09-21.md.
 
 Keyboard dispatcher 0x71153: 33-entry (tag<<8)|ascii table at
 0x71C1B: ESC, 1-4, SPACE, Q/W/S/G/H/M and more. Leftover debug cheat:
