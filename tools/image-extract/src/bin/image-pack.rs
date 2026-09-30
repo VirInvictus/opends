@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::Write;
+use std::io::{BufReader, Write};
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, anyhow};
@@ -67,7 +67,8 @@ fn main() -> Result<()> {
 /// is to use a PNG whose indices match the chunk's intended PAL /
 /// CPAL chunk in the GFF.
 fn read_png_indexed(path: &Path) -> Result<Frame> {
-    let file = File::open(path).with_context(|| format!("opening {}", path.display()))?;
+    let file =
+        BufReader::new(File::open(path).with_context(|| format!("opening {}", path.display()))?);
     let decoder = png::Decoder::new(file);
     let mut reader = decoder
         .read_info()
@@ -94,7 +95,16 @@ fn read_png_indexed(path: &Path) -> Result<Frame> {
     let height = u16::try_from(info.height)
         .map_err(|_| anyhow!("{}: height {} exceeds u16", path.display(), info.height))?;
 
-    let mut buf = vec![0u8; reader.output_buffer_size()];
+    // png 0.18: output_buffer_size is Option (None only when the output
+    // format is still ambiguous); an already-validated indexed 8-bit PNG
+    // always has a known size.
+    let mut buf = vec![
+        0u8;
+        reader.output_buffer_size().with_context(|| format!(
+            "sizing output buffer for {}",
+            path.display()
+        ))?
+    ];
     let out_info = reader
         .next_frame(&mut buf)
         .with_context(|| format!("reading PNG pixels of {}", path.display()))?;

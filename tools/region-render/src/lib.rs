@@ -1342,7 +1342,7 @@ mod tests {
             region
                 .write_png_frame_with_palette(&path, 0, &palette)
                 .unwrap();
-            let file = std::fs::File::open(&path).unwrap();
+            let file = std::io::BufReader::new(std::fs::File::open(&path).unwrap());
             let reader = png::Decoder::new(file).read_info().unwrap();
             assert_eq!(
                 reader.info().palette.as_deref(),
