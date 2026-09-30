@@ -46,3 +46,8 @@ __pycache__/
 # session's saves live under a per-save directory; the contents
 # are user-specific game state, not part of the repo.
 /tools/save-inspect/test-saves/
+
+# Port-spike live captures: screen recordings made by the audit's
+# capture rig for QC. User-specific artifacts, not redistributable
+# content; regenerate with the rig instead of committing.
+/port-spike/audit/videos/
