@@ -462,6 +462,37 @@ generate its spell table from ids 0..319 directly.
 
 `CHARSAVE.GFF` (the save file) is the same container with these chunks.
 
+### Kinds the corpus never ships (census 2026-10-06)
+
+The 21 kinds in format-coverage.md's documented-kinds-never-seen
+list were swept as TOC types, chunk-body markers, and whole-file
+magics across every held artifact (both GOG trees including saves,
+all archive-org trees and zip members; evidence:
+port-digs-2026-10-06.md 4). Verdict: none of them ever shipped as a
+GFF chunk kind. Three classes:
+
+- **Engine-known, never materialized**: `FVOC`, `STXT`, `CMAP` exist
+  as code constants inside DSUN.EXE (`push 'FVOC'`, `push 'STXT'`,
+  and the ILBM reader's `BMHD CMAP BODY` ASCII table) but no shipped
+  container carries any of them.
+- **Nested-marker only**: `FORM` appears exclusively as the IFF form
+  marker of XMI data embedded in *SEQ chunk bodies (file-formats.md
+  5), never as a TOC type.
+- **No trace anywhere** (no TOC type, no boundary marker, not even a
+  code constant in the binaries we hold): `BMAP`, `DADV`, `DBOX`,
+  `DRV`, `GFRE`, `GTOC`, `MENU`, `MGTL`, `MSEQ`, `OMAP`, `POBJ`,
+  `SAVE`, `SBAR`, `SINF`, `SJMP`, `TMAP`, `TXRF`. Every raw byte hit
+  for these classified as media payload, patch-entry filenames, or
+  unrelated strings (e.g. `MENU` = `MENUS.C` debug names, `SAVE` =
+  save-game format strings).
+
+No `.SAV`, `.XMI`, or `.SEQ` file exists anywhere under `.games/`
+(the engine's `SAVE%.2d.SAV` naming never shipped as files; the only
+sequence data is XMI inside *SEQ chunks). `dsun2_midi_files.zip`
+holds 35 plain standard-MIDI files (`MIDI/RESFL000.MID`..`034.MID`),
+not XMI: third-party exports matching the DJ.DAT slot count
+(35), useful future comparison material for DS2 music.
+
 ## 2. Schema versioning between DS1, DS2, and DSO
 
 The `RDFF` chunk type's note in libgff calls out per-game record-schema
@@ -632,11 +663,11 @@ tool.
 | File                  | Format                                          |
 |-----------------------|-------------------------------------------------|
 | `*.FLI`               | Autodesk Animator FLIC (used in DS2 cinematics) |
-| `MUSIC/Track*.ogg`    | Vorbis (GOG re-encode of original CD redbook)   |
+| `MUSIC/Track*.ogg`    | Vorbis (GOG re-encode of original CD redbook; Track02..41, 40 audio tracks) |
 | `*.VOC`               | Creative Voice (PCM digital sound)              |
-| `GM1.BNK`, `GM2.BNK`  | Roland sound banks (DS1)                        |
-| `STDPATCH.AD`         | AdLib FM patch table                            |
-| `*.INI`               | Plain DOS INI                                   |
+| `GM1.BNK`, `GM2.BNK`  | Aria MIDI patch banks for MIDITSR.EXE (DS1 only; corrected 2026-10-06, not Roland) |
+| `STDPATCH.AD`         | AdLib FM standard patch table (both games)      |
+| `*.INI`               | Plain DOS INI (UltraMID GUS patch-assignment tables) |
 | `*.BAT`               | DOS batch (launch scripts)                      |
 | `game.gog` (DS2)      | CD-ROM image, Mode 2/2352 data track            |
 | `game.ins` (DS2)      | CD cuesheet referencing the OGG music tracks    |
@@ -644,6 +675,54 @@ tool.
 
 `*.FLI` is well-documented (Autodesk Animator FLIC); existing Rust crates
 like `flic` may suffice. `*.VOC` is Creative's spec, also well-known.
+
+### Measured identifications (2026-10-06 census; evidence in port-digs-2026-10-06.md 4)
+
+- **DJ.DAT** (231 B): DS2's music cue table, fully decoded in
+  audio-routing.md 1 (38 six-byte records + header + trailer);
+  byte-identical from floppy 1.0 through GOG 1.10.
+- **ITEMS.BIN** (936 B): exactly 234 little-endian u16 pairs, both
+  columns from one id space (603..31990) in long consecutive runs,
+  unchanged floppy through GOG. Most plausible reading: an item-id
+  cross-reference for the character-transfer path (CHARTRAN.EXE);
+  the literal name appears in no EXE, so exact semantics stay open.
+- **game.gog / game.ins**: raw MODE2/2352 image of the Wake of the
+  Ravager data track (ISO9660, volume `WAKE1_0`, 46,400 sectors,
+  90.7 MiB, no audio inside). game.ins maps TRACK 01 to game.gog and
+  audio tracks 02..41 to `MUSIC/TrackNN.ogg` (GOG's script labels
+  the OGGs with the token `MP3`; every file is Ogg Vorbis).
+- **PATCH.RTP family** (magic u32 `0x00C82A4B`): SSI's WERKS/RTPatch
+  1.1x packages; space-padded DOS filenames in the entry table.
+  GOG's CD package patches `CHARSAVE.GFF`; the dk11 disk package
+  patches `DSUN.EXE` only; `patch-wake3511/payload.arj` carries an
+  ARJ signature but does not parse (opaque blob; the record says its
+  payload targets DSUN.EXE only).
+- **STDPATCH.AD** (4,662 B, both games; DS1 and DS2 differ in blob
+  content only): u16 pad + u16 1400 (data-area offset); directory of
+  232 six-byte records (u16 blob offset, u16 0, u16 key) at 6..1397,
+  keys 1..127 = GM melodic programs, then `0x7Fnn` keys = GM
+  percussion notes; 0xFFFF sentinel; data area = 233 timbre blobs of
+  14 bytes (u16 14 + 12 bytes of OPL2 register dump). 175 GM timbres
+  inside the 233. The `stdpatch` string sits in both DSUN.EXEs.
+- **GM1.BNK / GM2.BNK** (DS1 only, ~24 KB each): Aria MIDI patch
+  banks consumed by MIDITSR.EXE per SOUND.BAT (`lh miditsr gm2.bnk
+  /I`). Header: byte0 = 2, byte1 = 175 (= the GM instrument count,
+  matching STDPATCH.AD's GM set; hypothesis), u16 area/directory
+  offsets, then an increasing u16 offset table with 0 for unused
+  slots. Not Roland; the old table row said Roland.
+- **SSI1.INI / UM200.INI / UM206.INI / UM206A.INI** (DS1 only):
+  UltraMID (Gravis UltraSound) patch-assignment tables, 200 lines of
+  `Patch #, 256K, 512K, 768K, 1024K, Patch Name`; SOUND.BAT copies
+  the one matching the detected GUS patch-set revision over
+  ssi1.ini. Quirk: the GOG tree's SSI1.INI is the stale 06/22/93
+  revision (UM200 07/26/93 remaps rows onto the newer library;
+  UM206/UM206A rename three patches the launcher probes for).
+- **MIDITSR.EXE** (DS1): Media Vision Aria MIDI TSR (plain MZ, aria
+  strings). **GRAVIS.EXE** (DS1): LZ91-packed Gravis UltraSound
+  detector run by DARKSUN.BAT purely for its errorlevel.
+- **1.FLI..5.FLI** (DS2): vanilla FLIC 1.x (`AF11`), 320x200x8;
+  frames 1175/373/575/284/1398, speed 7/7/7/7/5 (1/70 s ticks), the
+  DS2 intro/outro cinematics.
 
 ## 5. XMI specifics
 
@@ -727,6 +806,17 @@ digital-sample ids are 1-based while DS2's start at 0; audio-routing.md
 3's DS2 rule (sound id N -> BVOC id N+1) would leave BVOC 0
 unreferenced by any sound id, so either 0 is a reserved slot or the
 routing rule has a one-off edge: not settled here.
+
+### BVOC payload structure (verified 2026-10-06, all 815 corpus chunks)
+
+Every BVOC payload is a complete Creative Voice File: the 26-byte
+header (`Creative Voice File\x1a`, data offset 26), then exactly one
+type-1 sound-data block (SR byte 131 = 8000 Hz, pack byte 0 = 8-bit
+unsigned PCM, mono) and the type-0 terminator. Two chunks across the
+GOG pairs additionally carry a type-6/type-7 repeat-start/end pair.
+All 815 chunks decode cleanly (audio-extract 0.1.0; 1386.9 s of
+audio total). No type-3 silence, type-9 new-format, or extended
+blocks appear anywhere in the corpus.
 
 ## 6. Open questions
 

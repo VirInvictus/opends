@@ -16,7 +16,7 @@ section 6.
 | STATE 0x3972 +0x8a6 + slot*19 | the ORDER record: x@+0x8a6, y@+0x8a8, kind@+0x8aa (byte; may be stored NEGATED to flag a variant) |
 | STATE +0x366 + slot*28 | the ANIM record: direction-queue bytes +0x00..0x0f (0..7 compass, 0xff terminator), queue index +0x10, facing +0x11, target tile +0x12/+0x14, path-start +0x16/+0x18, counter +0x1a |
 | STATE +0xc36 | 320 x 3-byte slot table (0 empty, 1 party, 2 active) |
-| GSTATE 0x377e +0x19 | combat-active word; +0x5/+0x7/+0x9/+0xb/+0xd/+0x11 = runtime-installed per-object sprite/trigger driver fn ptrs |
+| GSTATE 0x377e +0x19 | combat-active word; +0x5/+0x7/+0x9/+0xb = trigger-table list heads (tile and box triggers); +0xd/+0xf/+0x11/+0x13/+0x15/+0x17 = entity-trigger list heads (PickupItem/TalkTo/Attack/Look/Use/UseWith) — list head indices, not fn ptrs (corrected 2026-10-06, port-digs-2026-10-06.md 3) |
 | VM 0x3781 0x363..0x369 | current-object registers; 0x369 = leader/active member |
 | DGROUP [0x1178]/[0x117a] | viewport x/y pixel scroll offsets (320x200 window) |
 | DGROUP [0x117c] | CURRENT REGION ID (identifies dsun-exe-re.md 3.3's ==42 guard as "region 42") |
