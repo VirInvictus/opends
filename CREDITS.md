@@ -109,6 +109,21 @@ comments next to the relevant code.
   placement, ETAB decode, mirror compositing (per-line citations
   in code)
 
+## XMI sequence format (file-formats.md 5, audio-extract)
+
+| Feature | Upstream | License |
+|---------|----------|---------|
+| XMI container hierarchy (FORM XDIR { INFO } CAT XMID { FORM XMID { TIMB, RBRN, EVNT } }) and chunk walking | `JohnGlassmyer/dsun_music` `xmi-tool/src/main/java/net/johnglassmyer/dsun/xmi_tool/XmiTool.java` | MIT |
+| XMIDI controller semantics (0x73 IndirectControl, 0x74 FOR, 0x75 NEXT, 0x77 Callback, 0x78 Sequence Branch Index) | `XmiTool.java` lines 106-127 (controller enum) | MIT |
+| RBRN count is little-endian | `XmiTool.java` lines 230-231 ("RBRN Sequence Branch count") | MIT |
+| XMI delta-time encoding (runs of < 0x80 bytes summed; note-on VLQ duration after velocity) | `dsoageofheroes/libgff` `ext/xmi2mid.c` `GetVLQ2` (line 599) + `ConvertFiletoList` (line 783) | MIT |
+| xmi2mid skips every non-EVNT chunk (branch tables are invisible to a straight conversion) | `ext/xmi2mid.c` `ExtractTracksFromXmi` (line 950) | MIT |
+
+**OpenDS work that extends the above (not ported, ours):**
+- The RBRN (LE u16 id, LE u32 tick) entry decode and the DS1
+  adaptive-music usage picture (controller 0x78 counts matching RBRN
+  entries, Mel library as the follower), docs/port-digs-2026-10-06.md 2
+
 ## Influences (read but not yet ported)
 
 - **`dsoageofheroes/libsoloscuro`**: DS-specific rules engine

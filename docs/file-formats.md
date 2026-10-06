@@ -647,18 +647,59 @@ like `flic` may suffice. `*.VOC` is Creative's spec, also well-known.
 
 ## 5. XMI specifics
 
-XMI ("eXtended MIDI") is John Miles' own MIDI dialect. Notable points:
+XMI ("eXtended MIDI") is John Miles' own MIDI dialect. Notable
+points, verified 2026-10-06 against the full corpus (evidence:
+port-digs-2026-10-06.md 2):
 
-- Uses **two** delta-time bytes per event (not standard MIDI's variable
-  length), interpreted as 1/120 second ticks.
-- Includes a `TIMB` ("timbre list") chunk per song: which MT-32 patches
-  the song wants pre-loaded.
-- Includes RBRN ("RhythmTRack" or similar: needs verification) chunks
-  for branch points (used by adaptive music).
+- Delta times are runs of bytes < 0x80 summed until the next status
+  byte (zero deltas are simply omitted), at 1/120 second ticks;
+  note-ons carry note, velocity, then a VLQ duration. (The older
+  claim here, "two delta-time bytes per event", was wrong for this
+  corpus.)
+- Includes a `TIMB` ("timbre list") chunk per song: LE u16 patch
+  count, then (patch, bank) pairs: which MT-32 patches the song
+  wants pre-loaded. GSEQ/LSEQ only; PSEQ never carries TIMB.
+- Includes RBRN chunks (the branch-point table for adaptive music;
+  acronym expansion unconfirmed): LE u16 count, then per entry
+  (LE u16 branch id, LE u32 tick), ids sequential from 1, ticks
+  increasing 120 Hz positions in the EVNT stream.
+
+### Sequence chunk layout (verified 2026-10-06)
+
+Every *SEQ payload (GSEQ, LSEQ, PSEQ, CSEQ, FSEQ) walks as:
+
+```
+FORM "XDIR"              IFF sizes big-endian
+  INFO (size 2)          LE u16 sequence count, always 1
+  CAT "XMID"
+    FORM "XMID"
+      [TIMB]             GSEQ/LSEQ only
+      [RBRN]             tracks with branch points
+      EVNT               always present, always last
+```
+
+Playback follows the branches. The engine's Mel library ("Mel Real
+Mode Version 2.0.9b" string in DSUN.EXE at file 0x4c76c; branch
+functions `MelBranchTo` / `MelBreakLoopAndBranchTo` and state
+`gMelCurrentBranch` / `gMelIndirectControlArray` in the DSO symbol
+dump) wraps branched songs in XMIDI controller loops (0x74 FOR /
+0x75 NEXT) and selects a loop-wrap point with controller 0x78
+(Sequence Branch Index); every branched track's EVNT carries exactly
+one 0x78 event per RBRN entry, values matching the ids. Controllers
+0x73 / 0x77 (Indirect Control / Callback) are engine polls. The
+sound drivers never see chunk names: Mel parses the forms itself.
+
+DS1 ships this live: 63 RBRN chunks in RESOURCE.GFF (one per
+sequence kind for each track 1..23 except the short cues 7 and 17;
+none in the four CINE.GFF themes or the CSEQ clock). DS2 content
+ships none: the floppy RESFLOP.GFF XMIs are TIMB+EVNT only and the
+GOG build's music is redbook CD audio, though the DS2-lineage engine
+retains the branch machinery.
 
 Conversion to standard MIDI is implemented by the public-domain
-`xmi2mid` (libgff bundles it). OpenDS will port this rather than depend
-on a runtime library.
+`xmi2mid` (libgff bundles it; it skips every non-EVNT chunk, so a
+straight port flattens the adaptive loops). OpenDS will port it and
+add branch-aware handling rather than depend on a runtime library.
 
 The same XMI source is rendered into per-driver chunks (PSEQ/FSEQ/LSEQ/
 GSEQ) at content-build time: i.e., the driver-specific re-renders are
