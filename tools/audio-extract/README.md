@@ -51,8 +51,17 @@ is routing, not format: see `docs/audio-routing.md`. VOC block
 semantics are the standard Creative Voice File layout; repeat blocks
 expand with a bounded cap recorded in the inventory.
 
-Sequence-to-MIDI conversion (XMI: two-byte delta times, TIMB, RBRN)
-is a separate future tool; this one only opens the boxes. Every
+## Scripts
+
+- `scripts/audio-cue-sweep.py`: sweeps `gpl-disasm --json` output for
+  every `gpl sound` (0x5D) and `gpl music` (0x5F) instruction with
+  its operand and inline-string context. Produces the cue evidence
+  `docs/audio-cues.md` is written from. Requires a built gpl-disasm
+  (`cargo build -p gpl-disasm`).
+
+Sequence-to-MIDI conversion (XMI: delta times as runs of < 0x80
+bytes summed, TIMB timbre lists, RBRN branch tables) is a separate
+future tool; this one only opens the boxes. Every
 sequence payload observed in the corpus is a `FORM/XDIR` directory
 (the XMI directory form wrapping `CAT/XMID` song forms); the
 inventory records the magic rather than assuming it.

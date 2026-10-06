@@ -22,7 +22,12 @@ is that release's entry here, verbatim (see `docs/versioning.md`).
   plus FSEQ 1..19 in RESFLOP.GFF while the GOG CD build replaced
   both with redbook OGGs; the corpus holds 1386.9 seconds of digital
   audio across 815 samples, all decoding cleanly to 8000 Hz 8-bit
-  mono WAV.
+  mono WAV. Alongside it, `scripts/audio-cue-sweep.py` sweeps
+  `gpl-disasm --json` output for every `gpl sound` / `gpl music`
+  instruction with its operand and the calling script's inline
+  strings: the cue evidence docs/audio-cues.md is written from
+  (251 DS1 and 433 DS2 script call sites; `gpl music` confirmed
+  never emitted).
 
 - **release packaging**: `tools/build-release.sh` ships: the zip
   builder promised in `docs/patch-workflow.md` §7 since Phase 6.
