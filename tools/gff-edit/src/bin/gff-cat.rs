@@ -70,7 +70,14 @@ const KIND_CATALOGUE: &[(&[u8; 4], &str)] = &[
         "Record data; distinct schemas per game (DS1/DS2/DSO) for item, combat, char, mini, player, entity records.",
     ),
     (b"FNFO", "Object data table."),
-    (b"RDAT", "Names."),
+    (
+        b"RDAT",
+        "Per-region binary config (u16 pairs; not names; corrected 2026-09-05).",
+    ),
+    (
+        b"DATA",
+        "DS2 spell-system data: 320 spell records + 3 aux tables (documented 2026-10-06).",
+    ),
     (b"NAME", "Names."),
     (b"TEXT", "Generic text resources."),
     (b"MERR", "Error messages."),
@@ -79,6 +86,7 @@ const KIND_CATALOGUE: &[(&[u8; 4], &str)] = &[
     (b"SCMD", "Animation script command table."),
     (b"SJMP", "Animation script jump table."),
     (b"POBJ", "Polymesh object database."),
+    (b"RNME", "Region name (per-region; DS2 only)."),
     // Scripting
     (b"GPL ", "Compiled GPL bytecode."),
     (b"MAS ", "Compiled GPL master script."),

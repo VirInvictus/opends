@@ -6,6 +6,16 @@ is that release's entry here, verbatim (see `docs/versioning.md`).
 
 ## Unreleased
 
+- **gff-edit 0.6.1**: the chunk-kind catalogue grows by the two
+  kinds whose docs have landed: `DATA` (the DS2 spell-system data
+  file, documented 2026-10-06) and `RNME` (region name, documented
+  2026-09-05), and the `RDAT` description is corrected to match the
+  docs (per-region binary config, not names). No parsing changes;
+  the whole suite passes. This is the completion-bar mechanism of
+  the mineout push at work: registering documented kinds moves them
+  out of format-coverage's undocumented gap list (now 8 kinds, from
+  10).
+
 - **audio-extract 0.1.0**: the audio frontier opens (mineout Phase A
   deliverable 1, the first new tool of the mining-completion push).
   It parses a GFF container's TOC (indexed and segmented chunk lists,
