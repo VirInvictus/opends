@@ -226,6 +226,8 @@ Source: libgff's `gfftypes.h`. Categorized for readability.
 | `CBMP`  | Color bitmap                                     |
 | `FONT`  | Font (uses palette)                              |
 | `BMA `  | Cinematic binary file                            |
+| `CMAT`  | BMA-codec still container, DS1 only (see the CMAT section) |
+| `CPAL`  | Per-still palette for CMAT, DS1 only (see the CPAL section) |
 | `ACF `  | Cinematic binary script                          |
 
 Frame layout, palette indexing, RLE encoding (if any): to be confirmed
@@ -238,6 +240,7 @@ during `opends-image` implementation against libgff's `gff_image*.c`.
 | `RMAP` | Region tile map (DS1, also `MAP ` with trailing space)    |
 | `MAP ` | Region tile map (DS2; same layout as `RMAP`)              |
 | `GMAP` | Region map flags (wall index + passability/flag bits)     |
+| `VECT` | 256-direction unit circle (see the VECT section below)    |
 | `ETAB` | Object entry table (entities placed in region)            |
 | `OJFF` | Object definition (used by ETAB to resolve sprite bitmaps)|
 | `WALL` | Wall sprite bitmap (referenced by GMAP wall index)        |
@@ -275,6 +278,17 @@ treated as "no tile here." The reference Java tool throws NPE in
 that case; `region-render` v0.1 fills the affected 16x16 cell
 with palette index 0 (typically pure black or transparent on the
 DS palettes) and counts the misses for the summary.
+
+Byte-verified 2026-10-06 across all 60 shipped chunks (20 DS2
+regions x GOG/floppy/HotU; cd10 ships no region GFFs): every cell
+of every MAP is a TILE id that exists in the same file, the payload
+is identical across all three release lineages, and no cell equals
+the GMAP byte or wall index at the same offset (an independent
+layer, as documented). In shipped DS2 data the missing-tile fallback
+never fires (every region's minimum cell is 1; the blank 16x16 TILE
+0 is never referenced). The DS2 region loader requests the layer by
+name: `push 'MAP '` at DS2 DSUN.EXE 0x2b7bc, in the same block as
+`push 'RMAP'` and `push 'GMAP'`.
 
 ##### `GMAP` (wall + flags grid)
 
@@ -492,6 +506,47 @@ sequence data is XMI inside *SEQ chunks). `dsun2_midi_files.zip`
 holds 35 plain standard-MIDI files (`MIDI/RESFL000.MID`..`034.MID`),
 not XMI: third-party exports matching the DJ.DAT slot count
 (35), useful future comparison material for DS2 music.
+
+### VECT (256-direction unit circle)
+
+Decoded 2026-10-06 (evidence in `port-digs-2026-10-06.md` 5). One
+1024-byte chunk, id 1, in DS1 `RESOURCE.GFF` and the DS2
+`RESOURCE.GFF`/`RESFLOP.GFF` lineage; all five corpus payloads are
+byte-identical. Layout: 256 records of (LE i16 x, LE i16 y). Entry
+k is the direction k/256 of a full turn (1.40625 degrees per step,
+clockwise, k=0 = up / screen -y) at radius 256:
+`x = trunc(256 * sin)`, `y = -trunc(256 * cos)`. The formula matches
+254/256 entries exactly; the k=128 and k=192 axis entries are one
+less than exact (the generating trig undershot). Both engines load
+it with `push 1; push 'VECT'` (DS1 DSUN.EXE 0x60874, DS2 0x64c9e):
+it is the direction-to-step-delta table for the engine's 256-angle
+convention. Whether the caller applies it to movement or aiming is
+open (a pass over the 0x60874 caller would settle it).
+
+### CMAT (BMA-codec still container, DS1 only)
+
+Decoded 2026-10-06. Two chunks in DS1 `RESOURCE.GFF` only: id 200
+(41,368 B) and id 300 (21,643 B). Despite the name, the payload is
+not a matrix: it is the standard bitmap container (u32 size ==
+chunk length, u16 frame_count = 1, u32 offset table) holding a
+single frame of the BMA codec (`cinematics-ds1.md` 1), the same
+family as the CINE stills. CMAT 200 is 320x200 and covers all 200
+rows; CMAT 300 is 318x198 (a 1-pixel inset). Both walks terminate
+with the frame's 0xFF on the payload's final byte, zero RLE/span
+mismatches. Engine: DS1 DSUN.EXE pushes 'CMAT' and 'CPAL' in the
+same function (0x56ad5 / 0x56af2); DS2's EXE never references
+either. Each chunk pairs with the same-id `CPAL` palette. What the
+two stills depict is open (render against CPAL, or read the caller).
+
+### CPAL (per-still palette, DS1 only)
+
+Two 768-byte chunks in DS1 `RESOURCE.GFF`, ids 200 and 300, pairing
+with the same-id CMAT stills. Format is exactly `PAL `: 256 entries
+of 6-bit R,G,B (all bytes <= 0x3F; entry 0 black, entry 255 white),
+so `Palette::from_bytes` decodes either. The content is distinct
+per-still art: 751/768 bytes differ from PAL 1000 and 719/768 from
+each other; CMAT 200's all-index-1 background is CPAL 200's entry 1
+(a dark maroon), confirming the pairing. DS2 never references CPAL.
 
 ## 2. Schema versioning between DS1, DS2, and DSO
 
