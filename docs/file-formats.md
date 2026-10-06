@@ -378,6 +378,7 @@ negative; this prose now says so too.
 |        | minis, templates; full layouts in `object-formats.md`)     |
 | `FNFO` | Object data table                                          |
 | `RDAT` | Per-region binary config (u16 pairs; NOT names, corrected 2026-09-05) |
+| `DATA` | DS2 spell-system data: 320 spell records + 3 aux tables (see the DATA section below) |
 | `NAME` | Names                                                      |
 | `TEXT` | Generic text resources                                     |
 | `MERR` | Error messages                                             |
@@ -414,6 +415,29 @@ matching its use as the same-region tport marker's neighbour.
 DS1's region files predate RNME entirely (their type list is
 GFFI/ETAB/GMAP/RMAP/TILE: no MAP, no PAL, no RNME: the DS1 palette
 comes from the RESOURCE fallback and the name chunk is absent).
+
+### DATA (DS2 spell-system data)
+
+Documented 2026-10-06 (mineout wave 1; evidence and the release-
+lineage comparison in `port-digs-2026-10-06.md` 1). DATA exists only
+in DS2's RESOURCE.GFF lineage (GOG `RESOURCE.GFF` plus `RESFLOP.GFF`
+in the floppy/HotU/cd10 trees; payload byte-identical across the
+archive copies, GOG 1.10 differing by exactly 5 bytes). No DS1 file
+carries DATA; DS1's RESOURCE.GFF fills the same slot with `RDAT`
+(45 chunks). Always a segmented type with runs `[(0,320),(1000,3)]`.
+
+| ids | count | size | content |
+|-----|-------|------|---------|
+| 0..319 | 320 | 73 B each | Spell records: bytes 0..31 binary descriptor (undecoded, open), 32..63 NUL-padded 32-char long name, 64..72 NUL-padded 9-char short name. Names are the DS2 spell list; ids 269..319 are `MONS269`..`MONS319` placeholders (summoned monsters as spells) |
+| 1000 | 1 | 320 B | 8 rows x 20 LE u16, monotonic-from-0 ramps (read: per-class level-up XP tables; rows 3 and 5 keep non-monotonic steps in 1.10) |
+| 1001 | 1 | 576 B | Sparse flag bytes, two self-similar halves (no clean record width; open) |
+| 1002 | 1 | 168 B | 21 (u32, u32) pairs, lane 1 round XP-like values, lane 2 = 1 then 50..69 (open) |
+
+The GOG 1.10 copy's 5-byte difference against every archive copy is
+the official patch's data-table work: id 155 (`PRAYER`) descriptor
+byte 1 `0x00 -> 0x14`, and id 1000 row 6 two steps `14000 -> 24000`,
+`17000 -> 27000` (repairing a broken +3000 progression). A port can
+generate its spell table from ids 0..319 directly.
 
 #### Scripting (the GPL VM, see `gpl-bytecode.md`)
 
@@ -640,6 +664,28 @@ The same XMI source is rendered into per-driver chunks (PSEQ/FSEQ/LSEQ/
 GSEQ) at content-build time: i.e., the driver-specific re-renders are
 authored, not synthesized live. Each chunk contains the same musical
 content adapted to the target hardware's timbre map.
+
+### Measured presence (2026-10-06, audio-extract over all 120 corpus containers)
+
+Totals across the corpus: BVOC 815 chunks (11.5 MiB, 1386.9 s decoded
+audio), GSEQ 63, FSEQ 34, LSEQ 27, PSEQ 27, CSEQ 6. Every *SEQ
+payload observed (all 157) is a `FORM/XDIR` XMI directory wrapping
+`CAT/XMID` song forms; CSEQ is the same directory shape at ~75 bytes.
+Every BVOC decoded is 8000 Hz 8-bit mono PCM.
+
+| container | sequence chunks | digital samples | note |
+|---|---|---|---|
+| DS1 `RESOURCE.GFF` | GSEQ/LSEQ/PSEQ ids 1..23 (23 each) + CSEQ 1000 | BVOC ids 1..130, 111 present (260.5 s) | no MSEQ, no FSEQ, no FVOC anywhere in DS1 |
+| DS1 `CINE.GFF` | GSEQ/LSEQ/PSEQ ids 26..29 + CSEQ 1000 | - | cinematic themes |
+| DS2 GOG `RESOURCE.GFF` | CSEQ 1000 only | BVOC ids 0..231, 177 present (284.5 s) | music is CD redbook (audio-routing.md 1); no sequence chunks at all |
+| DS2 floppy/HotU `RESFLOP.GFF` | GSEQ ids 1..20 (18 present) + FSEQ ids 1..19 (17 present) + CSEQ 1000 | BVOC ids 0..231, 175 present (278.7 s) | the floppy line's MIDI music; replaced by redbook on CD |
+
+MSEQ is the only audio kind never seen in any held artifact (the
+documented-kinds-never-seen list in format-coverage.md). Note DS1's
+digital-sample ids are 1-based while DS2's start at 0; audio-routing.md
+3's DS2 rule (sound id N -> BVOC id N+1) would leave BVOC 0
+unreferenced by any sound id, so either 0 is a reserved slot or the
+routing rule has a one-off edge: not settled here.
 
 ## 6. Open questions
 
