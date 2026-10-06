@@ -191,6 +191,21 @@ file previously suggested finds nothing. DGROUP is read from the
 entry point's `mov dx, imm16` (DS1 `0x4356`, DS2 `0x47e0`).
 `tools/ovr-map/scripts/xref-string.py` automates all of it.
 
+**Coverage snapshot (2026-10-06, mineout wave 2).** `symbols.txt`
+holds 3,527 `f` entries (3,530 sometimes quoted in older notes; the
+measured count is 3,527). Our side: `syms/ds2.toml` names 132 DS2
+locations (125 verified), of which 3 carry `dso_source`, all three
+names confirmed present in the DSO table; `syms/ds1.toml` names 142
+DS1 locations, none DSO-sourced (DSO inherits the Wake of the
+Ravager codebase, so its names do not transfer to Shattered Lands;
+the 2026-10-06 trigger-plumbing rows there are descriptive, grounded
+in port-digs-2026-10-06.md 3). The RBRN dig's Mel names
+(`MelBranchTo`, `MelBreakLoopAndBranchTo`, `gMelCurrentBranch`,
+`gMelIndirectControlArray`, per port-digs-2026-10-06.md 2) are
+cited at DSO offsets only; adopting them into `syms/ds2.toml`
+requires the verification process below and is the natural next
+adoption batch.
+
 ## Process for adding a row
 
 1. Find the candidate in `.dso-online/tools/symbols.txt`.

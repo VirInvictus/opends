@@ -1134,3 +1134,105 @@ offset = 0xa672
 confidence = "verified"
 evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x80, base 0x97d0 (reloc-confirmed)"
 notes = "The GPL VM handler for opcode 0x80 (GetRange). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
+
+# 2026-10-06 mineout wave 1: the capability/trigger plumbing, from
+# docs/port-digs-2026-10-06.md 3 (writer side) and
+# docs/port-digs-2026-09-21.md 2 (consumer side). DS1 has no DSO
+# counterpart (DSO inherits the DS2-lineage codebase), so all names
+# here are descriptive, grounded in the cited digs.
+
+[[function]]
+name = "capability_mask_build"
+segment = "resident"
+offset = 0x967a
+confidence = "verified"
+evidence = "docs/port-digs-2026-09-21.md 2: maps an instance to a creature id, then ORs a capability bit per trigger-list membership (six head cells at GSTATE +0xd..+0x17); called from the examine-opener wrapper 0x5ECD0"
+notes = "The consumer side of steal/talk/give availability. Returns flags A; item-side flags B is 0x5F8FD."
+
+[[function]]
+name = "capability_list_walk"
+segment = "resident"
+offset = 0x9720
+confidence = "verified"
+evidence = "docs/port-digs-2026-09-21.md 2: 13-byte records via far pointer [0x4356]:[0x42cc], chain link +0xB (0xFFFF terminates), match on record+4 (+6 for the usewith head), imul stride 13 at entry"
+notes = "Walks one trigger list for a creature id; the capability bits fall out of its return."
+
+[[function]]
+name = "run_gpl_script"
+segment = "resident"
+offset = 0x97d1
+confidence = "verified"
+evidence = "docs/port-digs-2026-10-06.md 3: gated on [MISC(0x377c):0xb]==2; the session-init call at 0x52FFD (ovr0 entry[0]) runs chunk 99 type 2 through it"
+notes = "The GPL script entry service. Registrations made while running chunk 99 type 2 are persistent (record +6 flag)."
+
+[[function]]
+name = "gpl_executor"
+segment = "resident"
+offset = 0x9ac3
+confidence = "verified"
+evidence = "docs/port-digs-2026-10-06.md 3: writes the current (chunk, type) into MISC+0x12/+0x14 (0x9C3A mov [es:0x12],si; 0x9C44 mov [es:0x14],di), then reaches the opcode dispatch"
+notes = "The bytecode interpreter loop. The MISC stamp is what makes chunk-99 registrations persistent."
+
+[[function]]
+name = "gpl_opcode_dispatch"
+segment = "resident"
+offset = 0x99c5
+confidence = "verified"
+evidence = "docs/port-digs-2026-10-06.md 3: `call near [bx+0xc0]` - the same DGROUP:0xc0, 129-entry handler table the gpl_handler_* rows resolve through"
+notes = "Dispatches one opcode to its handler."
+
+[[function]]
+name = "trigger_insert"
+segment = "resident"
+offset = 0xcd25
+confidence = "verified"
+evidence = "docs/port-digs-2026-10-06.md 3: single-key sorted insert, key = record+4 (creature id), replace-on-match copies 7 bytes via helper 0x5852; called by the five single-key trigger handlers with (0x377e, headoffset)"
+notes = "PickupItem/TalkTo/Attack/Look/Use registrations land here."
+
+[[function]]
+name = "trigger_insert_twokey"
+segment = "resident"
+offset = 0xcc71
+confidence = "verified"
+evidence = "docs/port-digs-2026-10-06.md 3: two-key sorted insert (keys +4 then +6, cmp ax,[bp+0xc] 0xCCC7 / cmp ax,[bp+0xe] 0xCCE9); the UseWith handler 0xBA5A calls it"
+notes = "UseWith registrations only; the second key is the second creature id."
+
+[[function]]
+name = "trigger_list_link"
+segment = "resident"
+offset = 0xcfab
+confidence = "verified"
+evidence = "docs/port-digs-2026-10-06.md 3: on empty list `call 0xcfff; mov [es:bx],ax` (0xCFC6-0xCFCC); else table[new].+0xB = old; *cell = new (0xCFF2/0xCFF9)"
+notes = "The head-index writer for all ten trigger lists."
+
+[[function]]
+name = "trigger_record_alloc"
+segment = "resident"
+offset = 0xcfff
+confidence = "verified"
+evidence = "docs/port-digs-2026-10-06.md 3: pops the free-list head at [VM(0x3781):0x32d], threads through +0xB (0xD03A, 0xD049); no heap call at insert time"
+notes = "Records come from the one far-heap pool allocated at session init (ovr0 entry[0])."
+
+[[function]]
+name = "trigger_list_remove_head"
+segment = "resident"
+offset = 0x9616
+confidence = "verified"
+evidence = "docs/port-digs-2026-10-06.md 3: *cell = record[+0xB] (0x9646-0x964D), freed record pushed onto the free list (0x9669-0x9672)"
+notes = "Unregister path; the freed slot returns to the allocator."
+
+[[function]]
+name = "trigger_flush_nonpersistent"
+segment = "resident"
+offset = 0x8ecb
+confidence = "verified"
+evidence = "docs/port-digs-2026-10-06.md 3: removes head records while byte [record+6] == 0 (0x8EF8), keeps flag-1 (chunk-99) records, recurses (0x8F2D)"
+notes = "The persistence filter applied per list at region change."
+
+[[function]]
+name = "trigger_table_flush"
+segment = "resident"
+offset = 0x8dd0
+confidence = "verified"
+evidence = "docs/port-digs-2026-10-06.md 3: empties area lists +5/+7/+9/+0xB entirely (0x8DFC-0x8E64), then filters the six entity lists via 0x8ECB/0x8F36 (0x8E66-0x8EA2); called at 0x6968F in the region-change path (ovr21 entry[24])"
+notes = "The only function that clears the trigger table wholesale; guard [MISC:0xb]==2."
