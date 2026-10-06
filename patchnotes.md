@@ -6,6 +6,24 @@ is that release's entry here, verbatim (see `docs/versioning.md`).
 
 ## Unreleased
 
+- **audio-extract 0.1.0**: the audio frontier opens (mineout Phase A
+  deliverable 1, the first new tool of the mining-completion push).
+  It parses a GFF container's TOC (indexed and segmented chunk lists,
+  mirroring gff-edit's parser) and dumps the audio chunk kinds: BVOC/
+  FVOC decode to WAV through a Creative Voice block decoder, the
+  *SEQ family dumps verbatim, and an inventory JSON records ids,
+  offsets, sizes, sample rates, and durations. Its synthetic-GFF
+  selftest needs no game files; `--selftest-corpus` asserts the
+  measured DS1 invariants (skips without `.games/`). First full run
+  reconciled every 2026-09-04 coverage number exactly (815 BVOC, 63
+  GSEQ, 27 LSEQ, 27 PSEQ, 6 CSEQ, 34 FSEQ across 120 containers) and
+  added new facts: every sequence payload is a `FORM/XDIR` XMI
+  directory; DS2's floppy release carries its music as GSEQ 1..20
+  plus FSEQ 1..19 in RESFLOP.GFF while the GOG CD build replaced
+  both with redbook OGGs; the corpus holds 1386.9 seconds of digital
+  audio across 815 samples, all decoding cleanly to 8000 Hz 8-bit
+  mono WAV.
+
 - **release packaging**: `tools/build-release.sh` ships: the zip
   builder promised in `docs/patch-workflow.md` §7 since Phase 6.
   It stages the flattened tree spec.md §4 defines (manifest.toml,
