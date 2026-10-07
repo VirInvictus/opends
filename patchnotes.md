@@ -6,6 +6,14 @@ is that release's entry here, verbatim (see `docs/versioning.md`).
 
 ## Unreleased
 
+- **gff-edit 0.6.2**: four more corpus kinds register as their docs
+  landed (mineout wave 2): `MAP ` (the DS2 background tile grid,
+  byte-verified across all 60 shipped chunks), `VECT` (the
+  256-direction unit circle, decoded), `CMAT` (BMA-codec still
+  containers), and `CPAL` (their per-still palettes). No parsing
+  changes; the suite passes. format-coverage's undocumented gap
+  list drops to the four save-file kinds (PLYL, ALL, GREQ, PREF).
+
 - **gff-edit 0.6.1**: the chunk-kind catalogue grows by the two
   kinds whose docs have landed: `DATA` (the DS2 spell-system data
   file, documented 2026-10-06) and `RNME` (region name, documented

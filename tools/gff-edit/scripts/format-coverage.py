@@ -27,11 +27,12 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-# Captured from `cargo run -p gff-edit -- kind --list` (gff-edit 0.6.1),
+# Captured from `cargo run -p gff-edit -- kind --list` (gff-edit 0.6.2),
 # 2026-10-06. Refresh with --kinds-file when gff-edit's catalogue grows.
 KNOWN_KINDS = frozenset(
     """GFFI FORM GFRE GTOC PAL BMP BMAP PORT WALL ICON TILE TMAP TXRF OMAP
-    CMAP CBMP FONT BMA ACF RMAP GMAP ETAB MONR RNME MSEQ PSEQ FSEQ LSEQ GSEQ
+    CMAP CBMP FONT BMA CMAT CPAL ACF RMAP MAP GMAP VECT ETAB MONR RNME
+    MSEQ PSEQ FSEQ LSEQ GSEQ
     CSEQ MGTL BVOC FVOC SINF ADV DADV DRV WIND DBOX EBOX BUTN MENU SBAR
     APFM ACCL IT1R OJFF RDFF FNFO RDAT DATA NAME TEXT MERR ETME SPIN SCMD SJMP
     POBJ GPL MAS GPLI GPLX CHAR SPST PSST PSIN CACT STXT SAVE""".split()

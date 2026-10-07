@@ -33,10 +33,20 @@ const KIND_CATALOGUE: &[(&[u8; 4], &str)] = &[
     (b"CBMP", "Color bitmap."),
     (b"FONT", "Font (uses palette)."),
     (b"BMA ", "Cinematic binary file."),
+    (b"CMAT", "BMA-codec still container (DS1 only)."),
+    (b"CPAL", "Per-still palette for CMAT (DS1 only)."),
     (b"ACF ", "Cinematic binary script."),
     // Maps and world
     (b"RMAP", "Region tile map."),
+    (
+        b"MAP ",
+        "Region tile map (DS2; 128x98 TILE ids; same layout as RMAP).",
+    ),
     (b"GMAP", "Region map flags (passability, height, etc.)."),
+    (
+        b"VECT",
+        "256-direction unit circle (direction-to-step deltas).",
+    ),
     (b"ETAB", "Object entry table (entities placed in region)."),
     (b"MONR", "Monsters by region IDs and level."),
     // Audio
