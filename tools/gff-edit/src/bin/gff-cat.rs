@@ -56,6 +56,10 @@ const KIND_CATALOGUE: &[(&[u8; 4], &str)] = &[
     (b"LSEQ", "XMI variant for Roland LAPC / MT-32."),
     (b"GSEQ", "XMI variant for General MIDI."),
     (b"CSEQ", "Clock sequence."),
+    (
+        b"PLYL",
+        "DS2 combat-playlist stub (dead data; unreferenced).",
+    ),
     (b"MGTL", "Global timbre library."),
     (b"BVOC", "Background-play sample (VOC)."),
     (b"FVOC", "Foreground-play sample (VOC)."),
@@ -96,6 +100,10 @@ const KIND_CATALOGUE: &[(&[u8; 4], &str)] = &[
     (b"SCMD", "Animation script command table."),
     (b"SJMP", "Animation script jump table."),
     (b"POBJ", "Polymesh object database."),
+    (
+        b"ALL ",
+        "DS2 object-database digest tables (unreferenced by the engine).",
+    ),
     (b"RNME", "Region name (per-region; DS2 only)."),
     // Scripting
     (b"GPL ", "Compiled GPL bytecode."),
@@ -108,6 +116,11 @@ const KIND_CATALOGUE: &[(&[u8; 4], &str)] = &[
     (b"PSST", "Psionic list bytes."),
     (b"PSIN", "Psionic and sphere selection."),
     (b"CACT", "Valid character ID flag."),
+    (
+        b"GREQ",
+        "DS2 per-save-slot view state (scroll bounds + picture index).",
+    ),
+    (b"PREF", "Preferences state (11 B DS1 / 9 B DS2)."),
     (b"STXT", "Save text."),
     (b"SAVE", "Save metadata."),
 ];

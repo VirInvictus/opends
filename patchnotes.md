@@ -6,6 +6,16 @@ is that release's entry here, verbatim (see `docs/versioning.md`).
 
 ## Unreleased
 
+- **gff-edit 0.6.3**: the last four corpus kinds register, and the
+  format-coverage gap list reaches zero (mineout completion bar,
+  condition 1). `PLYL` (the dead DS2 combat playlist: layout
+  decoded, songs exactly DJ.DAT's combat pool, no binary anywhere
+  references the fourcc), `ALL ` (object-database digest tables in
+  OBJEX.GFF, engine-unreferenced, bestiary-joining), `GREQ`
+  (per-save-slot view state, id = slot + 1), and `PREF` (preferences
+  state, 11 B DS1 / 9 B DS2, correcting the old 14-byte claim). No
+  parsing changes; the suite passes.
+
 - **xmi2mid 0.1.0**: the XMI-to-MIDI converter (mineout Phase A
   deliverable 2), branch-aware where the classic public-domain
   xmi2mid flattens. Each sequence payload becomes a format-0 SMF at
