@@ -234,8 +234,11 @@ Monster attackers (si >= 4) add `[0x11ae]-1` to the damage bonus (0x16b7).
   (module-frame 0x4e8:0x48 DS1 / 0x570:0x48 DS2), clear target
   bookkeeping, action_kind = 2, execute. DS2 additionally passes the enum
   to 0x630:0x20(enum, 0) (ovr4 0x15dd, file 0x5bafd) for the per-enum
-  parameter record. The per-enum execution BODIES are behind the frame
-  wall.
+  parameter record. The per-enum execution BODIES were resolved
+  2026-10-06 (port-digs-2026-10-06.md 7): DS2's are ovr29's four jump
+  tables plus the router's innate band and stub3's fire gate; DS1's are
+  the router's castable targets behind the 11-bit probe table. The DS1
+  passive-bit sites' per-bit naming remains the open sliver.
 - Spells: the AI probes casting x3 via 0x88:0x34b6 (gated by combat+33 &
   0x20); spell/missile damage reuses the ovr4/ovr5 dice machinery (DS2
   ovr4 0x25cd..0x2672, rolls via 0x628:0x34, crit==4 doubles). The cast

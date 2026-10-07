@@ -101,8 +101,8 @@ read straight from the shipped data.
 | 6 | i16 | own id, negated | VB 291/291 |
 | 8/10/12 | i16 x3 | ready item / weapon / pack (0 = none in DS1) | LA+VB |
 | 14..21 | u8[8] | data_block (all zero on disk; runtime-filled) | LA |
-| 22 | u8 | special_attack: an ENUM index (not a bitfield), 33 distinct values corpus-wide; candidate ability map in the wave-2 ledger (poison 1/5/11/26, psionics 23/30, paralytic gaze 14, corrosive 12, chilling touch 13, spines 20, entangle 22, fire breath 9, sting 26 ...) | enum verdict high, per-value map partial |
-| 23 | u8 | special_defense (0 in all 291; defenses live in magic_res and the item/equipment layer) | LA |
+| 22 | u8 | special_attack: low byte of the WORD at +22 (resolved 2026-10-06, port-digs-2026-10-06.md 7). The word indexes a dword capability-bitmask table at EXE file 0x43850 (resident record 120, 402 B); 11 of the 32 bits fire probe attacks at 25% per round through ovr6 entry[7], first matching bit wins, castable id resolved through the power table (FIREBALL bit 26, breath innates bits 20/31/21, HOLD PERSON 30, DETONATE 6, INCREASE CON 12, poison innate 18, ranged innates 19/22, FEAR 29). Enum 41 = casting blocked (only Balkazar); the AI gate is `word != 0`; enums 128/129 index past the table into zero dwords (inert), enum 19 has a zero bitmask (inert marker). Passive-bit consumers live in ovr30/ovr32 (sites enumerated in the dig). Elemental resistance/boost rows ride the same record at +0xa8/+0xd2/+0xda, read with the enum RAW as a byte offset (ovr32 0x7b4be) | resolved (engine) |
+| 23 | u8 | HIGH BYTE of the +22 enum word; never read as a byte anywhere (all +0x17 byte hits are stride-0x12 or item records); 0 in all 291; a nonzero value would push the dword table index out of range. DS1 defenses live in magic_res, the enum record's aux tables, and the item layer (was mislabeled special_defense; corrected 2026-10-06) | resolved (engine) |
 | 24..25 | i16 | icon (0 in 273/291) | LA |
 | 26 | i8 | AC (current) | VB+XC (Bulette -2) |
 | 27 | u8 | move (current) | VB (Silt Runner 48) |
@@ -123,7 +123,7 @@ ready/weapon/pack is 9999; PCs in CHARSAVE carry `0x8000|n` at
 
 | Off | Type | Field | Conf |
 |---:|---|---|---|
-| 14..15 | u16 | special-attack word: low byte = index into the DS2 special-attack scheme (mapped to effect ids through ovr29's jump tables, spell-effects.md 5); high byte CORRECTED (wave 3): the DEFENSE-side resistance table index - indexes an 18-word damage-type resistance/immunity bitmask table at file 0x4F588 (companion +0x24), tested against attacker damage-type bits with halving arithmetic (0x8513a); elementals carry nonzero hi (Fire Elemental 9 -> bits {3,4,5,12}, Rybochka 16 -> 0xffff = skip); this is DS1's +23 special_defense slot surviving inside the +14 word | H-leaning + instruction (wave 3) |
+| 14..15 | u16 | special-attack word (resolved 2026-10-06, port-digs-2026-10-06.md 7). LOW byte: enum consumed as a byte (zero-extended) by ovr29 stub0, a phase-keyed switch over FOUR jump tables (A 20 words phase 0, B 18 words phase 1, C 18 words [0x420e]-gated, D 11 words enums 10..20); the fire gate is stub3: 1d4 == 4 gives 25%, enums 1-4/6/17 additionally require self hp < half base, 15 and (conditionally) 11-12 always fire, 13 never; stub4 then writes combat+0xe = 18 (second-phase marker) for enums 1-4. Phase-0 specials nameable per row (drake breaths, mind blast, Verini poison, FIREBALL for Giant Skeletons). HIGH byte (wave 3, deepened): DEFENSE-side profile index into the 18-word immunity table at file 0x4F588 (damage -> 0; Rybochka 16 -> 0xffff all-immune; elementals 9 -> {3,4,5,12}) plus a second halving table at 0x4F5AC consumed only for indices < 7 ([1]={1,3}, [2]={2,4}, [3]={7}, [4]={4,5}, [6]={1,2,7}); 8 consumer sites census'd | resolved (engine) |
 | 16..17 | u16 | data remnant (0 in 336/352) | H |
 | 18 | i8 | AC (current) | VB+XC (drakes -2/-4/-3 == charrec base) |
 | 19 | u8 | move (current) | VB |

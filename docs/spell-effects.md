@@ -188,27 +188,41 @@ rows of 5 classes x 3 bytes, with a wisdom bonus (level*2/7) for clerics.
 DS1 (the 33-value enum is two-level): the combat word at +0x16 indexes a
 dword bitmask table at resident record 120 (file 0x43850). The probe (ovr6
 stub8, 0x5a99e) fires only on 11 mapped bits (25% chance gate, RNG at
-0x63b), tested via ovr33:stub0 against tables at DGROUP 0x5d0/0x5db:
-bits {26, 20, 31, 30, 6, 12, 18, 19, 21, 22, 29} -> castable ids {0x1b
-DISPEL MAGIC, 0xb5, 0xb9 innate 13, 0x1e HOLD PERSON, 0x8a psionic 0,
-0xaf stat band, 0xb3..0xb7 innate 1..5, 0x2b FEAR}. Enum -> bit (first
-match): 3->22, 9->20, 10->19, 12->29 (FEAR), 14->18, 16->21, 18/43/45/48/
-50->26 (DISPEL), 21->31, 22->12 (stat 175), 28->29, 30->6. Most enum bits
-are passive (defenses/on-hit); only these 11 produce probe attacks. Target
-pick = ovr6 local 0x179 (enemy allegiance, current target word 0x348:0x1dd,
-distance gate); on fire: 0x508:0x2a beam draw, then the router.
+0x63b), tested via ovr33:stub0 against the two 11-byte tables copied from
+DGROUP 0x5d0/0x5db (file 0x48f30): bits {26, 20, 31, 30, 6, 12, 18, 19,
+21, 22, 29} -> castable ids {0x1b FIREBALL (SPIN 28; the earlier DISPEL
+MAGIC label was off by one: castable ids are 0-based power-record
+indexes), 0xb5 innate 3 (6d6 breath), 0xb9 innate 7 (3d6 breath), 0x1e
+HOLD PERSON, 0x8a DETONATE (psionic 1), 0xaf INCREASE CONSTITUTION,
+0xb3 innate 1 (poison), 0xb4 innate 2 (ranged 1d6), 0xb6 innate 4
+(breath, 2d4 rounds), 0xb7 innate 5 (ranged 90), 0x2b FEAR}. Enum -> bit
+(first match): 3->22, 9->20, 10->19, 12->29 (FEAR), 14->18, 16->21,
+18/43/45/48/50->26 (FIREBALL), 21->31, 22->12 (stat 175), 28->29, 30->6.
+Most enum bits are passive (defenses/on-hit); only these 11 produce probe
+attacks. Target pick = ovr6 local 0x179 (enemy allegiance, current target
+word 0x348:0x1dd, distance gate); on fire: 0x508:0x2a beam draw, then the
+router. (Corrected and completed 2026-10-06, port-digs-2026-10-06.md 7.)
 
-DS2 (the cb14 scheme): enum = combat+0xe low byte. Probe ovr5 stub8
-(0x5f64d): effect = 0x630:0x20(enum, 0); target count = 0x98:0x154(actor)
-clamped to 6 (multi-target specials, no DS1 twin); fires 0x608:0x89; then
-post-action 0x630:0x34. ovr29 stub0 (0x87459) maps the enum through two
-jump tables: category 0 (20 entries): 1->0x121, 2->0x122, 3->0x123,
+DS2 (the cb14 scheme): enum = combat+0xe low byte. The AI gate (ovr4
+0x5bee8) calls 0x630:0x20(enum, 0) and applies the target-armed test;
+the probe itself is ovr5 stub8 (0x5f64d): target count =
+0x98:0x154(actor) clamped to 6 (multi-target specials, no DS1 twin);
+fires 0x608:0x89; then post-action 0x630:0x34. ovr29 stub0 (0x87459)
+maps the enum through FOUR phase-keyed jump tables (corrected from two,
+2026-10-06): category 0 (20 entries): 1->0x121, 2->0x122, 3->0x123,
 4->0x124, 6->0x125, 7->0x120, 9->0x127, 10->0x12a, 12->0x12c, 15->0x130,
-17->0x1b (same DISPEL slot as DS1), 19->0x13f, 20->0x120; {5,8,11,13,14,
-16,18} unmapped. Category 1 (17 entries): 1-4->0x11e, 8->0x126, 16->0x13e.
-All mapped ids sit in the innate band. Post-action stub4: enums 1-4 set
-+0xe = 0x12 (a second phase); 6 and 17 clear it. No fire-chance gate found
-in DS2 (unlike DS1's 25%).
+17->0x1b (same FIREBALL slot as DS1), 19->0x13f, 20->0x120; {5,8,11,13,
+14,16,18} unmapped in phase 0. Category 1 (18 entries, corrected from
+17): 1-4 and 18->0x11e, 8->0x126, 16->0x13e; enums 10-12 flow into the
+fourth table (10->0x129, 11->0x10e, 12->0x12d). Category 2 (18 entries,
+previously undocumented): [0x420e]-gated variants for enums 1-4/18 and
+13, 14->0x12f. Category 4: enum 10->0x11c. Fire gate (ovr29 stub3,
+0x8772d; answers the old "No fire-chance gate found"): 1d4 == 4 gives
+the 25% gate, then a 20-entry per-enum condition table: enums 1-4, 6,
+17 fire only when the actor's current hp < half base; 15 always; 11-12
+always while 0x618:0x20 == 0 (else 25%); 10 requires 0x618:0x20 == 4;
+13 never; the rest take the plain 25% gate. Post-action stub4: enums 1-4
+set +0xe = 0x12 (a second phase); 6 and 17 clear it.
 
 ## 6. Durations and timing
 
