@@ -99,3 +99,4 @@ jobs:
           python3 tools/gpl-disasm/scripts/dead-trigger-sweep.py --selftest
           python3 tools/verify-install/verify-install.py --selftest
           python3 tools/audio-extract/audio-extract.py --selftest
+          python3 tools/xmi2mid/xmi2mid.py --selftest

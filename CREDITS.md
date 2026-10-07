@@ -118,11 +118,15 @@ comments next to the relevant code.
 | RBRN count is little-endian | `XmiTool.java` lines 230-231 ("RBRN Sequence Branch count") | MIT |
 | XMI delta-time encoding (runs of < 0x80 bytes summed; note-on VLQ duration after velocity) | `dsoageofheroes/libgff` `ext/xmi2mid.c` `GetVLQ2` (line 599) + `ConvertFiletoList` (line 783) | MIT |
 | xmi2mid skips every non-EVNT chunk (branch tables are invisible to a straight conversion) | `ext/xmi2mid.c` `ExtractTracksFromXmi` (line 950) | MIT |
+| 120 Hz tick mapping in the OpenDS converter (SMF division 60 + tempo 500000) and the delta/note-duration decoding approach | `ext/xmi2mid.c` `GetVLQ2` / `ConvertFiletoList` (the classic public-domain xmi2mid lineage) | MIT |
 
 **OpenDS work that extends the above (not ported, ours):**
 - The RBRN (LE u16 id, LE u32 tick) entry decode and the DS1
   adaptive-music usage picture (controller 0x78 counts matching RBRN
   entries, Mel library as the follower), docs/port-digs-2026-10-06.md 2
+- `tools/xmi2mid/`: the branch-aware converter (sidecar JSON instead
+  of flattening) and the XDIR FORM-size quirk (declared extent
+  covers only INFO; CAT follows as a sibling)
 
 ## Influences (read but not yet ported)
 

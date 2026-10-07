@@ -832,8 +832,10 @@ retains the branch machinery.
 
 Conversion to standard MIDI is implemented by the public-domain
 `xmi2mid` (libgff bundles it; it skips every non-EVNT chunk, so a
-straight port flattens the adaptive loops). OpenDS will port it and
-add branch-aware handling rather than depend on a runtime library.
+straight port flattens the adaptive loops). OpenDS's converter is
+`tools/xmi2mid/`: it emits the linear pass plus a JSON sidecar
+(branches, loop spans, TIMB) instead of guessing, so a port's music
+director can reproduce the adaptive behaviour.
 
 The same XMI source is rendered into per-driver chunks (PSEQ/FSEQ/LSEQ/
 GSEQ) at content-build time: i.e., the driver-specific re-renders are

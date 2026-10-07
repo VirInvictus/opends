@@ -495,6 +495,9 @@ def summarize(report: dict) -> str:
     ]
     for kind, count in report["kinds_present"].items():
         chunks = [c for c in report["chunks"] if c["kind"] == kind]
+        if not chunks:
+            # Requested kinds may exclude kinds the file carries.
+            continue
         total = sum(c["length"] for c in chunks)
         ids = f"ids {min(c['id'] for c in chunks)}..{max(c['id'] for c in chunks)}"
         dur = sum(c.get("duration_s") or 0 for c in chunks)

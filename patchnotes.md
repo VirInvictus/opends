@@ -6,6 +6,21 @@ is that release's entry here, verbatim (see `docs/versioning.md`).
 
 ## Unreleased
 
+- **xmi2mid 0.1.0**: the XMI-to-MIDI converter (mineout Phase A
+  deliverable 2), branch-aware where the classic public-domain
+  xmi2mid flattens. Each sequence payload becomes a format-0 SMF at
+  120 Hz (ticks map 1:1, note-ons resolved to real note-offs) plus
+  a JSON sidecar carrying the RBRN branch table, FOR/NEXT loop
+  spans, branch-select events, and TIMB patch lists, so a port's
+  music director can reproduce the adaptive behaviour the Mel
+  library runs (file-formats.md 5). All 83 DS1 sequences convert
+  with branch and patch counts matching the RBRN dig's independent
+  table; the DS2 floppy set converts with zero branches, matching
+  the no-RBRN-in-DS2 finding. The conversion also pinned one more
+  container quirk: shipped XDIRs declare their FORM size as
+  covering only INFO, with CAT following as a sibling past the
+  declared extent. Synthetic-payload selftest wired into CI.
+
 - **gff-edit 0.6.2**: four more corpus kinds register as their docs
   landed (mineout wave 2): `MAP ` (the DS2 background tile grid,
   byte-verified across all 60 shipped chunks), `VECT` (the
