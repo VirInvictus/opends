@@ -548,6 +548,64 @@ per-still art: 751/768 bytes differ from PAL 1000 and 719/768 from
 each other; CMAT 200's all-index-1 background is CPAL 200's entry 1
 (a dark maroon), confirming the pairing. DS2 never references CPAL.
 
+### PLYL (dead DS2 combat playlist)
+
+Documented 2026-10-06 (port-digs-2026-10-06.md 9). Six chunks in
+DS2's RESOURCE.GFF lineage (ids 0, 10, 50..53), byte-identical from
+floppy 1.0 through GOG 1.10: N records of `(u8 song, u8 0xff)` plus
+one trailing byte (0x00 on ids 0/10, 0x64 on 50..53). The nine song
+values are exactly DJ.DAT's state-3 combat pool (songs 1..9,
+audio-routing.md 1). No shipped binary of any lineage references the
+fourcc (every EXE scanned; the music dispatcher pushes only
+PSEQ/FSEQ/LSEQ/GSEQ/redbook): the kind is dead data, plausibly a
+pre-CD playlist frozen into the resource files. A port should not
+read it.
+
+### ALL (DS2 object-database digests)
+
+Documented 2026-10-06. Five chunks in DS2's OBJEX.GFF (ids 1..5),
+byte-identical across the release lineage and unreferenced by either
+engine (no `ALL ` fourcc anywhere in the binaries): fixed-stride
+aggregate tables over the object database, documentation-grade
+digests rather than runtime data. id 5 (1725 = 75 x 23): `u16 id,
+u16 9999 (none sentinel), u8 type, u8 len, char[] name` for every
+named special entity (a superset of the bestiary's 58 minis). id 2
+(18522 = 378 x 49): `u32 hp, u16 ?, u16 id, u16 9999 x3, u16 x2,
+i8 AC, u8 MV, u8, u8, u8 THAC0, u8 6, u8 0, u8[6] stats, u8, u8,
+u8 len, char[] name`; AC, name, and THAC0 join the bestiary 340/340
+(Air Drake's 0xfe proves AC is signed). id 1 (1317 x 23) carries a
+class byte (values 0/4/5/6); id 3 (108 x 66) holds per-creature long
+blocks; id 4 (1530) is 0xFA-keyed 15-byte cells, undetermined. Treat
+the kind as stale build artefacts.
+
+### GREQ (DS2 per-save-slot view state)
+
+Documented 2026-10-06. Ten 9-byte chunks, ids 1..10 (id = save slot
++ 1; writer DSUN.EXE 0x7D6FB, reader 0x7D8ED, both moving the fields
+to/from globals 0x14d7/79/7b/7d and 0x4459), only in DS2
+CHARSAVE.GFF: `u16 view_left, u16 view_top, u16 view_right,
+u16 view_bottom, u8 picture_index`. The words are the saved
+scroll/camera bounds in region pixels (checker at 0x219A2: 320x200
+extent, 8-pixel snap; shipped rows mostly bound the full 2048x1568
+region). The byte indexes a 25-per-page BMP pool
+(`[0x140c]*25 + idx + 0x4E84`). Engine quirk worth knowing: the
+reader copies one stack byte past the 9-byte buffer into 0x4458, so
+that global is never actually restored. DS1 has no GREQ anywhere.
+
+### PREF (preferences state, both games)
+
+Documented 2026-10-06 (this corrects screen-flow.md's old
+"14-byte PREF" note: the chunk is 11 bytes in DS1 and 9 in DS2, per
+the TOCs and the writers' length immediates). Common prefix:
+`u16 text_speed (0..3), u8 music_volume, u8 sound_volume (0..127),
+u8 music_volume_scale` (scale 100 in DS1, 255 in DS2; volumes are
+scale-relative). DS1 then stores three u16 toggles at +5/+7/+9
+(sound, music, mouse; globals 0x11a8/aa/ac; writer DSUN.EXE 0x7468B,
+reader 0x74821); the mouse toggle picks the (4,4) vs (16,16) cursor.
+DS2 stores four u8 at +5..+8: sound, music, mouse (globals
+0x1435/36/37) and one unnamed enable gate (0x1439); writer 0x7D6FB,
+reader 0x7D8ED, 9-byte length literal.
+
 ## 2. Schema versioning between DS1, DS2, and DSO
 
 The `RDFF` chunk type's note in libgff calls out per-game record-schema

@@ -422,8 +422,10 @@ range 0..127 ([0x232F]), 16308/16309 text speed 0..3 ([0x11AE],
 labels 'EASY'... table ds:0x2331), 16303 mouse toggle ([0x11AC],
 applies (16,16) vs (4,4) through 0x530:0x5C), 16302 = the credits
 page (9 copyright lines + '1.10'), 11308 = back to game menu
-(reopens 10500), 10308 close. State persists as the 14-byte 'PREF'
-chunk (id 100) inside each save; F4/F5/F6 hotkeys DO NOT EXIST in
+(reopens 10500), 10308 close. State persists as the 11-byte 'PREF'
+chunk (id 100) inside each DS1 save (the old "14-byte" note was
+wrong; DS2's is 9 bytes; byte-level layouts in file-formats.md's
+PREF section); F4/F5/F6 hotkeys DO NOT EXIST in
 DS1 (binary-wide scan: no F-key handlers).
 
 Load/save (ovr27): LOAD and SAVE both open WIND 3009 (0x7454F);
