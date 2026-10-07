@@ -1124,6 +1124,20 @@ Site-report sketch (elevator, first read 2026-09-04): DS2's
       opcode) is still open; settle the recipe format and
       meet it. The Decode\* study above narrows the
       candidates first.
+      (LOOP PROVEN 2026-10-07, opcode-fuzz 0.3.1: the full
+      extract -> author -> pack -> run -> diff drive works; two
+      latent tool bugs fixed on the first drive (fixture TOML
+      backslash, factory DARKRUN path). The first sentinel probe
+      (boot candidate GPL-9) booted clean with an identical-file
+      diff, which settles the design: VM-state sentinels do not
+      surface in world state, so recipes need a world-visible
+      epilogue (request-5 toggle) or a save-based diff. The 15
+      gap opcodes (0x26, 0x4a, 0x4c-0x4e, 0x53, 0x55-0x57, 0x60,
+      0x71-0x75) are Custom-param: gpl-asm refuses best-effort
+      instructions, so the probes wait on one gpl-asm feature
+      (raw `db <hex>` emission), which is the settled recipe
+      format. The targets are named; the remaining work is that
+      one encoder feature plus the probe recipes.)
 - [x] **Adopt the reference catalogues into the docs.**
       libgff's `gfftypes.h` defines 83 chunk types against
       our catalogue's gaps (BVOC/FVOC/OMAP/POBJ/SJMP/FNFO/

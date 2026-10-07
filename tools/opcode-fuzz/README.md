@@ -81,15 +81,17 @@ The eventual `opcode-fuzz` flow:
 
 ## Status
 
-- **Recipe-driven `fuzz`** waits on a settled recipe format.
-  `recipes/` holds the intended format and why it is not
-  active yet: `gpl-asm` parses the full text-listing format,
-  and a short-form mnemonic-only recipe needs either a
-  preprocessor here or a `gpl-asm` extension.
-- **GPL VM state addresses** in DSUN.EXE (accumulator, local
-  stack, global arrays) are the remaining prerequisite for
-  visible-in-`DARKRUN.GFF` probes; `dsun-exe-re.md` 4.4 hints
-  where some state lives.
+- **The loop runs end to end as of v0.3.1** (first driven
+  2026-10-07): extract -> author -> pack -> run -> DARKRUN diff,
+  with the fixture synthesis and factory-snapshot bugs fixed on
+  that drive. The first sentinel probe over boot candidate GPL-9
+  booted clean and returned an identical-file diff: VM-state
+  probes do not surface in world state, so recipes need a
+  world-visible epilogue (see recipes/README.md).
+- **Recipe-driven `fuzz`** waits on one gpl-asm feature: raw
+  `db <hex>` emission (the 15 gap opcodes are Custom-param and
+  best-effort-refused today). The format decision is settled on
+  that narrowed option 3; recipes become plain `.asm` files.
 - Deterministic launch and input automation are shipped via
   `repro` v0.4.0's keystroke scheduler.
 

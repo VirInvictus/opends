@@ -352,6 +352,10 @@ def synthesise_fixture(
         if target_game == "ds2"
         else "DSUN.EXE > d:\\dsun.log"
     )
+    # Single-quoted TOML literal string: the DOS redirect path
+    # carries a backslash that an basic-string would have to
+    # escape (v0.3.0 emitted it unescaped and tomllib refused
+    # the fixture; found on the first real drive of the loop).
     bug_toml = f"""# Synthesised by opcode-fuzz from {work_dir}
 # This fixture replaces GPLDATA.GFF with a patched version
 # carrying the modified chunk; the harness mounts it via the
@@ -370,7 +374,7 @@ copy_files = [
 
 [trigger]
 commands = [
-  "{trigger_cmd}",
+  '{trigger_cmd}',
 ]
 
 [expected]
@@ -490,7 +494,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         # session we create.
         sdir = repro_session_dir(target_game, session_name)
         overlay_darkrun = sdir / "c-overlay" / "DARKRUN.GFF"
-        factory_darkrun = source_gff.parent / "__support" / "save" / "DARKRUN.GFF"
+        factory_darkrun = source_gff.parent / "DARKRUN.GFF"
         if overlay_darkrun.is_file():
             pre_bytes = snapshot_darkrun(overlay_darkrun)
             pre_source = str(overlay_darkrun)

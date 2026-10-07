@@ -4,6 +4,32 @@ Released versions appear here, newest first: one heading per
 tagged release or dated batch. A `<tool>-vX.Y.Z` tag's message
 is that release's entry here, verbatim (see `docs/versioning.md`).
 
+## opcode-fuzz v0.3.1 (2026-10-07)
+
+- **`opcode-fuzz` v0.3.1**: the recipe loop's first real drive.
+  The full extract -> author -> pack -> run -> DARKRUN-diff loop
+  works end to end: the swap-and-run synthesised its repro
+  fixture, booted DS1 through the repro harness, and computed the
+  world-state diff. The drive caught two latent tool bugs, both
+  fixed: the synthesised fixture's TOML refused the DOS redirect
+  path (`DSUN.EXE > d:\dsun.log` emitted as an unescaped basic
+  string; now a single-quoted literal), and the factory
+  DARKRUN.GFF pre-snapshot still looked under the retired
+  `__support/save/` layout (now the canonical install file). The
+  first probe (two `gpl byte inc GBYTE[100]` sentinels around a
+  `gpl global ret`, swapped into boot candidate GPL-9) booted
+  clean and returned an identical-file diff, which settles the
+  probe design: VM-state sentinels do not surface in the
+  world-state file, so recipes need a world-visible epilogue
+  (a `gpl request 5` toggle whose visible-object record the world
+  file carries) or a save-based diff. The recipe-format decision
+  is settled on that evidence: the 15 unnamed gap opcodes are
+  Custom-param and best-effort-refused by gpl-asm, so probes wait
+  on one encoder feature (raw `db <hex>` emission), after which
+  recipes are plain `.asm` files and `fuzz <opcode>` is a thin
+  driver. recipes/README.md carries the drive record and the
+  decision.
+
 ## darkfix-ds1 v0.1.2 (2026-10-07)
 
 - **`darkfix-ds1` v0.1.2**: the Phase 9 sweep triage lands, and

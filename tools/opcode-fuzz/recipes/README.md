@@ -1,17 +1,40 @@
 # opcode-fuzz recipes
 
-Forward-looking placeholder for templated `.asm` chunks that
-will drive the engine through a single opcode in isolation.
+Templated `.asm` chunks that drive the engine through a single
+opcode in isolation.
 
-**v0.3.0 status: scaffold only.** This directory exists so the
-`opcode-fuzz fuzz <opcode>` subcommand (planned v0.3.1+) has a
-home for recipe templates. v0.3.0 itself ships only the
-`boot-chunks` subcommand (the discovery half: which chunks are
-safe to swap because the engine guarantees it'll invoke them);
-the recipe-driven `fuzz` half waits until the recipe format
-settles.
+**v0.3.1 status: the loop runs; recipes still wait on one
+gpl-asm extension.** The 2026-10-07 first drive of the full loop
+(extract -> author chunk.json -> pack -> run -> DARKRUN diff)
+works end to end: `run` synthesises its repro fixture, boots the
+game through the harness, and computes the diff (that first drive
+also fixed two latent tool bugs: the fixture TOML refused the
+DOS redirect path's backslash, and the factory DARKRUN path
+predated the current install layout). Two findings now shape the
+recipe format:
 
-## Why the wait
+1. **The observation channel must be world-state, not VM state.**
+   The sentinel probe (two `gpl byte inc GBYTE[100]` around a
+   `gpl global ret`, swapped into boot candidate GPL-9) ran clean
+   and changed nothing in DARKRUN.GFF: VM globals do not surface
+   in the world-state file, so a sentinel diff shows nothing
+   until a save is taken. The recipe epilogue should instead
+   perform a world-visible act attributable to the probe (e.g.
+   `gpl request 5` to toggle a world object's state bit, whose
+   visible-object record the world file carries), or the diff
+   must read a post-probe in-game save.
+2. **Gap-opcode probes need raw-byte emission.** The 15 unnamed
+   opcodes (0x26, 0x4a, 0x4c-0x4e, 0x53, 0x55-0x57, 0x60,
+   0x71-0x75) are all `ParamSpec::Custom` in the catalogue:
+   gpl-disasm decodes them best-effort (opcode byte only) and
+   gpl-asm refuses best-effort instructions, so no JSON or text
+   program can place a bare target byte at an instruction
+   boundary today. The format decision below therefore lands on
+   option 3, narrowed: a `db <hex>` line form in gpl-asm's
+   encoder (the one feature the modder surface needs), after
+   which recipes are plain `.asm` files and `fuzz <opcode>`
+   becomes a thin driver.
+
 
 `gpl-asm` v0.7.0 parses `gpl-disasm`'s full text listing
 (per-line `<offset>  <byte>  <mnemonic>  <params>`). A
