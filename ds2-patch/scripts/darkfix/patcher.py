@@ -333,6 +333,14 @@ def restore_from_backup(
             wanted.append((f["path"], f["original_sha256"]))
     if not wanted:
         raise PatchError("journal records no files; nothing to restore")
+    # Composition (spec 5, 2026-10-07 amendment): several fixes may
+    # list the same file; restore each path once. Their recorded
+    # original hashes agree by construction (every record carries
+    # the same pristine source hash), so the first entry stands.
+    deduped: dict[str, str] = {}
+    for rel, want in wanted:
+        deduped.setdefault(rel, want)
+    wanted = sorted(deduped.items())
     verified: list[tuple[str, str]] = []
     for rel, want in wanted:
         src = backup_root(install) / rel

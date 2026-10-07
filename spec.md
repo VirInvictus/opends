@@ -218,10 +218,16 @@ Each fix:
    and the bug is gone on a patched install.
 
 Fixes are not bundled into one giant patch. Each fix is independent
-and can be enabled or disabled. Two enabled fixes must not target
-the same file: no fix script knows another's edits, so the applier
-refuses that manifest at check time (before any write) rather than
-letting the second write corrupt the first fix.
+and can be enabled or disabled. Several enabled fixes may target
+the same file when their edit ranges are disjoint (amended
+2026-10-07; the original rule refused any second same-file fix,
+which forced every later GPLDATA fix to ship disabled): the applier
+composes them into one write per file, re-checking every
+fingerprint in sequence, and records the merged patched hash in
+the journal so --verify and --unapply see one consistent file.
+Overlapping ranges still refuse at check time (before any write)
+with the offending offsets named: no fix script knows another's
+edits, so an overlap would corrupt the first fix.
 
 ## 6. GPL bytecode
 

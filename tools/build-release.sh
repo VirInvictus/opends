@@ -49,20 +49,27 @@ sys.modules[spec.name] = mod
 spec.loader.exec_module(mod)
 manifest = mod.P.load_manifest(stage / "manifest.toml")
 targets = manifest["target"]["files"]
-seen_targets = {}
+# spec 5 composition (2026-10-07 amendment): enabled fixes may share
+# a target when their edit ranges are disjoint (the applier composes
+# them into one write); overlapping ranges refuse, and gate 1 must
+# refuse them too because every player's apply would.
+ranges = {}
 for entry in manifest["fixes"]:
     fix = mod.load_fix_module(stage / entry["path"])
     target_rel = mod.check_fix_contract(fix, entry, targets)
     if entry.get("enabled", True):
-        other = seen_targets.get(target_rel)
-        if other is not None:
-            sys.exit(
-                f"gate 1: {fix.ID} and {other} both target {target_rel}:"
-                " two enabled fixes cannot compose against one file;"
-                " every player's apply would refuse this manifest"
-                " (disable one of them in manifest.toml)"
-            )
-        seen_targets[target_rel] = fix.ID
+        for i, d in enumerate(getattr(fix, "EDITS", [])):
+            e = mod.P.Edit.from_dict(d, what=f"{fix.ID} edit {i}")
+            start, end = e.offset, e.offset + len(e.replace)
+            for r0, r1, other in ranges.get(target_rel, []):
+                if start < r1 and r0 < end:
+                    sys.exit(
+                        f"gate 1: {fix.ID} edit at {start:#x} overlaps"
+                        f" {other} edit at {r0:#x} in {target_rel}:"
+                        " composed fixes must touch disjoint ranges;"
+                        " every player's apply would refuse this manifest"
+                    )
+            ranges.setdefault(target_rel, []).append((start, end, fix.ID))
     print(f"  contract OK: {entry['id']}")
 PY
 }
@@ -97,9 +104,10 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 
 if [ -n "$selftest" ]; then
     # Regression for the gate, not the zip: a manifest with two
-    # enabled fixes on one target must be refused by gate 1, because
-    # it is exactly the manifest every player's apply refuses at
-    # check time. Runs against a synthetic tree; touches nothing.
+    # enabled fixes whose ranges OVERLAP on one target must be
+    # refused by gate 1, and a disjoint pair must pass (composition,
+    # 2026-10-07 spec 5 amendment). Runs against a synthetic tree;
+    # touches nothing.
     s="$(mktemp -d)"
     trap 'command rm -rf "$s"' EXIT
     mkdir -p "$s/patch/fixes"
@@ -112,7 +120,16 @@ if [ -n "$selftest" ]; then
 ID = "fix.selftest.dup.$i"
 TARGET = "TEST.DAT"
 SOURCE_SHA256 = "$hash64"
-EDITS = []
+EDITS = [{"offset": $((16 + i)), "expect": "aabb", "replace": "1122"}]
+def apply(source_path, dest_path):
+    raise NotImplementedError
+EOF
+        cat > "$s/patch/fixes/1$i-far.py" <<EOF
+"""Selftest fix."""
+ID = "fix.selftest.far.$i"
+TARGET = "TEST.DAT"
+SOURCE_SHA256 = "$hash64"
+EDITS = [{"offset": $((1000 + i * 2)), "expect": "aabb", "replace": "1122"}]
 def apply(source_path, dest_path):
     raise NotImplementedError
 EOF
@@ -129,6 +146,7 @@ source = "GOG"
 engine_version = "1.10"
 
 [target.files]
+"TEST.DAT" = "0000000000000000000000000000000000000000000000000000000000000000"
 
 [[fixes]]
 id = "fix.selftest.dup.0"
@@ -141,10 +159,39 @@ path = "fixes/001-dup.py"
 enabled = true
 EOF
     if gate1_contracts "$s/patch" > /dev/null 2>&1; then
-        echo "build-release.sh --selftest: FAIL: dup-target manifest passed gate 1" >&2
+        echo "build-release.sh --selftest: FAIL: overlapping same-file manifest passed gate 1" >&2
         exit 1
     fi
-    echo "build-release.sh --selftest: PASS (dup-target manifest refused by gate 1)"
+    # The disjoint pair must compose through gate 1.
+    cat > "$s/patch/manifest.toml" <<EOF
+[meta]
+schema_version = 1
+game = "ds1"
+name = "selftest-far"
+license = "MIT"
+
+[target]
+source = "GOG"
+engine_version = "1.10"
+
+[target.files]
+"TEST.DAT" = "0000000000000000000000000000000000000000000000000000000000000000"
+
+[[fixes]]
+id = "fix.selftest.far.0"
+path = "fixes/10-far.py"
+enabled = true
+
+[[fixes]]
+id = "fix.selftest.far.1"
+path = "fixes/11-far.py"
+enabled = true
+EOF
+    if ! gate1_contracts "$s/patch" > /dev/null 2>&1; then
+        echo "build-release.sh --selftest: FAIL: disjoint same-file manifest refused by gate 1" >&2
+        exit 1
+    fi
+    echo "build-release.sh --selftest: PASS (overlap refused, disjoint composes)"
     exit 0
 fi
 

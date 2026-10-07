@@ -176,19 +176,34 @@ def cmd_apply(layout: Layout, install: Path, *, check_all: bool = False) -> int:
     print(f"install: {install}")
     prepared = []
     records = []
-    seen_targets: dict[str, str] = {}
+    # spec 5 composition (2026-10-07 amendment): enabled fixes may
+    # share a target file when their edit ranges are disjoint; the
+    # write phase composes them into one write per file. Overlapping
+    # ranges refuse here, before any write, with the offending
+    # offsets named.
+    ranges_by_target: dict[str, list[tuple[int, int, str]]] = {}
     for entry in enabled:
         module = load_fix_module(layout.patch_root / entry["path"])
         target_rel = check_fix_contract(module, entry, target_files)
-        other = seen_targets.get(target_rel)
-        if other is not None:
-            raise P.ManifestError(
-                f"{module.ID} and {other} both target {target_rel}: two"
-                f" fix scripts cannot compose against one file, so the"
-                f" second write would corrupt the first fix; disable one"
-                f" of them in the manifest"
-            )
-        seen_targets[target_rel] = module.ID
+        edits = [
+            P.Edit.from_dict(d, what=f"{module.ID} edit {i}")
+            for i, d in enumerate(getattr(module, "EDITS", []))
+        ]
+        for e in edits:
+            e_start = e.offset
+            e_end = e.offset + len(e.replace)
+            for start, end, other in ranges_by_target.get(target_rel, []):
+                if e_start < end and start < e_end:
+                    raise P.ManifestError(
+                        f"{module.ID} edit at {e_start:#x} overlaps"
+                        f" {other} edit at {start:#x} in {target_rel}:"
+                        f" fixes sharing a target must touch disjoint"
+                        f" byte ranges; disable one of them in the"
+                        f" manifest"
+                    )
+        ranges_by_target.setdefault(target_rel, []).extend(
+            (e.offset, e.offset + len(e.replace), module.ID) for e in edits
+        )
         target = install / target_rel
         if not target.is_file():
             raise P.PatchError(f"{module.ID}: target file not found: {target}")
@@ -203,13 +218,30 @@ def cmd_apply(layout: Layout, install: Path, *, check_all: bool = False) -> int:
                 f" leaves the originals in {P.BACKUP_DIR}/ inside the"
                 f" game folder)"
             )
-        edits = [
-            P.Edit.from_dict(d, what=f"{module.ID} edit {i}")
-            for i, d in enumerate(getattr(module, "EDITS", []))
-        ]
         source_bytes = target.read_bytes()
-        patched = P.apply_edits(source_bytes, edits, what=module.ID)
-        prepared.append((module, target_rel, source_bytes, patched))
+        prepared.append((module, target_rel, source_bytes, edits))
+    for entry in disabled:
+        print(f"  skipped {entry['id']} (disabled in manifest)")
+
+    # Compose per target: each enabled fix contributes its
+    # (disjoint, fingerprint-checked) edits to one merged result;
+    # every fix's fingerprints are re-checked in sequence, so a
+    # drifted expect still fails the whole apply before any write.
+    composed: dict[str, dict] = {}
+    for module, target_rel, source_bytes, edits in prepared:
+        entry_c = composed.setdefault(
+            target_rel,
+            {
+                "source_hash": module.SOURCE_SHA256,
+                "patched": source_bytes,
+                "ids": [],
+            },
+        )
+        entry_c["patched"] = P.apply_edits(entry_c["patched"], edits, what=module.ID)
+        entry_c["ids"].append(module.ID)
+    records = []
+    for module, target_rel, source_bytes, edits in prepared:
+        merged = composed[target_rel]["patched"]
         records.append(
             {
                 "id": module.ID,
@@ -217,14 +249,12 @@ def cmd_apply(layout: Layout, install: Path, *, check_all: bool = False) -> int:
                     {
                         "path": target_rel,
                         "original_sha256": P.sha256_bytes(source_bytes),
-                        "patched_sha256": P.sha256_bytes(patched),
+                        "patched_sha256": P.sha256_bytes(merged),
                     }
                 ],
             }
         )
         print(f"  checked {module.ID} ({target_rel}, {len(edits)} site(s))")
-    for entry in disabled:
-        print(f"  skipped {entry['id']} (disabled in manifest)")
 
     # Pending journal first: if the write phase dies between the
     # first write and the last, what is on disk says so, and
@@ -239,21 +269,20 @@ def cmd_apply(layout: Layout, install: Path, *, check_all: bool = False) -> int:
     }
     P.write_journal(install, journal)
 
-    # Write phase.
+    # Write phase: one backup and one atomic write per target file,
+    # carrying every fix composed onto it.
     backed_up: set[str] = set()
-    for module, target_rel, source_bytes, patched in prepared:
+    for target_rel, entry_c in composed.items():
         target = install / target_rel
-        if P.sha256_file(target) != module.SOURCE_SHA256:
-            raise P.HashMismatch(
-                f"{module.ID}: {target_rel} changed during apply; aborting"
-            )
+        if P.sha256_file(target) != entry_c["source_hash"]:
+            raise P.HashMismatch(f"{target_rel} changed during apply; aborting")
         if target_rel not in backed_up:
             P.backup_file(install, target_rel)
             backed_up.add(target_rel)
         tmp = target.with_name(target.name + P.STAGED_SUFFIX)
-        tmp.write_bytes(patched)
+        tmp.write_bytes(entry_c["patched"])
         os.replace(tmp, target)
-        print(f"  applied {module.ID} -> {target_rel}")
+        print(f"  applied {', '.join(entry_c['ids'])} -> {target_rel}")
 
     journal["status"] = "applied"
     P.write_journal(install, journal)
@@ -594,6 +623,54 @@ def selftest() -> int:
         ok("journal removed", P.read_journal(install) is None)
         ok("backup consumed", not backup.exists())
 
+        # spec 5 composition: two enabled fixes on ONE target with
+        # disjoint ranges compose into a single correct write; the
+        # journal carries the merged patched hash so --verify and
+        # --unapply see one consistent file.
+        data2 = _synth_bytes(128)
+        t2 = install / "COMPOSE.DAT"
+        t2.write_bytes(data2)
+        h2 = P.sha256_bytes(data2)
+        e_a = P.Edit(offset=0x10, expect=data2[0x10:0x12], replace=b"\xaa\xbb")
+        e_b = P.Edit(offset=0x30, expect=data2[0x30:0x32], replace=b"\xcc\xdd")
+        merged_expect = P.apply_edits(data2, [e_a, e_b])
+        root2 = _make_multi_patch(
+            tmp,
+            "composefix",
+            [
+                ("COMPOSE.DAT", h2, [e_a]),
+                ("COMPOSE.DAT", h2, [e_b]),
+            ],
+        )
+        rc = run([str(install)], patch_root=root2)
+        ok("disjoint same-file fixes apply", rc == 0)
+        ok(
+            "composed file matches both fixes merged",
+            t2.read_bytes() == merged_expect,
+        )
+        rc = run([str(install), "--verify"], patch_root=root2)
+        ok("verify passes on the composed install", rc == 0)
+        rc = run([str(install), "--unapply"], patch_root=root2)
+        ok("composed install unapplies", rc == 0)
+        ok(
+            "composed target restored byte-identically",
+            t2.read_bytes() == data2,
+        )
+
+        # Overlapping ranges still refuse at check time, before any
+        # write, with the offending offsets named.
+        e_c = P.Edit(offset=0x11, expect=data2[0x11:0x13], replace=b"\xee\xff")
+        root3 = _make_multi_patch(
+            tmp,
+            "overlapfix",
+            [
+                ("COMPOSE.DAT", h2, [e_a]),
+                ("COMPOSE.DAT", h2, [e_c]),
+            ],
+        )
+        rc = run([str(install)], patch_root=root3)
+        ok("overlapping same-file fixes refuse", rc == 1)
+
         tampered = bytearray(data)
         tampered[0x20] ^= 0xFF
         tampered = bytes(tampered)
@@ -747,8 +824,10 @@ def selftest() -> int:
             not (P.backup_root(inst3) / "A.DAT").exists(),
         )
 
-        # Two enabled fixes sharing one target refuse at check time,
-        # before anything is written or journaled.
+        # Two enabled fixes sharing one target refuse at check time
+        # when their ranges OVERLAP (disjoint same-file fixes compose
+        # since the 2026-10-07 spec 5 amendment; the compose block
+        # covers that side). Before anything is written or journaled.
         inst4 = tmp / "inst4"
         inst4.mkdir()
         data4 = _synth_bytes(2048)
@@ -756,14 +835,14 @@ def selftest() -> int:
         t4.write_bytes(data4)
         h4 = P.sha256_bytes(data4)
         e4a = P.Edit(offset=0x8, expect=data4[0x8:0xA], replace=b"\x11\x22")
-        e4b = P.Edit(offset=0x20, expect=data4[0x20:0x22], replace=b"\x33\x44")
+        e4b = P.Edit(offset=0x9, expect=data4[0x9:0xB], replace=b"\x33\x44")
         root4 = _make_multi_patch(
-            tmp, "compose", [("TEST.DAT", h4, [e4a]), ("TEST.DAT", h4, [e4b])]
+            tmp, "overlap", [("TEST.DAT", h4, [e4a]), ("TEST.DAT", h4, [e4b])]
         )
         rc = run([str(inst4)], patch_root=root4)
-        ok("apply refuses two fixes on one target", rc == 1)
-        ok("composition refusal left the target untouched", t4.read_bytes() == data4)
-        ok("composition refusal wrote no journal", P.read_journal(inst4) is None)
+        ok("apply refuses overlapping same-file fixes", rc == 1)
+        ok("overlap refusal left the target untouched", t4.read_bytes() == data4)
+        ok("overlap refusal wrote no journal", P.read_journal(inst4) is None)
 
         # A negative edit offset is refused instead of wrapping
         # around Python's slice semantics into the wrong bytes.
@@ -837,10 +916,12 @@ def selftest() -> int:
     # repo patch tree (every enabled fix) against a temp install
     # holding copies of every [target.files] entry, then verify the
     # journaled patched hashes and unapply byte-identically. This is
-    # the regression test for fix.ds1.deadtriggers: the GPLDATA.GFF
-    # patched hash below pins the eleven repoint bytes; any
+    # the regression test for the shipped GPLDATA.GFF fixes
+    # (deadtriggers + script-repairs composed, the default enabled
+    # set): the patched hash below pins all seven edit sites; any
     # accidental EDITS change fails here. (fix-workflow 5.1 hash
-    # test; the recorded value lives in fixes/001-deadtriggers.md.)
+    # test; the composition behavior is the composed-write path
+    # itself.)
     gamedir = DEFAULT_PATCH_ROOT.parent / ".games" / "ds1"
     real_files = {"DSUN.EXE", "GPLDATA.GFF"}
     if all((gamedir / f).is_file() for f in real_files):
@@ -856,7 +937,7 @@ def selftest() -> int:
             ok(
                 "patched GPLDATA.GFF matches the recorded deadtriggers hash",
                 patched
-                == "e6b163bd446637c6c68f6897c01b59518b513054c90b4a7d7439d900e14142f0",
+                == "2c851deeaafcde86d5eba118e1d62f5d7320a3c6f47cffdb719b2590a9fa315f",
             )
             rc = run([str(install), "--verify"], patch_root=DEFAULT_PATCH_ROOT)
             ok("verify passes on the real patched install", rc == 0)
