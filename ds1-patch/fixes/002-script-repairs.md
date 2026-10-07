@@ -63,24 +63,22 @@ the fingerprint):
 
 **Verified on**: GOG 1.10 (DS1)
 
-**Default**: off (see below)
+**Default**: on
 
-## Why this fix ships disabled
+## Composition (2026-10-07, same day as the disabled ship)
 
-The applier refuses two enabled fixes sharing one target file
-(spec 5), and `fix.ds1.deadtriggers` owns `GPLDATA.GFF` in the
-default configuration. The three repairs are independent of the
-deadtrigger rows (disjoint offsets), but composing per-file fixes
-is a spec-level question, not an applier flag, so v0.1.2 ships
-this fix toggled off: enable `fix.ds1.script-repairs` and set
-`fix.ds1.deadtriggers` to `enabled = false` in `manifest.toml`
-(or the copy in your zip) to take it. The three sites were chosen
-over the triage's other candidates precisely because they are
-same-length edits with no-op-or-restoration (1) or bounded,
-documented (2, 3) safety arguments; the triage's chunk-growth
-candidates (Alhena's unreachable condition, the escort-family
-guards, Rebel Mindhome's router) wait for either a composition
-decision or the gpl-asm grow path.
+v0.1.2 shipped this fix disabled because spec 5 then refused any
+second enabled fix on one target file. The rule was amended the
+same day (Brandon's call): disjoint same-file fixes now compose.
+The applier merges every enabled fix's edits into one write per
+file (re-checking each fingerprint in sequence), journals the
+merged patched hash, and still refuses overlapping ranges at
+check time with the offsets named. v0.1.3 ships this fix ENABLED
+beside `fix.ds1.deadtriggers`: the default enabled set applies
+both (the composed patched `GPLDATA.GFF` hash
+`2c851deeaafcde86d5eba118e1d62f5d7320a3c6f47cffdb719b2590a9fa315f`
+is the applier selftest's regression pin), and purists can still
+disable either fix in `manifest.toml`.
 
 ## Details
 
@@ -88,7 +86,7 @@ Authoring ran the standard data-surface pipeline: every edit's
 `expect` bytes were verified against the canonical install; the
 patched file re-disassembles 250/250 chunks aligned and the three
 sites decode as intended (the orphaned gate body at GPL-62@0x10f9
-is never called). The applier selftest pins the patched
-`GPLDATA.GFF` hash for the DEFAULT enabled set (001 only); with
-this fix enabled instead, the patched hash is
+is never called). The applier selftest pins the composed patched `GPLDATA.GFF`
+hash for the default enabled set (001 + 002 together,
+`2c851dee...` above); this fix alone patches to
 `482796e3da9f27b1feee5dce5cc8db59ecfaf2b5e75b8ff760180f7578111a95`.

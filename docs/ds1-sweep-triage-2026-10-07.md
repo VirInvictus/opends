@@ -78,15 +78,15 @@ allies").
 - Bodies vanish on reload: corpses are runtime visible-object state (engine-quirks 12); no persistence path.
 - Silt Sea North pull inconsistency: two authored paths (per-guard sight pull GPL-92@0xe vs group aggro `request 18` at 0x107b); sight-vs-attack, not a bug. Not worth fixing.
 
-## Shipped in darkfix-ds1 0.1.2
+## Shipped in darkfix-ds1 0.1.2, enabled by default from 0.1.3
 
-`fix.ds1.script-repairs` (fixes/002-script-repairs.md), disabled
-by default under the spec-5 one-enabled-fix-per-file rule
-(001-deadtriggers owns GPLDATA.GFF in the default configuration):
-the hermit/ranger entry repoint, the Linara menu repoint, and the
-final-battle stage-gate repoint. Toggle instructions in the fix
-doc; the toggle path applies and unapplies byte-identically (the
-002-only patched hash is pinned in the fix doc).
+`fix.ds1.script-repairs` (fixes/002-script-repairs.md): the
+hermit/ranger entry repoint, the Linara menu repoint, and the
+final-battle stage-gate repoint. 0.1.2 shipped it disabled under
+the old spec-5 one-enabled-fix-per-file rule; the rule was amended
+the same day (disjoint same-file fixes compose), and 0.1.3 ships
+both GPLDATA fixes enabled, the applier composing them into one
+write with the merged hash pinned in the selftest.
 
 ## What the box still owes
 

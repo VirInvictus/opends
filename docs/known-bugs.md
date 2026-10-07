@@ -173,8 +173,8 @@ guess (GPL script/data vs `DSUN.EXE`), not a finding. PHASE 9
 TRIAGE (2026-10-07): every entry below now carries a verdict
 (FIXED / fix-candidate / engine-side / no static site) with
 evidence in docs/ds1-sweep-triage-2026-10-07.md; the three
-shipped repairs ride darkfix-ds1 0.1.2's `fix.ds1.script-repairs`
-(disabled by default; see the triage doc).
+shipped repairs ride darkfix-ds1's `fix.ds1.script-repairs`
+(0.1.2, default-on from 0.1.3; see the triage doc).
 
 ### 3.1. The final battle fails to trigger (the headline family)
 
@@ -214,7 +214,7 @@ the game is unwinnable. Known trigger conditions and variants:
    out each fight works around it. Source: kibbitz 3.33. Surface
    guess: GPL sequencing or GPL-VM scheduling.
    ROOT CAUSE + FIXED 2026-10-07 (darkfix-ds1 0.1.2,
-   `fix.ds1.script-repairs`, toggled): the stage gate GPL-62@4323
+   `fix.ds1.script-repairs`, default-on from 0.1.3): the stage gate GPL-62@4323
    arms entry 4345, which exits without re-arming when the window
    has not elapsed, stranding the chain; the fix arms the driver
    239 directly. See the triage doc 3.1(5).
@@ -249,7 +249,7 @@ the game is unwinnable. Known trigger conditions and variants:
    Linara first; the topic never becomes discussable again. Source:
    kibbitz 3.15/3.17. Surface: GPL dialog tree/flag order.
    ROOT CAUSE + FIXED 2026-10-07 (darkfix-ds1 0.1.2,
-   `fix.ds1.script-repairs`, toggled): GPL-68@0xaa routes
+   `fix.ds1.script-repairs`, default-on from 0.1.3): GPL-68@0xaa routes
    GNUM55==2 to a one-line dead end (sub 4942); the fix repoints
    it to the general menu (209). See the triage doc 3.2(5).
 6. **Elven slaver leader conversation jumps to the wrong branch**
@@ -275,7 +275,7 @@ the game is unwinnable. Known trigger conditions and variants:
     west), and yields a duplicate Iron Necklace. Source: kibbitz
     3.29. Surface: GPL dialog loop plus wrong NPC association.
     ROOT CAUSE + FIXED 2026-10-07 (darkfix-ds1 0.1.2,
-    `fix.ds1.script-repairs`, toggled): the ranger-leave re-arm at
+    `fix.ds1.script-repairs`, default-on from 0.1.3): the ranger-leave re-arm at
     GPL-100@0x684 arms the hermit's entry (86), occluding the
     ranger's own registration (100@445); the fix repoints it. The
     duplicate necklace is the hermit give's ground-drop fallback.
@@ -448,6 +448,11 @@ Each fix:
 
 Bug fixes that change balance (e.g., XP exploits, item duplication)
 are **off by default**, on by toggle. See [`../spec.md`](../spec.md) §5.
+Amended 2026-10-07: several enabled fixes may share one target file
+when their edit ranges are disjoint; the applier composes them into
+one write and refuses overlapping ranges at check time. (The old
+one-enabled-fix-per-file rule briefly forced darkfix-ds1 0.1.2's
+script repairs to ship disabled.)
 
 ## 6. Sources
 

@@ -12,10 +12,10 @@ dead-trigger family: enemies in the endgame that refuse to engage
 and look text that stops working). v0.1.2 adds
 `fix.ds1.script-repairs` (the Lava Rifts hermit/ranger loop, the
 Linara conversation dead-end, and the final-battle stage-gate
-strand), shipped DISABLED because spec 5 allows one enabled fix
-per target file and 001 owns `GPLDATA.GFF`; enable it in
-`manifest.toml` (toggling 001 off) to take it
-([`fixes/002-script-repairs.md`](fixes/002-script-repairs.md)).
+strand), shipped disabled for one day under the old
+one-enabled-fix-per-file rule, then enabled by default when spec 5
+was amended to compose disjoint same-file fixes (v0.1.3;
+[`fixes/002-script-repairs.md`](fixes/002-script-repairs.md)).
 The distribution format and applier were proven in `v0.0.1`. See
 [`../roadmap.md`](../roadmap.md) and `fixes/` for per-fix
 writeups.

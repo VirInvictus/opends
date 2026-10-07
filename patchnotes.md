@@ -4,6 +4,42 @@ Released versions appear here, newest first: one heading per
 tagged release or dated batch. A `<tool>-vX.Y.Z` tag's message
 is that release's entry here, verbatim (see `docs/versioning.md`).
 
+## darkfix-ds1 v0.1.3 (2026-10-07)
+
+- **`darkfix-ds1` v0.1.3**: the spec 5 composition amendment
+  (Brandon's call, same day 0.1.2 shipped): several enabled fixes
+  may now share one target file when their edit ranges are
+  disjoint. The applier composes them into a single write per
+  file, re-checking every fingerprint in sequence (a drifted
+  `expect` still fails the whole apply before any write), journals
+  the merged patched hash so `--verify` and `--unapply` see one
+  consistent file (the restore path deduplicates same-file
+  entries), and still refuses overlapping ranges at check time
+  with the offending offsets named. Consequence: the three
+  script repairs of `fix.ds1.script-repairs` (0.1.2 shipped them
+  disabled) are now **enabled by default** beside
+  `fix.ds1.deadtriggers`; the default apply composes both onto
+  `GPLDATA.GFF` (seven edit sites; the selftest pins the merged
+  patched hash
+  `2c851deeaafcde86d5eba118e1d62f5d7320a3c6f47cffdb719b2590a9fa315f`
+  as the regression gate). New selftest cases: disjoint same-file
+  fixes apply/verify/unapply as one; overlapping ranges refuse
+  untouched. `tools/build-release.sh` gate 1 is overlap-aware to
+  match (its selftest proves overlap refuses and disjoint
+  composes). Players upgrading from 0.1.2-with-002-hand-enabled:
+  the applier targets the canonical install, so unapply first.
+
+## darkfix-ds2 v0.1.2 (2026-10-07)
+
+- **`darkfix-ds2` v0.1.2**: the same applier composition update
+  as darkfix-ds1 0.1.3 (the two `scripts/` trees are deliberate
+  copies; this PATCH bump carries no fix content change). The
+  selftest grows the disjoint-compose and overlap-refuse cases,
+  and `--unapply` deduplicates same-file journal entries so a
+  composed install restores byte-identically. `fix.ds2.dead-
+  triggers` remains the only fix and the pinned patched hash is
+  unchanged.
+
 ## opcode-fuzz v0.3.1 (2026-10-07)
 
 - **`opcode-fuzz` v0.3.1**: the recipe loop's first real drive.
