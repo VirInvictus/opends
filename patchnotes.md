@@ -105,7 +105,8 @@ later batch together with the ear pass.
   for every `gpl sound` / `gpl music` instruction with its operand
   and the calling script's inline strings: the cue evidence
   docs/audio-cues.md is written from (251 DS1 and 433 DS2 script
-  call sites; `gpl music` confirmed never emitted).
+  call sites; `gpl music` confirmed never emitted). Both selftests
+  are wired into the CI selftest block.
 
 ## xmi2mid v0.1.0 (2026-10-06)
 
@@ -146,6 +147,19 @@ later batch together with the ear pass.
   DS1 / 9 B DS2, correcting the old 14-byte claim). No parsing
   changes in any of the three; the suite passes and the shipped
   binary self-reports 0.6.3.
+
+## ovr-map v0.3.5 (2026-10-06)
+
+- **ovr-map 0.3.5**: the symbol catalogue grows by twelve
+  verified DS1 rows from the capability/trigger dig (the
+  capability mask builder and walker, the GPL script entry and
+  executor, and the seven trigger-table plumbing functions:
+  inserts, link-in, allocator, remove-head, and both flush
+  stages), all resident and all byte-evidenced in
+  docs/port-digs-2026-10-06.md 3. DS1 takes no DSO names (wrong
+  codebase heritage), so the rows are descriptive with the dig as
+  their evidence chain. Names render in `--disasm`, `--verify`,
+  and `--callgraph` with `--syms`.
 
 ## release packaging (2026-09-15)
 

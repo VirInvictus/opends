@@ -8,7 +8,9 @@ segmented chunk lists), slices out the audio chunk kinds, and writes:
 - GSEQ/LSEQ/PSEQ/CSEQ/MSEQ payloads dumped verbatim (XMI-family
   sequence data; conversion to standard MIDI is a future tool),
 - an inventory JSON (ids, sizes, VOC block structure, sample rates,
-  durations for PCM, magic sniff for sequences).
+  durations for PCM, magic sniff for sequences). Sequence-to-MIDI
+  conversion is the sibling tool tools/xmi2mid, which consumes these
+  dumps.
 
 Chunk ids and the fourcc set follow docs/file-formats.md; the TOC
 walker follows the in-repo authority (tools/gff-edit/src/lib.rs

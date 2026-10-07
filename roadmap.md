@@ -42,7 +42,7 @@ understanding campaign it should have been.
 | Tool | Version | Status |
 |---|---|---|
 | `verify-install` | 0.3.0 | shipped |
-| `gff-edit` | 0.6.0 | shipped; segmented-type builder deferred |
+| `gff-edit` | 0.6.3 | shipped; kind catalogue complete (10 kinds registered 2026-10-06, coverage gap list zero); segmented-type builder deferred |
 | `repro` | 0.5.0 | shipped; `--diff` differential capture landed (2026-09-06); bug-triggering save curation open |
 | `gpl-disasm` | 0.8.1 | shipped; 100% corpus alignment, CFG, callgraph, symbol catalogues, global-state + dead-trigger sweeps (2026-09-06) |
 | `dialog-extract` | 0.7.1 | shipped; path-aware caller picking queued |
@@ -53,7 +53,9 @@ understanding campaign it should have been.
 | `opends` | 0.1.1 | shipped |
 | `gpl-asm` | 0.9.2 | shipped; 600/600 round-trip; `--patch` hex parsing hardened; macros queued |
 | `opcode-fuzz` | 0.3.0 | shipped; recipe-driven fuzz + first opcode discovery open |
-| `ovr-map` | 0.3.4 | shipped; symbol catalogue (130 DS1 / 132 DS2 rows incl. StartCycle/StopCycle), xref tools, Ghidra pipeline run-proven end to end (2026-09-10), OBJEX sprite pipeline |
+| `ovr-map` | 0.3.5 | shipped; symbol catalogue (142 DS1 rows incl. the 2026-10-06 trigger-plumbing dozen, 132 DS2 rows), xref tools, Ghidra pipeline run-proven end to end (2026-09-10), OBJEX sprite pipeline |
+| `audio-extract` | 0.1.0 | shipped; 815 BVOC to WAV (499 x 8000 Hz + 316 x 10989 Hz), *SEQ dumps, cue sweep (684 call sites), all coverage totals reconciled (2026-10-06) |
+| `xmi2mid` | 0.1.0 | shipped; branch-aware XMI-to-MIDI with sidecar; 83 DS1 + 36 floppy sequences convert (2026-10-06) |
 | `exe-patch` | 0.1.0 | shipped; the Phase 5.7 EXE patch authoring surface (`ovr:`/symbol addressing, mandatory fingerprints, `--verify` gate, in-place enforcement) |
 
 What the digging surface looks like today:
@@ -2254,7 +2256,7 @@ in-install SSI clue books (facts only), and libgff.
       all pass, and the run exits nonzero on any drift. The
       damage-word decode is marked partial; the raw hex rides
       every row.
-- [ ] **Wave 2: close the marked-open fields.** The highest
+- [x] **Wave 2: close the marked-open fields.** The highest
       leverage, from the wave-1 reports: DS2 charrec
       +16..20 (class bits, race, gender, alignment); DS2
       THAC0 derivation (no stored byte; `fight` handler DS2
@@ -2436,3 +2438,40 @@ margins, cine tick rate, GNAME init, the memorized-slot model, ~35
 status bits, the morale-flee transition, loot creation, order kinds,
 region-load save/restore). The zero-new-RE starting point is the one-
 region render spike: every input it consumes already exists.
+
+### The mineout campaign (2026-10-06; static mining finished)
+
+Brandon's PROMPT-mineout (4de8e24) set the completion bar
+mechanical: drive format-coverage's undocumented-kind gap list to
+zero, sweep every open-question hit in docs/ to a resolution or a
+written closure, and commit each phase's deliverables. Two waves of
+four read-only agents (GLM-5.3 on the digs, GLM-5.3-Flash on
+breadth) plus main-thread tooling got the data phase there in one
+day, and every headline claim was independently re-verified by four
+claim-verifier passes before release (which caught a real converter
+bug and eight wrong secondary numbers, all fixed in this batch).
+
+- **Tools shipped**: audio-extract 0.1.0 (BVOC/FVOC to WAV, *SEQ
+  dumps, the cue sweep feeding docs/audio-cues.md: 684 script call
+  sites, `gpl music` proven never emitted) and xmi2mid 0.1.0
+  (branch-aware XMI-to-MIDI with a sidecar for the adaptive-music
+  data; 83 DS1 + 36 floppy sequences convert). gff-edit 0.6.3
+  registers ten kinds as their docs landed (DATA, RNME, MAP, VECT,
+  CMAT, CPAL, PLYL, ALL, GREQ, PREF); ovr-map 0.3.5 ships the
+  trigger-plumbing symbol dozen. Coverage gap list: ZERO.
+- **Headline findings** (docs/port-digs-2026-10-06.md): DATA is the
+  DS2 spell-system file (320 records + 3 tables; GOG 1.10 differs
+  from every archive copy by exactly the official patch's 5 bytes);
+  RBRN makes DS1's music adaptive at runtime via the embedded Mel
+  library; the steal/talk/give permission lists are GPL trigger
+  registrations; DS1 has no armour overlays (closed as a negative);
+  the bestiary special-attack/defense enums are decoded on both
+  sides; combat +8/+10/+12 are dead persistence slots and the
+  "unreachable" 0x628 family is overlay 46, fully named; PLYL is a
+  dead pre-CD playlist; 21 chunk kinds never shipped, closed by a
+  full census; every non-GFF file is identified.
+- **Still open in the campaign**: the open-hole sweep's remaining
+  hits to resolutions or written closures, the Mel-name adoption
+  batch into syms/ds2.toml, the ear pass (Brandon-assisted: DS1
+  music binding, the 56 script-unreferenced BVOCs, sample naming),
+  and docs/mining-complete.md, the final record.
