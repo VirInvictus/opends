@@ -79,7 +79,10 @@ payloads, a sample-rate generalization, a pool off-by-one, two
 miscounts, three offset slips, and a version bump that never
 reached Cargo.toml) are corrected in this batch.
 docs/mining-complete.md, the final campaign record, follows in a
-later batch together with the ear pass.
+later batch together with the ear pass. The release post for this
+batch (a per-document guide that tags and explains every mined
+document above) is the GitHub Release for the tag
+mining-completion-2026-10-06.
 
 ## audio-extract v0.1.0 (2026-10-06)
 
