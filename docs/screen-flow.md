@@ -300,10 +300,11 @@ GplDiskFixItemSlot) assigns placement to unequipped rows at load
 writes cell = slot+4 (0x6D7A5) and clears to 0xFF; the ready-slot
 module 0x5B8B9-0x5BF83 writes slot = cl+1 (0x5BA51) and
 [bp+6]+1 (0x5BF77); unequip clears to 0xFF and strips effects
-(0x6F8B9). Combat +8/+10/+12 derivation is NOT statically reachable
-(the 0x628:* derived-stats family runs at runtime segment numbers;
-leads: DS2 NpcReadyWeapon/GetMissileWeapon/usedhands/NumHands); the
-ready-slot module publishes the readied item into
+(0x6F8B9). Combat +8/+10/+12 are dead persistence slots, not derived
+stats (resolved 2026-10-06: rules-tables.md 5 tail +
+port-digs-2026-10-06.md 8; only 9999-clears, no reader; the 0x628:*
+family is ovr46, statically resolved, and computes HP/PSP/THAC0/
+saves); the ready-slot module publishes the readied item into
 [0x360:0xC37+cur*3].
 
 Carry limits (hole 3), both in GiveHeldToChar 0x73C40 (module 26):

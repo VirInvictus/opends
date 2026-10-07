@@ -222,6 +222,32 @@ group die rolled once per level, max(roll, CON floor), flat
 post_level_gain after the row's last_rolling_level. The recompute chain
 0x628:{0x2a, 0x39, 0x3e, 0x4d} = base-HP, PSP, THAC0, saves in order.
 
+**The combat block's +8/+10/+12 are NOT derived stats (resolved
+2026-10-06, port-digs-2026-10-06.md 8).** The three words are the
+libgff-named ready/weapon/pack item-instance indices (400-row arrays
+at [0x165d] DS1 / [0x19c1] DS2), null 9999 at runtime; the DS1 disk
+value 0 is only the resting state. An exhaustive decode of every
+store and load targeting them (all addressing forms, both binaries)
+finds only the 9999 clears (DS1 resident 0x219D8..0x21A00 row-alloc,
+ovr21 0x68818..0x6884B AddCombatRow, ovr17 0x65C8F..0x65CFD chargen
+scratch; DS2 0x252E8..0x25313 and ovr18 0x702CC..0x702EE), no
+value-writer, and no verified reader. Runtime weapon state lives in
+the belt/scheduler: 80 ten-byte rows heap-allocated by ovr7 entry[11]
+(0x5B06A), built by resident 0x20ECD (0xA0:0x1A2D), weapon slots
+auto-assigned via the item slot byte (0x5BA51), consumed by the
+resolver as sched[slot*10+4] (0x5814B); persistence rides the item
+slot bytes (fixer 0x69DF0). The full 0x628 family is overlay 46
+(segtab record 197; every `0x628:off` call is ovr46 stub
+(off-0x20)/5, 16/16 call sites integral) and its DS2 twin 0x690:*;
+the stubs compute usability, base-HP, class-count, dice/additive,
+PSP, THAC0 (to combat+31/+22), group levels, saves, and level-ups,
+and none touches +8/+10/+12. The nonzero values in the shipped
+CHARSAVE pools (DS1 516..519; DS2 500..519) are SSI authoring-session
+indices exceeding the 400-row arrays and referencing nothing in
+their own files: carry them through untouched, treat 9999 (runtime)
+and 0 (DS1 disk) as none. A port must NOT re-derive these fields;
+reproduce the belt model instead.
+
 ## 6. Open items
 
 1. ~~Save-roll consumption~~ RESOLVED (section 5 note + spell-effects.md 4):
@@ -239,6 +265,9 @@ post_level_gain after the row's last_rolling_level. The recompute chain
 7. ~~DATA:1002's consumer~~ strong negative (wave 3, chargen-flow.md 6):
    no instruction pushes id 1002; resident-cache or dead; its contents
    key SPIN ids {1, 50..69} to u32 values.
+8. ~~Combat +8/+10/+12 derivation~~ RESOLVED (section 5 tail +
+   port-digs-2026-10-06.md 8): no derivation exists; dead persistence
+   slots; the 0x628 family is ovr46, statically resolved.
 8. Pool placeholder semantics across builds (cosmetic; noted so nobody
    re-derives address math against them). Note: the PSP citation in
    section 1 ("DS1 0x875a8..0x875dc") lands inside the shared additive
