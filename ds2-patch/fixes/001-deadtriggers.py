@@ -1,4 +1,4 @@
-"""fix.ds2.deadtriggers: repoint the 27 static dead-trigger
+"""fix.ds2.deadtriggers: repoint the 37 static dead-trigger
 registrations from the shared no-op GPL-24@0x1 entry to each
 object's own working handler. See 001-deadtriggers.md for the full
 analysis and the authoring pipeline that produced these bytes.
@@ -11,10 +11,13 @@ TARGET = "GPLDATA.GFF"
 SOURCE_SHA256 = "be5efb2b76a5f77b9858b9583bd34c452ea86869f0c866436cf8e298ad96fbb8"
 
 # Absolute GPLDATA.GFF offsets; each edit covers opcode + handler
-# entry immediate + chunk immediate (the handler changes chunk in
-# every row: from the shared no-op GPL-24 to a region chunk).
-# Fingerprints verified against the canonical GOG 1.10 install;
-# chunk lengths are untouched.
+# entry immediate + chunk immediate for single-object verbs (the
+# handler changes chunk in every such row: from the shared no-op
+# GPL-24 to a region chunk). Use-with rows keep the opcode and
+# operand names untouched and edit only the 4-byte entry+chunk pair
+# (the opcode sits 9 bytes earlier, across the two 3-byte NAME
+# operands). Fingerprints verified against the canonical GOG 1.10
+# install; chunk lengths are untouched.
 EDITS = [
     {
         "offset": 0x0979E6,
@@ -151,6 +154,59 @@ EDITS = [
         "expect": "6500010018",
         "replace": "6504cd001d",
     },  # GPL-30@0x1146 attacktrigger -146 -> GPL-29@1229 (attested by MAS-1)
+    # 2026-10-07 correlation dig (docs/port-digs-2026-10-07.md 2): ten
+    # of the twelve rows left at 0.1.0 now correlate; the two -900
+    # pickup rows stay (no handler of any verb exists corpus-wide).
+    {
+        "offset": 0x097B8A,
+        "expect": "6600010018",
+        "replace": "66070800a3",
+    },  # GPL-163@0x5cc looktrigger -1922 -> GPL-163@1800 (attested by MAS-51)
+    {
+        "offset": 0x2001FD,
+        "expect": "6d00010018",
+        "replace": "6d0614002d",
+    },  # GPL-30@0x10f6 usetrigger -2975 -> GPL-45@1556 (attested by GPL-40)
+    {
+        "offset": 0x02FEEA,
+        "expect": "6d00010018",
+        "replace": "6d00010040",
+    },  # GPL-64@0x161b usetrigger -2975 -> GPL-64@1 (attested by GPL-74)
+    {
+        "offset": 0x57057,
+        "expect": "00010018",
+        "replace": "00010062",
+    },  # GPL-98@0x674 usewith (-4413,-4407) -> GPL-98@1 (attested by GPL-114)
+    {
+        "offset": 0x57062,
+        "expect": "00010018",
+        "replace": "00010062",
+    },  # GPL-98@0x67f usewith (-4414,-4407) -> GPL-98@1 (attested by GPL-114)
+    {
+        "offset": 0x5706D,
+        "expect": "00010018",
+        "replace": "00010062",
+    },  # GPL-98@0x68a usewith (-4415,-4407) -> GPL-98@1 (attested by GPL-114)
+    {
+        "offset": 0x57078,
+        "expect": "00010018",
+        "replace": "00010062",
+    },  # GPL-98@0x695 usewith (-4416,-4407) -> GPL-98@1 (attested by GPL-114)
+    {
+        "offset": 0x57083,
+        "expect": "00010018",
+        "replace": "00010062",
+    },  # GPL-98@0x6a0 usewith (-4417,-4407) -> GPL-98@1 (attested by GPL-114)
+    {
+        "offset": 0x5708E,
+        "expect": "00010018",
+        "replace": "00010062",
+    },  # GPL-98@0x6ab usewith (-4418,-4407) -> GPL-98@1 (attested by GPL-114)
+    {
+        "offset": 0x57099,
+        "expect": "00010018",
+        "replace": "00010062",
+    },  # GPL-98@0x6b6 usewith (-4419,-4407) -> GPL-98@1 (attested by GPL-114)
 ]
 
 

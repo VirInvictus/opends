@@ -12,9 +12,10 @@ game-breaking bugs that even SSI's 1.02 and 1.10 patches did not
 fully resolve. There has never been a public unofficial patch.
 This will be the first.
 
-Status: v0.1.0 ships the first fix, `fix.ds2.deadtriggers`
-(27 dead-trigger registrations repointed to their objects' working
-handlers; see [`fixes/001-deadtriggers.md`](fixes/001-deadtriggers.md)).
+Status: v0.1.1 ships `fix.ds2.deadtriggers`
+(37 dead-trigger registrations repointed to their objects' working
+handlers; the 2 provably handlerless pickup rows are documented as
+left; see [`fixes/001-deadtriggers.md`](fixes/001-deadtriggers.md)).
 The headline target remains **the mines elevator freeze**
 ([`../docs/known-bugs.md`](../docs/known-bugs.md) section 2.1);
 see [`../roadmap.md`](../roadmap.md).

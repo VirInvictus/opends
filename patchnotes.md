@@ -4,6 +4,32 @@ Released versions appear here, newest first: one heading per
 tagged release or dated batch. A `<tool>-vX.Y.Z` tag's message
 is that release's entry here, verbatim (see `docs/versioning.md`).
 
+## darkfix-ds2 v0.1.1 (2026-10-07)
+
+- **`darkfix-ds2` v0.1.1**: `fix.ds2.deadtriggers` grows from 27
+  to 37 repointed rows. The 2026-10-07 correlation dig
+  (docs/port-digs-2026-10-07.md 2) closed ten of the twelve rows
+  v0.1.0 left: the VA Headquarters tapestry look (-1922) to
+  `GPL-163@1800`, attested by MAS-51 and the same target the
+  sibling -1923 row already uses; two more shared-prop use rows to
+  their regions' attested handlers (`GPL-30` to `GPL-45@1556` per
+  GPL-40; `GPL-64` to `GPL-64@1` per GPL-74, the self-rearming
+  shape the first round restored seven times); and the seven
+  wizard-lab use-with rows in GPL-98 to `GPL-98@1`, whose entry
+  immediate was already correct on every dead row (their alive
+  twins in GPL-114 register the identical seven pairs, pair for
+  pair in order, to exactly that entry; use-with edits are 4
+  bytes, entry + chunk). The two remaining rows are closed with a
+  proof, not a shrug: the -900 pickup rows (Tyr thief chase) have
+  no handler candidate corpus-wide, so a pickup handler for that
+  object is not in the shipped data. The dead-trigger sweep drops
+  from 39 to exactly those 2; the patched file re-disassembles
+  350/350 chunks aligned. The applier selftest pins the new
+  patched `GPLDATA.GFF` hash and round-trips byte-identically.
+  Upgrade note: the applier targets the canonical install, so a
+  v0.1.0-patched install must `--unapply` (or reinstall from GOG)
+  before applying v0.1.1.
+
 ## Mining completion (2026-10-06)
 
 The static-mining campaign's data phase is complete: the

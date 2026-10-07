@@ -343,10 +343,16 @@ North). Surface: mixed engine/data; low severity each.
   FIXED 2026-09-15 for 27 of the 39 in darkfix-ds2 0.1.0
   (`fix.ds2.deadtriggers`): each static row is repointed to the
   object's own working handler (21 same-chunk, 6 MAS-attested),
-  the same no-op-or-restoration design as the DS1 fix. 12 rows
-  stay: no statically provable handler (two pickup rows on
-  -900, one look on -1922, two use rows on -2975, seven use-with
-  rows in GPL-98); see `ds2-patch/fixes/001-deadtriggers.md`.
+  the same no-op-or-restoration design as the DS1 fix. Ten of the
+  12 rows left at 0.1.0 followed in darkfix-ds2 0.1.1
+  (2026-10-07) after the correlation dig
+  (docs/port-digs-2026-10-07.md 2): the tapestry look -1922, two
+  more shared-prop use rows, and the seven GPL-98 use-with rows,
+  whose entry immediates were already correct and only the chunk
+  id wrong (alive twins in GPL-114 attest every pair). 2 rows
+  stay, closed with a corpus-wide proof: the two pickup rows on
+  -900 have no pickup handler anywhere in the shipped data; see
+  `ds2-patch/fixes/001-deadtriggers.md`.
   In-game scene confirmation rides the played-save sessions.
 - The region-transition screen-blanking line has no independent
   community trail; it predates the compiled list and stays untriaged

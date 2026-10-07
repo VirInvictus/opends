@@ -838,7 +838,7 @@ def selftest() -> int:
     # holding copies of every [target.files] entry, then verify the
     # journaled patched hashes and unapply byte-identically. This is
     # the regression test for fix.ds2.deadtriggers: the GPLDATA.GFF
-    # patched hash below pins the 27 repoint bytes; any accidental
+    # patched hash below pins the 37 repoint bytes; any accidental
     # EDITS change fails here. (fix-workflow 5.1 hash test; the
     # recorded value lives in fixes/001-deadtriggers.md.)
     gamedir = DEFAULT_PATCH_ROOT.parent / ".games" / "ds2"
@@ -856,7 +856,7 @@ def selftest() -> int:
             ok(
                 "patched GPLDATA.GFF matches the recorded deadtriggers hash",
                 patched
-                == "0d974dd4d35d68f09a88c888335400744eaab932338d73999b632078a9def834",
+                == "316bbe66b5a0cee9ab7b5451a59b9295115e925369e4a02bf12aaaa11f7a393a",
             )
             rc = run([str(install), "--verify"], patch_root=DEFAULT_PATCH_ROOT)
             ok("verify passes on the real patched install", rc == 0)
