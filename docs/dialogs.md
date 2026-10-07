@@ -59,6 +59,17 @@ number exactly; 30 of them have only computed writers
 2 have cross-chunk inline writers with no static call path (the
 queued path-aware caller-picking backlog item).
 
+WRITTEN CLOSURE (2026-10-07 mineout closure pass): the 32 are
+closed, not merely counted. The "Unresolved LSTR reads" census
+row is a permanent measurement, not an open question: a
+last-write-wins static snapshot cannot resolve a slot whose every
+writer on record computes its value at runtime (accumulator-built
+strings), and driving the remaining 2 is a tooling backlog item
+(path-aware caller picking), not a mining question. The
+conversion shape above already carries the resolution: the tree
+keeps the unresolved markers so a runtime port can bind them
+live.
+
 Static text outside dialogs: TEXT pools (arena and NPC names:
 ids 0..32, 100..118, 200..207; only 7 ids are ever read as
 GSTR, the rest look engine-side for random naming), DS1 NAME id

@@ -237,24 +237,85 @@ CSTATE2/STATE are frame constants to their own data records.
    exactly on stub entries; the exception, save_record_writer (18, 0x8e5),
    is 2 bytes off: the stub entry and prologue are at 0x8e3 (file 0x70713).
 
-## 8. Unresolved
+## 8. The §8 ledger (all items driven 2026-10-07; port-digs-2026-10-07.md 5)
 
-- Where DGROUP[0x114:8] (the overlay-file base) is computed at runtime; its
-  use is decoded (init DS1 0x3bc1f), its initialization is not traced.
-  Statically the math is image_end+16+payload, verified against module
-  prologues.
-- The IVT install instruction for vector 0x3F: the handler exists, but no
-  `mov [0xfc]` / `int 21h/25h` write pattern was found in the resident
-  image; the survey's `mov [cs:0x2c4],dx` claim remains unexplained.
-- Segtab word3 semantics (small ordinals on class-1 records).
-- The DGROUP:[0x86] far-call hook (ax = 0/8 per trap, bx=0xffff in init):
-  likely the VMEM/paging notification or a null default; body not identified.
-- Resident-set bound / buffer policy details (DGROUP[0x118]..[0x12c]):
-  qualitatively decoded (allocations move downward from a high-water
-  segment; LRU via desc+0x1c; lock count desc+0x1b; MCB-style backlinks).
-- Why DS1's resident code calls load_resource via raw 0x2460:0x4a4 (14
-  sites) while the documented 96 counted sites are all overlay-side: same
-  target, unreconciled site composition.
+The six items this section carried as "Unresolved" were driven to
+verdicts by the 2026-10-07 closure pass, which disassembled the
+overlay-manager segment end to end in both games (DS1 0x3b930
+size 0x125b, DS2 0x40050 size 0x1258, same code shifted 3 bytes).
+
+- **DGROUP[0x114:8] (the overlay-file base): RESOLVED.** Written
+  once, by the manager's init during Borland C0 startup (the init
+  is FID-table-registered as a relocated data pointer, DS1
+  0x4cbb2 = {0x3653:0x0d2a}): open the EXE by its own name
+  (buffer at DGROUP:0x8c; defaults `darkcd.exe`/`dsmall.exe`),
+  compute `image_end` from the MZ header, **align up to 16**,
+  seek there, verify FBOV, store `align16(image_end) + 16`. For
+  both shipped binaries image_end is already 16-aligned, so the
+  old "image_end+16" reading holds for them; the align16 step is
+  the general rule.
+- **The INT 3Fh install: RESOLVED.** The manager's get/set-toggle
+  (DS1 0x3ba73 / DS2 0x40190) reads the vector number from
+  DGROUP:0x111 (0x3F on disk) and runs DOS AH=35h/AH=25h with the
+  handler address from DGROUP:0x2/0x4 (the known handler entries,
+  MZ-relocated); operands from DGROUP words is why every
+  immediate-pattern search missed it. The other three AH=25h
+  sites per game are generic RTL setvec/getvec helpers with zero
+  direct callers. The survey's `mov [cs:0x2c4],dx` claim is real
+  but unrelated to the IVT: it is the program's fourth
+  instruction, parking the C0 aux-data segment (0x4356 DS1 /
+  0x47e0 DS2) for the abort-message printer at C0 0x2ad
+  ("Abnormal program termination").
+- **Segtab word3: rules derived, definition closed.** Class-3
+  records: always 0. Class-4 records: `(size+1) & 0xffff` in all
+  14/14 cases per game (the size-0xffff BSS markers yield 0 by
+  the same wrap, unifying them). Class-1: no runtime consumer
+  exists (the manager reads word0/1/2 only); not an
+  ordinal-within-class, not the record's MZ-reloc count, not
+  size-derived; all split/continuation record pairs share their
+  word3. Closed as TLINK build-layout bookkeeping (a logical
+  segment/combine id shared by the physical pieces of one
+  segment), pinning it further requires the linker, not the
+  binaries.
+- **DGROUP:[0x86]: RESOLVED as the VROOMM module-state
+  notification hook.** Default body: a bare `retf` at C0 offset
+  0x2fc (the on-disk pointer {0x02FC, 0x0000} relocates to the
+  load base). Call sites: the dispatch epilogue with ax = 8 (cold
+  load) or 0 (warm), the buffer warm-restore path with ax = bx =
+  0xffff, the EMS/XMS load paths with ax = 1. No writer anywhere
+  (the apparent writers are the C0 argv builder storing into the
+  AUX segment): the hook stays do-nothing in both shipped games.
+  Neighbors [0x80]/[0x82]/[0x84] are near-offset hook ids with
+  the same stack-neutral `retf` default, re-pointed by the
+  EMS/XMS init paths.
+- **Resident-set / buffer policy: RESOLVED to exact fields.**
+  [0x110] = stub-restore word + init gate + MCB signature at
+  loadseg-1; [0x111] = the vector number; [0x114:8] = file base;
+  **[0x118] = span>>2, the trim threshold** (after each cold
+  load, unlocked blocks are unpatched from the LRU head while
+  accumulated free < quarter span); [0x11a] = minimum paragraphs
+  (max over modules of ((size+0x11)>>4)+((nreloc+0xf)>>4)+2);
+  [0x11c] = dispatch counter; [0x120] = allocation pointer;
+  [0x122] = warm-restart chain head, **never written anywhere:
+  the warm-restore path is inert as shipped**; [0x124]/[0x126] =
+  low bound -1 / high bound; [0x128] = EXE handle; [0x12a] = disk
+  load counter; [0x12c] = LRU chain head. Boot buffer =
+  2*max_module_paragraphs + 1, carved from the C heap by the
+  bootstrap; shortfall triggers compaction (repack downward from
+  the high bound in reverse-chain order) then head eviction if
+  unlocked.
+- **The raw resident-side load_resource calls: RESOLVED, counts
+  corrected.** DS1 carries 19 resident raw `0x2460:0x4a4` sites
+  (not 14; the survey and dsun-exe-re.md carried the wrong
+  count) and 96 overlay-encoded sites; DS2 carries 19 and 91.
+  Nothing is unreconciled: the two byte forms are the same target
+  under the two fixup regimes section 6 documents (MZ-relocated
+  true segments vs per-module segtab byte offsets), and the
+  resident-side callers are boot-time and resident-service code
+  (the resource/save cluster, the boot-init neighbourhood, the
+  module adjacent to the manager) that cannot live in an overlay.
+  Caveat carried: the census covers direct 9A forms only;
+  indirect FF /3 calls are not statically enumerable.
 
 Wave 2 addendum: the per-module relocation table sits at
 `module_file_start + code_size` directly (the applier's

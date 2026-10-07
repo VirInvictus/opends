@@ -19,7 +19,7 @@ Confidence marks:
   3.3/3.4).
 - **LA**: libgff authority (`libgff/include/gff/*.h` struct
   names; positions measured, names taken on faith).
-- **H**: hypothesis, explicitly unresolved.
+- **H**: hypothesis; the row says what would confirm or kill it.
 
 Files (canonical installs):
 
@@ -105,7 +105,7 @@ residue 456..519 just like DS1's) and never reads them; weapon state lives in th
 | 14..21 | u8[8] | data_block (all zero on disk; runtime-filled) | LA |
 | 22 | u8 | special_attack: low byte of the WORD at +22 (resolved 2026-10-06, port-digs-2026-10-06.md 7). The word indexes a dword capability-bitmask table at EXE file 0x43850 (resident record 120, 402 B); 11 of the 32 bits fire probe attacks at 25% per round through ovr6 entry[7], first matching bit wins, castable id resolved through the power table (FIREBALL bit 26, breath innates bits 20/31/21, HOLD PERSON 30, DETONATE 6, INCREASE CON 12, poison innate 18, ranged innates 19/22, FEAR 29). Enum 41 = casting blocked (only Balkazar); the AI gate is `word != 0`; enums 128/129 index past the table into zero dwords (inert), enum 19 has a zero bitmask (inert marker). Passive-bit consumers live in ovr30/ovr32 (sites enumerated in the dig). Elemental resistance/boost rows ride the same record at +0xa8/+0xd2/+0xda, read with the enum RAW as a byte offset (ovr32 0x7b4be) | resolved (engine) |
 | 23 | u8 | HIGH BYTE of the +22 enum word; never read as a byte anywhere (all +0x17 byte hits are stride-0x12 or item records); 0 in all 291; a nonzero value would push the dword table index out of range. DS1 defenses live in magic_res, the enum record's aux tables, and the item layer (was mislabeled special_defense; corrected 2026-10-06) | resolved (engine) |
-| 24..25 | i16 | icon (0 in 273/291) | LA |
+| 24..25 | i16 | NOT an icon id (refuted 2026-10-07, port-digs-2026-10-07.md 9: all 18 nonzero values are 1..13 while the shipped ICON id space starts at 100; the domain matches the 14-slot base-figure index 0..13, port-digs-2026-10-06.md 6; libgff's "icon" label is wrong). Most probable: combat figure index; 0 in 273/291 | byte-census |
 | 26 | i8 | AC (current) | VB+XC (Bulette -2) |
 | 27 | u8 | move (current) | VB (Silt Runner 48) |
 | 28 | u8 | status (1 = active, 276/291) | VB |
@@ -353,17 +353,23 @@ DS1: `GPLDATA.GFF` chunk `IT1R` id 1 (the corpus's only IT1R),
 DS2: no IT1R; the 15-byte (la=3, type=4) template blocks inside
 OBJEX.GFF carry the base stats; only 82 distinct payloads exist
 for 1,216 uses (the shared-property pattern; the top template
-row is the six mines props'). Layout:
+row is the six mines props'). The engine's own copy of the table
+is **'ALL ' chunk id 4** in the same file (1,530 bytes = 102 rows
+x 15, loaded flat to the far global [0x19cd]; every RDFF template
+block matches the same-index ALL[4] row byte-for-byte, 87/87
+distinct indexes, so the blocks are serialized copies and ALL[4]
+carries 15 unreferenced spare rows; resolved 2026-10-07,
+port-digs-2026-10-07.md 7). Layout:
 
 | Off | Type | Field | Conf |
 |---:|---|---|---|
 | 0 | u8 | weapon class bits (same scheme) | VB (cross-game joins: Quarterstaff/Longsword/Cahulaks identical to DS1 rows) |
 | 1 | u8 | damage type bits | VB |
-| 2 | u8 | weight? | H |
-| 3 | u8 | unresolved (5/10/50/80/250) | H |
+| 2 | u8 | weight (confirmed 2026-10-07, port-digs-2026-10-07.md 7: the backstab gate requires <= 40, the dual-wield gate rejects > 30 with "Cannot use two heavy weapons"; melee-only getter; sparse: only weight-relevant rows carry values) | engine |
+| 3 | u8 | breakage/damage threshold (resolved 2026-10-07: the damage service damages the item only when the amount strictly exceeds +3; domain {0,5,10,20,40,50,80,250,255}; Arrows 5, Quarterstaff 10, Door 40, Bracer/Sling 50, Trikal/Lotulis 80, most weapons/armor 250, Chest/Boots 255 = unbreakable; DSO names BreakItem/BreakWeapon in the family; equals DS1 IT1R +6, the column DS1's engine never read) | engine |
 | 4 | u8 | material | VB (import mapping preserves it) |
 | 5 | u8 | placement/slot | VB |
-| 6/7 | u8 x2 | range / attacks pair, unresolved split | H |
+| 6/7 | u8 x2 | range / attacks-per-slot-in-half-rounds (resolved 2026-10-07: +6 is compared against tile distance in the targeting predicates; +7 is rendered by the damage formatter as value/2 with a ".5" suffix for odd values, and melee weapons with range <= 1 substitute caster level; equal DS1 IT1R +10/+11 row for row) | engine |
 | 8 | u8 | die sides | VB+XC |
 | 9 | u8 | dice count | VB+XC |
 | 10 | i8 | damage/to-hit bonus | VB+XC |

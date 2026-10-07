@@ -126,14 +126,21 @@ Enumerated dispatch surfaces (DS1):
    x 37-byte world-effect record table at DGROUP 0x67bb, keyed by RDFF ids
    72..79, count [0x264e], with compaction when full.
 
-Sample of the 38-table handlers (0-based castable rec, SPIN name where
+Sample of the 38-table handlers (NOTE, resolved 2026-10-07: the ids
+in this sample are 1-BASED castable recs while the table is keyed
+0-based, id list 16/20/23/26/...; "104" below is table id 103. That
+off-by-one was the 2026-10-06 flag, now closed; SPIN name where
 known): 17 GLITTERDUST -> effect 0x17; 21/106/118 PROT-PARALYSIS family ->
 strips effects 0x2f and 0x22; 24/149 STRENGTH -> 1d6 + insert; 27/122
 DISPEL -> 1d100 + removals; 30 HASTE / 38 SLOW -> movement points
 (CSTATE2+0x22b) doubled vs halved; 40 VAMPIRIC TOUCH -> die + effect 6;
 61/108 SUMMON -> 1d20 gate + duration 0x3e8ffff; 72 CURE LIGHT -> 1d8
 heal; 80/86/90 resist family -> area query + effects 0x48/0x46/0x47; 104
--> writes combat+0x22 (grants a special-attack word); 109 -> 2d6 + effect
+-> writes combat+0x22 (VERIFIED 2026-10-07, ovr32 module-local 0x9a5:
+the handler reads the target's +0x22 and raises it to the sibling
+record's +0x1b when lower, a lower-bound grant rather than an
+unconditional write; a higher value falls through to the generic
+default); 109 -> 2d6 + effect
 0x22; 113/128 -> 2d8+1 / 3d8+1; 133 -> 1d60 + effect 0x32; 136 -> writes
 combat status +0x1c; innate 6/14 -> apply_damage with 10000 (annihilate)
 / 1000 + effect 0x44; innate 22 -> walks all 74 status bits and mass-

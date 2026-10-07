@@ -4,6 +4,29 @@ Released versions appear here, newest first: one heading per
 tagged release or dated batch. A `<tool>-vX.Y.Z` tag's message
 is that release's entry here, verbatim (see `docs/versioning.md`).
 
+## ovr-map v0.3.6 (2026-10-07)
+
+- **`ovr-map` v0.3.6**: the Mel-name adoption batch. Eleven new
+  verified rows in `syms/ds2.toml` name the embedded Mel audio
+  library end to end: `mel_error` (the fatal-error reporter, whose
+  version string pins DS2's library at "Mel Real Mode Version
+  2.2.7"), `mel_register_graphic_shutdown`, `mel_open_animation`,
+  `mel_animation_manager` (the game-visible branch consumer: XMIDI
+  callback values 1..0x22 switch the music branch, the RBRN
+  follower), the branch pair `mel_break_loop_and_branch_to` /
+  `mel_branch_to` (BreakLoop has zero static callers in the
+  shipped image: retained API, unused, consistent with DS2
+  carrying no RBRN), the wait pair `mel_measure_wait` /
+  `mel_beat_wait`, and three data cells:
+  `gmel_indirect_control_array` (ICA[0] = desired branch, ICA[0x7f]
+  = the loop-break flag the NEXT events consume),
+  `gmel_current_branch`, `gmel_branch_taken`. Ground truth: the
+  DSO v1.0 client's own intact Mel layer, disassembled from
+  `.dso-online/tools/mdark.bin` at the symbols.txt offsets (only
+  AIL proper is stubbed there); all eleven carry `dso_source`.
+  The catalogue now names 143 DS2 locations (135 verified, 14
+  DSO-sourced). Evidence: docs/port-digs-2026-10-07.md 1.
+
 ## darkfix-ds2 v0.1.1 (2026-10-07)
 
 - **`darkfix-ds2` v0.1.1**: `fix.ds2.deadtriggers` grows from 27

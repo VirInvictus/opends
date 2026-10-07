@@ -13,11 +13,15 @@ no CD image, no redbook audio, MIDI music via `GM1.BNK` /
 [`source-hashes/ds1-gog-1.10.toml`](source-hashes/ds1-gog-1.10.toml)
 describes the only base we target. No variant question arises.
 
-> Open lead (2026-09-10, unverified): a GameFAQs "Patching" board
-> thread claims separate CD and floppy DS1 1.1 variants existed.
-> No fix list is quoted anywhere in the thread and it is not
-> Wayback-archived; GOG's DS1 tree ships no patch notes. Recorded
-> so the next pass knows to look, not as an established variant.
+> STANDING CLOSURE (rewritten 2026-10-07 from "open lead"): a
+> GameFAQs "Patching" board thread claims separate CD and floppy
+> DS1 1.1 variants existed. The public trail is exhausted: no fix
+> list is quoted anywhere in the thread, it is not
+> Wayback-archived, and GOG's DS1 tree ships no patch notes. This
+> is recorded as folklore with a settle condition, not an
+> established variant: it upgrades to a variant row only if an
+> artifact surfaces (a CD- or floppy-1.1 binary or a fix list),
+> and no repo action is gated on it.
 
 ## 2. DS2 (Wake of the Ravager): two product lines, three binaries
 
@@ -158,15 +162,19 @@ prefer the floppy experience (MIDI music, no CD audio stalls);
 that preference is legitimate, it just cannot define the primary
 base while the floppy 1.10 is unobtainable.
 
-Open questions, for whoever picks this up:
+Standing questions, each with its settle condition (written as
+closures 2026-10-07: none is answerable from material on this
+machine or in any reachable archive; each stays dormant until
+its artifact appears):
 
-- Which pressing is the IA floppy dump (5.25" vs 3.5")? Box
-  scans or disk labels would settle it.
+- Which pressing is the IA floppy dump (5.25" vs 3.5")?
+  Settles the day box scans or disk labels surface.
 - Does a floppy 1.01 or a 5.25"-targeted 1.10 patch survive
   anywhere (BBS CD-ROM compilations like the Patches Scrolls
-  CDs, SimTel mirrors, cover disks)?
-- Is floppy-1.10 `GPLDATA.GFF` byte-identical to CD-1.10's
-  (expected, unverifiable until a floppy 1.10 exists)?
+  CDs, SimTel mirrors, cover disks)? Settles the day one is
+  found; the 2026-09-15 policy is unaffected either way.
+- Is floppy-1.10 `GPLDATA.GFF` byte-identical to CD-1.10's?
+  Expected yes, unverifiable until a floppy 1.10 exists.
 
 ## 7. Policy: refusal is the supported path (2026-09-15)
 

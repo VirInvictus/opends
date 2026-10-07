@@ -66,8 +66,13 @@ strings anchor at DSUN.EXE 0x4D614/0x4D633).
 `SaveGameData`, `SaveObjectTable`/`LoadObjectTable`,
 `SaveCharRec`/`SaveCurrentPCs`/`LoadInDefaultPCs`,
 `SavePsiSpells`/`LoadPsiSpells`,
-`LoadGpl`/`LoadExternalGpl`/`LoadInternalGpl` (answers the
-internal-vs-external GPL open question in file-formats docs).
+`LoadGpl`/`LoadExternalGpl`/`LoadInternalGpl` (the names whose
+verification would settle the engine-side internal-vs-external
+GPL distinction; the file-formats docs no longer carry the
+question as open, and the corpus fact stands: GPL chunks ship
+across 5 files / 1,537 chunks per format-coverage.md, plus the
+one GPLX index, so the distinction is runtime plumbing over a
+documented data format).
 
 ## Tier D: rules math (high patch value, needs its own RE pass)
 

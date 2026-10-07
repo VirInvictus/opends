@@ -115,8 +115,8 @@ elsewhere, verify per site.)
 
 | Game | Encoded call (overlay-side form) | True file entry | Call sites |
 |---|---|---|---|
-| DS1 | `9A A4 04 00 01` (seg word `0x0100`) | `0x29ea4` | 96 overlay-side + 14 resident raw `0x2460:0x4a4` |
-| DS2 | `9A AB 04 28 01` (seg word `0x0128`) | `0x2e69b` | 91 overlay-side + resident raw `0x28ff:0x4ab` twins |
+| DS1 | `9A A4 04 00 01` (seg word `0x0100`) | `0x29ea4` | 96 overlay-side + 19 resident raw `0x2460:0x4a4` (corrected 2026-10-07) |
+| DS2 | `9A AB 04 28 01` (seg word `0x0128`) | `0x2e69b` | 91 overlay-side + 19 resident raw `0x28ff:0x4ab` twins |
 
 Both engines route every FOURCC-keyed lookup through one
 function, the canonical `load_resource`. The old readings
@@ -169,7 +169,7 @@ which is the function's epilogue / fall-through.
 ### 3.3 What we still need to crack
 
 The switch handles **five fixed family ids**, not 50-odd
-region numbers. The open question was therefore: where does the
+region numbers. The question was therefore: where does the
 engine compute `family_id ∈ {0, 1, 100, 200, 300}` from a region
 number, and what is that per-region map?
 
@@ -387,7 +387,7 @@ are the lowest-level VGA primitives:
 | `0x1168c` | `set_color(idx, r, g, b)` | `mov dx,0x3c8; out dx,al`; `inc dx; out three RGB bytes`. Writes one palette entry. Args from `[bp+6..0xc]`. |
 | `0x116a7` | `read_color_far(idx, *r, *g, *b)` | `mov dx,0x3c7; out`; `mov dx,0x3c9; in al,dx` three times; result stored via far ptrs (`les bx, ptr`). |
 | `0x116cf` | `read_color_near(idx, *r, *g, *b)` | Same shape with near pointers (`mov bx, word ptr`). |
-| `0x116f4` | `lookup_remap_row(idx)` | Indexes a multi-row table at `cs:0x4` with rows at `+0x000`, `+0x200`, `+0x400`, `+0x600`, `+0x800`, ... and copies row entries into globals `[0xe04..]`. **Not a palette write directly; this looks like a brightness / fade / remap row reader.** Eight rows of 256 words = 4 KB total. |
+| `0x116f4` | `PlotPixel(ctx, x, y, colour)` (renamed 2026-10-07 from the misread `lookup_remap_row`) | The `cs:0x4` word table selects a display context/clip rect (copied to `[0xe04..]`; the 256-word rows are context records), then the body clip-checks `[bp+8]/[bp+0xa]` and writes the pixel through the VGA plane mask (port 0x3C4; mask table at `cs:0x26dc`). The automap's creature dots go through it (port-digs-2026-10-07.md 8). |
 
 The two `0x3c9` hits inside this cluster (file `0x116b4` and
 `0x116dc`) are the DAC read-data ports for the read-color

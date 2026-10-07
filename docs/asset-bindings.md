@@ -109,8 +109,13 @@ inside OBJEX BMP id runs; creatures ship BOTH `BMP <n>` (normal sprite)
 and `CBMP <n>` (colour-map anim) for the same n. DS1's same-slot function
 0x25FA6 is the WALL twin ('WALL' vs 'BMP '): DS2 replaced DS1's
 wall-vs-bmp selector with cbmp-vs-bmp (DS2 has no WALL chunks, DS1 no
-CBMP). The three RESOURCE.GFF CBMPs (11001 x2, 11005 x3, 13009) look
-composed (11000+n / 13000+n); exact composition unresolved.
+CBMP). The RESOURCE.GFF CBMPs (RESOLVED 2026-10-07, port-digs-2026-10-07.md 9:
+six chunks, ids 11001/11002/11005/11006/11007/13009, each once; the
+old "11001 x2, 11005 x3" counts were lineage double-counting): the
+composition hypothesis is dead. Every CBMP id has a same-id BMP twin
+in the same file (BMP 11001..11007 and 13009 all ship), exactly the
+corpus-wide creatures rule (ship BOTH `BMP <n>` and `CBMP <n>` for
+the same n). The ids are pairs, not 11000+n sums.
 
 ## 6. Related correction: IT1R column map needs re-pinning
 
@@ -134,6 +139,11 @@ it.
   the portrait case is command 1 (jump table file 0x7D616 DS1 / 0x884B7
   DS2).
 - The DS2 RESOURCE CBMP 11001/11005/13009 id composition.
-- The DS1 combat-block +24 "icon" field (18 nonzero rows per
-  object-formats.md) could not be independently checked against the ICON
-  id set (full RDFF walk timed out); the docs' reading stands unverified.
+- RESOLVED (refuted) 2026-10-07 (port-digs-2026-10-07.md 9): the
+  DS1 combat-block +24 "icon" field. A bounded check with the
+  repo's own RDFF walker (the old full-walk timeout is gone) finds
+  all 18 nonzero values are 1..13, outside the shipped ICON id
+  space (292 ids, 100..21137): the icon reading from libgff is
+  wrong, and the domain matches the 14-slot base-figure index
+  (port-digs-2026-10-06.md 6). object-formats.md 2.1's row is
+  relabeled.

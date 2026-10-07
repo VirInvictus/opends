@@ -948,9 +948,9 @@ All 815 chunks decode cleanly (audio-extract 0.1.0; 1386.9 s of
 audio total). No type-3 silence, type-9 new-format, or extended
 blocks appear anywhere in the corpus.
 
-## 6. Open questions
+## 6. Question ledger (all closed as of 2026-10-07)
 
-Resolved questions are documented inline. These remain.
+Resolved questions are documented inline. None remain open.
 
 - ~~The exact layout of segmented chunk lists.~~ Resolved (see
   "Segmented chunk resolution" above). Verified on the full DS1
@@ -968,7 +968,16 @@ Resolved questions are documented inline. These remain.
   3..22 across the DS2 regions in file order). Both remain
   not load-bearing for read; a future writer should match
   the pinned per-corpus values.
-- **Compression**: is any chunk type stored compressed? The
-  DOS-era expectation is "no" (disk format = in-memory format),
-  but large GFFs (5.7 MB+) may have RLE bitmaps internally.
-  Unanswered.
+- **Compression**: CLOSED 2026-10-07 as "no chunk-level
+  compression exists". The evidence: every file in the corpus
+  (both GOG trees, saves included, every archive-org tree) parses
+  as a plain GFF with no decompression stage in any reader; the
+  one "Uncompress" string in either binary
+  ("Failed Uncompress in Loadgamefromdisk") was resolved
+  2026-09-05 to the GPLI directory readers' allocation-failure
+  message, not a compression path (roadmap 5.6.2); and the
+  engine's chunk readers (load_resource and its consumers, traced
+  across the overlay work) return raw payloads. What large files
+  do carry is intra-chunk encoding: the RLE bitmap codecs inside
+  BMP/CBMP and the packed-string codec inside GPL strings, both
+  documented per kind. A writer never compresses.

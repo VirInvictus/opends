@@ -1383,3 +1383,153 @@ evidence = "DS2 GPL dispatch table at DGROUP:0x30a (file 0x4d30a), opcode 0x80, 
 notes = """
 The GPL VM's handler for opcode 0x80 (GetRange). Resolved through the dispatch table (DGROUP:0x30a, 129 entries, segment 0x72c). Handler addresses verified by the MZ relocation table and consecutive arithmetic-family structure.
 """
+
+# The Mel audio library (the embedded XMIDI sequencer/mixer), the
+# 2026-10-07 adoption batch. Ground truth: the DSO v1.0 client's
+# own Mel layer, disassembled from .dso-online/tools/mdark.bin at
+# the symbols.txt offsets (only AIL proper is stubbed there). DS2
+# carries Mel Real Mode 2.2.7 (DS1 the older 2.0.9b); DS2 and DSO
+# (2.2.5) are adjacent versions, so bodies match function for
+# function. Full evidence chain in docs/port-digs-2026-10-07.md 2.
+
+[[function]]
+name = "mel_error"
+segment = "resident"
+offset = 0x3efef
+confidence = "verified"
+evidence = "structural twin of DSO MelError (mdark.bin 0xA05E6, disassembled): cmp di,0x69 errno gate, call far [DGROUP:0x3475] (the graphic-shutdown pointer mel_register_graphic_shutdown stores), pushes DGROUP:0x350e ('Mel Fatal Error #: %d Trap #: %d\\n', file 0x5050e) and DGROUP:0x3534 (the Mel version string, file 0x50534)"
+dso_source = "DSO::MelError"
+notes = """
+Shutdown path checks gMelAnimationEnabled (0x3e71:0xc22) and the \
+es:0xb67 cell exactly like the DSO body.
+"""
+
+[[function]]
+name = "mel_register_graphic_shutdown"
+segment = "resident"
+offset = 0x3f087
+confidence = "verified"
+evidence = "0xD-byte function storing its dword arg to DGROUP:0x3475, the same cell mel_error guards and calls; exact size and semantics match DSO MelRegisterGraphicShutDown (0xA069B, size 0xD)"
+dso_source = "DSO::MelRegisterGraphicShutDown"
+notes = """
+Adjacent to mel_error exactly as in the DSO emission order.
+"""
+
+[[function]]
+name = "mel_open_animation"
+segment = "resident"
+offset = 0x3b22f
+confidence = "verified"
+evidence = "twin of DSO MelOpenAnimation (0xA037A): if gMelAnimationEnabled (0x3e71:0xc22)==0, pushes far ptr 0x3602:0x0040 (= 0x3b260, mel_animation_manager) plus gMelSequenceHandle (DGROUP:0x343e) to AIL 0x3842:0xd5a, then sets the flag to 1"
+dso_source = "DSO::MelOpenAnimation"
+notes = """
+Doubles as the independent registration proof for \
+mel_animation_manager: the registered pointer value resolves to it.
+"""
+
+[[function]]
+name = "mel_animation_manager"
+segment = "resident"
+offset = 0x3b260
+confidence = "verified"
+evidence = "case-for-case twin of DSO __melAnimationManager (0xA039F): 0x23 -> ICA[0]=0, ICA[0x7f]=0x7f; 0x7f -> gMelAnimationTrigger (0x3e71:0xc29) + inc gMelAnimationClockCount (0x3e71:0xc25); 0x7e -> [0x3e71:0xc1f]=1; 0x24..0x4c -> gMelSampleTrigger (0x3e71:0xc2b); 1..0x22 -> AIL 0x3842:0xd30 with the branch id, then gMelBranchTaken=1, gMelCurrentBranch=v, ICA[0]=0, ICA[0x7f]=0x7f"
+dso_source = "DSO::__melAnimationManager"
+notes = """
+The game-visible branch consumer: XMIDI callback values 1..0x22 \
+switch the music branch (the RBRN follower). Registered by \
+mel_open_animation.
+"""
+
+[[function]]
+name = "mel_break_loop_and_branch_to"
+segment = "resident"
+offset = 0x3fdfa
+confidence = "verified"
+evidence = "twin of DSO MelBreakLoopAndBranchTo (0xA06A8): identical guard chain (state ptr DGROUP:0x3411 word +8==0x71 bail; sound status 0x3e71:0xb51 ==3/==5 bail; gMelCurrentSong DGROUP:0x3468 ==0xff bail), branch range gate cmp 1 / cmp 0x22, then four byte stores: gMelBranchTaken (0x3e71:0xc27)=0, ICA[0x7f] (DGROUP:0xa423)=0, ICA[0] (DGROUP:0xa3a4)=branch, gMelCurrentBranch (0x3e71:0xc28)=branch"
+dso_source = "DSO::MelBreakLoopAndBranchTo"
+notes = """
+Distinguishing store vs mel_branch_to is ICA[0x7f]=0 (the \
+loop-break flag), the one store DSO's version adds. Zero static \
+callers in the shipped image (raw far calls, near calls inside \
+record 84, and pointer tables all scanned): retained API, unused, \
+consistent with DS2 content carrying no RBRN.
+"""
+
+[[function]]
+name = "mel_branch_to"
+segment = "resident"
+offset = 0x3fe5b
+confidence = "verified"
+evidence = "twin of DSO MelBranchTo (0xA06FC): same guard chain and 1..0x22 gate as mel_break_loop_and_branch_to, three byte stores (identical minus the ICA[0x7f] zeroing); one caller: far call at file 0x3f5ae (call 0x3abf:0x6b) pushing 1, inside the music-manager switcher at 0x3f531"
+dso_source = "DSO::MelBranchTo"
+notes = """
+Only the desired-branch mailbox is written (ICA[0] + \
+gMelCurrentBranch); no AIL call, so the sequencer picks the branch \
+up by polling the registered ICA. Consecutive with the wait pair \
+exactly in DSO emission order (BreakLoop, BranchTo, MeasureWait, \
+BeatWait at 0x3fdfa/0x3fe5b/0x3feb7/0x3ff00).
+"""
+
+[[function]]
+name = "mel_measure_wait"
+segment = "resident"
+offset = 0x3feb7
+confidence = "verified"
+evidence = "twin of DSO MelMeasureWait (0xA074A): state guard, then loop calling AIL 0x3842:0xd2a (DSO 0xa4558, AIL_sequence_position) with gMelSequenceHandle (DGROUP:0x343e) / gMelCurrentSequencePlaying (DGROUP:0x3464) until the returned position reaches previous+1"
+dso_source = "DSO::MelMeasureWait"
+notes = """
+First of the consecutive wait pair after the branch pair, matching \
+DSO order.
+"""
+
+[[function]]
+name = "mel_beat_wait"
+segment = "resident"
+offset = 0x3ff00
+confidence = "verified"
+evidence = "twin of DSO MelBeatWait (0xA0795): two-phase loop, status via AIL 0x3842:0xd06 until ==1 (DSO 0xa451f), then paired calls 0x3842:0xd24/0xd2a (DSO 0xa4551/0xa4558) sampled twice with the same compare-and-loop shape, returning the last position"
+dso_source = "DSO::MelBeatWait"
+notes = """
+AIL call pairing 0xd06/0xd24/0xd2a maps 1:1 onto DSO \
+0xa451f/0xa4551/0xa4558.
+"""
+
+[[function]]
+name = "gmel_indirect_control_array"
+segment = "resident"
+offset = 0x573a4
+confidence = "verified"
+evidence = "DGROUP:0xa3a4 (DGROUP file base 0x4d000), 128 bytes to 0xa423: the ICA registration function at 0x3cd92 pushes ds:0xa3a4 as the array pointer to AIL 0x3842:0xcbe; the initializer at 0x3cd7b loops [si+0xa3a4] for si<0x7f; mel_break_loop_and_branch_to writes [0xa3a4] and [0xa423], 0x7f apart exactly like DSO gMelIndirectControlArray 0x1FED10 vs 0x1FED8F"
+dso_source = "DSO::gMelIndirectControlArray"
+notes = """
+Data cell (the catalogue's first), zeroed BSS on disk, \
+runtime-initialized. ICA[0] is the desired branch, ICA[0x7f] the \
+loop-break flag the [BF 75 7F] NEXT events consume \
+(port-digs-2026-10-06.md 2). Falsification: a second AIL \
+registration pushing a different DGROUP offset would demote this; \
+none exists (all 7 constant hits accounted for).
+"""
+
+[[function]]
+name = "gmel_current_branch"
+segment = "resident"
+offset = 0x44538
+confidence = "verified"
+evidence = "Mel state segment 0x3e71 (segtab record 110, file 0x43910):0xc28: written with the branch id by all three branch paths (mel_branch_to 0x3fe54-area, mel_break_loop_and_branch_to, mel_animation_manager's 1..0x22 arm 0x3b309); DSO twin 0x110232, adjacent to gMelBranchTaken (0x110231 / DS2 0xc27) and at the same +5 distance from gMelAnimationEnabled (0x11022C / 0xc22)"
+dso_source = "DSO::gMelCurrentBranch"
+notes = """
+Data cell. The 0x11022C..0x110235 DSO globals window maps to \
+0x3e71:0xc22..0xc2b with a constant delta (0x1040A) on every \
+cell, confirming the block identity, not just individual cells.
+"""
+
+[[function]]
+name = "gmel_branch_taken"
+segment = "resident"
+offset = 0x44537
+confidence = "verified"
+evidence = "0x3e71:0xc27: zeroed by both branch API functions and set to 1 by mel_animation_manager's branch arm; DSO gMelBranchTaken 0x110231, same adjacency window as gmel_current_branch"
+dso_source = "DSO::gMelBranchTaken"
+notes = """
+Data cell; bonus row beyond the four names the RBRN dig cited.
+"""

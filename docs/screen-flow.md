@@ -83,14 +83,27 @@ Writers: DS1 set 1 at 0x58579 / 0x6A6DD / 0x75592, set 0 at 0x6AF2A
 (fight_enter, which first calls UI-mode 0xB0:0x2535(1) at 0x73345) /
 0x7E81E, set 0 at 0x73BAE and 0x81626.
 
-UI-mode service (second axis): DS2 0xB0:0x2535 with enum {1..5}: mode 1
-(exploration/default) sites 0x5B141 / 0x69FC7 / 0x73345 / 0x7A9B6 /
-0x8C1B5; mode 3 (immediately followed by the +0x5208 spell-icon math =
-spell/power targeting UI) at 0x60880 / 0x633B9 / 0x63C06 / 0x7549F; modes
-2/4 branch at 0x68150; mode 5 at 0x5A24A. DS1 analogs: 0x4F8:0x84 (37
-sites, modes 1-4; per-screen switch cluster 0x7BE63..0x7BF07) and
-0x508:0x57 (7 sites). Reading: 1 = walk/default, 3 = spell/power select;
-MEDIUM confidence, exact enum names unproven.
+UI-mode service (second axis), NAMED 2026-10-07
+(port-digs-2026-10-07.md 6): it is the mouse-cursor mode setter,
+**GuiSetCursorMode** (the DSO table's name), DS2 0xB0:0x2535
+(dispatcher 0x2247D) / DS1 0x88:0x2927 (dispatcher 0x1F089),
+structural twins. Enum: **1 = MOVE** (menu buttons 10310 "MOVE
+CURSOR"; gates party-member click movement; fight_enter sets it
+first), **2 = LOOK** (10311), **3 = a spell cast is pending**
+(cursor becomes the per-character spell-target bitmap; the four
+DS2 sites 0x60880/0x633B9/0x63C06/0x7549F are all guarded by the
+is-a-spell-pending stub; mode 3 alone allows ground targeting),
+**4 = ATTACK** (10312), **5 = cast-targeting** (set by the
+spell-picker at 0x5A24A after choosing a spell with a non-self
+target; the input dispatcher's mode-5 arm selects among five
+per-target-shape callback tables). The 2/4 branch at 0x68150 is
+the game-menu cursor buttons. CORRECTION: this section's old DS1
+"analogs" 0x4F8:0x84 (62 sites, not 37) and 0x508:0x57 (12
+sites, not 7) are different functions entirely:
+GetClassLevel(member, class_id) pushing class ids 1..0x11 (the
+0x7BE63..0x7C11E cluster is per-class spell-list filtering), and
+GetStateStat(state_idx, stat_off) pushing stat selectors 1..4
+with failure sentinel 9.
 
 Typical flow: boot -> 3000; 3000 -> 3011..3013 (create) / 3009 (load);
 region load -> 3001 + exploration; ESC -> 10500 -> {3009/3024, 16500, map,
@@ -156,7 +169,12 @@ portrait command index is 1. Dialog module home segments: DS1 overlay seg
 1. The OpenWindow arg triple's dw_arg semantics (observed: 0, 0x90000,
    0xA0000, 0x8C0000, 0x5800D2, packed 0x2A0037-style pairs; likely a
    flags/size union).
-2. The UI-mode enum names (values {1..5} pinned; labels inferred).
+2. RESOLVED 2026-10-07: the UI-mode enum is the cursor mode
+   (1 MOVE / 2 LOOK / 3 spell-pending / 4 ATTACK / 5
+   cast-targeting), section 3. Residual: the five mode-5
+   targeting-shape sub-tables are identified but not individually
+   named, and DS2's cursor ids 19093/19095 ship in no GFF (the
+   setter's failure path evidently tolerates that).
 3. A few low service thunks (0x530:0x3E DS1, 0xB0:0x2535 DS2) are not
    reachable under the constant seg->file delta (group alignment
    padding); identity established by call-site shape.

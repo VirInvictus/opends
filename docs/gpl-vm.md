@@ -31,9 +31,14 @@ fields (DS1 stub segment 0x4251, DS2 0x4702; the two stub
 tables are order-identical: Continue is stub 0x20 in both).
 
 Loop: push the (chunk, entry, type) context unless chunk_id = 0
-(a resume path that exists but has no resident caller; scripts
-in practice restart per event), then fetch-dispatch until the
-stop flag is set or the call ring unwinds below its entry depth.
+(CORRECTED 2026-10-07, port-digs-2026-10-07.md 3: chunk 0 is not
+a resume; the branch skips the context push on a just-wiped state
+and returns without executing a single opcode, a reset/no-run
+service. The complete caller inventory finds nine resident far
+callers of run_gpl_script plus the ovr0 session-init, none
+passing 0; every run is synchronous inside RunGplScript's frame,
+fetch-dispatch until the stop flag is set or the call ring
+unwinds below its entry depth).
 
 Fetch: IP comes from a 50-slot ring of chunk-relative offsets
 (the call stack); the byte is `arena[chunk_data_ptr + ring_ip]`;
@@ -57,14 +62,14 @@ games (VB):
 
 | Offset | Size | Meaning |
 |---|---|---|
-| 0x000..0x03b | 13 far ptrs | GNAME pseudo-array slots (n = 0x20..0x2e; CORRECTED 2026-09-19: wave 3 found NO engine writer of these slots - Getxy writes GSTATE tile cells, not GNAME; who initializes the 13 pointers is runtime-capture territory) |
+| 0x000..0x03b | 13 far ptrs | GNAME pseudo-array slots (n = 0x20..0x2e; RESOLVED 2026-10-07, port-digs-2026-10-07.md 4: file-backed and MZ-relocated in both games, 13/13 reloc targets, NOT runtime-initialized. GNAME[32..36] point at GSTATE mode/x-tile/y-tile/aux/region, [37..44] at the six current-object registers 0x369/0x367/0x365/0x363/0x361/0x35f, [41]/[42] at the time counter 0x35b and party money 0x357; so GNAME reads are engine-cell reads and their "producers" are the writers of those cells, all enumerated) |
 | 0x034/0x074 | 0x40 each | the two RETVAL param-block save slots |
 | 0x0b4..0x0d3 | 8 dwords | parameter registers P0..P7 (expression results) |
 | 0x0d4..0x0f3 | 8 far ptrs | per-param result sinks (defaults to &accum) |
 | 0x104..0x10b | 8 bytes | compare-chain case-matched marks |
 | 0x171..0x190 | 32 bytes | if-nesting truth bytes |
 | 0x193 | word | active chunk's arena offset |
-| 0x195/0x197 | words | active chunk id / type |
+| 0x195/0x197 | words | active chunk type / id (CORRECTED 2026-10-07, port-digs-2026-10-07.md 4: the SetContext tail writes [0x197] = chunk id and [0x195] = type; the old row had the roles swapped. Type 1 loads 'GPL ', type 2 loads 'MAS ') |
 | 0x199..0x1b8 | 16 words | GlobalSub type stack |
 | 0x1b9..0x248 | cache tables | 16-slot chunk cache: id key, type key, end ptr, data ptr, LRU age |
 | 0x24d:0x24f | far ptr | expression result sink |
@@ -215,7 +220,7 @@ Value-producing engine calls:
 
 | op | semantics |
 |---|---|
-| 0x52 Rand N | r = RNG(); A = (r * (N+1)) / 32768 (RESOLVED 2026-09-19: `far 0:0x822` is an MZ-relocated call to Borland rand() at file 0x5c22 DS1 / 0x5a22 DS2: seed = seed*0x15A4E35 + 1; return (seed >> 16) & 0x7FFF. Range 0..32767 inclusive; srand has ZERO callers, so the stream is deterministic from 0 per run) |
+| 0x52 Rand N | r = RNG(); A = (r * (N+1)) / 32768 (RESOLVED 2026-09-19: `far 0:0x822` is an MZ-relocated call to Borland rand() at file 0x5c22 DS1 / 0x5a22 DS2: seed = seed*0x15A4E35 + 1; return (seed >> 16) & 0x7FFF. Range 0..32767 inclusive, so `gpl rand N` yields 0..N inclusive, N+1 outcomes. CORRECTED 2026-10-07: srand has THREE relocation-validated callers, all `srand(time(NULL))` (DS1 ovr13+1071; DS2 ovr11+1309, ovr35+30), so the stream is wall-clock seeded on those paths, not deterministic from 0) |
 | 0x20 Bitsnoop a, b | A = ((a & b) == b) (all bits of b set in a) |
 | 0x1E/0x1F Nametonum/Numtoname | A = -eval() (byte-identical pair; NAME(-N) conversion) |
 | 0x0F Getstatus v | A = engine_call(v) |
@@ -224,7 +229,7 @@ Value-producing engine calls:
 | 0x0C Changemoney v | engine money service |
 | 0x3D Readorders S | reads the in-flight request-table slot S into the accum (RETVAL-safe for this reason) |
 | 0x62 Wait N / 0x32 Fetch | enqueue a UI/dialog request; Wait pumps a modal dialog (the cooperative scheduler runs inside that overlay, not in the VM) |
-| 0x30 Passtime N | overlay timer call (body not resident-readable) |
+| 0x30 Passtime N | adds N*60 seconds to the 32-bit game clock at VM:0x35b (RESOLVED 2026-10-07, port-digs-2026-10-07.md 3: the body was readable all along through the segtab, DS2 stub 11 of ovr26 / DS1 stub 11 of ovr30: five instructions, `ax = N*60; add dword [es:0x35b],eax; retf`. The clock cell is inside the VM state segment; reset to 0 at session init, +60 per combat round init, saved by the save module) |
 | 0x2B Continue | bare overlay stub call (stub 0x20 in both games) |
 
 The debug family is confirmed residue in the retail build: 0x23
@@ -246,7 +251,7 @@ the operand value. The engine enforces nothing beyond the depth
 limit; libgff's "safe in RETVAL context" whitelist is a static-
 analysis safety net for opcodes that produce no accum value.
 
-## 6. Divergences and open questions
+## 6. Divergences and the question ledger
 
 DS1 vs DS2 semantics: NO divergence found anywhere in the VM
 (tables, evaluator, handlers, allocation sizes, limits). All
@@ -254,14 +259,28 @@ differences are addresses, plus DS1's dispatcher having an extra
 `mov bx,ax`, and both games carrying the per-opcode trace hook at
 different DGROUP cells.
 
-Open (honest gaps): the raw RNG range behind Rand; the
-complex-variable access grammar inside read_complex (0xB1) and
-complex_write; GNAME pseudo-array producers beyond Getxy; the
-string reader's sub-types (append vs plain vs decompressed);
-when the VM's second stream selector switches; Passtime's and
-Continue's overlay bodies; whether any overlay writes the stop
-flag directly; the resume path's caller (suspected: dialog
-completion, overlay-side).
+The 2026-10-07 closure pass (port-digs-2026-10-07.md 3 and 4)
+drove every remaining question in this section to a verdict; the
+section title is now historical. The eight "honest gaps" of the
+wave-3 era, as they closed: the raw RNG range behind Rand
+(Borland LCG, 0..32767, `gpl rand N` = 0..N inclusive; the srand
+correction is in the 0x52 row); the complex-variable grammar
+(RESOLVED as section 7's 0xB1 subsection: the grammar is VB in
+both games, only the runtime-built field numbering remains a
+capture question); GNAME producers (none exist; the slots are
+static file-backed pointers, section 2's corrected row); the
+string reader's sub-types (RESOLVED 2026-09-19, the 0x2C Log
+row); when the second stream selector switches (pure fast-path
+key mismatch, two write sites per game, section 2's corrected
+0x195/0x197 row); Passtime's and Continue's overlay bodies (the
+0x30 row and port-digs-2026-10-07.md 3: clock add and
+press-any-key pump); whether any overlay writes the stop flag
+directly (no: four resident direct writers, overlays stop the VM
+through the resident setter, some printing "BAD GPL EXIT"); and
+the resume path's caller (there is none: chunk 0 is a state
+reset that executes nothing, every run is synchronous inside
+RunGplScript's frame, and the complete caller inventory is in
+the dig).
 
 ## 7. World-interaction, UI, and string opcodes (wave 4)
 
@@ -277,7 +296,7 @@ World-object ops:
 
 | op | semantics |
 |---|---|
-| 0x22 Request code, obj, arg2, arg3 | dispatches into an overlay-local table: DS1 bounds 20 codes, DS2 bounds 53. P1 is the object selector, P2/P3 dword args, result to accum. The full per-code map is in the wave-4 ledger (roadmap); highlights: 1/4 rest (with the NO RESTING DURING COMBAT strings), 5 activate, 9 set state (also rewrites the visible-object record owner), 17 coordinate-place, 37 elevator-operate (3-case), 39 = a literal byte write to the elevator-state cell in overlay data, 49 set quantity; DS2 arms 18/22/23/24/32/40/49 apply resident function pointers per object |
+| 0x22 Request code, obj, arg2, arg3 | dispatches into an overlay-local table: DS1 bounds 20 codes, DS2 bounds 53. P1 is the object selector, P2/P3 dword args, result to accum. The full per-code map is in the wave-4 ledger (roadmap); highlights: 1/4 rest (with the NO RESTING DURING COMBAT strings), 5 activate, 9 set state (also rewrites the visible-object record owner), 17 coordinate-place, 37 elevator-operate (3-case), 39 = a literal byte write to the elevator-state cell in overlay data, 49 set quantity; DS2 arms 5/18/22/23/24/40/41/49 apply per-object applier services (CORRECTED 2026-10-07, port-digs-2026-10-07.md 4: the old arm list named 32 instead of 41 and omitted 5; the "resident function pointers" are overlay-stub pointers through module 35's per-module relocations, eight module-35 stubs plus a ninth module-32 service on arm 53; arms 31/32 call genuinely resident bit-set/clear functions on the per-chunk flag matrix) |
 | 0x25 Clone obj, count, a, b, c, d | clones `count` copies; accum = success count |
 | 0x5E Tport a, b, c, d, flag | a == 32766: party teleport via stub 0xac(b, c, d); a < 0: enumerate the group and stub 0xa7 per handle; else single stub 0xa7(a, b, c, d, 0, flag). Limbo is region 255 |
 | 0x32 Fetch / 0x08 Hunt / 0x37 Follow / 0x3A Go / 0x3C Goxy / 0x36 Flee | all enqueue movement/orders through the same dialog-module service with per-opcode kind codes (Fetch 0x0A, Follow 0x0B, Go 0x0D, Goxy 0x0F, Hunt 0x12, Flee 1) |
@@ -299,7 +318,7 @@ UI and strings:
 
 | op | semantics |
 |---|---|
-| 0x48 Menu | title string, then up to 24 entries of (label, jump-target expression, enable expression); terminator byte 0x4A; asks until a valid pick; accum = the chosen entry's target expression. Two new VM state arrays: menu labels 0x27d..0x2ac, enable flags 0x2f9..0x310 |
+| 0x48 Menu | title string, then up to 24 entries of (label, jump-target expression, enable expression); terminator byte 0x4A; asks until a valid pick; CORRECTED 2026-10-07 (port-digs-2026-10-07.md 3): the chosen entry's target expression is evaluated at parse time (stored to VM:0x27d+2i) and on selection is RING-PUSHED LocalSub-style (through the same helper LocalSub uses; cursor VM:0x192, value at VM:0x295+2*cursor), so execution continues at that offset; the accumulator is NOT written (the old "accum = the chosen entry's target" was wrong in mechanism). An invalid pick re-invokes the UI stub without a re-parse; the label/enable arrays are never cleaned, just overwritten by the next Menu |
 | 0x38 Getyn | yes/no prompt; accum = answer |
 | 0x42 InputString | up to 40 chars into the variable's result sink (no-op when the sink is the accum) |
 | 0x43/0x44 InputNumber/Money | numeric inputs into the sink |
@@ -337,9 +356,17 @@ conditional-operator count (5 vs 10). Everything else, including
 the stub offsets for shared services, is identical modulo
 addresses.
 
-Wave-4 open questions: the DS2 request arms' eight resident
-applier services (relocation-dependent segment constants); the
-runtime field-table initializers (see above); producers of four
-of the six current-object registers; the Skillroll/Statroll/
-Damage dice bodies (overlay); Log string sub-types 2 and 5; the
-Menu post-selection tail.
+Wave-4 question ledger, all closed 2026-10-07
+(port-digs-2026-10-07.md 3 and 4): the DS2 request arms' eight
+applier services (resolved: eight module-35 stubs plus the
+module-32 arm-53 service, see the 0x22 row); the runtime
+field-table initializers (closed as runtime-built, the 0xB1
+subsection's standing disposition); producers of four of the six
+current-object registers (resolved: all six enumerated, port-digs
+section 4); the Skillroll/Statroll/Damage dice bodies (resolved:
+Skillroll = rand()%100 vs rating+adj, Statroll = d20 0..19 with
+natural-19 auto-fail and target>roll, Damage passes the plain
+value through, no VM dice, see the dig for tables and strides);
+Log string sub-types 2 and 5 (resolved 2026-09-19, the 0x2C
+row); the Menu post-selection tail (resolved: ring push, the
+0x48 row).

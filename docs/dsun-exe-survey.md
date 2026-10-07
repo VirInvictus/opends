@@ -124,9 +124,13 @@ OS-service layer.
 | `cd 3f` | overlay calls (stubs, descriptors, one handler) | 994 | 904 |
 | `ba c8 03` | `mov dx,0x3c8` (DAC write) | 4 | 4 + 1 overlay |
 
-`int 21h / ah=25h` (set vector) does not occur; the overlay
-handler is installed by writing the IVT directly (the c0
-startup's `mov [cs:0x2c4],dx` pattern and neighbours). DS2
+`int 21h / ah=25h` DOES occur (CORRECTED 2026-10-07,
+overlay-formats.md 8): the overlay manager's get/set-toggle
+installs INT 3Fh through DOS AH=35h/AH=25h with the vector number
+and handler address taken from DGROUP words (DGROUP:0x111 and
+0x2/0x4), which is why the immediate-pattern survey missed it;
+the `mov [cs:0x2c4],dx` at the entry point is unrelated (it parks
+the C0 aux-data segment for the abort printer). DS2
 uses the mouse and BIOS video substantially more than DS1,
 consistent with its interface work between the games.
 
@@ -189,8 +193,8 @@ cluster now hosts the decoded palette subsystem
 `load_resource` specifically (file `0x29ea4` DS1 / `0x2e69b`
 DS2; corrected 2026-09-19, [`overlay-formats.md`](overlay-formats.md)
 7) is called heavily from BOTH sides: 96 overlay-side `9A A4 04
-00 01` sites plus 14 resident raw calls (DS1), 91 overlay-side
-`9A AB 04 28 01` plus resident raw twins (DS2). The old
+00 01` sites plus 19 resident raw calls (DS1; count corrected 2026-10-07), 91 overlay-side
+`9A AB 04 28 01` plus 19 resident raw twins (DS2). The old
 "resident-only service" reading was an artifact of the seg-word
 misparse.
 
