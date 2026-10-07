@@ -242,7 +242,7 @@ slot bytes (fixer 0x69DF0). The full 0x628 family is overlay 46
 the stubs compute usability, base-HP, class-count, dice/additive,
 PSP, THAC0 (to combat+31/+22), group levels, saves, and level-ups,
 and none touches +8/+10/+12. The nonzero values in the shipped
-CHARSAVE pools (DS1 516..519; DS2 500..519) are SSI authoring-session
+CHARSAVE pools (DS1 516..519; DS2 456..519) are SSI authoring-session
 indices exceeding the 400-row arrays and referencing nothing in
 their own files: carry them through untouched, treat 9999 (runtime)
 and 0 (DS1 disk) as none. A port must NOT re-derive these fields;

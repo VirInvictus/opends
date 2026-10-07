@@ -171,7 +171,11 @@ def decode_evnt(evnt: bytes, name: str) -> list[dict]:
             pos += 1
         tick += delta
         if pos >= len(evnt):
-            raise XmiError(f"{name}: delta with no status byte at end")
+            # Corpus-verified (2026-10-06): EVNT chunks can end after a
+            # delta run with no further status byte - writers pad the
+            # chunk after the EOT meta, and some streams simply stop.
+            # End of stream is end of track, not an error.
+            break
         status = evnt[pos]
         pos += 1
         if status == 0xFF:
@@ -190,6 +194,10 @@ def decode_evnt(evnt: bytes, name: str) -> list[dict]:
                 }
             )
             running_status = None
+            if meta_type == 0x2F:
+                # End of track: stop here; anything after it in the
+                # chunk is padding (observed: trailing zero bytes).
+                break
             continue
         if status < 0x80:
             # Running status: reuse the previous channel status.
@@ -375,6 +383,26 @@ def selftest() -> int:
     xmi = b"FORM" + struct.pack(">I", len(xdir_body) + 4) + b"XDIR" + xdir_body
 
     midi, side = convert(xmi, "selftest")
+
+    # Corpus failure modes, both now legal: a pad byte after EOT, and
+    # a stream that ends without any EOT meta.
+    padded = xmi.replace(
+        bytes([0xFF, 0x2F, 0x00]) + b"", bytes([0xFF, 0x2F, 0x00, 0x00])
+    )
+    m2, s2 = convert(padded, "selftest-pad")
+    assert m2 == midi and s2["total_ticks"] == side["total_ticks"]
+    trimmed = evnt[:-3]  # drop the EOT meta entirely
+    seq_t = (
+        chunk(b"TIMB", timb_body) + chunk(b"RBRN", rbrn_body) + chunk(b"EVNT", trimmed)
+    )
+    form_t = b"FORM" + struct.pack(">I", len(seq_t) + 4) + b"XMID" + seq_t
+    cat_t = chunk(b"CAT ", b"XMID" + form_t)
+    xdir_t = info + cat_t
+    xmi_t = b"FORM" + struct.pack(">I", len(xdir_t) + 4) + b"XDIR" + xdir_t
+    m3, s3 = convert(xmi_t, "selftest-noeot")
+    assert m3.endswith(b"\xff\x2f\x00")  # the writer appended the EOT
+    assert s3["total_ticks"] == 30 and s3["loop_spans"] == side["loop_spans"]
+
     assert midi[:4] == b"MThd"
     fmt, ntrk, div = struct.unpack_from(">HHH", midi, 8)
     assert (fmt, ntrk, div) == (0, 1, 60)
@@ -448,6 +476,11 @@ def main(argv: list[str] | None = None) -> int:
             return 2
 
     args.out.mkdir(parents=True, exist_ok=True)
+    # Payloads in the wild share a stem (two CSEQ-1000.xmi, one per
+    # container); disambiguate output names so nothing overwrites.
+    from collections import Counter
+
+    stem_counts = Counter(f.stem for f in args.files)
     had_errors = False
     for f in args.files:
         data = f.read_bytes()
@@ -457,7 +490,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{f.name}: CONVERSION FAILED: {exc}", file=sys.stderr)
             had_errors = True
             continue
-        stem = f.stem
+        stem = f.stem if stem_counts[f.stem] == 1 else f"{f.stem}-{f.parent.name}"
         midi_path = args.out / f"{stem}.mid"
         json_path = args.out / f"{stem}.xmi.json"
         midi_path.write_bytes(midi)

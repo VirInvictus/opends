@@ -36,7 +36,8 @@ What static mining DID recover for music:
 
 - The 27 DS1 tracks' adaptive structure (RBRN branch tables; see
   file-formats.md 5 and port-digs-2026-10-06.md 2). Branch counts:
-  tracks 5, 13, 14 are the most-branched cues (7-8 branch points);
+  track 5 is the busiest (8/8/9 across its GSEQ/LSEQ/PSEQ renders),
+  tracks 13 and 14 carry 8;
   most tracks carry 2-6; tracks 7 and 17 (short stings) and all
   four CINE.GFF themes (26..29) are linear.
 - CSEQ 1000 (both games, ~75 bytes) is the tiny clock sequence the
@@ -120,7 +121,7 @@ sound id = BVOC chunk id (audio-routing.md 3). 55 distinct ids across 251 call s
 
 ### DS2 script-referenced sounds
 
-BVOC chunk id = sound id + 1 (audio-routing.md 3). 128 distinct ids across 433 call sites, all in GPLDATA.GFF.
+BVOC chunk id = sound id + 1 (audio-routing.md 3). 127 distinct numeric ids plus one computed operand (lnum[1], 1 site) across 433 call sites, all in GPLDATA.GFF.
 
 | sound | BVOC | sites | chunks | s | meaning (context guess) | example context |
 |---|---|---|---|---|---|---|

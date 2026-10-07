@@ -486,9 +486,10 @@ port-digs-2026-10-06.md 4). Verdict: none of them ever shipped as a
 GFF chunk kind. Three classes:
 
 - **Engine-known, never materialized**: `FVOC`, `STXT`, `CMAP` exist
-  as code constants inside DSUN.EXE (`push 'FVOC'`, `push 'STXT'`,
-  and the ILBM reader's `BMHD CMAP BODY` ASCII table) but no shipped
-  container carries any of them.
+  as code constants inside DSUN.EXE (the `push 'FVOC'` byte sequence
+  at ds1 232449, `push 'STXT'` at 429492, and the ILBM reader's
+  packed `BMHDCMAPBODY` string table at 83051, CMAP at 83055) but no
+  shipped container carries any of them.
 - **Nested-marker only**: `FORM` appears exclusively as the IFF form
   marker of XMI data embedded in *SEQ chunk bodies (file-formats.md
   5), never as a TOC type.
@@ -551,11 +552,13 @@ each other; CMAT 200's all-index-1 background is CPAL 200's entry 1
 ### PLYL (dead DS2 combat playlist)
 
 Documented 2026-10-06 (port-digs-2026-10-06.md 9). Six chunks in
-DS2's RESOURCE.GFF lineage (ids 0, 10, 50..53), byte-identical from
+DS2's RESOURCE.GFF lineage (ids 0, 10, 50..53; lengths 3, 3, 3, 7,
+7, 5 - id 50 is the 3-byte `07 ff 64`), byte-identical from
 floppy 1.0 through GOG 1.10: N records of `(u8 song, u8 0xff)` plus
 one trailing byte (0x00 on ids 0/10, 0x64 on 50..53). The nine song
-values are exactly DJ.DAT's state-3 combat pool (songs 1..9,
-audio-routing.md 1). No shipped binary of any lineage references the
+values are a nine-song subset of DJ.DAT's state-3 combat pool
+(that pool is songs 1..10 across ten records, audio-routing.md 1;
+PLYL never references song 10). No shipped binary of any lineage references the
 fourcc (every EXE scanned; the music dispatcher pushes only
 PSEQ/FSEQ/LSEQ/GSEQ/redbook): the kind is dead data, plausibly a
 pre-CD playlist frozen into the resource files. A port should not
@@ -572,8 +575,9 @@ u16 9999 (none sentinel), u8 type, u8 len, char[] name` for every
 named special entity (a superset of the bestiary's 58 minis). id 2
 (18522 = 378 x 49): `u32 hp, u16 ?, u16 id, u16 9999 x3, u16 x2,
 i8 AC, u8 MV, u8, u8, u8 THAC0, u8 6, u8 0, u8[6] stats, u8, u8,
-u8 len, char[] name`; AC, name, and THAC0 join the bestiary 340/340
-(Air Drake's 0xfe proves AC is signed). id 1 (1317 x 23) carries a
+u8 len, char[] name`; AC, name, and THAC0 join every one of
+bestiary-ds2.md's 352 creature rows (AC and THAC0 as signed bytes;
+Air Drake's 0xfe = -2 proves it). id 1 (1317 x 23) carries a
 class byte (values 0/4/5/6); id 3 (108 x 66) holds per-creature long
 blocks; id 4 (1530) is 0xFA-keyed 15-byte cells, undetermined. Treat
 the kind as stale build artefacts.
@@ -792,7 +796,9 @@ like `flic` may suffice. `*.VOC` is Creative's spec, also well-known.
 ### Measured identifications (2026-10-06 census; evidence in port-digs-2026-10-06.md 4)
 
 - **DJ.DAT** (231 B): DS2's music cue table, fully decoded in
-  audio-routing.md 1 (38 six-byte records + header + trailer);
+  audio-routing.md 1 (38 six-byte records filling the 231-byte file
+  exactly; the 'trailer' once described there is the last record's
+  own tail);
   byte-identical from floppy 1.0 through GOG 1.10.
 - **ITEMS.BIN** (936 B): exactly 234 little-endian u16 pairs, both
   columns from one id space (603..31990) in long consecutive runs,
@@ -870,6 +876,10 @@ FORM "XDIR"              IFF sizes big-endian
       EVNT               always present, always last
 ```
 
+EVNT chunks may carry trailing pad bytes after the EOT meta
+(observed on CSEQ/1000: `ff 2f 00 00`); parsers must stop at EOT,
+not expect a status byte after the final delta run.
+
 Playback follows the branches. The engine's Mel library ("Mel Real
 Mode Version 2.0.9b" string in DSUN.EXE at file 0x4c76c; branch
 functions `MelBranchTo` / `MelBreakLoopAndBranchTo` and state
@@ -906,7 +916,10 @@ Totals across the corpus: BVOC 815 chunks (11.5 MiB, 1386.9 s decoded
 audio), GSEQ 63, FSEQ 34, LSEQ 27, PSEQ 27, CSEQ 6. Every *SEQ
 payload observed (all 157) is a `FORM/XDIR` XMI directory wrapping
 `CAT/XMID` song forms; CSEQ is the same directory shape at ~75 bytes.
-Every BVOC decoded is 8000 Hz 8-bit mono PCM.
+Decoded rates: 499 of the 815 samples are 8000 Hz (SR byte 131)
+and 316 are 10989 Hz (SR byte 165) - the 10989 set is DS2's
+RESOURCE.GFF (158 samples) and its byte-identical cd10 twin - all
+8-bit mono throughout.
 
 | container | sequence chunks | digital samples | note |
 |---|---|---|---|
@@ -926,9 +939,11 @@ routing rule has a one-off edge: not settled here.
 
 Every BVOC payload is a complete Creative Voice File: the 26-byte
 header (`Creative Voice File\x1a`, data offset 26), then exactly one
-type-1 sound-data block (SR byte 131 = 8000 Hz, pack byte 0 = 8-bit
-unsigned PCM, mono) and the type-0 terminator. Two chunks across the
-GOG pairs additionally carry a type-6/type-7 repeat-start/end pair.
+type-1 sound-data block (pack byte 0 = 8-bit unsigned PCM, mono;
+SR byte 131 = 8000 Hz on DS1 and 499 of DS2's samples, SR byte
+165 = 10989 Hz on the other 316) and the type-0 terminator. Two
+chunks across the GOG pairs additionally carry a type-6/type-7
+repeat-start/end pair.
 All 815 chunks decode cleanly (audio-extract 0.1.0; 1386.9 s of
 audio total). No type-3 silence, type-9 new-format, or extended
 blocks appear anywhere in the corpus.

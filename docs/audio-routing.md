@@ -9,8 +9,10 @@ seg*16 + 0x5400, DS2 = seg*16 + 0x5200.
 ## 1. DS2 music: the DJ.DAT state machine (fully decoded)
 
 File layout (`.games/ds2/DJ.DAT`, 231 bytes): `u8 num_records = 38`;
-`u16 repick_delay = 1000`; 38 six-byte records; trailer `u16 slot_count =
-35`. Record fields, pinned from the consumer code:
+`u16 repick_delay = 1000`; 38 six-byte records that fill the file
+exactly (3 + 38*6 = 231; the 'trailer u16 slot_count = 35' an
+earlier revision described is the last record's own (0x00, song)
+tail, not a separate field). Record fields, pinned from the consumer code:
 
 | field | values | meaning |
 |---|---|---|
