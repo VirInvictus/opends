@@ -151,15 +151,23 @@ later batch together with the ear pass.
 ## ovr-map v0.3.5 (2026-10-06)
 
 - **ovr-map 0.3.5**: the symbol catalogue grows by twelve
-  verified DS1 rows from the capability/trigger dig (the
-  capability mask builder and walker, the GPL script entry and
-  executor, and the seven trigger-table plumbing functions:
-  inserts, link-in, allocator, remove-head, and both flush
-  stages), all resident and all byte-evidenced in
-  docs/port-digs-2026-10-06.md 3. DS1 takes no DSO names (wrong
-  codebase heritage), so the rows are descriptive with the dig as
-  their evidence chain. Names render in `--disasm`, `--verify`,
-  and `--callgraph` with `--syms`.
+  verified DS1 rows from the capability/trigger digs (the
+  capability mask builder and walker, evidence in
+  docs/port-digs-2026-09-21.md 2; the GPL script entry, executor,
+  opcode dispatcher, and the seven trigger-table plumbing
+  functions: sorted inserts, link-in, allocator, remove-head, and
+  both flush stages, evidence in docs/port-digs-2026-10-06.md 3).
+  All twelve are resident and verified; DS1 takes no DSO names
+  (wrong codebase heritage), so the rows are descriptive with the
+  digs as their evidence chain. The release also carries the
+  September corrections the catalogue had been waiting on: five
+  existing rows move to corrected addresses (DS1 load_resource to
+  0x29ea4 via the segtab byte-offset reading, DS1 overlay_manager
+  to 0x3be27, DS2 load_resource to 0x2e69b, DS2 overlay_manager to
+  0x40544, DS2 save_record_writer to 0x08e3) and the README's
+  overlay-descriptor notes are corrected (relocation count is in
+  bytes; the stub's fifth byte is reserved). Names render in
+  `--disasm`, `--verify`, and `--callgraph` with `--syms`.
 
 ## release packaging (2026-09-15)
 

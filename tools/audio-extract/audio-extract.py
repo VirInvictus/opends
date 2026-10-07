@@ -6,7 +6,8 @@ segmented chunk lists), slices out the audio chunk kinds, and writes:
 
 - BVOC/FVOC payloads decoded to WAV (Creative Voice block decode),
 - GSEQ/LSEQ/PSEQ/CSEQ/MSEQ payloads dumped verbatim (XMI-family
-  sequence data; conversion to standard MIDI is a future tool),
+  sequence data; conversion to standard MIDI is the sibling tool
+  tools/xmi2mid),
 - an inventory JSON (ids, sizes, VOC block structure, sample rates,
   durations for PCM, magic sniff for sequences). Sequence-to-MIDI
   conversion is the sibling tool tools/xmi2mid, which consumes these
@@ -411,8 +412,8 @@ def write_wav(path: Path, part: dict) -> None:
 
 
 def magic_sniff(payload: bytes) -> dict:
-    """Identify a sequence payload coarsely (deep XMI decode is the
-    future xmi2mid converter's job, not this tool's)."""
+    """Identify a sequence payload coarsely (deep XMI decode is
+    tools/xmi2mid's job, not this tool's)."""
     if payload[:4] == b"FORM":
         return {
             "magic": "FORM",
