@@ -41,9 +41,16 @@ These cannot be read from the binaries; each needs one DOSBox capture
 1. Walk speed, animation frame timing, and scroll hysteresis margins
    (BSS-installed per-object drivers and scroll config).
 2. The cinematic tick rate in Hz (one timed intro run).
-3. GNAME pseudo-array initialization (13 far pointers; Getxy writes
-   GSTATE, not GNAME).
-4. The memorized-slot-count model and where memorized state lives.
+3. RESOLVED 2026-10-07 (port-digs-2026-10-07.md 4): no GNAME
+   initialization capture is needed; the 13 slots are static,
+   file-backed, MZ-relocated pointers, and their targets are
+   enumerated.
+4. MOSTLY RESOLVED 2026-10-07 (port-digs-2026-10-07.md 8): DS1 has
+   no per-spell memorization; known = SPST, castable = per-family
+   per-level counters at [0x4B08]/[0x4B11 + member*30 + level].
+   The one capture left: who fills those counters (rest/level-up
+   recalc writes through computed pointers); a watchpoint on
+   DGROUP:0x4B08 across one rest settles it.
 5. ~35 status/effect bit semantics beyond the ~15 pinned (spell-effects.md
    8).
 6. The morale-failure -> flee transition.

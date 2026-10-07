@@ -2483,8 +2483,17 @@ bug and eight wrong secondary numbers, all fixed in this batch).
   "unreachable" 0x628 family is overlay 46, fully named; PLYL is a
   dead pre-CD playlist; 21 chunk kinds never shipped, closed by a
   full census; every non-GFF file is identified.
-- **Still open in the campaign**: the open-hole sweep's remaining
-  hits to resolutions or written closures, the Mel-name adoption
-  batch into syms/ds2.toml, the ear pass (Brandon-assisted: DS1
-  music binding, the 56 script-unreferenced BVOCs, sample naming),
-  and docs/mining-complete.md, the final record.
+- **CLOSURE PASS 2026-10-07 (mineout sessions 2-3)**: the
+  campaign's remaining three items are done. The open-hole sweep's
+  hits are driven to verdicts or written closures (seven research
+  digs, docs/port-digs-2026-10-07.md: the GPL VM behavior and
+  data-model holes, the overlay-loader ledger, GuiSetCursorMode,
+  the DS2 item templates, the UI-lane residuals, and three
+  refutations). The Mel-name adoption batch landed as ovr-map
+  0.3.6 (eleven verified rows via mdark.bin ground truth).
+  darkfix-ds2 0.1.1 shipped the dead-trigger correlation round
+  (37 of 39 rows repointed; two closed with a corpus-wide
+  no-handler proof). docs/mining-complete.md is the final record;
+  the campaign's one remainder is the Brandon-assisted ear pass
+  (DS1 music binding, the 56 script-unreferenced BVOCs, sample
+  naming).
