@@ -4,73 +4,150 @@ Released versions appear here, newest first: one heading per
 tagged release or dated batch. A `<tool>-vX.Y.Z` tag's message
 is that release's entry here, verbatim (see `docs/versioning.md`).
 
-## Unreleased
+## Mining completion (2026-10-06)
 
-- **gff-edit 0.6.3**: the last four corpus kinds register, and the
-  format-coverage gap list reaches zero (mineout completion bar,
-  condition 1). `PLYL` (the dead DS2 combat playlist: layout
-  decoded, songs exactly DJ.DAT's combat pool, no binary anywhere
-  references the fourcc), `ALL ` (object-database digest tables in
-  OBJEX.GFF, engine-unreferenced, bestiary-joining), `GREQ`
-  (per-save-slot view state, id = slot + 1), and `PREF` (preferences
-  state, 11 B DS1 / 9 B DS2, correcting the old 14-byte claim). No
-  parsing changes; the suite passes.
+The static-mining campaign's data phase is complete: the
+format-coverage gap list is empty, every chunk kind the corpus
+carries is documented with offset-level evidence, and every named
+RE hole from the mining prompt is resolved or closed as a written
+negative. Ten GFF kinds left the gap list this batch; the
+twenty-one kinds the corpus never ships are closed by a full
+census. The dig record is docs/port-digs-2026-10-06.md; the
+highlights:
+
+- **The DS2 spell system is a file** (`DATA`): 320 uniform 73-byte
+  spell records (descriptor + 32-char long name + 9-char short
+  name, ARMOR through the MONS summon placeholders) plus three
+  auxiliary tables, shipped byte-identical from floppy 1.0 to GOG
+  1.10 except exactly five bytes: the official patch's own data
+  edit (PRAYER's descriptor byte 1 becomes 20; a broken XP
+  progression repaired). A port can generate its spell table from
+  the file.
+- **DS1's music is adaptive at runtime** (`RBRN`): 63 branch-point
+  tables (one per sequence kind for every track except the two
+  short cues 7 and 17), driven by XMIDI controller 0x78 and
+  followed by the Mel library embedded in DSUN.EXE ("Mel Real Mode
+  Version 2.0.9b"). Every branched song is a FOR/NEXT loop the
+  engine re-enters at the selected branch point. DS2 ships none:
+  its music went redbook.
+- **The music now converts to MIDI**: `tools/xmi2mid` turns every
+  sequence chunk into standard MIDI plus a JSON sidecar carrying
+  the branch tables and loop spans the classic public-domain
+  xmi2mid flattens away. All 83 DS1 sequences and all 36
+  floppy-tree DS2 sequences convert.
+- **The digital-sfx frontier is enumerated**: 815 BVOC samples
+  (499 at 8000 Hz, 316 at 10989 Hz, 1386.9 seconds, zero decode
+  failures) extract to WAV through `tools/audio-extract`, and the
+  cue sweep found 684 script call sites (251 DS1 / 433 DS2) naming
+  which sound each script requests, with inline-string context.
+- **Three named holes closed, one by disproving itself**: the
+  steal/talk/give "permission lists" are the engine's GPL trigger
+  registrations, reproducible as data; DS1 has no armour overlays
+  at all (the paperdoll figure never changes on equip; gear lives
+  in the 14 cells, so gear-on-figure rendering would be an
+  invention); the bestiary's special-attack bytes are decoded
+  engine enums on both sides (FIREBALL, breath weapons, the
+  Mindflayer's mind blast, per-enum fire gates below half HP); and
+  the combat block's "+8/+10/+12 derived stats" do not exist: the
+  words are vestigial item-index slots the engine only ever clears,
+  and the family once called "not statically reachable" is overlay
+  46, now named function by function.
+- **Saves and dead data are mapped**: GREQ is per-slot camera
+  state, PREF's real byte layouts replace a wrong 14-byte claim,
+  PLYL is a dead pre-CD playlist frozen into the resources (its
+  nine songs are a subset of DJ.DAT's ten-song combat pool), and
+  ALL is five engine-unreferenced digest tables whose creature
+  summaries join our bestiary 352/352.
+- **Twenty-one chunk kinds never shipped**: the census swept every
+  container, archive tree, and zip member; FVOC/STXT/CMAP survive
+  only as code constants inside DSUN.EXE, and the other eighteen
+  leave no trace at all.
+
+Documents in this release: docs/port-digs-2026-10-06.md (the dig
+record), docs/audio-cues.md (the cue tables), docs/format-coverage.md
+(the zeroed gap list), and the extended docs/file-formats.md,
+docs/object-formats.md, docs/rules-tables.md, docs/bestiary-ds1.md,
+docs/bestiary-ds2.md, docs/spell-effects.md, docs/combat-flow.md,
+docs/screen-flow.md, docs/exploration-flow.md,
+docs/audio-routing.md, docs/dso-symbols.md.
+
+Every headline claim above was independently re-verified before
+release: four claim-verifier passes re-ran the corpus counts,
+re-decoded the cited bytes and tables, and re-executed the tools.
+Nine secondary details they caught (a converter bug that failed 41
+payloads, a sample-rate generalization, a pool off-by-one, two
+miscounts, three offset slips, and a version bump that never
+reached Cargo.toml) are corrected in this batch.
+docs/mining-complete.md, the final campaign record, follows in a
+later batch together with the ear pass.
+
+## audio-extract v0.1.0 (2026-10-06)
+
+- **audio-extract 0.1.0**: the audio frontier opens (mineout Phase
+  A deliverable 1, the first new tool of the mining-completion
+  push). It parses a GFF container's TOC (indexed and segmented
+  chunk lists, mirroring gff-edit's parser) and dumps the audio
+  chunk kinds: BVOC/FVOC decode to WAV through a Creative Voice
+  block decoder, the *SEQ family dumps verbatim, and an inventory
+  JSON records ids, offsets, sizes, sample rates, and durations.
+  Its synthetic-GFF selftest needs no game files;
+  `--selftest-corpus` asserts the measured DS1 invariants (skips
+  without `.games/`). Its first full run reconciled every
+  2026-09-04 coverage number exactly (815 BVOC, 63 GSEQ, 27 LSEQ,
+  27 PSEQ, 6 CSEQ, 34 FSEQ across 120 containers) and added new
+  facts: every sequence payload is a `FORM/XDIR` XMI directory;
+  DS2's floppy release carries its music as 18 of GSEQ 1..20 plus
+  17 of FSEQ 1..19 in RESFLOP.GFF while the GOG CD build replaced
+  both with redbook OGGs; and the corpus holds 1386.9 seconds of
+  digital audio across 815 samples, every one decoding cleanly
+  (499 at 8000 Hz, 316 at 10989 Hz; all 8-bit mono). Alongside it,
+  `scripts/audio-cue-sweep.py` sweeps `gpl-disasm --json` output
+  for every `gpl sound` / `gpl music` instruction with its operand
+  and the calling script's inline strings: the cue evidence
+  docs/audio-cues.md is written from (251 DS1 and 433 DS2 script
+  call sites; `gpl music` confirmed never emitted).
+
+## xmi2mid v0.1.0 (2026-10-06)
 
 - **xmi2mid 0.1.0**: the XMI-to-MIDI converter (mineout Phase A
   deliverable 2), branch-aware where the classic public-domain
-  xmi2mid flattens. Each sequence payload becomes a format-0 SMF at
-  120 Hz (ticks map 1:1, note-ons resolved to real note-offs) plus
-  a JSON sidecar carrying the RBRN branch table, FOR/NEXT loop
-  spans, branch-select events, and TIMB patch lists, so a port's
-  music director can reproduce the adaptive behaviour the Mel
-  library runs (file-formats.md 5). All 83 DS1 sequences convert
-  with branch and patch counts matching the RBRN dig's independent
-  table; the DS2 floppy set converts with zero branches, matching
-  the no-RBRN-in-DS2 finding. The conversion also pinned one more
-  container quirk: shipped XDIRs declare their FORM size as
+  xmi2mid flattens. Each sequence payload becomes a format-0 SMF
+  at 120 Hz (ticks map 1:1, note-ons resolved to real note-offs)
+  plus a JSON sidecar carrying the RBRN branch table, FOR/NEXT
+  loop spans, branch-select events, and TIMB patch lists, so a
+  port's music director can reproduce the adaptive behaviour the
+  Mel library runs (file-formats.md 5). All 83 DS1 sequences and
+  all 36 floppy-tree DS2 sequences convert; branch counts match
+  the dig's independent table (byte check corrected its track-8
+  LSEQ/PSEQ entries to 6), and the floppy set is branch-free,
+  matching the no-RBRN-in-DS2 finding. The conversion pinned two
+  container quirks: shipped XDIRs declare their FORM size as
   covering only INFO, with CAT following as a sibling past the
-  declared extent. Synthetic-payload selftest wired into CI.
+  declared extent, and EVNT chunks may carry trailing pad bytes
+  after the EOT meta (the decoder stops at EOT). Synthetic-payload
+  selftest covering both quirks is wired into CI.
 
-- **gff-edit 0.6.2**: four more corpus kinds register as their docs
-  landed (mineout wave 2): `MAP ` (the DS2 background tile grid,
+## gff-edit v0.6.3 (2026-10-06)
+
+- **gff-edit 0.6.3** (catch-up: 0.6.1 and 0.6.2 shipped the same
+  day, untagged; this entry covers all three): the chunk-kind
+  catalogue grew by ten corpus kinds as their docs landed, and the
+  format-coverage gap list reached zero. 0.6.1: `DATA` (the DS2
+  spell-system data file) and `RNME` (region name), plus the `RDAT`
+  description corrected to match the docs (per-region binary
+  config, not names). 0.6.2: `MAP ` (the DS2 background tile grid,
   byte-verified across all 60 shipped chunks), `VECT` (the
   256-direction unit circle, decoded), `CMAT` (BMA-codec still
-  containers), and `CPAL` (their per-still palettes). No parsing
-  changes; the suite passes. format-coverage's undocumented gap
-  list drops to the four save-file kinds (PLYL, ALL, GREQ, PREF).
+  containers), and `CPAL` (their per-still palettes). 0.6.3:
+  `PLYL` (the dead DS2 combat playlist, unreferenced by any
+  binary), `ALL ` (object-database digest tables in OBJEX.GFF,
+  engine-unreferenced, bestiary-joining), `GREQ` (per-save-slot
+  view state, id = slot + 1), and `PREF` (preferences state, 11 B
+  DS1 / 9 B DS2, correcting the old 14-byte claim). No parsing
+  changes in any of the three; the suite passes and the shipped
+  binary self-reports 0.6.3.
 
-- **gff-edit 0.6.1**: the chunk-kind catalogue grows by the two
-  kinds whose docs have landed: `DATA` (the DS2 spell-system data
-  file, documented 2026-10-06) and `RNME` (region name, documented
-  2026-09-05), and the `RDAT` description is corrected to match the
-  docs (per-region binary config, not names). No parsing changes;
-  the whole suite passes. This is the completion-bar mechanism of
-  the mineout push at work: registering documented kinds moves them
-  out of format-coverage's undocumented gap list (now 8 kinds, from
-  10).
-
-- **audio-extract 0.1.0**: the audio frontier opens (mineout Phase A
-  deliverable 1, the first new tool of the mining-completion push).
-  It parses a GFF container's TOC (indexed and segmented chunk lists,
-  mirroring gff-edit's parser) and dumps the audio chunk kinds: BVOC/
-  FVOC decode to WAV through a Creative Voice block decoder, the
-  *SEQ family dumps verbatim, and an inventory JSON records ids,
-  offsets, sizes, sample rates, and durations. Its synthetic-GFF
-  selftest needs no game files; `--selftest-corpus` asserts the
-  measured DS1 invariants (skips without `.games/`). First full run
-  reconciled every 2026-09-04 coverage number exactly (815 BVOC, 63
-  GSEQ, 27 LSEQ, 27 PSEQ, 6 CSEQ, 34 FSEQ across 120 containers) and
-  added new facts: every sequence payload is a `FORM/XDIR` XMI
-  directory; DS2's floppy release carries its music as GSEQ 1..20
-  plus FSEQ 1..19 in RESFLOP.GFF while the GOG CD build replaced
-  both with redbook OGGs; the corpus holds 1386.9 seconds of digital
-  audio across 815 samples, all decoding cleanly to 8000 Hz 8-bit
-  mono WAV. Alongside it, `scripts/audio-cue-sweep.py` sweeps
-  `gpl-disasm --json` output for every `gpl sound` / `gpl music`
-  instruction with its operand and the calling script's inline
-  strings: the cue evidence docs/audio-cues.md is written from
-  (251 DS1 and 433 DS2 script call sites; `gpl music` confirmed
-  never emitted).
+## release packaging (2026-09-15)
 
 - **release packaging**: `tools/build-release.sh` ships: the zip
   builder promised in `docs/patch-workflow.md` §7 since Phase 6.
@@ -93,6 +170,7 @@ is that release's entry here, verbatim (see `docs/versioning.md`).
   automatically on every future `darkfix-ds*-v*` tag (manual
   dispatch with a tag input covers a release that already
   exists), kept outside the push/PR CI path.
+
 
 ## darkfix-ds1 v0.1.1 (2026-09-15)
 
