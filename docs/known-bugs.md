@@ -169,7 +169,12 @@ blanking, "enemies refuse to engage", rare save corruption) is below,
 expanded into a compiled catalogue (Phase 9 list compile, 2026-09-10).
 Every entry is a community report against GOG's 1.10 build unless
 noted; sources are cited, and the "surface" column is the repo's
-guess (GPL script/data vs `DSUN.EXE`), not a finding.
+guess (GPL script/data vs `DSUN.EXE`), not a finding. PHASE 9
+TRIAGE (2026-10-07): every entry below now carries a verdict
+(FIXED / fix-candidate / engine-side / no static site) with
+evidence in docs/ds1-sweep-triage-2026-10-07.md; the three
+shipped repairs ride darkfix-ds1 0.1.2's `fix.ds1.script-repairs`
+(disabled by default; see the triage doc).
 
 ### 3.1. The final battle fails to trigger (the headline family)
 
@@ -208,6 +213,11 @@ the game is unwinnable. Known trigger conditions and variants:
 5. **A stage cleared too quickly breaks the next stage.** Dragging
    out each fight works around it. Source: kibbitz 3.33. Surface
    guess: GPL sequencing or GPL-VM scheduling.
+   ROOT CAUSE + FIXED 2026-10-07 (darkfix-ds1 0.1.2,
+   `fix.ds1.script-repairs`, toggled): the stage gate GPL-62@4323
+   arms entry 4345, which exits without re-arming when the window
+   has not elapsed, stranding the chain; the fix arms the driver
+   239 directly. See the triage doc 3.1(5).
 6. **"Army still gathering" with all alliances formed.** Recent
    report, same family; the thread also warns against wandering back
    and forth at the well quest after the sands shift. Source:
@@ -238,6 +248,10 @@ the game is unwinnable. Known trigger conditions and variants:
 5. **Linara/Jasmine spellbook event (Gedron) breaks** after visiting
    Linara first; the topic never becomes discussable again. Source:
    kibbitz 3.15/3.17. Surface: GPL dialog tree/flag order.
+   ROOT CAUSE + FIXED 2026-10-07 (darkfix-ds1 0.1.2,
+   `fix.ds1.script-repairs`, toggled): GPL-68@0xaa routes
+   GNUM55==2 to a one-line dead end (sub 4942); the fix repoints
+   it to the general menu (209). See the triage doc 3.2(5).
 6. **Elven slaver leader conversation jumps to the wrong branch**
    (the "allow yourself to be enslaved" path). Source: kibbitz 3.11.
    Surface: GPL dialog tree.
@@ -260,6 +274,12 @@ the game is unwinnable. Known trigger conditions and variants:
     ranger plays the hermit's dialog endlessly (escape by clicking
     west), and yields a duplicate Iron Necklace. Source: kibbitz
     3.29. Surface: GPL dialog loop plus wrong NPC association.
+    ROOT CAUSE + FIXED 2026-10-07 (darkfix-ds1 0.1.2,
+    `fix.ds1.script-repairs`, toggled): the ranger-leave re-arm at
+    GPL-100@0x684 arms the hermit's entry (86), occluding the
+    ranger's own registration (100@445); the fix repoints it. The
+    duplicate necklace is the hermit give's ground-drop fallback.
+    See the triage doc 3.2(12).
 13. **Charm re-entry**: a charmed enemy that triggered a battle
     script stays alive and can re-trigger the same script by talking
     again. Source: 2009 FAQ. Surface: GPL combat-script dispatch.

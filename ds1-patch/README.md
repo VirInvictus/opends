@@ -7,10 +7,16 @@ Part of the [OpenDS](../README.md) community toolkit. The patch
 ships as `darkfix-ds1` releases; the rest of OpenDS provides the
 tools used to author them.
 
-Status: v0.1.1 ships the first real fix (`fix.ds1.deadtriggers`,
-the Darkhold dead-trigger family: enemies in the endgame that
-refuse to engage and look text that stops working). The
-distribution format and applier were proven in `v0.0.1`. See
+Status: v0.1.1 ships `fix.ds1.deadtriggers` (the Darkhold
+dead-trigger family: enemies in the endgame that refuse to engage
+and look text that stops working). v0.1.2 adds
+`fix.ds1.script-repairs` (the Lava Rifts hermit/ranger loop, the
+Linara conversation dead-end, and the final-battle stage-gate
+strand), shipped DISABLED because spec 5 allows one enabled fix
+per target file and 001 owns `GPLDATA.GFF`; enable it in
+`manifest.toml` (toggling 001 off) to take it
+([`fixes/002-script-repairs.md`](fixes/002-script-repairs.md)).
+The distribution format and applier were proven in `v0.0.1`. See
 [`../roadmap.md`](../roadmap.md) and `fixes/` for per-fix
 writeups.
 

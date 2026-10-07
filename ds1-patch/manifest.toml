@@ -35,3 +35,12 @@ enabled = true
 id = "fix.ds1.deadtriggers"
 path = "fixes/001-deadtriggers.py"
 enabled = true
+
+# Disabled by default: spec 5 allows only one enabled fix per target
+# file, and 001-deadtriggers owns GPLDATA.GFF in the default
+# configuration. Enable this (and toggle 001 off) to take the three
+# script repairs; see fixes/002-script-repairs.md.
+[[fixes]]
+id = "fix.ds1.script-repairs"
+path = "fixes/002-script-repairs.py"
+enabled = false

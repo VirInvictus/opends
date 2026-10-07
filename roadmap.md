@@ -1692,6 +1692,19 @@ explicit "won't fix" note with rationale.
       unverified GameFAQs claim of separate CD and floppy 1.1
       variants.)
 - [ ] Fix each.
+      (TRIAGED 2026-10-07: every catalogued entry carries a verdict
+      in docs/ds1-sweep-triage-2026-10-07.md: three FIXED via
+      darkfix-ds1 0.1.2's `fix.ds1.script-repairs` (hermit/ranger
+      occlusion, Linara dead-end, final-battle stage-gate strand;
+      shipped toggled off under the spec-5 one-enabled-fix-per-file
+      rule), nine fix-candidates gated on chunk growth, one runtime
+      capture each, or content decisions, and the rest closed as
+      engine-side or no-static-site verdicts with evidence. The
+      headline: the final-battle family's stage-strand is a proven
+      faulty datum with a shipped repair; the scroll (variant 1)
+      and the early-exit race (variant 2) have NO static site at
+      all. The composition question (one enabled fix per target
+      file) is Brandon's to settle.)
 
 ## Phase 10 — v1.0 for both games
 

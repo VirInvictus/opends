@@ -4,6 +4,36 @@ Released versions appear here, newest first: one heading per
 tagged release or dated batch. A `<tool>-vX.Y.Z` tag's message
 is that release's entry here, verbatim (see `docs/versioning.md`).
 
+## darkfix-ds1 v0.1.2 (2026-10-07)
+
+- **`darkfix-ds1` v0.1.2**: the Phase 9 sweep triage lands, and
+  with it the first script repairs beyond the deadtrigger family.
+  Every catalogued DS1 bug (known-bugs.md 3, ~25 entries) now
+  carries a verdict with evidence (docs/ds1-sweep-triage-2026-10-07.md):
+  three FIXED, nine fix-candidates gated on chunk growth, a
+  runtime capture, or a content decision, and the rest closed as
+  engine-side or no-static-site with the proof. The new
+  `fix.ds1.script-repairs` carries three same-length repairs with
+  the deadtrigger safety design: the Lava Rifts hermit/ranger
+  loop (the ranger-leave re-arm arms the HERMIT's entry 86,
+  occluding the ranger's own registration; fixed by repointing to
+  445; the duplicate Iron Necklace is the hermit give's drop
+  fallback), the Linara conversation dead-end (GNUM55==2 routed
+  to a one-line sub with no menu; repointed to the general menu
+  209), and the final-battle stage-gate strand (the headline
+  family's one proven faulty datum: the stage gate exits without
+  re-arming when a stage is cleared inside its window, killing
+  the chain; the fix arms the driver 239 directly, at the cost of
+  the intended inter-stage pause). The fix ships DISABLED: spec 5
+  allows one enabled fix per target file and 001-deadtriggers
+  owns GPLDATA.GFF, so the manifest toggles (enable 002, disable
+  001); the toggle path is proven to apply and unapply
+  byte-identically and the 002-only patched hash is pinned in the
+  fix doc. All bytes fingerprint-verified against the canonical
+  install; the patched file re-disassembles 250/250 chunks
+  aligned. The per-file composition question is flagged for
+  Brandon: it needs a spec amendment, not an applier flag.
+
 ## ovr-map v0.3.6 (2026-10-07)
 
 - **`ovr-map` v0.3.6**: the Mel-name adoption batch. Eleven new
