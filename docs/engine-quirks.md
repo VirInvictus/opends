@@ -299,6 +299,16 @@ carries the Loadgamefromdisk anchor; the writer is 0x8e3. The
 syms rows for 0xa6c and 0x1132 are corrected/upgraded on this
 evidence.
 
+**Follow-up night dig (2026-11-02)**: the Request dispatch is
+pinned end to end (dispatcher ovr35+0x169, jump table cs:0x6c7;
+arms 37/38/39 decoded; no tport in the native arms), GPL-287's
+ride chain is fully mapped (switch bank, pads, tick, floor
+dispatch, the distance-15 pickup gate), the pickup service makes
+a `load_resource("PAL ", region)` call on the ride path, and the
+pump's flag feed is named (npc_despawn_marker, ovr31+0xe2, sets
+flags |= 8). Full write-up with the Route 2 breakpoint list:
+`docs/elevator-digs-2026-11-02.md`.
+
 ## 7. GF flags are GPL-layer state; the EXE never reads them
 
 **What**: No engine code reads an individual GF flag. GF access

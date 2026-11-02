@@ -256,6 +256,41 @@ mines elevator.
 """
 
 [[function]]
+name = "gpl_request_dispatcher"
+segment = 35
+offset = 0x169
+confidence = "probable"
+evidence = "docs/elevator-digs-2026-11-02.md 1 (2026-11-02): the VM 0x22 arm (resident 0xd444) far-calls stub 0x4787:0x66 whose entry field is this offset; the body bounds-checks code-1 <= 0x34 and jumps through the table at cs:0x6c7 (file 0x8c487)"
+notes = """
+The Request dispatcher itself: 53 codes, jump table per code. Arms \
+37/38/39 (elevator operate/state-query/state-write) decoded in the \
+dig doc; no tport exists in the native arms.
+"""
+
+[[function]]
+name = "elevator_ride_service"
+segment = 35
+offset = 0x1d2e
+confidence = "probable"
+evidence = "docs/elevator-digs-2026-11-02.md 3 (2026-11-02): arm 37 case 3 (arg3==1) calls this entry; the body clears the elevator-state byte 0x14e5 and calls load_resource('PAL ', [0x140c]) via the raw 0x128:0x4ab form, then a sound-staging loop"
+notes = """
+The ride pickup's native half, invoked from GPL-287's noorders \
+entry when the arrived car finds a party member within distance 15.
+"""
+
+[[function]]
+name = "npc_despawn_marker"
+segment = 31
+offset = 0xe2
+confidence = "probable"
+evidence = "docs/elevator-digs-2026-11-02.md 4 (2026-11-02): linear 0x94042 (file 0x89242, stub entry); the body walks the 8-byte record chain negating +6 links, setting flags |= 8, and incrementing DAT_57e0_264e - the flag the gpl_disk_change_region despawn pump consumes"
+notes = """
+Marks records for despawn-on-region-change. Callers unresolved \
+(stub-indirect; ovr-map --callgraph has no direct edge). Open \
+thread in the dig doc.
+"""
+
+[[function]]
 name = "npc_record_sweep_helper"
 segment = "resident"
 offset = 0x2c3d2
