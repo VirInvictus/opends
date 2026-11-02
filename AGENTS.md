@@ -81,6 +81,7 @@ Installed on Brandon's machine 2026-08-08. **None of this is a repo dependency**
 | Temurin **JDK 21** | `~/.local/share/jdk/jdk-21.0.12+8` | Ghidra needs 21; Fedora 44 ships only 25/26. Pinned in Ghidra's `support/launch.properties` via `JAVA_HOME_OVERRIDE`, so the system JDK is untouched. |
 | `radare2` / `r2` | system | Still the scriptable first stop, unchanged. |
 | `pwntools` | uv tool, Python 3.13 | `pwn asm` / `pwn disasm` at `arch='i386', bits=16` for authoring patch bytes. |
+| **REA** (`rea`, morluto/rea 6.8.0) | `~/.local/lib/node-v24.22.2-linux-x64/bin/rea` (private Node; system Node is below its floor) | Agent-driven Ghidra decompilation (`rea decompile --file-offset ...`, MCP registered in ZCode). Runs on `tools/ovr-carve` output; see `scratch/rea-bridge/` history and the patchnotes. The ZCode MCP lane times out on DSUN.EXE's ~90 s first import (30 s tool cap), so heavy decompiles go through the CLI. |
 
 **Four things to know before pointing Ghidra at these binaries.** Full detail in [`docs/dsun-exe-re.md`](docs/dsun-exe-re.md) §7.
 

@@ -5,6 +5,7 @@ members = [
     "tools/gpl-disasm",
     "tools/image-extract",
     "tools/opends",
+    "tools/ovr-carve",
     "tools/region-render",
 ]
 resolver = "2"

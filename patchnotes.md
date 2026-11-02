@@ -4,6 +4,48 @@ Released versions appear here, newest first: one heading per
 tagged release or dated batch. A `<tool>-vX.Y.Z` tag's message
 is that release's entry here, verbatim (see `docs/versioning.md`).
 
+## ovr-carve v0.1.0 (2026-11-01)
+
+- **`ovr-carve` v0.1.0**: the REA bridge. New Rust tool that
+  flattens a Borland VROOM executable (DS1/DS2 `DSUN.EXE`) into
+  an *analysis* MZ whose initialized module spans the whole file,
+  so overlay code decompiles in REA/Ghidra beside the resident
+  image (REA's MZ lane maps only the initialized module, which
+  excludes the overlay area where ~93% of the overlaid code
+  lives). The transform keeps every byte at its original file
+  offset (all published offsets stay valid), applies each
+  module's per-module relocation table in place (stored segtab
+  byte-offsets rewritten to absolute segments under the fixed
+  load segment 0x1000, the value the runtime applier would
+  leave), refuses overlay-marker words (bit0; the runtime slow
+  path has no static equivalent), odd table sizes, out-of-range
+  entries/records, and already-carved inputs, and extends the
+  header page fields. The module map comes from `ovr-map --json`
+  (one descriptor-walk implementation, the exe-patch contract);
+  `carve` and `verify` subcommands, `--json` machine report with
+  the module/entry mapping in both coordinate systems. Validated
+  live: rea attests both carved games (dos-mz verified,
+  overlay_bytes 0) and decompiles overlay functions with
+  cross-segment calls and DGROUP data resolving (DS2
+  `save_record_writer` at its syms offset, DS1 `awaken_game`);
+  the Rust output is byte-identical to the validating Python
+  scratch. Corpus tests pin the documented totals (DS1 8,232 /
+  DS2 8,262 entries); fixture tests cover the round-trip and
+  every refusal.
+
+## ovr-map v0.4.0 (2026-11-01)
+
+- **`ovr-map` v0.4.0**: the segtab emission. `--json` now
+  carries the exeinfo segment load table (`segtab`: `start_para`,
+  `size`, `cls`, `x` per record) that `ovr-carve` resolves
+  module relocation words against, per docs/overlay-formats.md
+  section 2, keeping one implementation of the FBOV-adjacent
+  structures. `--selftest` grew the documented invariant as a
+  corpus assertion: every segtab record's word0 is the target of
+  exactly one MZ relocation (all at field offset 0), and the
+  exeinfo block carries no other relocation targets. Verified on
+  both games (220/220 DS1, 229/229 DS2).
+
 ## darkfix-ds1 v0.1.3 (2026-10-07)
 
 - **`darkfix-ds1` v0.1.3**: the spec 5 composition amendment

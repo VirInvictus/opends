@@ -1,0 +1,24 @@
+[package]
+name = "ovr-carve"
+version = "0.1.0"
+description = "Flatten Borland VROOM overlays into a single analysis MZ (Dark Sun DSUN.EXE)."
+readme = "README.md"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lib]
+name = "ovr_carve"
+path = "src/lib.rs"
+
+[[bin]]
+name = "ovr-carve"
+path = "src/bin/ovr-carve.rs"
+
+[dependencies]
+anyhow.workspace = true
+thiserror.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true

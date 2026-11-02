@@ -37,7 +37,13 @@ binaries, formats, reference clones): the data side is as
 described below, but the binary side has zero named functions
 and the known-bug list is entirely symptom-level, so Phase 5.6
 is expanded from four leverage points into the frontloaded
-understanding campaign it should have been.
+understanding campaign it should have been. 2026-11-01: the
+agent-RE accelerator lane landed: REA (morluto/rea) drives
+Ghidra decompilation of DSUN.EXE from the agent, and
+`tools/ovr-carve` v0.1.0 flattens the Borland overlays so the
+whole image (resident + overlay + DGROUP) decompiles in one
+address space; the Phase 7 mines-elevator dig is the first
+consumer.
 
 | Tool | Version | Status |
 |---|---|---|
@@ -53,7 +59,8 @@ understanding campaign it should have been.
 | `opends` | 0.1.1 | shipped |
 | `gpl-asm` | 0.9.2 | shipped; 600/600 round-trip; `--patch` hex parsing hardened; macros queued |
 | `opcode-fuzz` | 0.3.0 | shipped; recipe-driven fuzz + first opcode discovery open |
-| `ovr-map` | 0.3.5 | shipped; symbol catalogue (142 DS1 rows incl. the 2026-10-06 trigger-plumbing dozen, 132 DS2 rows), xref tools, Ghidra pipeline run-proven end to end (2026-09-10), OBJEX sprite pipeline |
+| `ovr-map` | 0.4.0 | shipped; symbol catalogue (142 DS1 rows incl. the 2026-10-06 trigger-plumbing dozen, 132 DS2 rows), xref tools, Ghidra pipeline run-proven end to end (2026-09-10), OBJEX sprite pipeline |
+| `ovr-carve` | 0.1.0 | shipped (2026-11-01); the REA bridge: flattens Borland VROOM overlays into one analysis MZ so overlay code decompiles in Ghidra (resident + overlay + DGROUP in one address space, file offsets preserved, both games attested live) |
 | `audio-extract` | 0.1.0 | shipped; 815 BVOC to WAV (499 x 8000 Hz + 316 x 10989 Hz), *SEQ dumps, cue sweep (684 call sites), all coverage totals reconciled (2026-10-06) |
 | `xmi2mid` | 0.1.0 | shipped; branch-aware XMI-to-MIDI with sidecar; 83 DS1 + 36 floppy sequences convert (2026-10-06) |
 | `exe-patch` | 0.1.0 | shipped; the Phase 5.7 EXE patch authoring surface (`ovr:`/symbol addressing, mandatory fingerprints, `--verify` gate, in-place enforcement) |

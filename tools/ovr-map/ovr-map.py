@@ -19,6 +19,7 @@ import struct
 import subprocess
 import sys
 import tomllib
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -78,6 +79,22 @@ def parse_fbov(data: bytes, image_end: int) -> dict[str, int]:
         "segnum": segnum,  # symbol-table record count at exeinfo, NOT the overlay segment count
         "overlay_base": image_end + 16,
     }
+
+
+def parse_segtab(data: bytes, exeinfo: int, segnum: int) -> list[dict[str, int]]:
+    """The exeinfo segment load table (docs/overlay-formats.md section 2).
+
+    `segnum` 8-byte records: load paragraph (base-relative, absolutized by
+    the MZ relocation pass), byte size, class (1 code, 0 data, 3 overlay
+    stub block, 4 BSS marker), linker bookkeeping. This is the table the
+    overlay manager walks and the one ovr-carve resolves module relocation
+    words against.
+    """
+    records = []
+    for i in range(segnum):
+        start_para, size, cls, x = struct.unpack_from("<4H", data, exeinfo + i * 8)
+        records.append({"start_para": start_para, "size": size, "cls": cls, "x": x})
+    return records
 
 
 def find_table(data: bytes, exeinfo: int, image_end: int) -> int:
@@ -178,6 +195,7 @@ def build(path: Path) -> dict[str, Any]:
         "file_size": len(data),
         "mz": mz,
         "fbov": fbov,
+        "segtab": parse_segtab(data, fbov["exeinfo"], fbov["segnum"]),
         "table_start": table_start,
         "summary": {
             "records": len(segments),
@@ -834,6 +852,25 @@ def selftest(paths: list[Path]) -> int:
         )
         cov = rep["summary"]["coverage_pct"]
         check(cov > 92.0, f"overlay coverage {cov}% is below the 92% floor")
+        # exeinfo segtab: every record's word0 is the target of exactly one
+        # MZ relocation at field offset 0, and the exeinfo block carries no
+        # other relocation targets (docs/overlay-formats.md section 2).
+        segtab = rep["segtab"]
+        relocated = parse_relocations(data, rep["mz"])
+        exeinfo, segnum = rep["fbov"]["exeinfo"], rep["fbov"]["segnum"]
+        word0 = Counter(p for p in relocated if exeinfo <= p < exeinfo + 8 * segnum)
+        check(
+            len(segtab) == segnum,
+            "segtab record count does not match segnum",
+        )
+        check(
+            all(word0[exeinfo + i * 8] == 1 for i in range(segnum)),
+            "a segtab record's word0 is not the target of exactly one MZ relocation",
+        )
+        check(
+            sum(word0.values()) == segnum,
+            "an MZ relocation targets the exeinfo block outside the word0 fields",
+        )
         syms_path = HERE / "syms" / f"{name}.toml"
         if syms_path.is_file():
             try:
