@@ -240,6 +240,65 @@ strut.
 played-save-pair session design; `save-inspect`'s semantic
 differ (the flag rows it will annotate).
 
+**Decompiled evidence pass (2026-11-01)**: with `tools/ovr-carve`
++ REA, `gpl_disk_change_region` (ovr18+0x1132) and its
+neighbourhood are now decompiled end to end (scratch artifacts
+under `scratch/rea-bridge/decomp-ds2*/`; Ghidra linear addresses
+= `0x10000 + file_offset - 0x5200`). The decompile confirms the
+phase order above and sharpens it into named calls, in running
+order:
+
+1. pre-flight: `FUN_56bd_00c0(0x572f, region, 0, 1, 0)` (the
+   region-subcommand dispatch; called again below as the loader).
+2. the one-shot sweep, confirmed as a plain loop over records
+   5..0x140 of the 37-byte array at DGROUP:0x6874, calling
+   `FUN_371d_0002(id, 0xffff, 0, 0, 1)` per record (resident
+   0x2c3d2), then flag-fixup and the +0x16 word negation.
+3. the save pair: `FUN_7000_bbe7` (write-API helper) then
+   `save_record_writer(current_region, 0, 0)` (ovr18+0x8e3);
+   failure fatal-"Region change, Invalid save".
+4. **the despawn pump (new, undocumented)**:
+   `while (head.flags & 8) FUN_31e0_05bb(0, 1, 0, 0);` over the
+   8-byte record array at DAT_5b7c_2df7 (+5 = flags, &0x20
+   active; helper at resident 0x275bb unlinks a record via
+   `FUN_289b_0094` and compacts). This sits exactly in the
+   freeze window: after the save, before the region-id update.
+   A record whose &8 flag never clears (removal refused or the
+   flag reapplied) spins this loop forever: a hang shaped
+   exactly like the elevator's, and party-composition-sensitive
+   (dismissed companions become world NPCs in these records).
+5. region-id update (`DAT_57e0_140c = region`), then
+   `FUN_7000_b69c(new_region)` = the region world-state LOADER:
+   reads "SAVE"-fourCC records through `load_resource` with the
+   `region * 0x3d + n` stride, anchored in-body by "Not enough
+   memory in Loadgamefromdisk".
+6. NPC unlink loops, DARKRUN close (`FUN_7000_c856`, error
+   "Unable to close darkrun.g.."), `FUN_1bf3_4723(0/1, 0)`.
+7. `FUN_7000_ca93(region)` = the presentation orchestrator
+   (ovr18+0x1e63): a per-region-id switch special-casing
+   0x3e/0x42/0x43/0x44 with cinematic setup; region 57 (0x39)
+   takes the default path, so the freeze is not here.
+8. the load: `FUN_56bd_00c0("Too heavy a load to carry...",
+   region, ...)`; failure fatal-"Failed to move to region %Fs".
+9. post-load resets (`FUN_7000_d0c6`, `FUN_1695_000b`,
+   `FUN_2c5f_*`, `FUN_3d72_0d83`).
+
+Consequences for the candidate list: the old Candidate A anchor
+"0x100:0x2 per-character text writer" does not resolve to a
+function under the header-relative segment convention (no
+function entry at linear 0x11002); the scheduler-deadlock
+candidate is parked until the capture points somewhere. The
+despawn pump (4) is the new concrete candidate and is cheaply
+testable: a breakpoint on the pump loop inside
+`gpl_disk_change_region` (or the played-save pair, which
+serializes these records via the ovr18 trio) decides it. The
+2026-09-05 correction of the ovr18+0xa6c syms row ("writes
+SAVE-tagged records") is contradicted by the decompile: the
+function reads (load_resource = the 0x128:0x4AB read API) and
+carries the Loadgamefromdisk anchor; the writer is 0x8e3. The
+syms rows for 0xa6c and 0x1132 are corrected/upgraded on this
+evidence.
+
 ## 7. GF flags are GPL-layer state; the EXE never reads them
 
 **What**: No engine code reads an individual GF flag. GF access

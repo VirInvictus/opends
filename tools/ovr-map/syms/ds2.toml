@@ -128,12 +128,16 @@ name = "load_game_from_disk"
 segment = 18
 offset = 0xa6c
 confidence = "verified"
-evidence = "scripts/xref-string.py: pushes 'Failed Uncompress in Loadgamefromdisk' (file 0x4e6ba, DGROUP offset 0x16ba) at 0x70975. CORRECTED 2026-09-05: the function WRITES SAVE-tagged records (boundary scan + gap read), it does not load"
+evidence = "scripts/xref-string.py: pushes 'Failed Uncompress in Loadgamefromdisk' (file 0x4e6ba, DGROUP offset 0x16ba) at 0x70975. RE-VERIFIED 2026-11-01 by decompilation (ovr-carve + rea, docs/engine-quirks.md 6 addendum): the body READS - it calls load_resource (the 0x128:0x4AB read API, FUN_38ff_04ab) with the SAVE fourCC and a param_1 * 0x3d + n record stride, and anchors 'Not enough memory in Loadgamefromdisk' in-body; gpl_disk_change_region calls it with the NEW region id as its load-world-state step"
 dso_source = "DSO::LoadGameFromDisk"
 notes = """
-The string names the MODULE (gpldisk.c handles both load and \
-save), but the function WRITES records: it is the save writer, \
-not the loader. The actual loader is elsewhere in ovr18.
+Reads a region's SAVE-tagged world-state records out of DARKRUN.GFF \
+(load_resource, region * 0x3d record blocks). The 2026-09-05 \
+'CORRECTED: the function WRITES' note is itself contradicted by the \
+decompile: the writer is the sibling at 18+0x8e3 (save_record_writer, \
+write API), and this function is the loader its DSO name always said. \
+Role in the region-change sequence: runs right after the region-id \
+update, before the orchestrator.
 """
 
 [[function]]
@@ -204,11 +208,15 @@ CD-presence verification; three confirmed entry stubs reference the message acro
 name = "gpl_disk_change_region"
 segment = 18
 offset = 0x1132
-confidence = "probable"
-evidence = "scripts/xref-string.py: pushes 'Fatal error: Region change, Invalid save' (file 0x4e75d, DGROUP offset 0x175d) at 0x71112"
+confidence = "verified"
+evidence = "scripts/xref-string.py: pushes 'Fatal error: Region change, Invalid save' (file 0x4e75d, DGROUP offset 0x175d) at 0x71112; decompiled 2026-11-01 (ovr-carve + rea, docs/engine-quirks.md 6 addendum): the body carries both region-change fatals and its call order matches the documented phase sequence exactly (record sweep 5..0x140, save pair into save_record_writer, the despawn pump, region-id update, load_game_from_disk(new_region), DARKRUN close, presentation orchestrator, region load)"
 dso_source = "DSO::GplDiskChangeRegion"
 notes = """
-DS2's region-change module, same ovr18 segment as its load_game_from_disk: the gpldisk.c module layout mirrors DS1's ovr21. The headline mines-elevator bug (Phase 7) lives in this neighbourhood.
+DS2's region-change machine, fully decompiled; the gpldisk.c module \
+layout mirrors DS1's ovr21. The headline mines-elevator bug (Phase 7) \
+lives here: the undocumented despawn pump (while head.flags & 8 \
+FUN_31e0_05bb(0,1,0,0)) sits after the save and before the load, and \
+is the current prime freeze candidate. See engine-quirks 6.
 """
 
 [[function]]
@@ -219,6 +227,44 @@ confidence = "probable"
 evidence = "scripts/xref-string.py: pushes 'Error : Can't load Game data in load teleport' (file 0x4e7ac, DGROUP offset 0x17ac) at 0x713d1"
 notes = """
 The teleport path of the same gpldisk.c module.
+"""
+
+[[function]]
+name = "region_presentation_orchestrator"
+segment = 18
+offset = 0x1e63
+confidence = "probable"
+evidence = "docs/engine-quirks.md 6 addendum (2026-11-01 decompile): called by gpl_disk_change_region between the DARKRUN close and the region load; the body is a per-region-id switch special-casing 0x3e/0x42/0x43/0x44 with cinematic setup calls, default path otherwise"
+notes = """
+The presentation half of the region change (speech prefetch, map \
+draw, entry cinematics per the 5.6 survey). Region 57 (0x39, the \
+mines) takes the default path, so it is not the elevator freeze \
+site.
+"""
+
+[[function]]
+name = "npc_record_despawn"
+segment = "resident"
+offset = 0x275bb
+confidence = "probable"
+evidence = "docs/engine-quirks.md 6 addendum (2026-11-01 decompile): FUN_31e0_05bb at Ghidra linear 0x323bb; called per iteration by gpl_disk_change_region's despawn pump; the body unlinks a record from the 8-byte array at DAT_5b7c_2df7 (flags at +5, &0x20 active) via FUN_289b_0094 and cross-links the 37-byte records"
+notes = """
+Removes one world-record entry (the pump's per-iteration worker). \
+Naming from role; no DSO row. The pump loop (while head.flags & 8 \
+despawn(0,...)) is the current prime freeze candidate for the \
+mines elevator.
+"""
+
+[[function]]
+name = "npc_record_sweep_helper"
+segment = "resident"
+offset = 0x2c3d2
+confidence = "probable"
+evidence = "docs/engine-quirks.md 6 addendum (2026-11-01 decompile): FUN_371d_0002 at Ghidra linear 0x371d2; called once per record (id, 0xffff, 0, 0, 1) by gpl_disk_change_region's record sweep over DGROUP:0x6874 stride 0x25"
+notes = """
+Per-record expire/clear worker for the region transition sweep. \
+Large body (Ghidra flags an overlapping-instruction site and a \
+jump table); role named from the call shape, no DSO row.
 """
 
 [[function]]
