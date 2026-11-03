@@ -17,7 +17,7 @@ written down. Every utility we build gets published.
 In build order: **tools first, patches second**:
 
 - **Tools**: every utility built to make the digging easier.
-  Fourteen ship today, each independently with its own README
+  Fifteen ship today, each independently with its own README
   and `VERSION`. MIT-licensed. → [`tools/`](tools/)
 
   | Tool | What it does |
@@ -35,6 +35,7 @@ In build order: **tools first, patches second**:
   | [`repro`](tools/repro/) | DOSBox repro harness with overlay mounts (the install is never written), input automation, video capture. |
   | [`opcode-fuzz`](tools/opcode-fuzz/) | GPL opcode-discovery harness: swap a chunk, run the game, diff the world state. |
   | [`ovr-map`](tools/ovr-map/) | Map `DSUN.EXE`'s Borland overlay structure: segments, entry stubs, 16-bit disassembly, curated symbols, Ghidra bridge. |
+  | [`ovr-carve`](tools/ovr-carve/) | Flatten `DSUN.EXE`'s Borland overlays into a single analysis MZ so overlay code decompiles in REA/Ghidra; every byte keeps its file offset. Analysis artifact only: not runnable, not a patch target. |
   | [`exe-patch`](tools/exe-patch/) | Author, verify, and apply in-place byte patches to `DSUN.EXE`: `ovr:`/symbol addressing, mandatory fingerprints, hard refusals for anything the overlay format cannot survive. |
 
   The [`tools/README.md`](tools/README.md) table carries current

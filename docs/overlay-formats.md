@@ -209,6 +209,14 @@ that the placeholder constants 0x420 (DS1) / 0x4d0 (DS2) in the rules
 code are literally the rules-block segtab records, and GSTATE/MISC/
 CSTATE2/STATE are frame constants to their own data records.
 
+`tools/ovr-carve` (0.1.0, 2026-11-01) automates the overlay half of
+this: its `carve` mode applies every module's relocation table exactly
+as section 4 documents (stored word = segtab byte offset, rewritten to
+load-segment + segtab[record].start_para) and extends the MZ header so
+the flattened file imports into a decompiler as one analysis image;
+`verify` re-checks a carve against its original. The tool's contract
+(rewrites, refusals, limits): `tools/ovr-carve/README.md`.
+
 ## 7. Worked examples (byte-verified)
 
 1. DS1 palette dispatcher (dsun-exe-re.md 3.5): `9A 20 00 BB 41` at file

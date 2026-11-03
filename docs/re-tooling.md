@@ -13,6 +13,7 @@ Installed 2026-08-08.
 | **Ghidra 12.1.2** | `~/.local/share/ghidra_12.1.2_PUBLIC` | Static analysis and decompilation of `DSUN.EXE`. The heavy tool `dsun-exe-re.md` has always named as "when r2 stalls". |
 | Temurin **JDK 21** | `~/.local/share/jdk/jdk-21.0.12+8` | Ghidra requires JDK 21; Fedora 44 ships only 25/26. Pinned via `JAVA_HOME_OVERRIDE` so the system JDK is untouched. |
 | `pwntools` 4.15 | uv tool, Python 3.13 | ⚠ **Its 16-bit assembly path is broken for this target**: `pwn asm` at `arch='i386', bits=16` dies with `Invalid arch/bits combination: i386/16` (pwnlib rejects the combination; confirmed 2026-09-06 while confirming the Phase 5.7 assembler). The working path is `nasm -f bin` + `bits 16`, which `tools/exe-patch --asm` shells out to and round-trips against `ndisasm -b 16`. Not used for exploitation here. |
+| **REA** 6.8.0 | `~/.local/lib/node-v24.22.2-linux-x64/bin/rea` (private Node 24 runtime; the system Node is below its floor) | Agent-driven RE toolkit whose native MZ lane decompiles the carved overlays (see the carve lane under item 3 below). Installed later than the rest of this table: in use by 2026-11-01. The ZCode MCP lane times out on DSUN.EXE's ~90 s first import (30 s tool cap), so heavy decompiles go through the CLI. |
 
 ## Ghidra against these binaries: read this before importing
 
@@ -82,6 +83,27 @@ and will waste a pass if assumed wrong.
    `OvrExport.java`'s header comment never closed, so it had
    never compiled (caught by the in-Ghidra compiler, working
    again).
+
+   **The carve lane (`ovr-carve` 0.1.0, 2026-11-01)**: a second
+   route to item 3's goal when the job is decompiling overlay
+   *bodies* rather than labelling a pristine import.
+   `target/debug/ovr-carve carve .games/ds2/DSUN.EXE` rewrites a
+   copy so the MZ header's initialized module spans the whole file
+   (per-module relocations applied in place, loud refusals before
+   any write), and the plain MZ loader then maps the overlay area
+   like any other segment: no generated Java scripts, no
+   memory-block replay. Every byte keeps its original file offset,
+   so file-offset facts from anywhere in the toolkit stay valid in
+   the carved image. Point REA at it
+   (`rea inspect-native-load-image` attests `dos-mz` with
+   `overlay_bytes 0`; `rea decompile --file-offset ...`) or import
+   it into Ghidra as a normal MZ. It does not replace the pipeline
+   above: entry-stub labels and curated-symbol renames stay the
+   `ovr-map --ghidra` pipeline's job on the pristine EXE; the two
+   lanes are complementary. First payoff: the 2026-11-01
+   decompiled-evidence addendum (`engine-quirks.md` 6) and the
+   elevator ride-chain dig (`elevator-digs-2026-11-02.md`) both
+   ran on carved output.
 
 Temper expectations on the decompiler: Ghidra's output is much
 weaker on 16-bit segmented code than on 32/64-bit. Far pointers
