@@ -4,6 +4,40 @@ Released versions appear here, newest first: one heading per
 tagged release or dated batch. A `<tool>-vX.Y.Z` tag's message
 is that release's entry here, verbatim (see `docs/versioning.md`).
 
+## darkfix-ds1 v0.1.4 (2026-11-13)
+
+- **`darkfix-ds1` v0.1.4**: the community-cycle release; no fix
+  content changes (the darkfix-ds2 v0.1.2 precedent: a PATCH bump
+  that carries none). This is the release that puts OpenDS's first
+  external contributors on the record. Calvin Rodo's
+  [yuan-ti](https://github.com/CalvinRodo/yuan-ti) (MIT, arrived
+  via opends#13) ports all seven published darkfix-ds1 fixes
+  byte-for-byte into its engine's `GplRepairs.cs` and adds 22 more
+  repairs on top: five implement three of our own unshipped triage
+  candidates (the serf follow range, the three messenger trigger
+  re-arms at the sites the 2026-10-07 triage named, the Mindhome
+  XP award gate), and seventeen are Calvin's own discoveries (the
+  halfling race test, the ranger tracking chain, the sewer grate
+  logic, the Legcrusher-gone dialog guards). All 23 distinct
+  fingerprints verified clean against the canonical GOG 1.10
+  GPLDATA.GFF the day the issue landed. None of it is canon yet:
+  every borrowed repair passes the five-step adoption gate now
+  specified in `docs/detour-repairs.md` (fingerprint, semantic
+  review, assemble check, runtime QA, credit) before it becomes a
+  darkfix-ds1 fix, and the borrowed classes are cataloged with
+  evidence in `docs/known-bugs.md` §3.6. The release also adopts
+  Calvin's detour mechanism (length-changing repairs that append a
+  JUMP-to-detour block so no address moves) as the design for the
+  applier work that re-opens the triage's chunk-growth rows.
+  Credits: **Calvin Rodo** (yuan-ti) for the repair corpus, the
+  detour design, and the 17 new bug discoveries;
+  **TimQuester** ([DarkSunTools](https://github.com/TimQuester/DarkSunTools),
+  arrived via opends#14) for the FONT format facts verified into
+  `docs/file-formats.md` the same week (license pending upstream;
+  facts-only landing in the revertable commit 1ca4094). Both names
+  ride the darkfix-ds1 patchnotes entries of every future release
+  that ships their work, per the gate's credit step.
+
 ## ovr-carve v0.1.0 (2026-11-01)
 
 - **`ovr-carve` v0.1.0**: the REA bridge. New Rust tool that
