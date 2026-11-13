@@ -4,6 +4,50 @@ Released versions appear here, newest first: one heading per
 tagged release or dated batch. A `<tool>-vX.Y.Z` tag's message
 is that release's entry here, verbatim (see `docs/versioning.md`).
 
+## darkfix-ds1 v0.2.0-beta.1 (2026-11-13)
+
+- **`darkfix-ds1` v0.2.0-beta.1**: the community beta. **Every
+  fix in this release is UNTESTED at runtime and ships disabled**:
+  the six new script repairs below passed the adoption gate's
+  static steps (byte fingerprints verified against the canonical
+  GOG 1.10 install, per-site semantic review against our own
+  disassembly with zero disagreements, and a 250/250
+  reassembly-through-gpl-asm byte check - all recorded in
+  `docs/gate-review-yuan-ti-2026-11-13.md`), but nobody has seen
+  them run in the game. We are publishing them as an opt-in beta
+  in the hope that someone else will test them: enable any of the
+  six in `manifest.toml` (flip `enabled = false` to `true`), point
+  the applier at a copy of your install, and follow the QA
+  packet, `docs/qa-packet-ds1-script-repairs-beta.md`, which
+  lists a two-minute check per site. Report results as issues;
+  fixes that pass QA graduate to enabled-by-default in the next
+  release. The six (source: Calvin Rodo's
+  [yuan-ti](https://github.com/CalvinRodo/yuan-ti) `GplRepairs.cs`,
+  MIT, adopted through the gate; findings and sites credited per
+  fix in `fixes/`):
+  `fix.ds1.halfling-race` (the slave pens' halfling reads the
+  speaker's race from a record that has none), `fix.ds1.tracking`
+  (the ranger tracking roll over region 8's bodies could never
+  succeed: wrong record, codes tested as bitmasks, inverted roll),
+  `fix.ds1.grate-hack` (the sewer grate's "hack the lock off" is
+  unreachable and a hack never opens it; attacks always break the
+  lock), `fix.ds1.messenger-trigger` (region 9's messenger never
+  arrives without a re-entry; site ours, implementation Calvin's),
+  `fix.ds1.mindhome-award` (the 5000 XP re-awards on every
+  re-talk; finding ours, fix Calvin's), and `fix.ds1.serf-follow`
+  (the Draj serf follows at any distance; balance-class, stays
+  toggle-only after QA too). The applier learned chunk repairs
+  for this release (`GplRepair`/detours: length-changing script
+  fixes that move no address, the mechanism Calvin published and
+  we adopted in `docs/detour-repairs.md`); same-length fixes and
+  detour fixes now compose on one file, and `--verify` re-derives
+  every repaired chunk from the pristine backup. NOT in this
+  beta: the six Legcrusher dialog guards (runtime-assembled
+  upstream; they need our gpl-asm movable assembly mode first,
+  issue filed) and the re-ask half of the Mindhome bug. The
+  default-enabled set (001 deadtriggers, 002 script-repairs) is
+  unchanged by this release.
+
 ## darkfix-ds1 v0.1.4 (2026-11-13)
 
 - **`darkfix-ds1` v0.1.4**: the community-cycle release; no fix

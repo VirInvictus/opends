@@ -29,6 +29,8 @@ import io
 import os
 import shutil
 import struct
+import re
+import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
@@ -128,6 +130,12 @@ def check_fix_contract(module, entry: dict, target_files: dict[str, str]) -> str
         raise P.ManifestError(
             f"{fid}: fix script must define apply(source_path, dest_path)"
         )
+    repairs = getattr(module, "REPAIRS", None)
+    if repairs is not None:
+        if not isinstance(repairs, list):
+            raise P.ManifestError(f"{fid}: REPAIRS must be a list of dicts")
+        for i, d in enumerate(repairs):
+            P.GplRepair.from_dict(d, what=f"{fid} repair {i}")
     return target
 
 
@@ -219,8 +227,12 @@ def cmd_apply(layout: Layout, install: Path, *, check_all: bool = False) -> int:
                 f" leaves the originals in {P.BACKUP_DIR}/ inside the"
                 f" game folder)"
             )
+        repairs = [
+            P.GplRepair.from_dict(d, what=f"{module.ID} repair {i}")
+            for i, d in enumerate(getattr(module, "REPAIRS", []))
+        ]
         source_bytes = target.read_bytes()
-        prepared.append((module, target_rel, source_bytes, edits))
+        prepared.append((module, target_rel, source_bytes, edits, repairs))
     for entry in disabled:
         print(f"  skipped {entry['id']} (disabled in manifest)")
 
@@ -228,21 +240,72 @@ def cmd_apply(layout: Layout, install: Path, *, check_all: bool = False) -> int:
     # (disjoint, fingerprint-checked) edits to one merged result;
     # every fix's fingerprints are re-checked in sequence, so a
     # drifted expect still fails the whole apply before any write.
+    # Chunk repairs (GplRepair) compose after the byte edits: the
+    # repaired chunks are extracted from the edit-composed bytes, so
+    # an absolute edit inside a repaired chunk is already in place
+    # when the repair's fingerprints are checked, and the gff-edit
+    # chunk replacement carries both. All extraction and chunk math
+    # happens on a staging copy before the journal, so every refusal
+    # above is pre-write and a crash mid-staging leaves the target
+    # untouched with no journal at all.
     composed: dict[str, dict] = {}
-    for module, target_rel, source_bytes, edits in prepared:
+    for module, target_rel, source_bytes, edits, repairs in prepared:
         entry_c = composed.setdefault(
             target_rel,
             {
                 "source_hash": module.SOURCE_SHA256,
                 "patched": source_bytes,
                 "ids": [],
+                "repairs": {},
             },
         )
         entry_c["patched"] = P.apply_edits(entry_c["patched"], edits, what=module.ID)
+        for repair in repairs:
+            key = (repair.kind, repair.chunk_id)
+            entry_c["repairs"].setdefault(key, []).append(repair)
         entry_c["ids"].append(module.ID)
+
+    # Chunk-repair staging, once per target: extract every repaired
+    # chunk from the edit-composed bytes, apply all its repairs, and
+    # rebuild the file through the gff-edit writer. Refusals here are
+    # still pre-write (the target is untouched); a crash mid-staging
+    # leaves stray staging files and no journal, which apply.py's
+    # pending path and --unapply both treat as nothing-happened.
+    # gff-cat resolves lazily: a pure-EDITS apply never needs it.
+    gff_cat = None
+    for target_rel, entry_c in composed.items():
+        if not entry_c["repairs"]:
+            continue
+        if gff_cat is None:
+            gff_cat = P._gff_cat(None)
+        staged = install / (target_rel.replace("/", "_") + ".compose" + P.STAGED_SUFFIX)
+        staged.write_bytes(entry_c["patched"])
+        cursor = staged
+        for n, ((kind, chunk_id), chunk_repairs) in enumerate(
+            sorted(entry_c["repairs"].items())
+        ):
+            code = P._extract_chunk(cursor, kind, chunk_id, gff_cat)
+            patched_chunk = P.compute_patched_chunk(
+                code,
+                chunk_repairs,
+                what=f"{target_rel} {kind} {chunk_id}",
+            )
+            chunk_file = staged.with_suffix(f".chunk{n}")
+            chunk_file.write_bytes(patched_chunk)
+            nxt = staged.with_suffix(f".pass{n}")
+            P.apply_gff_chunk(cursor, nxt, kind, chunk_id, chunk_file, gff_cat=gff_cat)
+            chunk_file.unlink()
+            if cursor is not staged:
+                cursor.unlink()
+            cursor = nxt
+        entry_c["final_bytes"] = cursor.read_bytes()
+        cursor.unlink()
+        staged.unlink()
+
     records = []
-    for module, target_rel, source_bytes, edits in prepared:
-        merged = composed[target_rel]["patched"]
+    for module, target_rel, source_bytes, edits, repairs in prepared:
+        entry_c = composed[target_rel]
+        final_bytes = entry_c.get("final_bytes", entry_c["patched"])
         records.append(
             {
                 "id": module.ID,
@@ -250,12 +313,13 @@ def cmd_apply(layout: Layout, install: Path, *, check_all: bool = False) -> int:
                     {
                         "path": target_rel,
                         "original_sha256": P.sha256_bytes(source_bytes),
-                        "patched_sha256": P.sha256_bytes(merged),
+                        "patched_sha256": P.sha256_bytes(final_bytes),
                     }
                 ],
             }
         )
-        print(f"  checked {module.ID} ({target_rel}, {len(edits)} site(s))")
+        n_sites = len(edits) + sum(len(r) for r in entry_c["repairs"].values())
+        print(f"  checked {module.ID} ({target_rel}, {n_sites} site(s))")
 
     # Pending journal first: if the write phase dies between the
     # first write and the last, what is on disk says so, and
@@ -281,7 +345,7 @@ def cmd_apply(layout: Layout, install: Path, *, check_all: bool = False) -> int:
             P.backup_file(install, target_rel)
             backed_up.add(target_rel)
         tmp = target.with_name(target.name + P.STAGED_SUFFIX)
-        tmp.write_bytes(entry_c["patched"])
+        tmp.write_bytes(entry_c.get("final_bytes", entry_c["patched"]))
         os.replace(tmp, target)
         print(f"  applied {', '.join(entry_c['ids'])} -> {target_rel}")
 
@@ -378,6 +442,83 @@ def cmd_verify(layout: Layout, install: Path) -> int:
                             f"{fid}: bytes at {e.offset:#x} are"
                             f" {seg.hex()}, expected {e.replace.hex()}"
                         )
+
+    # Repair site check, composed across every journaled fix on the
+    # file: a repaired chunk must carry its repairs AND any absolute
+    # edit whose site falls inside it (the beta composition). The
+    # pristine bytes come from the backup; without the backup (or
+    # without gff-cat) the journaled file hash is the only gate.
+    files_all: dict[str, list[tuple[str, object]]] = {}
+    for fix in journal.get("fixes", []):
+        module = modules.get(fix.get("id", "?"))
+        if module is not None:
+            for f in fix.get("files", []):
+                files_all.setdefault(f["path"], []).append((fix.get("id", "?"), module))
+    for rel, items in sorted(files_all.items()):
+        has_repairs = any(getattr(m, "REPAIRS", None) for _f, m in items)
+        if not has_repairs:
+            continue
+        target = install / rel
+        backup = P.backup_root(install) / rel
+        try:
+            gff_cat = P._gff_cat(None)
+        except P.PatchError:
+            gff_cat = None
+        if gff_cat is None or not backup.is_file():
+            reason = "no gff-cat" if gff_cat is None else "no pristine backup"
+            print(f"  note: {rel}: repair sites checked by hash only ({reason})")
+            continue
+        locs: dict[tuple[str, int], tuple[int, int]] = {}
+        listing = subprocess.run(
+            [gff_cat, "list", str(backup)],
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout
+        row_re = re.compile(r"^'([^']+)'\s+(\d+)\s+(\d+)\s+(\d+)\s*$")
+        for row in listing.splitlines():
+            m_row = row_re.match(row)
+            if m_row:
+                # fourccs print 4 bytes space-padded ('GPL '); repairs
+                # use the stripped form ('GPL').
+                locs[(m_row.group(1).strip(), int(m_row.group(2)))] = (
+                    int(m_row.group(3)),
+                    int(m_row.group(4)),
+                )
+        chunk_repairs: dict[tuple[str, int], list[P.GplRepair]] = {}
+        chunk_edits: dict[tuple[str, int], list[tuple[int, P.Edit]]] = {}
+        for fid2, m2 in items:
+            for i, d in enumerate(getattr(m2, "EDITS", [])):
+                e = P.Edit.from_dict(d, what=f"{fid2} edit {i}")
+                for (kind, cid), (off, length) in locs.items():
+                    if off <= e.offset and e.offset + len(e.replace) <= off + length:
+                        chunk_edits.setdefault((kind, cid), []).append(
+                            (e.offset - off, e)
+                        )
+            for i, d in enumerate(getattr(m2, "REPAIRS", [])):
+                r = P.GplRepair.from_dict(d, what=f"{fid2} repair {i}")
+                chunk_repairs.setdefault((r.kind, r.chunk_id), []).append(r)
+        for (kind, cid), repairs_for_chunk in sorted(chunk_repairs.items()):
+            off, length = locs[(kind, cid)]
+            pristine = P._extract_chunk(backup, kind, cid, gff_cat)
+            base = bytearray(pristine)
+            for chunk_off, e in sorted(chunk_edits.get((kind, cid), [])):
+                base[chunk_off : chunk_off + len(e.replace)] = e.replace
+            try:
+                expected = P.compute_patched_chunk(
+                    bytes(base),
+                    repairs_for_chunk,
+                    what=f"{rel} {kind} {cid}",
+                )
+            except P.PatchError as e:
+                failures.append(f"{rel}: {kind} {cid}: {e}")
+                continue
+            current = P._extract_chunk(target, kind, cid, gff_cat)
+            if current != expected:
+                failures.append(
+                    f"{rel}: {kind} {cid} does not match the composed"
+                    f" repaired bytes (drifted or partial)"
+                )
     if failures:
         for f in failures:
             print(f"FAIL: {f}")
@@ -551,7 +692,9 @@ def _make_multi_patch(
     root = tmp / name
     (root / "fixes").mkdir(parents=True)
     entries = []
-    for i, (target, target_hash, edits) in enumerate(targets):
+    for i, entry_spec in enumerate(targets):
+        target, target_hash, edits = entry_spec[0], entry_spec[1], entry_spec[2]
+        repairs = entry_spec[3] if len(entry_spec) > 3 else []
         fid = f"fix.selftest.{name}.{i}"
         lines = [
             '"""Selftest fix: generated by apply.py --selftest."""',
@@ -573,6 +716,18 @@ def _make_multi_patch(
             lines.append("]")
         else:
             lines.append("EDITS = []")
+        if repairs:
+            lines.append("REPAIRS = [")
+            for r in repairs:
+                rel = ", ".join(str(x) for x in r.relocate)
+                lines.append(
+                    f'    {{"kind": "{r.kind}", "chunk_id": {r.chunk_id},'
+                    f' "offset": {r.offset},'
+                    f' "expect": "{r.expect.hex()}",'
+                    f' "replace": "{r.replace.hex()}",'
+                    f' "relocate": [{rel}]}},'
+                )
+            lines.append("]")
         lines += [
             "",
             "",
@@ -1124,6 +1279,86 @@ def selftest() -> int:
                 "detour end-to-end: two chunks patched in one call",
                 P._extract_chunk(out2, "GPL", 1, gff_cat) == want1
                 and P._extract_chunk(out2, "GPL", 2, gff_cat) == want2,
+            )
+
+            # The mixed path: an absolute-offset EDITS fix and a
+            # REPAIRS fix share one GFF target (the beta scenario).
+            # EDITS compose in file space first; the repaired chunks
+            # are extracted from the composed bytes, so both land.
+            gff3 = _minimal_gff([("GPL", 1, chunk1), ("GPL", 2, chunk2)])
+            gff3_file = tmp2 / "MIXED.GFF"
+            gff3_file.write_bytes(gff3)
+            chunk2_file_off = 28 + len(chunk1)
+            abs_edit = P.Edit(
+                offset=chunk2_file_off + 0x14,
+                expect=chunk2[0x14:0x16],
+                replace=b"\x77\x88",
+            )
+            mixed_repairs = [
+                P.GplRepair(
+                    kind="GPL",
+                    chunk_id=1,
+                    offset=0x10,
+                    expect=chunk1[0x10:0x13],
+                    replace=b"\xaa\xbb\xcc",
+                ),
+                P.GplRepair(
+                    kind="GPL",
+                    chunk_id=2,
+                    offset=0x8,
+                    expect=chunk2[0x8:0xC],
+                    replace=b"\x18\x00\x00\x14\x99\x18\xcd\x01\x67",
+                    relocate=(2,),
+                ),
+            ]
+            root_m = _make_multi_patch(
+                tmp2,
+                "mixedfix",
+                [
+                    ("MIXED.GFF", P.sha256_bytes(gff3), [abs_edit]),
+                    ("MIXED.GFF", P.sha256_bytes(gff3), [], mixed_repairs),
+                ],
+            )
+            inst_m = tmp2 / "inst-mixed"
+            inst_m.mkdir()
+            (inst_m / "MIXED.GFF").write_bytes(gff3)
+            rc = run([str(inst_m)], patch_root=root_m)
+            ok("detour mixed path: apply succeeds", rc == 0)
+            target_m = inst_m / "MIXED.GFF"
+            got_c1 = P._extract_chunk(target_m, "GPL", 1, gff_cat)
+            got_c2 = P._extract_chunk(target_m, "GPL", 2, gff_cat)
+            want_c1 = P.compute_patched_chunk(chunk1, [mixed_repairs[0]])
+            want_c2 = bytearray(chunk2)
+            want_c2[0x14:0x16] = b"\x77\x88"
+            want_c2 = bytes(want_c2)
+            detour2_at = len(chunk2) + 1
+            body2 = (
+                b"\x18\x00"
+                + struct.pack(">H", 20 + detour2_at)
+                + b"\x99\x18\xcd\x01\x67"
+                + b"\x12\x00\x0c"
+            )
+            want_c2 = (
+                want_c2[:0x8]
+                + b"\x12"
+                + struct.pack(">H", detour2_at)
+                + b"\x00"
+                + want_c2[0xC:]
+                + b"\x00"
+                + body2
+            )
+            ok("detour mixed path: in-place chunk patched", got_c1 == want_c1)
+            ok(
+                "detour mixed path: chunk carries both the edit and the detour",
+                got_c2 == want_c2,
+            )
+            rc = run([str(inst_m), "--verify"], patch_root=root_m)
+            ok("detour mixed path: verify passes", rc == 0)
+            rc = run([str(inst_m), "--unapply"], patch_root=root_m)
+            ok("detour mixed path: unapply restores", rc == 0)
+            ok(
+                "detour mixed path: file byte-identical after unapply",
+                (inst_m / "MIXED.GFF").read_bytes() == gff3,
             )
 
     exe = DEFAULT_PATCH_ROOT.parent / ".games" / "ds1" / "DSUN.EXE"

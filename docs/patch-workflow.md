@@ -137,14 +137,21 @@ the expect range with a JUMP to it (EXIT_GPL fill for any
 remainder), and rebases the 15-bit big-endian label words listed
 in `relocate`. Mechanism and gate: `detour-repairs.md`; the
 adoption review that confirmed the encodings:
-`gate-review-yuan-ti-2026-11-13.md`. v1 constraints: a detour fix
-must not share its target file with an absolute-offset
-`apply_bytes` fix (a grown chunk moves file bytes, so absolute
-sites would drift), and `relocate` follows yuan-ti's convention
-(index of the label word's first byte inside `replace`). The
-selftest's detour block exercises the math and, when `gff-cat` is
-available, the full extract/replace round trip on a synthetic
-GFF.
+`gate-review-yuan-ti-2026-11-13.md`. Composition: the applier
+composes EDITS and REPAIRS fixes on one file (EDITS apply in file
+space first; repaired chunks are then extracted from the composed
+bytes, so an absolute site inside a repaired chunk is already in
+place when the repair's fingerprints are checked, and the chunk
+replacement carries both). `relocate` follows yuan-ti's
+convention (index of the label word's first byte inside
+`replace`). The selftest's detour block exercises the math, the
+gff-cat end-to-end on a synthetic GFF (when `gff-cat` is
+available), and the mixed EDITS+REPAIRS composition with verify
+and unapply. One residual rule: the standalone
+`apply_gpl_repairs` path (a fix module calling it directly,
+outside the applier's compose flow) must not share its target
+file with an absolute-offset fix applied afterwards, because a
+grown chunk moves file bytes.
 
 ## 5. Test the fix
 

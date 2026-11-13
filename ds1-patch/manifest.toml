@@ -44,3 +44,44 @@ enabled = true
 id = "fix.ds1.script-repairs"
 path = "fixes/002-script-repairs.py"
 enabled = true
+
+# ---- 0.2.0-beta.1 community fixes -----------------------------------
+# Calvin Rodo's yuan-ti repairs, adopted through the gate
+# (docs/gate-review-yuan-ti-2026-11-13.md: fingerprints, semantic
+# review, assemble check all pass; runtime QA pending). EVERY fix
+# below ships DISABLED: this is an explicitly untested beta, so no
+# one gets new behavior without opting in. Enable in this file (or
+# per-run) and follow docs/qa-packet-ds1-script-repairs-beta.md.
+# The Legcrusher dialog guards are not in this beta: they are
+# runtime-assembled upstream and need our gpl-asm movable
+# assembly mode first (see the beta release notes).
+
+[[fixes]]
+id = "fix.ds1.halfling-race"
+path = "fixes/003-halfling-race.py"
+enabled = false
+
+[[fixes]]
+id = "fix.ds1.tracking"
+path = "fixes/004-tracking-chain.py"
+enabled = false
+
+[[fixes]]
+id = "fix.ds1.grate-hack"
+path = "fixes/005-grate-hack.py"
+enabled = false
+
+[[fixes]]
+id = "fix.ds1.serf-follow"
+path = "fixes/006-serf-follow.py"
+enabled = false
+
+[[fixes]]
+id = "fix.ds1.messenger-trigger"
+path = "fixes/007-messenger-trigger.py"
+enabled = false
+
+[[fixes]]
+id = "fix.ds1.mindhome-award"
+path = "fixes/008-mindhome-award.py"
+enabled = false
