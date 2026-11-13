@@ -1241,8 +1241,8 @@ mod tests {
             assert_eq!(rec.first, first, "slot {slot} first");
             assert_eq!(rec.count, count, "slot {slot} count");
         }
-        for slot in 4..CYCLE_SLOTS {
-            assert!(!cycle.records[slot].is_active(), "slot {slot} unarmed");
+        for (slot, rec) in cycle.records.iter().enumerate().skip(4) {
+            assert!(!rec.is_active(), "slot {slot} unarmed");
         }
         // Slowest range: 9 colours x delay 2 = 18 ticks per rotation.
         assert_eq!(cycle.period(), 18);
