@@ -128,6 +128,32 @@ comments next to the relevant code.
   of flattening) and the XDIR FORM-size quirk (declared extent
   covers only INFO; CAT follows as a sibling)
 
+## Community contributions (yuan-ti, Calvin Rodo — MIT)
+
+Adoption status: byte fingerprints verified against the canonical
+GOG 1.10 install on 2026-11-13 (23/23 clean); semantic review and
+runtime QA are still pending before any of this becomes canon.
+Credit is recorded now; code adoption lands only through the gate
+in [`docs/detour-repairs.md`](docs/detour-repairs.md). When adopted
+fixes ship, the darkfix-ds1 patchnotes entries (and therefore the
+release tags) name yuan-ti / Calvin Rodo.
+
+| Feature | Upstream | License |
+|---------|----------|---------|
+| Detour repair mechanism: length-changing script repairs that move no address. Append `[EXIT_GPL sentinel][detour body][JUMP back]` after the script's end, overwrite the expect range with a JUMP to the detour (EXIT_GPL fill for any remainder), and rebase the big-endian label words listed in `Relocate` (labels counted from the detour's start, rebased to the detour's absolute address) | `CalvinRodo/yuan-ti` `engine/src/DarkSun.Game/Scripting/GplRepairs.cs` `GplRepair` record + `GplRepairs.Apply` + `GplAssembler.AssembleMovable` | MIT (design adopted; our implementation will be gpl-asm + the darkfix applier, not a C# port; see [`docs/detour-repairs.md`](docs/detour-repairs.md)) |
+| Repair authoring discipline: every repair carries expect-byte fingerprints and is skipped when the bytes differ (another release or a mod leaves the script alone); per-repair default on/off; same-length edits applied in place, detours only when the replacement is longer | `CalvinRodo/yuan-ti` `GplRepairs.cs` `Apply` guard rails | MIT |
+| Same-length edits implementing our unshipped triage candidates: the serf follow range (GPL 60 @0xCD8, immediate 14 -> 127), the Mindhome XP award-once gate (GPL 204 @0x5C9, `gflag[695] == 0` around the +5000), the messenger trigger re-arms x3 (GPL 58 @0x1A/0x99/0xCC: register MAS 9's sight trigger on -1297 once `gflag[245]` flips, while `gflag[339] == 0`) | `CalvinRodo/yuan-ti` `GplRepairs.cs` (findings 3.2(1a)/(1c)/(4) are ours, [`docs/ds1-sweep-triage-2026-10-07.md`](docs/ds1-sweep-triage-2026-10-07.md); byte encodings are his) | MIT |
+| Script-bug discoveries, 17 repairs in 4 families: the halfling greeting/insult race test (GPL 31 @0x3B/0x254: combat-record race byte 0 -> sheet `.71.20`), the ranger tracking chain (GPL 210 @0x5FD/0x60C/0x622/0x638/0x6CC: `.71.17` class read, level 13-16 range checks, roll direction), the sewer grate logic (GPL 137 @0x9E0/0xA14/0xA65/0xB5C: offer gate, hack opens, Strength roll, his/her line), the Legcrusher-gone dialog guards (GPL 136 @0x130, 139 @0x218, 141 @0x6B4/0x70B/0x766/0xF29: `RANGE(gname[5], name(-326)) < 999` gates with replacement lines) | `CalvinRodo/yuan-ti` `GplRepairs.cs` (catalog rows with evidence: [`docs/known-bugs.md`](docs/known-bugs.md) §3.6; fixes pending the adoption gate) | MIT |
+
+**OpenDS work this feeds (pending the adoption gate):**
+- `docs/detour-repairs.md`: the detour design for our own
+  applier/gpl-asm work, which re-opens the chunk-growth FIX-CANDIDATE
+  rows of the 2026-10-07 triage (1b, 2, 4; 1a/1c have yuan-ti
+  implementations to review)
+- `docs/known-bugs.md` §3.6: the catalog rows for Calvin's findings
+- `docs/exchange-yuan-ti-2026-11-13.md`: the give-back briefs
+  (DS2 decode, region change, symbols, runtime QA)
+
 ## Influences (read but not yet ported)
 
 - **`dsoageofheroes/libsoloscuro`**: DS-specific rules engine

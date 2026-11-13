@@ -414,6 +414,74 @@ unimplemented), and the handler stubs call through far-pointer
 tables: so a bug whose cause is a wrong opcode behavior can be
 traced handler-to-implementation in two hops.
 
+### 3.6. Scripting findings from the yuan-ti cross-read (2026-11-13)
+
+Calvin Rodo's engine ([upstream-projects.md](upstream-projects.md)
+§4) repairs 29 shipped-script bugs in `GplRepairs.cs`. Seven are our
+published darkfix-ds1 fixes ported byte-for-byte; five implement
+three of our own unshipped triage candidates (triage rows 3.2(1a),
+(1c), and the bonus half of (4)); seventeen are Calvin's own
+discoveries, absent from this catalog until now. All 23 distinct
+fingerprints verified clean against `.games/ds1/GPLDATA.GFF` (GOG
+1.10) on 2026-11-13. **None of these are adopted fixes yet**: each
+needs the semantic review + runtime QA gate in
+[detour-repairs.md](detour-repairs.md) before any becomes a
+darkfix-ds1 fix. Recorded here as catalog rows with credit; sources
+below are yuan-ti's `engine/src/DarkSun.Game/Scripting/GplRepairs.cs`.
+
+1. **Halfling greeting/insult race test (Slave Pens)**: GPL 31's
+   halfling reads the speaker's race from the combat record, which
+   carries none (byte 0), so a halfling in the party is never
+   greeted as one and the insult names no race. Calvin's fix reads
+   the character sheet's race field (`.71.20`) instead. Sites: GPL 31
+   @0x3B (greeting) and @0x254 (insult). NEW DISCOVERY (no kibbitz
+   or FAQ source covers it).
+2. **Ranger tracking chain (region 8 bodies)**: three stacked faults
+   in GPL 210, per Calvin's analysis: the ranger test reads usable
+   item classes from the combat record (`.17`, not the sheet's
+   `.71.17`); the level bonus tests class codes as bit masks (a
+   ranger's code is 13-16); and the roll is inverted (Wisdom + 8 and
+   more must land under RAND(20), which cannot reliably succeed).
+   Five same-length edits: GPL 210 @0x5FD, @0x60C, @0x622, @0x638,
+   @0x6CC. NEW DISCOVERY.
+3. **Sewer grate (Slave Pens) hack path dead**: in GPL 137 the
+   weapon-in-hand search stops at once (tests `lflag[3] == 1` where
+   it was just set to 0), so "hack the lock off" is never offered; a
+   hack that succeeds never opens the grate; and attacking it tests
+   `.43 < 220` against an item with no hit points (always breaks the
+   lock). Calvin's fixes: @0xA65 (offer gate, same-length), @0xA14
+   (open on success, +8-byte detour), @0xB5C (Strength roll like
+   ripping it open, same-length), @0x9E0 (his/her line, detour with
+   relocated labels). NEW DISCOVERY.
+4. **Legcrusher-gone dialog guards (Slave Pens)**: the party can
+   kill Legcrusher (-326), after which Kurzak keeps calling for him,
+   greets the party as if he were about, and Dinos still warns of
+   him. Six detour repairs (GPL 136 @0x130, GPL 139 @0x218, GPL 141
+   @0x6B4/0x70B/0x766/0xF29) gate each line on
+   `RANGE(gname[5], name(-326)) < 999` and substitute replacement
+   dialog when he is gone. NOTE: these invent new game dialog text;
+   adopting them crosses our no-invented-behavior line deliberately
+   (decision recorded 2026-11-13). NEW DISCOVERY.
+5. **Serf follow range (Fields of Draj)**: our triage 3.2(1a)
+   concluded no same-length edit exists for the persistent-guard
+   approach; Calvin's fix is a different design, a one-byte
+   follow-distance widening (GPL 60 @0xCD8: immediate 14 -> 127
+   cells, "however far behind"). Balance-class, off by default per
+   §5 policy. Our persistent-flag candidate re-opens under detour
+   support (see detour-repairs.md).
+6. **Messenger trigger re-arms (region 9)**: our triage 3.2(1c)
+   named the three GPL-58 sites (0x1A/0x99/0xCC); Calvin implemented
+   the register-on-flip fix as three detours with identical
+   structure: register MAS 9's sight trigger on the messenger
+   (-1297) while `gflag[339] == 0`, gated on `gflag[245]` having
+   flipped. Site ours, implementation his.
+7. **Mindhome XP award loop (Rebel Mindhome)**: our triage 3.2(4)
+   bonus finding (the +5000 XP re-awards on every re-talk once the
+   spiders are dead); Calvin's fix gates the award on
+   `gflag[695] == 0` via a detour at GPL 204 @0x5C9. The re-ask half
+   of that bug (the GPL-204 router at 0xb2/0xd2 never consulting
+   GF695) is still unimplemented by either project.
+
 
 ## 4. SSI patch lineage
 

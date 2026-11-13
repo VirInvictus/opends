@@ -169,7 +169,51 @@ import and any future binary patching. Coordinate with Greg
 before exploring publication of derived work; he has done the
 homework on what's safe to publish.
 
-## 4. Other tools
+## 4. yuan-ti (Calvin Rodo)
+
+- URL: https://github.com/CalvinRodo/yuan-ti
+- Language: C# (Godot 4.7 / .NET 10 engine) + Python (toolkit and Flask viewer)
+- License: MIT (dual copyright: yuan-ti contributors 2026 + John
+  Glassmyer 2018, reflecting the toolkit's descent from `dsun_music`)
+- Status: actively developed as of November 2026 (PR #162 merged
+  2026-11-07; CI + release builds for Linux/Windows/macOS)
+- Came to us via opends issue #13 (2026-11-13). Workspace clone at
+  `~/.gitrepos/yuan-ti/` (read-only reference; catalog row in
+  `~/.gitrepos/CLAUDE.md`).
+
+A DS1 engine rewrite plus the toolkit it grew out of, with DS2
+partial and Al-Qadim partial (the toolkit's stated support). The
+engine runs the full DS1 loop: chargen, every region, GPL scripts,
+conversations, turn-based combat with psionics and the original
+monster AI, items, saves, and a mod system replacing loose-file
+resources. The toolkit side is a GFF parser, image decoder, GPL
+disassembler, structured record parsers, and a web viewer; the RE
+notes in `.github/instructions/` include a 2,548-line
+`dsun-exe-reference.md` (derived with Ghidra 12.1.4 via REA, the
+same tooling lane as ours) with the GPL interpreter's segment map,
+expression grammar, and a combat/AI chapter.
+
+**Where the work meets ours:**
+
+- `engine/src/DarkSun.Game/Scripting/GplRepairs.cs` ports our
+  darkfix-ds1 fixes byte-for-byte (verified against GOG 1.10 on
+  2026-11-13: 23/23 fingerprints clean), implements three of our
+  unshipped triage candidates, and adds 17 script-bug discoveries
+  of Calvin's own. The full classification and adoption gate:
+  [`detour-repairs.md`](detour-repairs.md); the catalog rows:
+  [`known-bugs.md`](known-bugs.md) §3.6.
+- The detour mechanism (length-changing script repairs without
+  moving any address) is adopted as the design for our own applier
+  work; credited in [`../CREDITS.md`](../CREDITS.md).
+- Exchange briefs prepared 2026-11-13 (DS2 decode, the DS1
+  region-change question, symbol exchange, runtime QA):
+  [`exchange-yuan-ti-2026-11-13.md`](exchange-yuan-ti-2026-11-13.md).
+
+Their engine README credits OpenDS for the shipped-script bug
+catalog that its repairs option implements; the reuse pattern we
+hoped for when darkfix published.
+
+## 6. Other tools
 
 | Project / Tool                  | Purpose                                                 |
 |---------------------------------|---------------------------------------------------------|
@@ -186,7 +230,7 @@ These are reverse-engineering aides, not assets. Useful for
 identifying memory layouts and verifying our rules-engine math
 against the original binary.
 
-## 5. Inactive / dormant
+## 7. Inactive / dormant
 
 - **Beamdog forums Shattered Lands → Infinity Engine port** ;
   https://forums.beamdog.com/discussion/72931: modders
@@ -194,14 +238,14 @@ against the original binary.
   Useful as an asset-conversion reference if we want a sanity-check
   on how someone else extracted regions.
 
-## 6. ScummVM
+## 8. ScummVM
 
 **No support, no pending engine.** Dark Sun has not been adopted by
 ScummVM. The project broadened scope to RPGs (Xeen, EOB I/II are in)
 but no Dark Sun engine has been merged or proposed. This is the
 project's gap to fill.
 
-## 7. Coordination strategy
+## 9. Coordination strategy
 
 Before duplicating any non-trivial RE work:
 
