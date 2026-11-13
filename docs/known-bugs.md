@@ -440,9 +440,10 @@ below are yuan-ti's `engine/src/DarkSun.Game/Scripting/GplRepairs.cs`.
    in GPL 210, per Calvin's analysis: the ranger test reads usable
    item classes from the combat record (`.17`, not the sheet's
    `.71.17`); the level bonus tests class codes as bit masks (a
-   ranger's code is 13-16); and the roll is inverted (Wisdom + 8 and
-   more must land under RAND(20), which cannot reliably succeed).
-   Five same-length edits: GPL 210 @0x5FD, @0x60C, @0x622, @0x638,
+   ranger's code is 13-16); and the roll is inverted (success
+   requires the score under the roll: `lnum[4] < RAND(20)`, which
+   high-Wisdom parties can never satisfy). Five edits, four detours
+   and one same-length: GPL 210 @0x5FD, @0x60C, @0x622, @0x638,
    @0x6CC. NEW DISCOVERY.
 3. **Sewer grate (Slave Pens) hack path dead**: in GPL 137 the
    weapon-in-hand search stops at once (tests `lflag[3] == 1` where
@@ -450,9 +451,11 @@ below are yuan-ti's `engine/src/DarkSun.Game/Scripting/GplRepairs.cs`.
    hack that succeeds never opens the grate; and attacking it tests
    `.43 < 220` against an item with no hit points (always breaks the
    lock). Calvin's fixes: @0xA65 (offer gate, same-length), @0xA14
-   (open on success, +8-byte detour), @0xB5C (Strength roll like
-   ripping it open, same-length), @0x9E0 (his/her line, detour with
-   relocated labels). NEW DISCOVERY.
+   (open on success, detour: the pick path's own tail, printing
+   "The grate opens." via lstring[0] and setting gflag[505] as the
+   pick path does at 0x998), @0xB5C (Strength roll like ripping it
+   open, detour), @0x9E0 (his/her line, detour with relocated
+   labels). NEW DISCOVERY.
 4. **Legcrusher-gone dialog guards (Slave Pens)**: the party can
    kill Legcrusher (-326), after which Kurzak keeps calling for him,
    greets the party as if he were about, and Dinos still warns of

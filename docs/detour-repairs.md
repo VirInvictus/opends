@@ -136,7 +136,28 @@ repair ships only after all five:
    name the source; the tag message carries the entry verbatim, so
    the release itself carries the credit.
 
-## 5. What this unblocks
+## 5. Gate status (updated 2026-11-13, same day)
+
+Steps 1-3 ran the same day the repairs were classified; the record
+is [`gate-review-yuan-ti-2026-11-13.md`](gate-review-yuan-ti-2026-11-13.md):
+
+1. Fingerprints: 23/23 static sites clean (the 6 Legcrusher guards
+   are runtime-assembled upstream; their six PRINT_STRING sites
+   verified as the exact shipped lines instead).
+2. Semantic review: 29/29 confirmed against our own disassembly,
+   zero disagreements. Every named flag, handler, and mirrored
+   code path cross-checked in the corpus (MAS 9's registration and
+   gates, GPL 137's pick and rip paths, the GF695/GF505/GF339
+   writers).
+3. Assemble check: 250/250 chunks reassemble byte-identical
+   through `gpl-asm` with validation on (patched chunks to the
+   expected patched bytes, untouched chunks to originals).
+4. Runtime QA: pending (Brandon's DOSBox sessions; the checklist
+   is exchange-yuan-ti-2026-11-13.md §4).
+5. Credit: the v0.1.4 release carries the names; per-fix credit
+   rides each shipping release.
+
+## 6. What this unblocks
 
 - **Re-opened triage rows** (ours to author once the applier
   supports detours): 3.2(1b), 3.2(2), and the re-ask half of
