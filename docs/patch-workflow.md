@@ -126,6 +126,26 @@ replacement, backup, journal) and the umbrella applier
 same module: extract via `gff-edit`, edit via `gpl-asm`'s
 verified `--patch` output, reinsert.
 
+Length-changing GPL repairs (detours) go through
+`apply_gpl_repairs` with `GplRepair` records instead: each repair
+is addressed chunk-relative (`kind`, `chunk_id`, `offset`),
+carries the same fingerprint discipline (`expect` checked on the
+pristine chunk before any write), and a `replace` longer than
+`expect` becomes a detour: the applier appends
+`[EXIT_GPL][replace][JUMP back]` after the chunk end, overwrites
+the expect range with a JUMP to it (EXIT_GPL fill for any
+remainder), and rebases the 15-bit big-endian label words listed
+in `relocate`. Mechanism and gate: `detour-repairs.md`; the
+adoption review that confirmed the encodings:
+`gate-review-yuan-ti-2026-11-13.md`. v1 constraints: a detour fix
+must not share its target file with an absolute-offset
+`apply_bytes` fix (a grown chunk moves file bytes, so absolute
+sites would drift), and `relocate` follows yuan-ti's convention
+(index of the label word's first byte inside `replace`). The
+selftest's detour block exercises the math and, when `gff-cat` is
+available, the full extract/replace round trip on a synthetic
+GFF.
+
 ## 5. Test the fix
 
 Three layers:

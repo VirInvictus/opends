@@ -157,7 +157,32 @@ is [`gate-review-yuan-ti-2026-11-13.md`](gate-review-yuan-ti-2026-11-13.md):
 5. Credit: the v0.1.4 release carries the names; per-fix credit
    rides each shipping release.
 
-## 6. What this unblocks
+## 6. Implementation status
+
+The applier half landed 2026-11-13 (gate steps 1-3 all green
+before any of it was written): `darkfix.patcher` gains `GplRepair`
+(chunk-relative, fingerprint-checked) and `apply_gpl_repairs`
+(extract via `gff-cat extract`, compute all chunks all-or-nothing,
+replace through the existing `apply_gff_chunk` append policy),
+with the reviewed `Apply` algorithm as the contract. Proof: the
+seven published fixes applied chunk-relatively produce
+byte-identical output to the existing absolute path
+(differential test), the gate-confirmed mindhome detour produces
+byte-identical patched-chunk bytes to the review pipeline's
+independent construction, and the selftest's detour block covers
+the pure math (in-place, JUMP+fill site, relocated label, JUMP
+back, oversize and overlap refusals) plus the full
+extract/replace round trip on a synthetic GFF when `gff-cat` is
+available. The existing 001/002 fixes stay absolute-offset until
+a reviewed migration (their selftest hashes are the regression
+net); a detour fix must not share its target file with an
+absolute-offset fix until then (documented in
+`patch-workflow.md` §4.2). Still to come: the `gpl-asm` movable
+assembly mode, landing with the first source-authored detour fix
+(the byte+relocate format is enough to adopt the reviewed
+yuan-ti encodings).
+
+## 7. What this unblocks
 
 - **Re-opened triage rows** (ours to author once the applier
   supports detours): 3.2(1b), 3.2(2), and the re-ask half of

@@ -28,6 +28,7 @@ import importlib.util
 import io
 import os
 import shutil
+import struct
 import sys
 import tempfile
 from dataclasses import dataclass
@@ -480,6 +481,51 @@ def _synth_bytes(n: int) -> bytes:
     return bytes(((i * 7 + 13) & 0xFF) for i in range(n))
 
 
+def _minimal_gff(chunks: list[tuple[str, int, bytes]]) -> bytes:
+    """Build a minimal valid GFF holding the given (kind, id, bytes)
+    chunks, one type per kind. Layout per docs/file-formats.md §1:
+    28-byte header, chunk data from 28, TOC with one type list and an
+    empty free list. Selftest-only; the applier itself never writes
+    GFFs from scratch (gff-cat replace does the surgery).
+    """
+    kinds: dict[str, list[tuple[int, bytes]]] = {}
+    for kind, cid, data in chunks:
+        kinds.setdefault(kind, []).append((cid, data))
+    data_area = bytearray()
+    entries: list[tuple[str, list[tuple[int, int, int]]]] = []
+    for kind, items in kinds.items():
+        rows = []
+        for cid, data in items:
+            off = 28 + len(data_area)
+            data_area.extend(data)
+            rows.append((cid, off, len(data)))
+        entries.append((kind, rows))
+    toc_location = 28 + len(data_area)
+    types_offset = 8
+    body = bytearray()
+    body += struct.pack("<H", len(entries))
+    for kind, rows in entries:
+        body += kind.encode("ascii").ljust(4)
+        body += struct.pack("<I", len(rows))
+        for cid, off, length in rows:
+            body += struct.pack("<iII", cid, off, length)
+    free_list_offset = types_offset + len(body)
+    body += struct.pack("<H", 0)
+    toc = struct.pack("<II", types_offset, free_list_offset) + bytes(body)
+    toc_length = len(toc)
+    header = b"GFFI" + struct.pack(
+        "<IIIIII",
+        0x00030000,
+        28,
+        toc_location,
+        toc_length,
+        0,
+        1,
+    )
+    assert len(header) == 28
+    return bytes(header) + bytes(data_area) + toc
+
+
 def _make_patch(
     tmp: Path,
     name: str,
@@ -885,6 +931,200 @@ def selftest() -> int:
         ok("all-disabled manifest refused", rc == 1)
         ok("all-disabled refusal wrote no journal", P.read_journal(inst6) is None)
         ok("all-disabled refusal left the target untouched", t6.read_bytes() == data4)
+
+    # Detour repairs (docs/detour-repairs.md): the pure chunk math
+    # first, then the gff-cat end-to-end when the binary is
+    # available. Mechanism and gate review are the yuan-ti adoption
+    # (docs/gate-review-yuan-ti-2026-11-13.md).
+    code = bytes(range(256))
+    r_inplace = P.GplRepair(
+        kind="GPL",
+        chunk_id=1,
+        offset=0x10,
+        expect=code[0x10:0x13],
+        replace=b"\xaa\xbb\xcc",
+    )
+    r_detour = P.GplRepair(
+        kind="GPL",
+        chunk_id=1,
+        offset=0x40,
+        expect=code[0x40:0x44],
+        # 7-byte replace whose detour-relative label word sits at
+        # bytes 2..3: 0x0010 = 16 bytes into the detour.
+        replace=b"\x18\x00\x00\x10\x40\x99\x67",
+        relocate=(2,),
+    )
+    got = P.compute_patched_chunk(code, [r_inplace, r_detour])
+    detour_at = len(code) + 1  # after the EXIT_GPL sentinel
+    # Expected bytes constructed by hand (never via the code under
+    # test): JUMP opcode 0x12, 15-bit big-endian target; the label
+    # rebases to detour_at + 16 = 273 = 0x0111.
+    tail = (
+        b"\x00"
+        + b"\x18\x00"
+        + struct.pack(">H", detour_at + 16)
+        + b"\x40\x99\x67"
+        + b"\x12\x00\x44"
+    )
+    want = bytearray(code)
+    want[0x10:0x13] = b"\xaa\xbb\xcc"
+    want[0x40:0x44] = b"\x12" + struct.pack(">H", detour_at) + b"\x00"
+    want = bytes(want) + tail
+    ok("detour: same-length edit in place", got[0x10:0x13] == b"\xaa\xbb\xcc")
+    ok(
+        "detour: site is JUMP to the detour + EXIT fill",
+        got[0x40:0x44] == b"\x12" + struct.pack(">H", detour_at) + b"\x00",
+    )
+    ok(
+        "detour: whole chunk byte-exact (relocated label, JUMP back)",
+        got == want,
+    )
+    ok(
+        "detour: label rebased to absolute chunk address",
+        got[detour_at + 2 : detour_at + 4] == struct.pack(">H", detour_at + 16),
+    )
+    try:
+        P.compute_patched_chunk(
+            code,
+            [P.GplRepair("GPL", 1, 0x10, code[0x10:0x13], b"\xaa\xbb")],
+        )
+        ok("detour: shorter replace refused", False)
+    except P.PatchError:
+        ok("detour: shorter replace refused", True)
+    try:
+        P.compute_patched_chunk(
+            code,
+            [P.GplRepair("GPL", 1, 0x50, code[0x50:0x52], b"\x01\x02\x03")],
+        )
+        ok("detour: expect shorter than a JUMP refused", False)
+    except P.PatchError:
+        ok("detour: expect shorter than a JUMP refused", True)
+    try:
+        P.compute_patched_chunk(
+            code,
+            [
+                P.GplRepair("GPL", 1, 0x10, code[0x10:0x13], b"\xaa\xbb\xcc"),
+                P.GplRepair("GPL", 1, 0x11, code[0x11:0x14], b"\x01\x02\x03"),
+            ],
+        )
+        ok("detour: overlapping sites refused", False)
+    except P.PatchError:
+        ok("detour: overlapping sites refused", True)
+    big = bytes(0x7FFF)
+    try:
+        P.compute_patched_chunk(
+            big,
+            [
+                P.GplRepair(
+                    "GPL",
+                    1,
+                    0x10,
+                    big[0x10:0x15],
+                    big[0x10:0x15] + b"\x18\x00\x50\x00\x99\x67\x00\x00",
+                    relocate=(4,),
+                )
+            ],
+        )
+        ok("detour: chunk past 15-bit JUMP range refused", False)
+    except P.PatchError:
+        ok("detour: chunk past 15-bit JUMP range refused", True)
+
+    gff_cat = os.environ.get("DARKFIX_GFF_CAT") or shutil.which("gff-cat")
+    if gff_cat is None:
+        print(
+            "  SKIP: gff-cat not found; detour end-to-end (extract +"
+            " chunk replace through gff-edit) not run"
+        )
+    else:
+        with tempfile.TemporaryDirectory(prefix="darkfix-detour-") as td2:
+            tmp2 = Path(td2)
+            chunk1 = bytes(((i * 11 + 3) & 0xFF) for i in range(64))
+            chunk2 = bytes(((i * 5 + 9) & 0xFF) for i in range(32))
+            gff_file = tmp2 / "SELFTEST.GFF"
+            gff_file.write_bytes(_minimal_gff([("GPL", 1, chunk1), ("GPL", 2, chunk2)]))
+            want1 = P.compute_patched_chunk(
+                chunk1,
+                [
+                    P.GplRepair(
+                        kind="GPL",
+                        chunk_id=1,
+                        offset=0x10,
+                        expect=chunk1[0x10:0x13],
+                        replace=b"\xaa\xbb\xcc",
+                    )
+                ],
+            )
+            repairs2 = [
+                P.GplRepair(
+                    kind="GPL",
+                    chunk_id=2,
+                    offset=0x8,
+                    expect=chunk2[0x8:0xC],
+                    # Label word at bytes 2..3 = 0x0014 = 20 bytes
+                    # into the detour.
+                    replace=b"\x18\x00\x00\x14\x99\x18\xcd\x01\x67",
+                    relocate=(2,),
+                )
+            ]
+            # Hand-built expectation (never via the code under test):
+            # detour starts at 32 + 1 = 33; the label rebases to
+            # 20 + 33 = 53; the site becomes JUMP 33 + one EXIT fill.
+            detour2_at = len(chunk2) + 1
+            body2 = (
+                b"\x18\x00"
+                + struct.pack(">H", 20 + detour2_at)
+                + b"\x99\x18\xcd\x01\x67"
+                + b"\x12\x00\x0c"
+            )
+            want2 = (
+                chunk2[:0x8]
+                + b"\x12"
+                + struct.pack(">H", detour2_at)
+                + b"\x00"
+                + chunk2[0xC:]
+                + b"\x00"
+                + body2
+            )
+            out = P.apply_gpl_repairs(
+                gff_file,
+                tmp2 / "SELFTEST-patched.GFF",
+                repairs2,
+                gff_cat=gff_cat,
+            )
+            got1 = P._extract_chunk(out, "GPL", 1, gff_cat)
+            got2 = P._extract_chunk(out, "GPL", 2, gff_cat)
+            ok("detour end-to-end: untouched chunk byte-identical", got1 == chunk1)
+            ok("detour end-to-end: patched chunk matches compute", got2 == want2)
+            ok(
+                "detour end-to-end: site JUMP + EXIT fill as computed",
+                got2[0x8:0xC] == b"\x12" + struct.pack(">H", len(chunk2) + 1) + b"\x00",
+            )
+            # Two chunks repaired in one call exercises the
+            # sequential gff-cat replace chain.
+            gff2_file = tmp2 / "SELFTEST2.GFF"
+            gff2_file.write_bytes(
+                _minimal_gff([("GPL", 1, chunk1), ("GPL", 2, chunk2)])
+            )
+            out2 = P.apply_gpl_repairs(
+                gff2_file,
+                tmp2 / "SELFTEST2-patched.GFF",
+                [
+                    P.GplRepair(
+                        kind="GPL",
+                        chunk_id=1,
+                        offset=0x10,
+                        expect=chunk1[0x10:0x13],
+                        replace=b"\xaa\xbb\xcc",
+                    ),
+                    *repairs2,
+                ],
+                gff_cat=gff_cat,
+            )
+            ok(
+                "detour end-to-end: two chunks patched in one call",
+                P._extract_chunk(out2, "GPL", 1, gff_cat) == want1
+                and P._extract_chunk(out2, "GPL", 2, gff_cat) == want2,
+            )
 
     exe = DEFAULT_PATCH_ROOT.parent / ".games" / "ds1" / "DSUN.EXE"
     if exe.is_file():

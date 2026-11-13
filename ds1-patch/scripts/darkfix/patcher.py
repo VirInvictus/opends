@@ -259,6 +259,236 @@ def apply_gff_chunk(
     return dest
 
 
+# ------------------------------------------------- gpl detour repairs
+#
+# Length-changing repairs to GPL/MAS chunks. The mechanism is
+# Calvin Rodo's (yuan-ti GplRepairs.cs, MIT), adopted as design in
+# docs/detour-repairs.md and gate-reviewed in
+# docs/gate-review-yuan-ti-2026-11-13.md; this is our own
+# implementation, not a C# port.
+
+JUMP_OPCODE = 0x12
+EXIT_GPL_OPCODE = 0x00
+# JUMP addressing is a 15-bit chunk-relative offset, so a chunk
+# plus its detours must stay under 0x8000 bytes (every shipped
+# DS1 GPL/MAS chunk is far below).
+GPL_CHUNK_MAX = 0x8000
+
+
+@dataclass(frozen=True)
+class GplRepair:
+    """One repair to a GPL/MAS chunk, addressed chunk-relative.
+
+    A same-length repair is in-place. A longer ``replace`` is a
+    detour: the applier appends ``[EXIT_GPL][replace][JUMP back]``
+    after the chunk's end, overwrites the expect range with a JUMP
+    to the detour (EXIT_GPL fill for any remainder), and rebases
+    the 15-bit big-endian label words listed in ``relocate``
+    (offsets into ``replace``, counted from the detour's start) to
+    absolute chunk addresses. No address inside the original code
+    moves.
+    """
+
+    kind: str
+    chunk_id: int
+    offset: int
+    expect: bytes
+    replace: bytes
+    relocate: tuple[int, ...] = ()
+
+    @classmethod
+    def from_dict(cls, d: dict, *, what: str = "repair") -> GplRepair:
+        missing = [
+            k for k in ("kind", "chunk_id", "offset", "expect", "replace") if k not in d
+        ]
+        if missing:
+            raise PatchError(f"{what}: missing keys {missing}")
+        kind = str(d["kind"])
+        if kind not in ("GPL", "MAS"):
+            raise PatchError(f"{what}: kind must be GPL or MAS, got {kind!r}")
+        offset = int(d["offset"])
+        if offset < 0:
+            raise PatchError(
+                f"{what}: offset must be a non-negative integer, got {offset}"
+            )
+        relocate = tuple(int(i) for i in d.get("relocate", ()))
+        return cls(
+            kind=kind,
+            chunk_id=int(d["chunk_id"]),
+            offset=offset,
+            expect=_coerce_bytes(d["expect"], f"{what}.expect"),
+            replace=_coerce_bytes(d["replace"], f"{what}.replace"),
+            relocate=relocate,
+        )
+
+
+def _jump(address: int) -> bytes:
+    return bytes([JUMP_OPCODE, (address >> 8) & 0xFF, address & 0xFF])
+
+
+def compute_patched_chunk(
+    code: bytes, repairs: list[GplRepair], *, what: str = "repairs"
+) -> bytes:
+    """Apply GplRepairs to one chunk's bytes, all-or-nothing.
+
+    Every fingerprint is checked against the pristine ``code``
+    before anything is written; in-place sites must be disjoint
+    from each other. Detours stack in list order at the tail: the
+    first detour lands one byte past the chunk end (after a lone
+    EXIT_GPL sentinel, so a script that runs off its end still
+    stops), each followed by a JUMP back to just after its own
+    expect range.
+    """
+    checked: list[tuple[int, int]] = []
+    in_place: list[GplRepair] = []
+    detours: list[GplRepair] = []
+    for i, repair in enumerate(repairs):
+        end = repair.offset + len(repair.expect)
+        if end > len(code):
+            raise FingerprintMismatch(
+                f"{what}: repair {i} ({repair.kind} {repair.chunk_id}"
+                f" @#{repair.offset:#x}) runs past end of chunk"
+            )
+        if bytes(code[repair.offset : end]) != repair.expect:
+            raise FingerprintMismatch(
+                f"{what}: repair {i} at chunk offset"
+                f" {repair.offset:#x}: expected"
+                f" {repair.expect.hex()}, found"
+                f" {bytes(code[repair.offset : end]).hex()}"
+            )
+        replace_len = len(repair.replace)
+        if replace_len < len(repair.expect):
+            raise PatchError(
+                f"{what}: repair {i} replace is shorter than expect"
+                f" ({len(repair.expect)} -> {replace_len})"
+            )
+        if replace_len > len(repair.expect):
+            if len(repair.expect) < 3:
+                raise PatchError(
+                    f"{what}: repair {i} needs {len(repair.expect)} bytes"
+                    " in place for a JUMP; a detour cannot fit"
+                )
+            detours.append(repair)
+        else:
+            in_place.append(repair)
+        for start0, end0 in checked:
+            if repair.offset < end0 and start0 < end:
+                raise PatchError(f"{what}: repair {i} overlaps an earlier repair")
+        checked.append((repair.offset, end))
+
+    out = bytearray(code)
+    for repair in in_place:
+        out[repair.offset : repair.offset + len(repair.replace)] = repair.replace
+
+    appended = bytearray([EXIT_GPL_OPCODE])
+    for repair in detours:
+        at = len(code) + len(appended)
+        body = bytearray(repair.replace + _jump(repair.offset + len(repair.expect)))
+        for i in repair.relocate:
+            if i + 1 >= len(repair.replace):
+                raise PatchError(
+                    f"{what}: repair relocate index {i} is outside replace"
+                )
+            address = (body[i] << 8 | body[i + 1]) + at
+            if address >= GPL_CHUNK_MAX:
+                raise PatchError(
+                    f"{what}: repair relocate target {address:#x} leaves"
+                    f" 15-bit JUMP range"
+                )
+            body[i] = (address >> 8) & 0xFF
+            body[i + 1] = address & 0xFF
+        appended.extend(body)
+        out[repair.offset : repair.offset + len(repair.expect)] = bytes(
+            [EXIT_GPL_OPCODE]
+        ) * len(repair.expect)
+        out[repair.offset : repair.offset + 3] = _jump(at)
+    if len(code) + len(appended) >= GPL_CHUNK_MAX:
+        raise PatchError(
+            f"{what}: patched chunk would reach {len(code) + len(appended)}"
+            f" bytes (JUMP addressing stops at {GPL_CHUNK_MAX:#x})"
+        )
+    if not appended[1:]:
+        return bytes(out)
+    return bytes(out) + bytes(appended)
+
+
+def _gff_cat(binary: str | None) -> str:
+    resolved = binary or os.environ.get("DARKFIX_GFF_CAT") or "gff-cat"
+    if os.sep not in resolved and shutil.which(resolved) is None:
+        raise PatchError(
+            "gff-cat not found on PATH; build it with"
+            " `cargo build -p gff-edit` or set DARKFIX_GFF_CAT"
+        )
+    return resolved
+
+
+def _extract_chunk(source: Path, kind: str, chunk_id: int, gff_cat: str) -> bytes:
+    proc = subprocess.run(
+        [gff_cat, "extract", str(source), kind, str(chunk_id)],
+        capture_output=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        tail = (proc.stderr or proc.stdout or "").strip().splitlines()[-3:]
+        raise PatchError(
+            f"gff-cat extract failed for {kind} chunk {chunk_id} in"
+            f" {source}: {'; '.join(tail)}"
+        )
+    return proc.stdout
+
+
+def apply_gpl_repairs(
+    source_path: Path,
+    dest_path: Path,
+    repairs: list[GplRepair],
+    *,
+    gff_cat: str | None = None,
+) -> Path:
+    """Apply GplRepairs to their chunks, writing the modified GFF.
+
+    All chunks are extracted and every fingerprint verified before
+    the first write; chunks are then replaced in one pass through
+    the gff-edit writer (in-place when the patched bytes fit,
+    appended otherwise). Chunk-relative addressing means a grown
+    chunk cannot disturb another fix's sites; an absolute-offset
+    fix (``apply_bytes``) must not target the same file, because
+    its sites are file offsets and a grown chunk moves file bytes.
+    """
+    binary = _gff_cat(gff_cat)
+    grouped: dict[tuple[str, int], list[GplRepair]] = {}
+    for repair in repairs:
+        grouped.setdefault((repair.kind, repair.chunk_id), []).append(repair)
+
+    # Read + compute everything first: a fingerprint mismatch in any
+    # chunk refuses the whole fix before any file byte changes.
+    patched: list[tuple[str, int, bytes]] = []
+    for (kind, chunk_id), chunk_repairs in sorted(grouped.items()):
+        code = _extract_chunk(Path(source_path), kind, chunk_id, binary)
+        patched.append((kind, chunk_id, compute_patched_chunk(code, chunk_repairs)))
+
+    dest = Path(dest_path)
+    if not dest.parent.exists():
+        dest.parent.mkdir(parents=True, exist_ok=True)
+    current = Path(source_path)
+    created: list[Path] = []
+    for i, (kind, chunk_id, data) in enumerate(patched):
+        last = i == len(patched) - 1
+        staged = dest.parent / (dest.name + f".chunk{i}{STAGED_SUFFIX}")
+        staged.write_bytes(data)
+        target = (
+            dest if last else dest.parent / (dest.name + f".pass{i}{STAGED_SUFFIX}")
+        )
+        apply_gff_chunk(current, target, kind, chunk_id, staged, gff_cat=binary)
+        staged.unlink()
+        if current in created:
+            current.unlink()
+            created.remove(current)
+        if not last:
+            created.append(target)
+            current = target
+    return dest
+
+
 # ------------------------------------------------------- backup + journal
 
 
