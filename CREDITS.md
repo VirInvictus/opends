@@ -154,6 +154,22 @@ release tags) name yuan-ti / Calvin Rodo.
 - `docs/exchange-yuan-ti-2026-11-13.md`: the give-back briefs
   (DS2 decode, region change, symbols, runtime QA)
 
+## Community facts (DarkSunTools, TimQuester — NO LICENSE: facts only)
+
+No code has been ported and nothing may be until the repo carries
+an OSI license (asked 2026-11-13 in opends issue #14). Everything
+below is verified format fact, credited as insight. Revert method:
+the whole set lives in one commit whose message is marked
+"DarkSunTools facts, revertable"; `git revert` of that commit
+removes every DarkSunTools-derived statement at once (this
+section, the upstream-projects.md §5 row, and the file-formats.md
+FONT section).
+
+| Fact | Source | Verified |
+|------|--------|----------|
+| FONT chunk layout: 264-byte header with the glyph height at byte +2 (9 on the shipped DS1 font); 256 u16 LE glyph offsets at 264 (glyph data starts at 776); each glyph is a u16 LE width followed by width x height pixel bytes; the offset table is strictly increasing; the last glyph runs to chunk end | `TimQuester/DarkSunTools` `Common/Font/FontResourceCodec.cs` `Parse`/`Build` (round-trip tested upstream) | DS1 `RESOURCE.GFF` FONT 100 (8,299 bytes): all 256 glyphs satisfy every rule, checked 2026-11-13 |
+| GPL 7-bit packed strings, fixed-length invariant: same character count => same encoded byte count (packed length = ((n+1)*7+7)/8), and no padding may follow the 0x03 terminator because the next instruction starts immediately after it | `TimQuester/DarkSunTools` `Common/Gpl/GplStringCodec.cs` (documented as a translation invariant) | Consistent with our `gpl-disasm`/`gpl-asm` string handling; the invariant framing for fixed-length translation editing is the borrowed insight |
+
 ## Influences (read but not yet ported)
 
 - **`dsoageofheroes/libsoloscuro`**: DS-specific rules engine

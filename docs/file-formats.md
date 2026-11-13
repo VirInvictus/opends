@@ -549,6 +549,23 @@ per-still art: 751/768 bytes differ from PAL 1000 and 719/768 from
 each other; CMAT 200's all-index-1 background is CPAL 200's entry 1
 (a dark maroon), confirming the pairing. DS2 never references CPAL.
 
+### FONT (font resource)
+
+Recorded 2026-11-13 from the DarkSunTools codec
+(`TimQuester/DarkSunTools` `Common/Font/FontResourceCodec.cs`,
+facts-only credit in [`../CREDITS.md`](../CREDITS.md) until that
+repo carries a license), verified against our corpus the same day.
+Layout: a 264-byte header whose byte +2 is the glyph height (9 on
+the shipped DS1 font); 256 u16 LE glyph offsets starting at 264
+(glyph data begins at 776); each glyph is a u16 LE width followed
+by width x height raw pixel bytes; the offset table is strictly
+increasing; the last glyph extends to the chunk end. Verified on
+the corpus's only FONT chunk (DS1 `RESOURCE.GFF` FONT 100, 8,299
+bytes): all 256 glyph spans measure exactly 2 + width*9. What the
+pixel values index (the `PAL ` palette per the chunk table above)
+and whether the engine renders glyphs 0x80+ differently is still
+open; the codec stores raw bytes either way.
+
 ### PLYL (dead DS2 combat playlist)
 
 Documented 2026-10-06 (port-digs-2026-10-06.md 9). Six chunks in

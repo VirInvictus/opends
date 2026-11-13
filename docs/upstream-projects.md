@@ -213,6 +213,44 @@ Their engine README credits OpenDS for the shipped-script bug
 catalog that its repairs option implements; the reuse pattern we
 hoped for when darkfix published.
 
+## 5. DarkSunTools (TimQuester)
+
+<!-- DarkSunTools facts: this section, the CREDITS.md facts
+section, and the file-formats.md FONT section land in one marked
+commit so a single `git revert` removes every DarkSunTools-derived
+statement if licensing does not pan out (decision 2026-11-13). -->
+
+- URL: https://github.com/TimQuester/DarkSunTools
+- Language: C# / .NET (WPF resource editor + codec class library)
+- License: **none shipped** (default copyright; asked for an OSI
+  license in opends issue #14 on 2026-11-13). Treat as
+  all-rights-reserved until one lands: facts-only reference, no
+  code ported, no code embedded.
+- Status: single-commit snapshot cloned 2026-11-13 (latest commit
+  2026-11-05: glyph editing + dialog-resource preservation)
+- Came to us via opends issue #14. Workspace clone at
+  `~/.gitrepos/DarkSunTools/`.
+
+A Dark Sun resource-editing toolkit whose center of gravity is a
+Russian fan-translation workflow: FONT glyph replacement (a
+round-trip-tested font codec), fixed-length GPL string editing
+(same character count => same byte count, no padding after the
+0x03 terminator), and a transliteration layer mapping Cyrillic
+back onto the Latin glyph codes the 7-bit font actually stores.
+The codec library also carries a GFF reader, a GPL chunk parser,
+and an opcode parameter-shape table whose doc comment names our
+`gpl-disasm` v0.2.0 `PARAM_COUNTS` as its source (frozen at that
+release; ours has moved on).
+
+**What we take from it today** (facts, credited):
+[`file-formats.md`](file-formats.md) §FONT records the FONT chunk
+layout the codec documents, verified against our corpus the same
+day; [`../CREDITS.md`](../CREDITS.md) carries the facts-only credit
+row. **darkfix strategy**: none until a license appears; the
+standing offer is exchange, not adoption (their string codec
+against our `gpl-disasm --json`, our speakers/translation catalogs
+against their editor UI).
+
 ## 6. Other tools
 
 | Project / Tool                  | Purpose                                                 |
