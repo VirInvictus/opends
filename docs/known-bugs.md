@@ -484,6 +484,15 @@ below are yuan-ti's `engine/src/DarkSun.Game/Scripting/GplRepairs.cs`.
    `gflag[695] == 0` via a detour at GPL 204 @0x5C9. The re-ask half
    of that bug (the GPL-204 router at 0xb2/0xd2 never consulting
    GF695) is still unimplemented by either project.
+8. **The Trustee in the slave pens can stop for good** (queued,
+   not yet traced by us): his two scripted pauses take their
+   corner from numbers other pen scripts change, so he can set
+   off for a spot that does not exist and stay busy ("I'd love to
+   talk more...") for good. Relayed from the Obsidian Edition's
+   findings via yuan-ti (see
+   [community-crossread-2026-11-13.md](community-crossread-2026-11-13.md)
+   §1); a GPL-script bug in our lane, needing our own trace of
+   the rounds before it becomes a fix candidate.
 
 
 ## 4. SSI patch lineage

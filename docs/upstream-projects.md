@@ -208,6 +208,13 @@ expression grammar, and a combat/AI chapter.
 - Exchange briefs prepared 2026-11-13 (DS2 decode, the DS1
   region-change question, symbol exchange, runtime QA):
   [`exchange-yuan-ti-2026-11-13.md`](exchange-yuan-ti-2026-11-13.md).
+- Knowledge-mining pass complete 2026-11-13: the GPLX field map
+  ([`gplx-field-map.md`](gplx-field-map.md)), the Obsidian
+  engine-bug catalog relay, the combat/rules cross-check, the
+  REQUEST-name catalog, Al-Qadim LIB pointers, and harness
+  patterns ([`community-crossread-2026-11-13.md`](community-crossread-2026-11-13.md)).
+  Still open on both sides: the 0x8000 keyword-object identities,
+  resistances/immunities beyond the fire elemental, OP_28.
 
 Their engine README credits OpenDS for the shipped-script bug
 catalog that its repairs option implements; the reuse pattern we

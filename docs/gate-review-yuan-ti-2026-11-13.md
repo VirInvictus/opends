@@ -132,7 +132,11 @@ survive our encoder's validator.
   keyword form (`obj_name >= 0x8000`) but their specific keyword
   identities (speaker/party member/ready item, by usage here) are
   unmapped in our docs; recorded for the next `gff-data-reference`
-  pass.
+  pass. (Update, same-day mining pass: the field meanings behind
+  every repair path are now decoded in
+  [`gplx-field-map.md`](gplx-field-map.md), credited to yuan-ti;
+  the keyword identities themselves stay unmapped on their side
+  too.)
 - Correction landed with this review: known-bugs.md §3.6 rows 2-3
   previously called most of the tracking and grate edits
   "same-length"; they are detours (only tracking-roll and

@@ -147,6 +147,28 @@ function list export works again as of 2026-09-10;
 `scripts/propose-exe-symbols.py --census` remains useful as an
 ndisasm-based cross-check on the Ghidra function list.
 
+## Patterns worth borrowing (yuan-ti, 2026-11-13)
+
+Community harness designs observed in the cross-read
+([`community-crossread-2026-11-13.md`](community-crossread-2026-11-13.md) §5
+has the full notes); candidates for our lanes, not adopted yet:
+
+- **ScriptRun**: run the new-game script, every region script and
+  every registered trigger headlessly. A `gpl-disasm`/`gpl-asm`
+  equivalent would audit all 250 chunks through the interpreter's
+  shape in CI, not just byte round-trips.
+- **MoveCompare**: differential testing per system (A* vs a port
+  of DSUN.EXE's pathfinder, walking speeds vs the walk scripts).
+- **engine-compare**: two independent decoders whose outputs must
+  match or CI fails. The gate review did this by hand (our
+  disassembly vs their encodings); making it a standing CI gate
+  is the upgrade.
+- **The dice-log oracle** (Obsidian Edition, relayed via yuan-ti):
+  every original RNG call logged and labeled by purpose; replay a
+  golden fight from the same seed and diff the roll order. Sees
+  through identical totals; the natural instrument for runtime QA
+  and any rules work.
+
 ## Not applicable
 
 `pwndbg` is installed on this machine for CTF work. It is a gdb
