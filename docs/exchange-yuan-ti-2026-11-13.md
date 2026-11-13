@@ -82,12 +82,12 @@ bears on it:
 
 ## 3. Symbol exchange
 
-Their `tools/ghidra/symbols.tsv` (619 lines, 586 entries: 494 func,
-81 data, 11 label, with C prototypes; applied by
+Their side: `tools/ghidra/symbols.tsv` holds 586 curated entries
+(494 func, 81 data, 11 label, most with C prototypes), applied by
 `ExportDecomp.java`; `gen_symbols.py` adds the ~115 GPL handlers
-from the DS:00C0 table) against our `ovr-map` (Phase 5.5): 935
-confirmed DS1 function entries from the FBOV segment table, emitted
-by `ovr-map --json` with per-entry overlay and offset.
+from the DS:00C0 table. Our side: `ovr-map` (Phase 5.5) emits 935
+confirmed DS1 function entries from the FBOV segment table, via
+`ovr-map --json`, each with its overlay and offset.
 
 Offer: we export our 935 as a `seg:off` table in their TSV's
 convention (EXE segments, load segment 0; their
