@@ -156,6 +156,38 @@ Game data files are not redistributed; they remain the property of
 Wizards of the Coast / the original copyright holders. The player
 provides their own.
 
+## Contributors
+
+OpenDS's first external contributors, credited where every future
+contributor will be (the
+[all-contributors](https://allcontributors.org/) spec; the
+contributors graph on GitHub only lists commit authors, and
+contributions like these are reviews, findings, and designs, not
+commits to this repo):
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/CalvinRodo"><img src="https://github.com/CalvinRodo.png?size=100" width="100px;" alt="Calvin Rodo"/><br /><sub><b>Calvin Rodo</b></sub></a><br /><a href="https://github.com/VirInvictus/opends/commits?author=CalvinRodo" title="Code">💻</a> <a href="#bug" title="Bug reports">🐛</a> <a href="#ideas" title="Ideas, Planning, & Feedback">🤔</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/TimQuester"><img src="https://github.com/TimQuester.png?size=100" width="100px;" alt="TimQuester"/><br /><sub><b>TimQuester</b></sub></a><br /><a href="#doc" title="Documentation">📖</a></td>
+    </tr>
+  </tbody>
+</table>
+<!-- markdownlint-enable -->
+<!-- prettier-ignore-end -->
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+- **Calvin Rodo** ([yuan-ti](https://github.com/CalvinRodo/yuan-ti)):
+  the 17 script-bug discoveries and 29-repair corpus our adoption
+  gate is working through, and the detour mechanism our applier
+  now implements.
+- **TimQuester** ([DarkSunTools](https://github.com/TimQuester/DarkSunTools)):
+  the FONT format facts verified into our file-formats docs and
+  the fixed-length string invariant.
+
 ## Credits
 
 Standing on the shoulders of every prior attempt:
