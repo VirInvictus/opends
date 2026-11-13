@@ -12,7 +12,7 @@ is that release's entry here, verbatim (see `docs/versioning.md`).
   static steps (byte fingerprints verified against the canonical
   GOG 1.10 install, per-site semantic review against our own
   disassembly with zero disagreements, and a 250/250
-  reassembly-through-gpl-asm byte check - all recorded in
+  reassembly-through-gpl-asm byte check; all recorded in
   `docs/gate-review-yuan-ti-2026-11-13.md`), but nobody has seen
   them run in the game. We are publishing them as an opt-in beta
   in the hope that someone else will test them: enable any of the
