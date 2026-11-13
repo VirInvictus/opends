@@ -1,32 +1,29 @@
 # Exchange briefs for yuan-ti (prepared 2026-11-13)
 
-Four briefs for Calvin Rodo's [`yuan-ti`](https://github.com/CalvinRodo/yuan-ti),
-prepared after the first cross-read and fingerprint verification
-(see [`upstream-projects.md`](upstream-projects.md) §4 and
-[`known-bugs.md`](known-bugs.md) §3.6). They are the concrete half
-of the offer made in opends issue #13 ("our reassembler round-trips
-the corpus byte-identical and we have a DOSBox differential harness").
-Intended use: link or paste from the issue thread when the reply
-lands; they are written to stand alone. Nothing here has been sent
-yet.
+Four notes for Calvin Rodo's [`yuan-ti`](https://github.com/CalvinRodo/yuan-ti),
+written after the first cross-read and fingerprint verification
+([`upstream-projects.md`](upstream-projects.md) §4,
+[`known-bugs.md`](known-bugs.md) §3.6). The opends issue #13 reply
+promised "our reassembler round-trips the corpus byte-identical and
+we have a DOSBox differential harness"; these are that promise,
+spelled out, and linked from the reply.
 
-## 1. DS2 script decoding: closing the 258/350 gap
+## 1. DS2 script decoding: the 258/350 question
 
-Their state: `dsun-exe-reference.md` §5 notes DS2's
-`dark_sun_2/data/GPLDATA.GFF` decodes 258/350 chunks, calling DS2 "a
-later VM revision with extra opcodes".
-
-What we can hand over: DS2's opcode set is not bigger than DS1's.
-Both dispatch tables are 129 entries (0x00-0x80); the difference is
-handler addresses and operand depth, not opcode count. Our
+`dsun-exe-reference.md` §5 notes DS2's `dark_sun_2/data/GPLDATA.GFF`
+decodes 258/350 chunks and calls DS2 "a later VM revision with extra
+opcodes". The second half of that sentence is the wrong diagnosis:
+DS2's opcode set is not bigger than DS1's. Both dispatch tables are
+129 entries (0x00-0x80); the difference is handler addresses and
+operand depth, not opcode count.
 [`dispatch-table-ds2.md`](dispatch-table-ds2.md) resolves all 129
 handler file addresses for DS2 (base 0xc4c0 / paragraph 0x72c,
-confirmed by the interpreter's own MZ relocations), and proves the
+confirmed by the interpreter's own MZ relocations), and shows the
 15 opcode bytes that never appear in shipped DS2 code share the
 single default entry 0x20a2: reserved and unimplemented in the DS2
 engine.
 
-Recipe for the gap, in the order we would run it:
+The gap closes in three steps:
 
 1. Map every `??` row their `gpl_parser.py` emits onto our DS2
    table; anything their parser marks unknown that our table names
@@ -40,8 +37,9 @@ Recipe for the gap, in the order we would run it:
    `GPLDATA.GFF` byte-identical (600/600 at last count, part of
    `cargo test -p gpl-asm`). A chunk that reassembles
    byte-identical is fully decoded; a chunk that does not has a
-   decode bug at the first round-trip mismatch. That test turns
-   "258/350" into a per-chunk checklist with a binary signal.
+   decode bug at the first round-trip mismatch. That turns
+   "258/350" into a per-chunk checklist where every chunk either
+   passes or names its first mismatch.
 
 If their parser's operand tables are the blocker, the two tables
 worth copying semantics from (both MIT, both credited in our
@@ -82,26 +80,25 @@ bears on it:
 
 ## 3. Symbol exchange
 
-Their side: `tools/ghidra/symbols.tsv` holds 586 curated entries
-(494 func, 81 data, 11 label, most with C prototypes), applied by
-`ExportDecomp.java`; `gen_symbols.py` adds the ~115 GPL handlers
-from the DS:00C0 table. Our side: `ovr-map` (Phase 5.5) emits 935
-confirmed DS1 function entries from the FBOV segment table, via
-`ovr-map --json`, each with its overlay and offset.
-
-Offer: we export our 935 as a `seg:off` table in their TSV's
-convention (EXE segments, load segment 0; their
-`dsun-exe-reference.md` §1 states the same convention we use) so
-both sets merge into one Ghidra naming pass. The union covers
-different ground: their list is semantic (names + prototypes from
-decompilation), ours is structural (every confirmed entry point,
-including the overlays their 58 stubs imply). The GPL handler names
-from their `gen_symbols.py` cross-check cleanly against our
+`tools/ghidra/symbols.tsv` holds 586 curated entries (494 func, 81
+data, 11 label, most with C prototypes), applied by
+`ExportDecomp.java`, with `gen_symbols.py` adding the ~115 GPL
+handlers from the DS:00C0 table. Our `ovr-map` (Phase 5.5) emits
+935 confirmed DS1 function entries from the FBOV segment table, via
+`ovr-map --json`, each with its overlay and offset. Export ours as
+a `seg:off` table in their TSV's convention (EXE segments, load
+segment 0; their `dsun-exe-reference.md` §1 states the same
+convention we use) and both sets merge into one Ghidra naming
+pass. The union covers different ground: their list is semantic
+(names + prototypes from decompilation), ours is structural (every
+confirmed entry point, including the overlays their 58 stubs
+imply). The GPL handler names from their `gen_symbols.py`
+cross-check cleanly against our
 [`gpl-opcodes.md`](gpl-opcodes.md) catalogue (same 129 entries,
 same libgff ancestry).
 
-Same offer runs to us: their curated function names are the best
-public semantic layer over DSUN.EXE and would feed our
+It runs the other way too: their curated function names are the
+best public semantic layer over DSUN.EXE and would feed our
 `gpl-disasm/syms/functions.toml` curation (today seeded from DSO's
 3,530 DS2 symbols, which share the WotR codebase lineage).
 
@@ -147,7 +144,6 @@ Per-site checklist, pass criterion in parentheses:
 
 Our side owes the same pass over our shipped rows (items 1-2);
 their engine makes items 3-8 observable without any patch file at
-all, which is the neat part. Results from either side feed both:
-whatever a session confirms goes into our known-bugs rows as the
-runtime column, and their `GplRepairs.cs` what-lines get confirmed
-or corrected.
+all. Results from either side feed both: whatever a session
+confirms goes into our known-bugs rows as the runtime column, and
+their `GplRepairs.cs` what-lines get confirmed or corrected.
