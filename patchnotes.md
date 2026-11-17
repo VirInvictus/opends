@@ -4,6 +4,85 @@ Released versions appear here, newest first: one heading per
 tagged release or dated batch. A `<tool>-vX.Y.Z` tag's message
 is that release's entry here, verbatim (see `docs/versioning.md`).
 
+## image-extract v0.5.1 (2026-11-17)
+
+- **`image-extract` v0.5.1**: two corruption-refusal fixes from the
+  November codebase audit (#27, #28). The PLNR decoder bounds
+  `bits_per_symbol` to 1..=8 before the `1usize << bits_per_symbol`
+  dictionary math, parity with the PLAN decoder's existing guard: a
+  corrupted frame declaring 64-bit symbols panicked on the shift
+  before any bounds check could reject it (the corpus only ships
+  4..=7, measured 1974/1245/496/175 across both games). The DS1 RLE
+  encoder validates frame dimensions before encoding: heights above
+  255 emit row 255 as the reserved 0xFF frame terminator (silently
+  truncating the frame) and wrap modulo 256 beyond that, and widths
+  above 512 wrap the 9-bit span columns onto earlier ones; both now
+  return `UnsupportedFrameType` naming the offending dimension.
+  Round-trip tests prove the bounds are exactly the format's
+  limits: 512x255 with live pixels still encodes and decodes
+  pixel-identically.
+
+## gpl-asm v0.9.3 (2026-11-17)
+
+- **`gpl-asm` v0.9.3**: Immediate14 is enforced as 15 bits at every
+  layer (#30). The validator documented 0..=32767 as the bare
+  immediate's hard ceiling (a high byte with bit 7 set decodes as
+  an opcode in the engine and the disassembler), but the parser
+  accepted literals up to 65535, the branch retargeter bounded
+  targets by `u16::MAX`, and the encoder only carried a
+  `debug_assert!` that release builds strip: a retarget pushed past
+  32767 or a hand-written `gpl jump 40000` would have panicked in
+  debug and silently corrupted the bytecode in release. All three
+  layers now reject out-of-range values with named errors
+  (`Immediate14OutOfRange` from the encoder, `BranchOverflow` at
+  0x7FFF from the retargeter, a parse error naming the range), and
+  tests pin the ceiling: 32767 still encodes, 32768 refuses. The
+  600/600 corpus round-trip is untouched.
+
+## ovr-carve v0.1.1 (2026-11-17)
+
+- **`ovr-carve` v0.1.1**: relocation entries must leave room for
+  the word they patch (#29). The boundary check accepted an entry
+  at `module.size - 1`, whose 2-byte fixup then writes its high
+  byte into the module's own relocation table, which directly
+  follows the payload (or panics at the file end). The check now
+  requires `entry + 2 <= module.size` and reports the boundary case
+  as `RelocEntryOutOfRange`. A fixture test drives the exact shape:
+  an entry at size - 1 previously slipped through and corrupted a
+  segtab record downstream before anything complained.
+
+## save-inspect v0.9.7 (2026-11-17)
+
+- **`save-inspect` v0.9.7**: `write_gff` emits a spec-compliant
+  empty free list (#31). The free-list offset was written as a
+  literal 0 with no sentinel, so a compliant reader chasing
+  `toc_location + free_list_offset` landed on the TOC header
+  itself, where the `types_offset` bytes read back as
+  `free_count = 8` and the next 64 bytes as eight phantom freed
+  blocks. The TOC now ends with the 2-byte `free_count = 0`
+  sentinel and `free_list_offset` points at it, exactly the shape
+  gff-edit's builder writes (docs/file-formats.md). Our own reader
+  ignores the field, which is why self-reads never caught it; the
+  written file now parses clean through `gff-cat info`, and a
+  write-reparse-write cycle on DARKRUN.GFF is byte-stable.
+
+## audio-extract v0.1.1 (2026-11-17)
+
+- **`audio-extract` v0.1.1**: stereo VOCs decode at the right rate
+  (#32). The type-8 extended block's time constant clocks the DAC
+  at `channels * rate` for stereo, so the channel count belongs in
+  the divisor: `256000000 // ((65536 - tc) * channels)` instead of
+  `256000000 // (65536 - tc)`, which computed exactly double the
+  true sample rate. The one-line fix alone would have been dead
+  code, though: the following type-1 block's handler recomputed
+  rate and channels from its own (mono) SR byte and flushed the
+  extended-opened part, so the type-1 now defers to an open
+  extended block's rate and channel count (its SR byte is stale in
+  that case; width still comes from the pack byte). No shipped
+  BVOC uses type 8 (corpus tally: block types 0/1/6/7 only), so
+  this is a latent-correctness fix proven by a new selftest case: a
+  stereo 6250-count tc decodes as 20480 Hz, previously 40960.
+
 ## darkfix-ds1 v0.2.0-beta.1 (2026-11-13)
 
 - **`darkfix-ds1` v0.2.0-beta.1**: the community beta. **Every

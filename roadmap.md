@@ -52,16 +52,16 @@ consumer.
 | `repro` | 0.5.0 | shipped; `--diff` differential capture landed (2026-09-06); bug-triggering save curation open |
 | `gpl-disasm` | 0.8.1 | shipped; 100% corpus alignment, CFG, callgraph, symbol catalogues, global-state + dead-trigger sweeps (2026-09-06) |
 | `dialog-extract` | 0.7.1 | shipped; path-aware caller picking queued |
-| `save-inspect` | 0.9.6 | shipped; SAVE/1 + SAVE/7 decoded into the field catalogue, game-scoped hypothesis rows (2026-09-06) |
-| `image-extract` | 0.5.0 | shipped; animated GIF export landed (2026-09-06); APNG deferred |
+| `save-inspect` | 0.9.7 | shipped; SAVE/1 + SAVE/7 decoded into the field catalogue, game-scoped hypothesis rows (2026-09-06); spec-compliant empty free list in `write_gff` (0.9.7) |
+| `image-extract` | 0.5.1 | shipped; animated GIF export landed (2026-09-06); PLNR symbol-width + RLE dimension bounds hardened (0.5.1); APNG deferred |
 | `region-render` | 0.8.0 | shipped; animated palette (`--animate-palette`, 2026-09-10); `--annotate` deferred |
 | `atlas` | 0.1.1 | shipped |
 | `opends` | 0.1.1 | shipped |
-| `gpl-asm` | 0.9.2 | shipped; 600/600 round-trip; `--patch` hex parsing hardened; macros queued |
+| `gpl-asm` | 0.9.3 | shipped; 600/600 round-trip; `--patch` hex parsing hardened; Immediate14 enforced 15-bit at parse/edit/encode (0.9.3); macros queued |
 | `opcode-fuzz` | 0.3.0 | shipped; recipe-driven fuzz + first opcode discovery open |
 | `ovr-map` | 0.4.0 | shipped; symbol catalogue (142 DS1 rows incl. the 2026-10-06 trigger-plumbing dozen, 132 DS2 rows), xref tools, Ghidra pipeline run-proven end to end (2026-09-10), OBJEX sprite pipeline |
-| `ovr-carve` | 0.1.0 | shipped (2026-11-01); the REA bridge: flattens Borland VROOM overlays into one analysis MZ so overlay code decompiles in Ghidra (resident + overlay + DGROUP in one address space, file offsets preserved, both games attested live) |
-| `audio-extract` | 0.1.0 | shipped; 815 BVOC to WAV (499 x 8000 Hz + 316 x 10989 Hz), *SEQ dumps, cue sweep (684 call sites), all coverage totals reconciled (2026-10-06) |
+| `ovr-carve` | 0.1.1 | shipped (2026-11-01); the REA bridge: flattens Borland VROOM overlays into one analysis MZ so overlay code decompiles in Ghidra (resident + overlay + DGROUP in one address space, file offsets preserved, both games attested live); reloc word-boundary check hardened (0.1.1) |
+| `audio-extract` | 0.1.1 | shipped; 815 BVOC to WAV (499 x 8000 Hz + 316 x 10989 Hz), *SEQ dumps, cue sweep (684 call sites), all coverage totals reconciled (2026-10-06); stereo type-8 rate fix (0.1.1, latent: no shipped block 8) |
 | `xmi2mid` | 0.1.0 | shipped; branch-aware XMI-to-MIDI with sidecar; 83 DS1 + 36 floppy sequences convert (2026-10-06) |
 | `exe-patch` | 0.1.0 | shipped; the Phase 5.7 EXE patch authoring surface (`ovr:`/symbol addressing, mandatory fingerprints, `--verify` gate, in-place enforcement) |
 
