@@ -222,21 +222,14 @@ hoped for when darkfix published.
 
 ## 5. DarkSunTools (TimQuester)
 
-<!-- DarkSunTools facts: this section, the CREDITS.md facts
-section, and the file-formats.md FONT section land in one marked
-commit so a single `git revert` removes every DarkSunTools-derived
-statement if licensing does not pan out (decision 2026-11-13). -->
-
 - URL: https://github.com/TimQuester/DarkSunTools
-- Language: C# / .NET (WPF resource editor + codec class library)
-- License: **none shipped** (default copyright; asked for an OSI
-  license in opends issue #14 on 2026-11-13). Treat as
-  all-rights-reserved until one lands: facts-only reference, no
-  code ported, no code embedded.
-- Status: single-commit snapshot cloned 2026-11-13 (latest commit
-  2026-11-05: glyph editing + dialog-resource preservation)
-- Came to us via opends issue #14. Workspace clone at
-  `~/.gitrepos/DarkSunTools/`.
+- Language: C# / .NET 9 (WPF resource editor + codec class library)
+- License: **Apache-2.0**, added 2026-11-14 (commit `1a5fe61`,
+  answering our 2026-11-13 ask in opends issue #14). Code adoption
+  is licensed and credited; the 2026-11-13 facts-only era (and its
+  revert-on-failure plan) is closed.
+- Status: workspace clone at `~/.gitrepos/DarkSunTools/`, current
+  to master.
 
 A Dark Sun resource-editing toolkit whose center of gravity is a
 Russian fan-translation workflow: FONT glyph replacement (a
@@ -244,19 +237,49 @@ round-trip-tested font codec), fixed-length GPL string editing
 (same character count => same byte count, no padding after the
 0x03 terminator), and a transliteration layer mapping Cyrillic
 back onto the Latin glyph codes the 7-bit font actually stores.
-The codec library also carries a GFF reader, a GPL chunk parser,
-and an opcode parameter-shape table whose doc comment names our
-`gpl-disasm` v0.2.0 `PARAM_COUNTS` as its source (frozen at that
-release; ours has moved on).
 
-**What we take from it today** (facts, credited):
-[`file-formats.md`](file-formats.md) §FONT records the FONT chunk
-layout the codec documents, verified against our corpus the same
-day; [`../CREDITS.md`](../CREDITS.md) carries the facts-only credit
-row. **darkfix strategy**: none until a license appears; the
-standing offer is exchange, not adoption (their string codec
-against our `gpl-disasm --json`, our speakers/translation catalogs
-against their editor UI).
+**What we have adopted** (Apache-2.0, credited in
+[`../CREDITS.md`](../CREDITS.md)): the string codec as the
+reference for our independent cross-check implementation
+(`tools/gpl-disasm/src/darksun_tools_codec.rs`, gpl-disasm 0.9.0;
+44,851 corpus candidates agree), and the FONT codec +
+transliteration + the Cyrillic mapping data as a straight port
+(`tools/font-extract/`, font-extract 0.1.0, corpus round-trip
+pinning both shipped FONT 100 chunks). The portability survey
+(2026-11-17) verdicts for the rest of the repo:
+
+- **PORT later**: the `GPLDocument` fixed-length editing layer
+  (validate/apply rules; becomes the second implementation the day
+  we build a GPL text tool), the `NAME` record decode (additive;
+  our verified DS1 shape is in
+  [`file-formats.md`](file-formats.md) §NAME), the TEXT/MSG batch
+  export JSON schema (prior art for a translation batch format),
+  and their EXE-size version table (reconcile against
+  [`source-hashes/`](source-hashes) and
+  [`install-variants.md`](install-variants.md) before trusting).
+- **SKIP**: their GFF reader and GPL chunk parser/opcode table
+  (the table is 129/129 identical to our PARAM_COUNTS and the
+  parser cites our walker as its source), their image module
+  (image-extract covers all three encodings and also encodes),
+  `BitChomper`/`Options`, `GFFtool`.
+- **Do not mine as reference: `TextTools/`** (the legacy
+  prototype). Its encoder pads edited strings with spaces/zero
+  bytes to the original block size, which is exactly what the
+  fixed-length invariant forbids: post-terminator bytes execute as
+  opcodes. It also string-scans raw 0x05 markers (the
+  false-positive mode the chunk parser exists to replace). It is
+  superseded by their own `GplStringCodec`; nothing from it
+  belongs in a port.
+- **Cross-check nuggets already folded in**: the 0x02
+  uncompressed-string shape note (their "2-bit rotation, 0xC0
+  terminator" independently corroborates our 2026-09-19 decode,
+  [`gpl-vm.md`](gpl-vm.md)), and the FONT/name-pool facts behind
+  [`file-formats.md`](file-formats.md) §FONT/§NAME.
+
+Their upstream CI drifts (a dotnet 8 pin against net9.0 targets)
+and the WPF project is Windows-bound; the portable surface is
+`Common/` plus three files in `DarkSunRE/Models/`, and its tests
+(`ToolsTests/`, xunit) run on Linux.
 
 ## 6. Other tools
 
