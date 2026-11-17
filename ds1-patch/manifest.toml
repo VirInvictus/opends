@@ -107,3 +107,17 @@ enabled = false
 id = "fix.ds1.trustee-rounds"
 path = "fixes/010-trustee-rounds.py"
 enabled = false
+
+# ---- 0.2.0-beta.4: the re-opened triage rows ------------------------
+# Our own sweep-triage candidates (docs/ds1-sweep-triage rows 1b
+# and 2), authored via the movable pipeline now that the detour
+# applier exists. Disabled pending runtime QA (#18).
+[[fixes]]
+id = "fix.ds1.slave-follow"
+path = "fixes/011-slave-follow.py"
+enabled = false
+
+[[fixes]]
+id = "fix.ds1.alhena-campfire"
+path = "fixes/012-alhena-campfire.py"
+enabled = false

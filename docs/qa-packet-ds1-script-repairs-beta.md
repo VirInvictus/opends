@@ -1,4 +1,4 @@
-# QA packet: darkfix-ds1 beta script repairs (v0.2.0-beta.1 through beta.3)
+# QA packet: darkfix-ds1 beta script repairs (v0.2.0-beta.1 through beta.4)
 
 How to test the beta fixes and report what you see. Every check
 below is a local scene: a save anywhere near the site, one or two
@@ -27,8 +27,8 @@ helps.
 3. **Sound on.** The game's MEL DSP detect fails without sound and
    some scenes misbehave.
 4. **Get the beta zip** from the
-   [release page](https://github.com/VirInvictus/opends/releases/tag/darkfix-ds1-v0.2.0-beta.3)
-   (the zip is the release; beta.3 carries every beta fix so far),
+   [release page](https://github.com/VirInvictus/opends/releases/tag/darkfix-ds1-v0.2.0-beta.4)
+   (the zip is the release; beta.4 carries every beta fix so far),
    unzip it, and apply with the default set (001 + 002, enabled,
    previously shipped):
 
@@ -122,6 +122,15 @@ Mindhome bug.
   more, but I have to get back to work"; he still opens for a
   bribe.
 
+- **F. Battlefield slave (fix.ds1.slave-follow, beta.4)**: free
+  the battlefield slave, leave region 9, and return. Pass: he
+  resumes following the party after the return (unpatched: he
+  stays where he was).
+- **A2. Alhena (fix.ds1.alhena-campfire, beta.4)**: reach the
+  endgame with the caravan raided earlier in the run, win the
+  final battle, then arrive at the campfire. Pass: Alhena spawns
+  and greets (unpatched: she never materializes).
+
 ## Reporting
 
 Open an issue at
@@ -129,7 +138,7 @@ Open an issue at
 titled `beta QA: <site letter(s)> <pass/fail>` with:
 
 ```
-site(s):      D1..D6, T, G, W, M, S, H, L, R
+site(s):      D1..D6, T, G, W, M, S, H, L, R, F, A2
 result:       pass / fail per site
 game version: GOG 1.10
 fixes enabled: (which manifest entries)

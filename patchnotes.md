@@ -4,6 +4,32 @@ Released versions appear here, newest first: one heading per
 tagged release or dated batch. A `<tool>-vX.Y.Z` tag's message
 is that release's entry here, verbatim (see `docs/versioning.md`).
 
+## darkfix-ds1 v0.2.0-beta.4 (2026-11-17)
+
+- **`darkfix-ds1` v0.2.0-beta.4**: two more disabled fixes, our
+  own sweep-triage candidates authored through the movable
+  pipeline (detour-repairs §7's re-opened rows). **`fix.ds1
+  .slave-follow`** (triage 1b): the battlefield slave's follow
+  order is issued exactly once (GPL-132@0x38b) and nothing
+  re-issues it after a zone transition; the fix appends the
+  follow to MAS-9's post-raid ordering block (@0x9e), the
+  triage's named carrier, so the slave re-follows at region
+  load. **`fix.ds1.alhena-campfire`** (triage 2): the
+  caravan-arrival script exits when GF[123] == 1 (raided, never
+  cleared) before Alhena's post-war spawn branch; the fix guards
+  the exit with GF[138] so a post-war arrival falls through to
+  her registration and spawn. Both expect fingerprints verified
+  against the canonical chunk bytes; both patched chunks
+  disassemble aligned and reassemble byte-identically; both ship
+  disabled pending runtime QA (#18), which the QA packet covers
+  with new letters. One triage row re-examined and downgraded:
+  **1c (dagger event)** -- the band-1 dagger trigger registers
+  unconditionally at MAS-9@0x3c and the GF[245] gate at 0x63 is
+  the messenger block our shipped messenger fix already covers;
+  the triage's mechanism does not match the current
+  disassembly, so nothing was authored and the row waits on a
+  runtime capture.
+
 ## darkfix-ds1 v0.2.0-beta.3 (2026-11-17)
 
 - **`darkfix-ds1` v0.2.0-beta.3**: two new script fixes, both
