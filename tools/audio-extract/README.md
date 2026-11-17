@@ -49,7 +49,11 @@ walker mirrors the in-repo authority `tools/gff-edit/src/lib.rs`
 (`parse_toc`, `resolve_segmented_type`). What the engine *plays* when
 is routing, not format: see `docs/audio-routing.md`. VOC block
 semantics are the standard Creative Voice File layout; repeat blocks
-expand with a bounded cap recorded in the inventory.
+expand with a bounded cap recorded in the inventory. The type-8
+extended block sets the following type-1's rate and channel count
+(its time constant clocks `channels * rate` for stereo, so the
+channel count divides out of the sample rate); no shipped BVOC
+carries one, so that path is covered by the selftest only.
 
 ## Scripts
 

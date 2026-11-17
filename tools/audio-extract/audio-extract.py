@@ -296,6 +296,14 @@ def decode_voc(data: bytes, name: str) -> VocDecode:
                 width = 1
                 channels = 1
                 pcm = body[2:]
+                if cur is not None and cur.pop("_extended_rate", False):
+                    # A type-8 extended block owns this part's rate and
+                    # channel count (its time constant clocks
+                    # channels * rate for stereo); the type-1 block's
+                    # own SR byte is stale in that case. Width still
+                    # comes from the pack byte above.
+                    rate = cur["rate"]
+                    channels = cur["channels"]
                 if cur and (cur["rate"], cur["width"], cur["channels"]) != (
                     rate,
                     width,
@@ -354,7 +362,10 @@ def decode_voc(data: bytes, name: str) -> VocDecode:
                     raise VocError(f"{name}: short extended block")
                 tc = _u16(body, 0)
                 channels = body[3] + 1
-                rate = 256000000 // (65536 - tc)
+                # Block 8's time constant clocks the DAC at
+                # channels * rate for stereo, so the channel count
+                # divides out of the sample rate (Creative Voice spec).
+                rate = 256000000 // ((65536 - tc) * channels)
                 if cur and (cur["rate"], cur["channels"]) != (rate, channels):
                     flush()
                 # Width is decided by the following type-1 block.
@@ -364,10 +375,12 @@ def decode_voc(data: bytes, name: str) -> VocDecode:
                         "width": 1,
                         "channels": channels,
                         "data": bytearray(),
+                        "_extended_rate": True,
                     }
                 else:
                     cur["rate"] = rate
                     cur["channels"] = channels
+                    cur["_extended_rate"] = True
             elif btype == VOC_NEW_FORMAT_DATA:
                 if len(body) < 8:
                     raise VocError(f"{name}: short new-format block")
@@ -655,6 +668,30 @@ def selftest() -> int:
     assert len(dec2.parts) == 1
     assert dec2.parts[0]["rate"] == 4000 and dec2.parts[0]["width"] == 2
     assert dec2.parts[0]["_data"] == b"\x01\x02\x03\x04\x05\x06"
+
+    # Stereo via the extended block (type 8): the time constant
+    # clocks channels * rate, so 65536 - 59286 = 6250 gives
+    # 256000000 // (6250 * 2) = 20480, and the following type-1's
+    # own SR byte is stale (the mono clock would read 2x fast).
+    def voc_block(btype: int, body: bytes) -> bytes:
+        return (
+            bytes([btype])
+            + bytes(
+                [len(body) & 0xFF, (len(body) >> 8) & 0xFF, (len(body) >> 16) & 0xFF]
+            )
+            + body
+        )
+
+    stereo = b"Creative Voice File\x1a"
+    stereo += struct.pack("<HHH", 26, 0x0114, (~0x0114 + 0x1234) & 0xFFFF)
+    stereo += voc_block(VOC_EXTENDED, struct.pack("<HBB", 59286, 0, 1))
+    stereo += voc_block(VOC_SOUND_DATA, bytes([131, 0]) + b"\x01\x02\x03\x04")
+    stereo += bytes([VOC_TERMINATOR])
+    dec3 = decode_voc(stereo, "selftest-stereo")
+    assert len(dec3.parts) == 1, dec3.parts
+    part3 = dec3.parts[0]
+    assert (part3["rate"], part3["channels"]) == (20480, 2), part3
+    assert part3["_data"] == b"\x01\x02\x03\x04"
 
     print(f"audio-extract {VERSION} selftest ok")
     return 0
