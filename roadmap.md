@@ -2533,3 +2533,36 @@ bug and eight wrong secondary numbers, all fixed in this batch).
   the campaign's one remainder is the Brandon-assisted ear pass
   (DS1 music binding, the 56 script-unreferenced BVOCs, sample
   naming).
+
+### The community lane (2026-11-16; yuan-ti adoption + the DarkSunTools license lands)
+
+Brandon's ruling on issues #13/#14: both community exchanges become
+roadmap lanes. Reply drafts for both threads are staged for his
+review in the workspace audit repo
+(`audit/opends-community-replies-DRAFT.md`); posting them is his.
+
+- **yuan-ti adoption (Calvin Rodo, MIT; #13).** Six `GplRepairs.cs`
+  fixes shipped in darkfix-ds1 v0.2.0-beta.1 through the static
+  gate, disabled pending runtime QA (#18 gates 0.2.0 final). The
+  queue behind the gate: the Legcrusher dialog guards (#20, needs
+  #19 movable assembly, itself the `AssembleMovable` design), then
+  the remaining 17-repair / 4-family catalog (CREDITS.md
+  "Community contributions"; evidence in known-bugs.md §3.6).
+  Calvin confirmed everything of his is open for sharing (email
+  exchanged 2026-11-13) and is heads-down until spring: the lane
+  runs at our pace and nothing waits on him. The four give-back
+  briefs (docs/exchange-yuan-ti-2026-11-13.md) are already posted
+  to the thread.
+- **DarkSunTools port lane (TimQuester, Apache-2.0 added
+  2026-11-16; #14).** The license blocker from the 11-13 ask is
+  resolved, so the facts-only constraint on the mined formats
+  (CREDITS.md "Community facts") can graduate to credited code
+  adoption through the standard gate; the revertable-facts commit
+  stays in place until the first ported piece lands. First port
+  candidate, as offered in-thread: run their GPL string codec as a
+  cross-check decoder against our gpl-disasm corpus. Their editor
+  direction (image import/export, then animation text) complements
+  ours, and his reassemblable-script translation need is exactly
+  the gpl-asm round-trip, so the DS2 decode brief applies. When
+  the first port lands, flip the CREDITS.md DarkSunTools section
+  framing from facts-only to licensed adoption.
