@@ -1465,11 +1465,16 @@ def write_gff(
 
     # TOC starts at data_end. The TOC begins with two u32 offsets
     # (types-list, free-list); the types-list comes first (offset
-    # 8 = right after these two u32s) and the free-list is empty.
+    # 8 = right after these two u32s). The free list sits at the END
+    # of the TOC and is always empty here: a 2-byte free_count = 0
+    # sentinel (docs/file-formats.md; gff-edit's builder writes the
+    # same shape). free_list_offset points at those 2 bytes -- a 0
+    # would aim the free-list pointer at the TOC header itself, where
+    # the types_offset bytes read back as free_count = 8.
     toc_buf = bytearray()
     types_offset = 8  # relative to TOC start
-    free_list_offset = 0  # 0 sentinel = empty free list
-    toc_buf.extend(struct.pack("<II", types_offset, free_list_offset))
+    toc_buf.extend(struct.pack("<I", types_offset))
+    toc_buf.extend(struct.pack("<I", 0))  # free_list_offset, patched below
     toc_buf.extend(struct.pack("<H", len(kind_order)))
     for kind in kind_order:
         kind_bytes = kind.encode("latin-1")
@@ -1480,6 +1485,10 @@ def write_gff(
         for cid, body in by_kind[kind]:
             offset, length, _ = placements[(kind, cid)]
             toc_buf.extend(struct.pack("<iII", cid, offset, length))
+
+    free_list_offset = len(toc_buf)
+    struct.pack_into("<I", toc_buf, 4, free_list_offset)
+    toc_buf.extend(struct.pack("<H", 0))  # free_count = 0: empty free list
 
     toc_location = data_end
     toc_length = len(toc_buf)
