@@ -80,7 +80,7 @@ is that release's entry here, verbatim (see `docs/versioning.md`).
   decodes. gpl-vm.md documented the shape from the 2026-09-19
   interpreter read (each payload byte stores the character rotated
   right 2, terminator = stored 0xC0), and DarkSunTools' codec
-  comment independently corroborated it -- but neither project
+  comment independently corroborated it, but neither project
   implemented it. The decoder fails soft past the cap or the chunk
   end, and the release also adds
   `parse_string_operand_spans`: the string-span walker the new
@@ -96,7 +96,7 @@ is that release's entry here, verbatim (see `docs/versioning.md`).
   refactor had left wrong (unreachable sites; caught by the new
   arm's compile).
 - **`gpl-text` v0.1.0**: new tool, the fixed-length GPL string
-  editor -- the port of TimQuester's DarkSunTools `GPLDocument`
+  editor: the port of TimQuester's DarkSunTools `GPLDocument`
   validate/apply layer (Apache-2.0, credited), the survey's top
   PORT-later item, built now that the text tool it was gated on
   exists (we built it). `list` reports every editable string
