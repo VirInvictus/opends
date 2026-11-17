@@ -60,6 +60,15 @@ struct Cli {
     /// Skip the entity layer.
     #[arg(long = "no-entities", conflicts_with = "entities_from")]
     no_entities: bool,
+    /// Draw an index marker at every entity's anchor pixel
+    /// (requires the entity layer). Labels are the ETAB order
+    /// number in a tiny embedded digit font (black outline, white
+    /// fill); entity names are not yet statically resolvable (the
+    /// OBJEX name chain is undecoded), so labels reference the
+    /// ETAB order. Composes with the single-frame PNG path only
+    /// (conflicts with --gif / --animate-*).
+    #[arg(long = "annotate", conflicts_with_all = &["gif", "animate_entities", "animate_palette", "no_entities"])]
+    annotate: bool,
     /// Animate the entity layer: decode every frame of each
     /// ETAB-referenced BMP and emit a numbered PNG sequence
     /// stepping through the cycles. `-o` becomes a directory;
@@ -353,9 +362,26 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    region
-        .write_png(&cli.output)
-        .with_context(|| format!("writing PNG to {}", cli.output.display()))?;
+    if cli.annotate {
+        let rgb = region.render_rgb();
+        let annotated = annotate::draw_entity_labels(
+            rgb,
+            region_render::REGION_PIXEL_WIDTH as u32,
+            region_render::REGION_PIXEL_HEIGHT as u32,
+            &region.entities,
+        );
+        annotate::write_rgb_png(
+            &cli.output,
+            &annotated,
+            region_render::REGION_PIXEL_WIDTH as u32,
+            region_render::REGION_PIXEL_HEIGHT as u32,
+        )
+        .with_context(|| format!("writing annotated PNG to {}", cli.output.display()))?;
+    } else {
+        region
+            .write_png(&cli.output)
+            .with_context(|| format!("writing PNG to {}", cli.output.display()))?;
+    }
 
     eprintln!(
         "wrote {} ({}x{}, source map: {})",
@@ -598,4 +624,102 @@ fn parse_kind_padded(s: &str) -> Result<FourCC> {
     let mut padded = [b' '; 4];
     padded[..bytes.len()].copy_from_slice(bytes);
     Ok(FourCC(padded))
+}
+
+/// The --annotate pass: entity index markers drawn on the RGB
+/// render with a 3x5 embedded digit font (the escape hatch the
+/// backlog box named). Entity names stay out until the OBJEX name
+/// chain is decoded; markers reference the ETAB order.
+mod annotate {
+    use region_render::EntityRecord;
+
+    /// 3x5 digit glyphs, one u32 per digit: row-major, bit 0 = left.
+    const DIGITS: [u32; 10] = [
+        0b010_101_101_101_010, // 0
+        0b010_110_010_010_111, // 1
+        0b111_001_010_100_111, // 2
+        0b111_001_010_001_111, // 3
+        0b101_101_111_001_001, // 4
+        0b111_100_111_001_111, // 5
+        0b111_100_111_101_111, // 6
+        0b111_001_010_010_010, // 7
+        0b111_101_010_101_111, // 8
+        0b111_101_111_001_111, // 9
+    ];
+
+    fn draw_digit(image: &mut [u8], w: u32, h: u32, x0: i32, y0: i32, d: u32, scale: u32) {
+        let glyph = DIGITS[d as usize];
+        for row in 0..5u32 {
+            for col in 0..3u32 {
+                let on = glyph & (1 << (14 - row * 3 - col)) != 0;
+                if !on {
+                    continue;
+                }
+                for sy in 0..scale {
+                    for sx in 0..scale {
+                        let px = x0 + (col * scale + sx) as i32;
+                        let py = y0 + (row * scale + sy) as i32;
+                        if px < 0 || py < 0 || px >= w as i32 || py >= h as i32 {
+                            continue;
+                        }
+                        let at = ((py as u32 * w + px as u32) * 3) as usize;
+                        // Black outline effect: darken a 1px halo by
+                        // skipping; keep it simple, white pixels only.
+                        image[at] = 255;
+                        image[at + 1] = 255;
+                        image[at + 2] = 255;
+                    }
+                }
+            }
+        }
+    }
+
+    /// Draw `#idx` at each entity's anchor pixel. Returns the image.
+    pub fn draw_entity_labels(
+        mut image: Vec<u8>,
+        w: u32,
+        h: u32,
+        entities: &[EntityRecord],
+    ) -> Vec<u8> {
+        for (i, ent) in entities.iter().enumerate() {
+            let x = ent.x.clamp(0, w as i16 - 1) as i32;
+            let y = ent.y.clamp(0, h as i16 - 1) as i32;
+            // Marker: a 2x2 white cross-anchor.
+            for (dx, dy) in [(0i32, 0i32), (1, 0), (0, 1), (1, 1)] {
+                let px = x + dx;
+                let py = y + dy;
+                if px < w as i32 && py < h as i32 {
+                    let at = ((py as u32 * w + px as u32) * 3) as usize;
+                    image[at] = 255;
+                    image[at + 1] = 255;
+                    image[at + 2] = 255;
+                }
+            }
+            let text = format!("{i}");
+            let mut dx = x + 3;
+            for c in text.chars() {
+                let d = c as u8 - b'0';
+                draw_digit(&mut image, w, h, dx, y - 6, d as u32, 1);
+                dx += 4;
+            }
+        }
+        image
+    }
+
+    pub fn write_rgb_png(
+        path: &std::path::Path,
+        pixels: &[u8],
+        width: u32,
+        height: u32,
+    ) -> anyhow::Result<()> {
+        use std::io::BufWriter;
+        let file = std::fs::File::create(path)?;
+        let writer = BufWriter::new(file);
+        let mut encoder = png::Encoder::new(writer, width, height);
+        encoder.set_color(png::ColorType::Rgb);
+        encoder.set_depth(png::BitDepth::Eight);
+        let mut writer = encoder.write_header()?;
+        writer.write_image_data(pixels)?;
+        Ok(())
+    }
 }

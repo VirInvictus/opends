@@ -56,7 +56,7 @@ consumer.
 | `dialog-extract` | 0.7.1 | shipped; path-aware caller picking queued |
 | `save-inspect` | 0.9.7 | shipped; SAVE/1 + SAVE/7 decoded into the field catalogue, game-scoped hypothesis rows (2026-09-06); spec-compliant empty free list in `write_gff` (0.9.7) |
 | `image-extract` | 0.5.1 | shipped; animated GIF export landed (2026-09-06); PLNR symbol-width + RLE dimension bounds hardened (0.5.1); APNG deferred |
-| `region-render` | 0.8.0 | shipped; animated palette (`--animate-palette`, 2026-09-10); `--annotate` deferred |
+| `region-render` | 0.9.0 | shipped; animated palette (`--animate-palette`, 2026-09-10); `--annotate` ETAB index markers (0.9.0; name overlays wait on the OBJEX name chain) |
 | `atlas` | 0.1.1 | shipped |
 | `opends` | 0.1.1 | shipped |
 | `gpl-asm` | 0.10.1 | shipped; 600/600 round-trip; `--patch` hex parsing hardened; Immediate14 enforced 15-bit at parse/edit/encode (0.9.3); movable assembly mode for detour repairs (0.10.0); macros queued |

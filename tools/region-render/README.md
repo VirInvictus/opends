@@ -163,3 +163,14 @@ the corpus smoke test (the latter no-ops if `.games/` is absent).
 authoritative reference for region geometry and chunk roles;
 constants (`128`, `98`, `16`) come straight from there. See
 [`../../CREDITS.md`](../../CREDITS.md) for per-feature attribution.
+
+
+## `--annotate`
+
+Draws an index marker (ETAB order number, tiny embedded digit
+font, white on a 2x2 anchor) at every entity's anchor pixel on the
+single-frame PNG. The marker references the ETAB order that
+listing tools use; entity *names* stay out until the OBJEX name
+chain is decoded (no NAME chunks exist in SEGOBJEX; the engine's
+name tables are undecoded). Composes with the single-frame PNG
+path only; `--gif` / `--animate-*` conflict.

@@ -74,6 +74,23 @@ is that release's entry here, verbatim (see `docs/versioning.md`).
   source-authored detour fixes this enables. Design record in
   `docs/detour-repairs.md` section 3.
 
+## region-render v0.9.0 (2026-11-17)
+
+- **`region-render` v0.9.0**: `--annotate` lands, closing the
+  oldest backlog box's unblock (entity-name overlays, deferred
+  2026-09-12 for lack of an in-tree font -- the DarkSunTools
+  adoption shipped the codec family the escape hatch wanted).
+  The flag draws an ETAB-order index marker at every entity's
+  anchor pixel on the single-frame PNG (white, tiny embedded
+  3x5 digit font, on a 2x2 anchor), rendered through the new
+  `render_rgb` path. Scope note: markers reference the ETAB
+  order, not names -- SEGOBJEX carries no NAME chunks and the
+  OBJEX name chain is undecoded, so name overlays wait on that
+  RE. Composes with the single-frame PNG path only; `--gif` /
+  `--animate-*` conflict at the CLI. Verified on RGN02 (558
+  ETAB records): labels render across the region and the base
+  PNG path is byte-identical without the flag.
+
 ## gpl-disasm v0.9.1 / gpl-asm v0.10.1 / gpl-text v0.1.0 (2026-11-17)
 
 - **`gpl-disasm` v0.9.1**: the uncompressed (0x02) string form now

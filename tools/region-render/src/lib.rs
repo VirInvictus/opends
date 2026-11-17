@@ -832,6 +832,20 @@ impl RegionMap {
     /// Write the rendered tile layer to a PNG file at `path`. Output
     /// is 8-bit palette-indexed, matching `image-extract`'s policy
     /// for the per-tile bitmaps.
+    /// The composited region as RGB bytes (indexed render mapped
+    /// through the region palette). The `--annotate` pass draws on
+    /// this buffer in the binary.
+    pub fn render_rgb(&self) -> Vec<u8> {
+        let indexed = self.render_indexed();
+        let rgb = self.palette.as_rgb_bytes();
+        let mut out = Vec::with_capacity(indexed.len() * 3);
+        for idx in indexed {
+            let at = idx as usize * 3;
+            out.extend_from_slice(&rgb[at..at + 3]);
+        }
+        out
+    }
+
     pub fn write_png(&self, path: &Path) -> Result<()> {
         let pixels = self.render_indexed();
         let file = std::fs::File::create(path)?;
