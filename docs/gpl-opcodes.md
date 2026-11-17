@@ -85,7 +85,7 @@ the per-handler bodies in the same file; see
 | 0x1D | gpl clear los           | 1      |       |
 | 0x1E | gpl nametonum           | 1      | safe in RETVAL context |
 | 0x1F | gpl numtoname           | 1      | safe in RETVAL context |
-| 0x20 | gpl bitsnoop            | 2      | safe in RETVAL context |
+| 0x20 | gpl bitsnoop            | 2      | safe in RETVAL context; bitmask-inclusion test (see Verified semantics) |
 | 0x21 | gpl award               | 2      |       |
 | 0x22 | gpl request             | 4      | safe in RETVAL context |
 | 0x23 | gpl source trace        | custom | libgff handler is `gpl_unknown` |
@@ -182,6 +182,32 @@ the per-handler bodies in the same file; see
 | 0x7E | gpl long plus equal     | 2      |       |
 | 0x7F | gpl long minus equal    | 2      |       |
 | 0x80 | gpl get range           | 2      | safe in RETVAL context |
+
+## Verified semantics
+
+**0x20 `gpl bitsnoop` (2026-11-17, issue #25).** DSUN.EXE DS1
+handler at file `0xa5a3`, read with objdump over the ovr-carve
+flattened image (`scratch/rea-bridge/DSUN-ds1-ovrflat.exe`; the
+bytes are identical in the pristine exe):
+
+- The handler pops its two operands through the VM's expression
+  evaluator (`push $2; call 0xd57a`), which parks them in the
+  DGROUP operand slots `0xb4` (first) and `0xb8` (second).
+- It computes `eax = a & b`, compares that against `b`, and
+  stores the boolean to the DGROUP dword at `0x31b`: the visible
+  result is `(a & b) == b`, i.e. "a has every bit of b set".
+- The neighbouring 0x21 `gpl award` handler (file `0xa5f4`) reads
+  three operands from the same slots (`0xbc` holding a third) and
+  also stores its result at `0x31b`, corroborating both the
+  operand-slot and result-slot readings.
+
+So `gpl bitsnoop a, b` is a bitmask-inclusion test, not a general
+arithmetic AND: it answers "does `a` carry all of `b`'s bits". The
+libgff mnemonic stands (two independent lineages use it, and with
+the semantics on record it reads accurately as "snoop the bits");
+yuan-ti's script fixes use exactly this shape for class-bit
+membership tests. DS2's handler is expected to match at
+`043D:0DD3` per yuan-ti's dispatch read; not yet read by us.
 
 ## Sources
 
