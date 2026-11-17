@@ -552,9 +552,12 @@ each other; CMAT 200's all-index-1 background is CPAL 200's entry 1
 ### FONT (font resource)
 
 Recorded 2026-11-13 from the DarkSunTools codec
-(`TimQuester/DarkSunTools` `Common/Font/FontResourceCodec.cs`,
-facts-only credit in [`../CREDITS.md`](../CREDITS.md) until that
-repo carries a license), verified against our corpus the same day.
+(`TimQuester/DarkSunTools` `Common/Font/FontResourceCodec.cs`),
+verified against our corpus the same day. The codec itself is now
+ported (Apache-2.0 adoption; `tools/font-extract`, font-extract
+0.1.0) with a corpus round-trip test pinning both shipped FONT
+100 chunks byte-identical; the CREDITS.md row records the
+adoption.
 Layout: a 264-byte header whose byte +2 is the glyph height (9 on
 the shipped DS1 font); 256 u16 LE glyph offsets starting at 264
 (glyph data begins at 776); each glyph is a u16 LE width followed
@@ -565,6 +568,31 @@ bytes): all 256 glyph spans measure exactly 2 + width*9. What the
 pixel values index (the `PAL ` palette per the chunk table above)
 and whether the engine renders glyphs 0x80+ differently is still
 open; the codec stores raw bytes either way.
+
+### NAME (the DS1 name pool)
+
+Recorded 2026-11-17 (font-extract adoption batch; the shape was
+cross-checked the same day against
+`TimQuester/DarkSunTools` `DarkSunRE/Models/NameResource.cs`,
+whose variable-length parse reads the same chunks differently --
+see the note at the end). DS1 `GPLDATA.GFF` NAME 1 is 8,050 bytes
+= exactly 322 records of 25 bytes. Each record:
+
+- bytes 0..: the display name, NUL-terminated (e.g. `Sling`,
+  `Staff Sling`, `Bow`, `Fire equipment`, `Wall of Fog`)
+- next: a path suffix, NUL-terminated, ending by byte 21 -- the
+  paths are suffix-compressed fragments of a shared pattern
+  (`...\NAMEIX\*.oda`), so records carry only their tail
+- bytes 22..23: u16 LE index
+- byte 24: flag byte (0xFF on 221 records; other values occur)
+
+Verified 322/322 records: both strings terminate within bytes
+0..21, the u16 and flag read at fixed offsets 22/24. Note on the
+upstream parser: `NameResource.cs` walks the chunk as bare
+NUL-terminated C-strings with no stride, which miscounts the
+shipped pool (374 variable "records" over the 322 fixed ones and
+misaligned index/flag reads); the fixed stride is what the data
+actually carries.
 
 ### PLYL (dead DS2 combat playlist)
 

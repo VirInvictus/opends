@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "tools/font-extract",
     "tools/gff-edit",
     "tools/gpl-asm",
     "tools/gpl-disasm",

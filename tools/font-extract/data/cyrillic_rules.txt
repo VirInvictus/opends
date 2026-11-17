@@ -1,0 +1,5 @@
+# Cyrillic transliteration rules, from TimQuester/DarkSunTools
+# FontTool/CyrillicOutput/cyrillic_rules.txt (Apache-2.0; see CREDITS.md).
+# Format: semicolon-separated From=To pairs (glyph=display); 0xNN names
+# the glyph by hex byte. 0xC2-0xC6 are the TEXT/NAME-only aliases.
+﻿A=А;a=а;B=Б;b=б;C=В;c=в;D=Г;d=г;E=Д;e=д;F=Е;f=е;G=Ё;g=ё;H=Ж;h=ж;I=З;i=з;J=И;j=и;K=Й;k=й;L=К;l=к;M=Л;m=л;N=М;n=м;O=Н;o=н;P=О;p=о;Q=П;q=п;R=Р;r=р;S=С;s=с;T=Т;t=т;U=У;u=у;V=Ф;v=ф;W=Х;w=х;X=Ц;x=ц;Y=Ч;y=ч;Z=Ш;z=ш;%=Щ;}=щ;[=Ъ;~=ъ;]=Ы;@=ы;^=Ь;"=ь;`=Э;+=э;{=Ю;#=ю;|=Я;/=я;0xC2=@;0xC3=";0xC4=+;0xC5=#;0xC6=/

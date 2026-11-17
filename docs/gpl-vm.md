@@ -322,7 +322,7 @@ UI and strings:
 | 0x38 Getyn | yes/no prompt; accum = answer |
 | 0x42 InputString | up to 40 chars into the variable's result sink (no-op when the sink is the accum) |
 | 0x43/0x44 InputNumber/Money | numeric inputs into the sink |
-| 0x2C Log | decode packed string, display via stub 0x89 (sub-types RESOLVED 2026-09-19: 5 = the 16-bit-window codec with output sanitized to 0x20..0x7e (control codes render as spaces) and the 0x03 terminator replaced by NUL, cap 299 bytes; 2 = uncompressed with each payload byte ROTATED LEFT 2 bits, terminator = stored 0xC0; 1 = INTRODUCE: appends the current combatant's name (combat_array[idx]+0x28 of VM:0x369) into the sink) |
+| 0x2C Log | decode packed string, display via stub 0x89 (sub-types RESOLVED 2026-09-19: 5 = the 16-bit-window codec with output sanitized to 0x20..0x7e (control codes render as spaces) and the 0x03 terminator replaced by NUL, cap 299 bytes; 2 = uncompressed with each payload byte ROTATED LEFT 2 bits, terminator = stored 0xC0 (independently corroborated 2026-11-17 by DarkSunTools' codec comment: "a 2-bit rotation and a 0xC0 terminator"); 1 = INTRODUCE: appends the current combatant's name (combat_array[idx]+0x28 of VM:0x369) into the sink) |
 | 0x4F/0x50/0x51 prints | style + text (0x4F passes the SINK pointer, not the value); 0x51 newline |
 | 0x2A/0x54 Clearpic/Showpic | picture slot management; id space overlay-side |
 | 0x5D/0x5F Sound/Music | one word argument to the audio services (DS1 0x1a0a:0x663/0x672, DS2 0x1d40:0xb00/0xb0f) |

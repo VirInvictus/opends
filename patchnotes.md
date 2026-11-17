@@ -74,6 +74,32 @@ is that release's entry here, verbatim (see `docs/versioning.md`).
   source-authored detour fixes this enables. Design record in
   `docs/detour-repairs.md` section 3.
 
+## font-extract v0.1.0 (2026-11-17)
+
+- **`font-extract` v0.1.0**: new tool, the FONT chunk codec, the
+  second DarkSunTools adoption under the Apache-2.0 lane (issue
+  #14's roadmap port). `font-extract` pulls a FONT chunk into
+  editable glyph PNGs (one per glyph plus a manifest of widths and
+  a preview grid of all 256 glyphs), renders translated text
+  through a transliteration rules file, and `font-pack` rebuilds
+  the chunk byte-exactly from edited glyphs -- glyph edits must
+  keep each glyph's width, so the chunk lands in place and the
+  header (carried opaquely, exactly as upstream treats it) is
+  never touched. The codec is a port of TimQuester's
+  `FontResourceCodec` with its validation and round-trip tests
+  brought along; the transliteration module ports
+  `GplTransliteration`, and the bundled Cyrillic rules are
+  upstream's committed mapping, all Apache-2.0 and credited in
+  `CREDITS.md`. The corpus test pins both shipped FONT 100 chunks
+  (DS1 and DS2, 8,299 bytes each) through parse -> build
+  byte-identical. The batch also landed two cross-checks: the DS1
+  name-pool record shape verified and documented
+  (file-formats.md: 322 x 25-byte records, NUL-terminated name +
+  path-suffix, u16 index @22, flag @24 -- upstream's
+  variable-length parser miscounts the fixed stride), and a
+  convergence note on the 0x02 uncompressed-string format (their
+  codec comment matches our 2026-09-19 decode).
+
 ## gpl-disasm v0.9.0 (2026-11-17)
 
 - **`gpl-disasm` v0.9.0**: the community symbol decoration release

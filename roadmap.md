@@ -48,6 +48,7 @@ consumer.
 | Tool | Version | Status |
 |---|---|---|
 | `verify-install` | 0.3.0 | shipped |
+| `font-extract` | 0.1.0 | shipped (2026-11-17); the FONT codec (DarkSunTools Apache-2.0 port) + GPL transliteration with the Cyrillic mapping data |
 | `gff-edit` | 0.6.3 | shipped; kind catalogue complete (10 kinds registered 2026-10-06, coverage gap list zero); segmented-type builder deferred |
 | `repro` | 0.5.0 | shipped; `--diff` differential capture landed (2026-09-06); bug-triggering save curation open |
 | `gpl-disasm` | 0.9.0 | shipped; 100% corpus alignment, CFG, callgraph, symbol catalogues (now incl. REQUEST codes from yuan-ti), global-state + dead-trigger sweeps (2026-09-06); DarkSunTools string-codec cross-check port + BITSNOOP handler evidence (0.9.0, 2026-11-17) |
@@ -2613,6 +2614,16 @@ contributor releases carry @mentions.
   refuted (Hold Undead's restriction exists), two UI rows left
   with named dig targets, plus the Cure Critical text-vs-handler
   gap.
+
+The same day, the DarkSunTools lane opened its build phase: a full
+portability survey of their repo (Common/ library + the WPF shell's
+portable models) landed the verdicts in the session record, and
+`font-extract` 0.1.0 shipped the first build (FONT codec +
+transliteration + the Cyrillic data), with the name-pool record
+shape and the 0x02-string convergence folded into the docs. Next
+candidates on the survey's list: the GPLDocument fixed-length
+editing layer (when a text tool exists) and the TEXT/MSG batch
+export schema.
 
 Still open: #18 (runtime QA gates every beta fix and 0.2.0 final;
 community lane), #21 (held by its recorded author-after-QA gate),

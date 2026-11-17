@@ -1,0 +1,29 @@
+[package]
+name = "font-extract"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "FONT chunk codec for SSI's Dark Sun: extract glyph sheets, pack edited glyphs back."
+
+[dependencies]
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+png = { workspace = true }
+gff-edit = { path = "../gff-edit" }
+
+[[bin]]
+name = "font-extract"
+path = "src/bin/font_extract.rs"
+
+[[bin]]
+name = "font-pack"
+path = "src/bin/font_pack.rs"
+
+[lib]
+name = "font_extract"
+path = "src/lib.rs"
