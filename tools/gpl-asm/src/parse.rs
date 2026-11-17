@@ -859,10 +859,6 @@ fn parse_with(input: &str, label_base: usize) -> Result<DisasmResult> {
 /// Names that collide with binary operator words (`and`, `or`)
 /// or variable shorts (`GNUM`, `LSTR`, ...) are rejected, since
 /// they'd ambiguate with branch-param tokens during parsing.
-fn collect_labels(input: &str) -> HashMap<String, usize> {
-    collect_labels_with_base(input, 0)
-}
-
 /// `base` is the movable-assembly rebase (see [`assemble_movable`]):
 /// both self-encoding `label_0x` names and user-chosen labels
 /// resolve to their in-source offset plus `base`.
