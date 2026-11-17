@@ -177,3 +177,21 @@ fn refuse_segtab_mismatch() {
         other => panic!("expected SegtabCountMismatch, got {other:?}"),
     }
 }
+
+#[test]
+fn refuse_reloc_entry_at_last_payload_byte() {
+    // A relocation patches a 16-bit word: an entry at module.size - 1
+    // would write its high byte into the module's own relocation
+    // table (the old `entry >= module.size` check let it through).
+    // Module 0 is file 0x210, size 0x10, reloc table at 0x220.
+    let mut pristine = fixture();
+    pristine[0x220..0x222].copy_from_slice(&0x0Fu16.to_le_bytes());
+    let map = fixture_map();
+    match carve(&pristine, &map, DEFAULT_LOAD_SEGMENT) {
+        Err(CarveError::RelocEntryOutOfRange { entry, size, .. }) => {
+            assert_eq!(entry, 0x0F);
+            assert_eq!(size, 0x10);
+        }
+        other => panic!("expected RelocEntryOutOfRange, got {other:?}"),
+    }
+}

@@ -28,7 +28,8 @@ writeups, `ovr-map` output) stays valid in the carved image.
 
 Refusals (loud, before any write): overlay-marker words (bit0 set; the
 runtime slow path's pattern rewrite has no static equivalent), odd
-relocation table sizes, entries outside their module, records outside
+relocation table sizes, entries that do not leave room for the
+2-byte word they patch inside their module, records outside
 the segtab (the "already carved" shape), already-carved inputs,
 unaligned payloads, and inputs whose map disagrees with the segtab.
 

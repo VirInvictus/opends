@@ -282,7 +282,11 @@ pub fn carve(pristine: &[u8], map: &OvrMap, load_segment: u16) -> Result<Carved,
         let count = module.relocation_count / 2;
         for i in 0..count {
             let entry = read_u16(pristine, table + 2 * i) as u64;
-            if entry >= module.size {
+            // A relocation patches a 16-bit word, so the entry must
+            // leave room for both bytes inside the module payload:
+            // entry == size - 1 would spill its high byte into the
+            // relocation table that directly follows the module.
+            if entry.checked_add(2).is_none_or(|end| end > module.size) {
                 return Err(CarveError::RelocEntryOutOfRange {
                     module: module.index,
                     entry,
