@@ -177,10 +177,14 @@ available. The existing 001/002 fixes stay absolute-offset until
 a reviewed migration (their selftest hashes are the regression
 net); a detour fix must not share its target file with an
 absolute-offset fix until then (documented in
-`patch-workflow.md` §4.2). Still to come: the `gpl-asm` movable
-assembly mode, landing with the first source-authored detour fix
-(the byte+relocate format is enough to adopt the reviewed
-yuan-ti encodings).
+`patch-workflow.md` §4.2). The `gpl-asm` movable assembly mode
+landed 2026-11-17 (gpl-asm 0.10.0, issue #19):
+`assemble_movable(source, base)` parses a detour body authored
+against base 0 with every declared label rebased by `base`
+(numeric operands are literals and are not rebased; determinism
+and the 15-bit reach guard are tested in parse.rs). The first
+source-authored detour fix to use it is the Legcrusher dialog
+guard set (issue #20).
 
 ## 7. What this unblocks
 

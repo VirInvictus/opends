@@ -89,6 +89,15 @@ let encoded = encode(&result).unwrap();
 assert_eq!(encoded, chunk_bytes);
 ```
 
+Detour authoring (`assemble_movable`, gpl-asm 0.10.0): parse a
+detour body written against base 0 with every declared label
+rebased to `detour_start + label_offset`. Numeric operands are
+literals and stay untouched; author anything that must move as a
+label. Same source and base always produce the same bytes, and a
+rebased label past 0x7FFF (the 15-bit JUMP reach) is a loud
+`Immediate14OutOfRange` from the encoder.
+
+
 The library exposes one top-level `encode` plus
 `encode_instruction` and `encode_expression` for piecewise use,
 and `pack_compressed_string` for the 7-bit packed string

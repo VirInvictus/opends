@@ -57,7 +57,7 @@ consumer.
 | `region-render` | 0.8.0 | shipped; animated palette (`--animate-palette`, 2026-09-10); `--annotate` deferred |
 | `atlas` | 0.1.1 | shipped |
 | `opends` | 0.1.1 | shipped |
-| `gpl-asm` | 0.9.3 | shipped; 600/600 round-trip; `--patch` hex parsing hardened; Immediate14 enforced 15-bit at parse/edit/encode (0.9.3); macros queued |
+| `gpl-asm` | 0.10.0 | shipped; 600/600 round-trip; `--patch` hex parsing hardened; Immediate14 enforced 15-bit at parse/edit/encode (0.9.3); movable assembly mode for detour repairs (0.10.0); macros queued |
 | `opcode-fuzz` | 0.3.0 | shipped; recipe-driven fuzz + first opcode discovery open |
 | `ovr-map` | 0.4.0 | shipped; symbol catalogue (142 DS1 rows incl. the 2026-10-06 trigger-plumbing dozen, 132 DS2 rows), xref tools, Ghidra pipeline run-proven end to end (2026-09-10), OBJEX sprite pipeline |
 | `ovr-carve` | 0.1.1 | shipped (2026-11-01); the REA bridge: flattens Borland VROOM overlays into one analysis MZ so overlay code decompiles in Ghidra (resident + overlay + DGROUP in one address space, file offsets preserved, both games attested live); reloc word-boundary check hardened (0.1.1) |

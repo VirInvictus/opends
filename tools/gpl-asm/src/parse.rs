@@ -782,8 +782,26 @@ fn parse_quoted_include_path(s: &str) -> Option<String> {
 ///    `%search-tail` directive set the parsed Instruction's
 ///    `raw_tail` field.
 pub fn parse(input: &str) -> Result<DisasmResult> {
+    parse_with(input, 0)
+}
+
+/// Detour assembly mode (docs/detour-repairs.md section 3; issue
+/// #19, the yuan-ti `AssembleMovable` shape). Parse `source` with
+/// every declared label rebased by `base`: the detour body is
+/// authored against base 0 (labels at their in-detour offsets), and
+/// `assemble_movable(source, detour_start)` emits the same program
+/// with each label word rewritten to `detour_start + label_offset`.
+/// Numeric operands are literals and are NOT rebased; author
+/// anything that must move as a label. Same source and base always
+/// produce the same bytes. A rebased label landing past 0x7FFF hits
+/// the encoder's `Immediate14OutOfRange` (the 15-bit JUMP reach).
+pub fn assemble_movable(source: &str, base: usize) -> Result<DisasmResult> {
+    parse_with(source, base)
+}
+
+fn parse_with(input: &str, label_base: usize) -> Result<DisasmResult> {
     let processed = preprocess(input)?;
-    let labels = collect_labels(&processed.text);
+    let labels = collect_labels_with_base(&processed.text, label_base);
     let mut instructions: Vec<Instruction> = Vec::new();
     let mut total_bytes = 0usize;
     for (i, raw_line) in processed.text.lines().enumerate() {
@@ -842,6 +860,13 @@ pub fn parse(input: &str) -> Result<DisasmResult> {
 /// or variable shorts (`GNUM`, `LSTR`, ...) are rejected, since
 /// they'd ambiguate with branch-param tokens during parsing.
 fn collect_labels(input: &str) -> HashMap<String, usize> {
+    collect_labels_with_base(input, 0)
+}
+
+/// `base` is the movable-assembly rebase (see [`assemble_movable`]):
+/// both self-encoding `label_0x` names and user-chosen labels
+/// resolve to their in-source offset plus `base`.
+fn collect_labels_with_base(input: &str, base: usize) -> HashMap<String, usize> {
     let mut out: HashMap<String, usize> = HashMap::new();
     let mut pending_label: Option<String> = None;
 
@@ -861,7 +886,7 @@ fn collect_labels(input: &str) -> HashMap<String, usize> {
                     && hex_len <= 4
                     && let Ok(offset) = usize::from_str_radix(&bare[bare.len() - hex_len..], 16)
                 {
-                    out.insert(bare.to_string(), offset);
+                    out.insert(bare.to_string(), offset + base);
                 }
             } else {
                 // User-chosen label; will be bound to the
@@ -882,7 +907,7 @@ fn collect_labels(input: &str) -> HashMap<String, usize> {
             if line.len() >= 4
                 && let Ok(offset) = usize::from_str_radix(&line[0..4], 16)
             {
-                out.insert(name, offset);
+                out.insert(name, offset + base);
             }
         }
     }
@@ -2398,6 +2423,62 @@ mod tests {
         // an opcode in the engine and the disassembler.
         let err = parse("0000  12  gpl jump                40000\n").unwrap_err();
         assert!(err.to_string().contains("15-bit range"), "{err}");
+    }
+
+    fn movable_src() -> String {
+        [
+            "0000  3e  gpl if                  target",
+            "0003  67  gpl endif",
+            "target:",
+            "0005  67  gpl endif",
+        ]
+        .join("\n")
+            + "\n"
+    }
+
+    #[test]
+    fn movable_assembly_is_deterministic() {
+        // Same source + base = same bytes, byte for byte.
+        let src = movable_src();
+        let a = assemble_movable(&src, 0x2000).unwrap();
+        let b = assemble_movable(&src, 0x2000).unwrap();
+        assert_eq!(a.instructions, b.instructions);
+        let bytes_a = crate::encode(&a).unwrap();
+        let bytes_b = crate::encode(&b).unwrap();
+        assert_eq!(bytes_a, bytes_b);
+    }
+
+    #[test]
+    fn movable_assembly_rebases_label_words() {
+        // The branch target authored as a label at in-detour offset
+        // 5 must encode as detour_start + 5.
+        let src = movable_src();
+        let at_zero = crate::encode(&assemble_movable(&src, 0).unwrap()).unwrap();
+        assert_eq!(at_zero, vec![0x3E, 0x00, 0x05, 0x67, 0x67]);
+        let moved = crate::encode(&assemble_movable(&src, 0x1000).unwrap()).unwrap();
+        assert_eq!(moved, vec![0x3E, 0x10, 0x05, 0x67, 0x67]);
+    }
+
+    #[test]
+    fn movable_assembly_refuses_beyond_15_bit_reach() {
+        // detour_start + label_offset past 0x7FFF hits the encoder's
+        // hard Immediate14OutOfRange (the 15-bit JUMP reach guard).
+        let src = movable_src();
+        let parsed = assemble_movable(&src, 0x7FFC).unwrap();
+        let err = crate::encode(&parsed).unwrap_err();
+        assert!(err.to_string().contains("15-bit range"), "{err}");
+    }
+
+    #[test]
+    fn movable_output_round_trips_through_disasm() {
+        // The emitted detour body must disassemble cleanly and
+        // re-encode byte-identically through gpl-disasm/gpl-asm.
+        let src = movable_src();
+        let bytes = crate::encode(&assemble_movable(&src, 0x2000).unwrap()).unwrap();
+        let result = gpl_disasm::disassemble(&bytes);
+        assert!(result.aligned);
+        let re = crate::encode(&result).unwrap();
+        assert_eq!(re, bytes);
     }
 
     #[test]

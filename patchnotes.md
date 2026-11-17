@@ -4,6 +4,24 @@ Released versions appear here, newest first: one heading per
 tagged release or dated batch. A `<tool>-vX.Y.Z` tag's message
 is that release's entry here, verbatim (see `docs/versioning.md`).
 
+## gpl-asm v0.10.0 (2026-11-17)
+
+- **`gpl-asm` v0.10.0**: movable assembly mode for detour repairs
+  (#19). `assemble_movable(source, base)` parses a detour body
+  authored against base 0 with every declared label rebased by
+  `base`, so a source-authored detour fix emits its branch words at
+  `detour_start + label_offset` without hand-relocation: the shape
+  Calvin Rodo's yuan-ti `AssembleMovable` proves, following our own
+  assembler's parse/encode idiom. Numeric operands are literals and
+  are not rebased; determinism (same source and base = same bytes)
+  and the 15-bit reach guard (a rebased label past 0x7FFF is the
+  encoder's loud `Immediate14OutOfRange`, riding the 0.9.3 hard
+  error) are pinned by tests, and emitted detour bodies round-trip
+  byte-identically through gpl-disasm. Landed ahead of its first
+  consumer: the Legcrusher dialog guards (#20) are the first
+  source-authored detour fixes this enables. Design record in
+  `docs/detour-repairs.md` section 3.
+
 ## gpl-disasm v0.9.0 (2026-11-17)
 
 - **`gpl-disasm` v0.9.0**: the community symbol decoration release

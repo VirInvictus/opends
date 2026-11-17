@@ -37,7 +37,7 @@ use gpl_disasm::{
 use thiserror::Error;
 
 pub mod parse;
-pub use parse::{ParseError, error_line, error_span, format_with_caret, parse};
+pub use parse::{ParseError, assemble_movable, error_line, error_span, format_with_caret, parse};
 
 pub mod edit;
 pub use edit::{EditError, Editor, can_edit_opcode, retarget_branches};
