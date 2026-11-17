@@ -76,6 +76,10 @@ pub enum EncodeError {
     NonAsciiString { offset: usize, value: String },
     #[error("encoded output is {actual} bytes but DisasmResult reported {expected}")]
     LengthMismatch { expected: usize, actual: usize },
+    #[error(
+        "Immediate14 value {value} ({value:#06x}) exceeds the 15-bit range (max 32767 / 0x7FFF): a bare GPL immediate whose high byte has bit 7 set decodes as an opcode, corrupting the instruction stream"
+    )]
+    Immediate14OutOfRange { value: u16 },
 }
 
 pub type Result<T> = std::result::Result<T, EncodeError>;
@@ -333,8 +337,13 @@ pub fn encode_expression(out: &mut Vec<u8>, instr_offset: usize, expr: &Expressi
             // libgff's range: cop < 0x80 => 14-bit. So hi MUST be < 0x80.
             let hi = (value >> 8) as u8;
             let lo = (value & 0xFF) as u8;
-            // Defensive: top bit of hi must be 0 for this to round-trip.
-            debug_assert!(hi < 0x80, "Immediate14 value {value:#x} has hi >= 0x80");
+            // Hard error, not a debug-only assert: release builds strip
+            // debug_assert!, and a hi >= 0x80 byte would silently
+            // decode as an opcode in the engine and the disassembler
+            // (validate.rs documents the 0..=32767 ceiling).
+            if hi >= 0x80 {
+                return Err(EncodeError::Immediate14OutOfRange { value: *value });
+            }
             out.push(hi);
             out.push(lo);
         }
@@ -742,5 +751,25 @@ mod tests {
                 assert_eq!(vk.to_tag(), tag);
             }
         }
+    }
+
+    #[test]
+    fn immediate14_encode_rejects_above_15_bits() {
+        // Hard error, not a debug-only assert: the parser and the
+        // branch retargeter reject these upstream, but a
+        // programmatically-built expression must not silently emit a
+        // byte the VM reads as an opcode in release builds.
+        let mut out = Vec::new();
+        let err =
+            encode_expression(&mut out, 0, &Expression::Immediate14 { value: 40000 }).unwrap_err();
+        assert!(matches!(
+            err,
+            EncodeError::Immediate14OutOfRange { value: 40000 }
+        ));
+        assert_eq!(out, Vec::<u8>::new());
+        // The 15-bit ceiling still encodes: hi 0x7F, lo 0xFF.
+        let mut out = Vec::new();
+        encode_expression(&mut out, 0, &Expression::Immediate14 { value: 32767 }).unwrap();
+        assert_eq!(out, vec![0x7F, 0xFF]);
     }
 }

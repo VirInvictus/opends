@@ -2030,6 +2030,15 @@ fn parse_integer_immediate(s: &str, line_no: usize) -> Result<(Expression, usize
         position: digits.to_string(),
         detail: format!("Immediate14: {e}"),
     })?;
+    // The encoded form carries 15 bits (high byte < 0x80); anything
+    // wider is unrepresentable bare-immediate bytecode (validate.rs).
+    if value > 0x7FFF {
+        return Err(ParseError::BadExpression {
+            line: line_no,
+            position: digits.to_string(),
+            detail: format!("Immediate14 value {value} exceeds the 15-bit range (max 32767)"),
+        });
+    }
     Ok((Expression::Immediate14 { value }, i))
 }
 
@@ -2379,5 +2388,23 @@ mod tests {
         std::fs::create_dir_all(&dir).expect("create");
         let err = preprocess_with_root("@include \"does-not-exist.asm\"\n", &dir).unwrap_err();
         assert!(matches!(err, ParseError::IncludeIo { .. }), "got {err:?}");
+    }
+
+    #[test]
+    fn immediate14_rejects_above_15_bit_range() {
+        // 40000 needs high byte 0x9C; the encoded form would read as
+        // an opcode in the engine and the disassembler.
+        let err = parse("0000  12  gpl jump                40000\n").unwrap_err();
+        assert!(err.to_string().contains("15-bit range"), "{err}");
+    }
+
+    #[test]
+    fn immediate14_accepts_15_bit_ceiling() {
+        let result = parse("0000  12  gpl jump                32767\n").unwrap();
+        let param = &result.instructions[0].params[0];
+        match &param[0] {
+            Expression::Immediate14 { value } => assert_eq!(*value, 32767),
+            other => panic!("expected Immediate14, got {other:?}"),
+        }
     }
 }

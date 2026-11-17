@@ -343,7 +343,10 @@ fn retarget_in(slice: &mut [Instruction], cutoff: usize, delta: isize) -> Result
                 continue;
             }
             let new_target = target + delta as i64;
-            if new_target < 0 || new_target > u16::MAX as i64 {
+            // Branch targets are Immediate14 operands: 15 bits, high
+            // byte < 0x80. u16::MAX would encode a byte the VM and the
+            // disassembler read as an opcode.
+            if !(0..=0x7FFF).contains(&new_target) {
                 return Err(EditError::BranchOverflow { target: new_target });
             }
             param[0] = Expression::Immediate14 {
@@ -527,5 +530,24 @@ mod tests {
         ed.insert_before_label("MY_TARGET", endif).unwrap();
         // MY_TARGET shifted forward by the insert.
         assert_eq!(ed.label_offset("MY_TARGET"), Some(0x05));
+    }
+
+    #[test]
+    fn insert_overflowing_branch_target_is_refused() {
+        // A branch aimed at 0x7FFF (the Immediate14 ceiling): an
+        // insertion before it must refuse rather than encode a
+        // 0x80-high target byte the VM reads as an opcode. (The old
+        // u16::MAX bound let this through and hit the debug-only
+        // encode assert: a silent corruption in release builds.)
+        let mut bytes = vec![0x3E, 0x7F, 0xFF];
+        bytes.extend(vec![0x67; 0x7FFF]);
+        let result = synth_chunk(&bytes);
+        let mut ed = Editor::from_result(result);
+        let endif = Editor::make_simple(0x67).unwrap();
+        let err = ed.insert_instruction(0, endif).unwrap_err();
+        assert!(
+            matches!(err, EditError::BranchOverflow { target: 0x8000 }),
+            "got {err:?}"
+        );
     }
 }

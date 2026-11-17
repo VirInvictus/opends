@@ -114,7 +114,9 @@ For each instruction, the encoder writes:
 
 Per `Expression` token:
 
-- `Immediate14`: 2 bytes BE (top bit clear on byte 0).
+- `Immediate14`: 2 bytes BE (top bit clear on byte 0; the value
+  ceiling is 32767, enforced by the parser, the branch retargeter,
+  and the encoder).
 - `ImmediateByte`: `0x8F` (bit 7 already set) marker + 1 signed byte.
 - `ImmediateBigNum`: `0x8B` (bit 7 already set) marker + 4 bytes (hi:u16 BE,
   lo:u16 BE; value = `((hi as i32) << 16) + lo`).
