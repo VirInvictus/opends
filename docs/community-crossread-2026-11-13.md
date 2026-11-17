@@ -41,12 +41,16 @@ under 8 minus its plus (`80F5:2024`); armour is tested on its
 spell is destroyed outright (Tanelyv's Armor +2 goes as surely as
 plain leather). yuan-ti's `CorrodeArmor` reads the same byte.
 
-Dispositions here: recorded as relayed facts with addresses; none
-are verified by us yet, and none become known-bugs canon rows
-without the same treatment our own rows get (our own
-decompilation pass over the named sites). The Trustee bug joins
-the known-bugs queue as a GPL-script candidate (our lane, a real
-site to trace).
+Dispositions here (updated 2026-11-17, issue #24): the catalog has
+been through our own disassembly pass -- eleven rows verified or
+corrected with byte evidence (now known-bugs.md 3.7 canon rows),
+the Hold Undead claim refuted by the code (the undead restriction
+exists and is enforced), the Sling +1 row resolved as a different
+data defect (the OJFF-less chest sling 2644), and two UI rows
+(roster DELETE, thief skills 0) searched without success and left
+with named dig targets. The Trustee bug was traced and fixed as a
+GPL-script repair (issue #23, darkfix-ds1 0.2.0-beta.3). Full
+verdicts with decisive bytes: [`known-bugs.md`](known-bugs.md) §3.7.
 
 ## 2. Combat and rules facts (yuan-ti exe-reference §8)
 

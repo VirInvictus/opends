@@ -141,7 +141,7 @@ the handler reads the target's +0x22 and raises it to the sibling
 record's +0x1b when lower, a lower-bound grant rather than an
 unconditional write; a higher value falls through to the generic
 default); 109 -> 2d6 + effect
-0x22; 113/128 -> 2d8+1 / 3d8+1; 133 -> 1d60 + effect 0x32; 136 -> writes
+0x22; 113/128 -> 2d8+1 / 3d8+1 (note: Cure Critical's game text promises 3d8+3, "Heals 6 to 27", but the handler pays 3d8+1; the data-vs-text gap confirmed 2026-11-17); 133 -> 1d60 + effect 0x32; 136 -> writes
 combat status +0x1c; innate 6/14 -> apply_damage with 10000 (annihilate)
 / 1000 + effect 0x44; innate 22 -> walks all 74 status bits and mass-
 strips via a 10-entry table at 0xd46. Roughly 60-70 distinct behavior

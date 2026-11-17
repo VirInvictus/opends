@@ -507,6 +507,119 @@ below are yuan-ti's `engine/src/DarkSun.Game/Scripting/GplRepairs.cs`.
    §1).
 
 
+### 3.7. Engine-side rows verified from the Obsidian relay (2026-11-17)
+
+The Obsidian Edition's 15-row relay (issue #24; see
+[`community-crossread-2026-11-13.md`](community-crossread-2026-11-13.md)
+§1 for the original claims) verified by our own disassembly passes
+over the DS1 image. Engine-side bugs are EXE patches, out of
+darkfix's data scope; these rows are the verified documentation, not
+fixes. Segment mapping for the overlay nodes: Obsidian's runtime
+segment values resolve per-module (80F5 = the spell-effects module,
+file base 0x78BA0, pinned by the image's unique `cmp ax,0x4B`
+landing at exactly +0x1A2D; 6698/612E/8640 calibrated the same way,
+each against multiple fingerprints from Calvin's reference).
+
+1. **Mirror Image eats the caster's side's spells — CONFIRMED.**
+   The image-block test (ovr32, file 0x7A539; the d100 gate at
+   0x7A5CD: RND(1,100), `cmp ax,0x4b; jg` survives on > 75) has no
+   caster-allegiance or self-cast exception: any spell landing on a
+   mirrored character rolls and is lost on 1-75, consuming one
+   image (countdown decrement + shatter FX). Blows never roll:
+   melee damage bypasses the cast engine entirely, and innate
+   attacks (spell id -1) exit before the mirror test.
+2. **Protective effects burn on every landing — CONFIRMED, with
+   corrected semantics.** The landing routine decrements the
+   Armor-effect countdown (effect 2) for ANY spell landing on a
+   protected character -- a friend's Bless included, even when the
+   images then block it -- and the damage routine decrements again
+   for all damage (file 0x79A3E; the relay's file offset 0x7743E
+   was wrong). So a damaging spell costs 2 countdown units, a blow
+   1, a non-damaging friendly spell 1. The relay's "charges" are
+   active-effect timer countdowns, not item charges.
+3. **Share Strength's end removes nothing — CORRECTED.** The relay
+   said the ending loop removes the psionicist's records, skips
+   after each removal, and counts to 192. The trace (psionics
+   module, file 0x5CEBD, loop at exactly 0x5CEEC-0x5CF34) confirms
+   two of three: the loop keys records to the caster argument (not
+   per-record ownership) and its bound is the constant 192 rather
+   than the live count at DS:1E24. But it never removes and never
+   skips: the per-match call enters a pure getter 3 bytes past its
+   prologue and the result is discarded; the only real state change
+   is the PSST maintenance-bit clear. The genuine removal machinery
+   lives elsewhere (the condition functions in the effects module).
+4. **Thri-kreen claws are crushing — CONFIRMED.** The natural-attack
+   branch (combat module, file 0x581DF: `c7 46 ec 08 00`) forces
+   every weaponless blow's element word to 8 (bludgeoning) with no
+   race or creature branch; crushing-immune creatures (mastyrials)
+   take zero from all claws. Thri-kreen are player race 8, so their
+   claws also never gain the magic bit the (level-2)/2 formula adds
+   for non-player races.
+5. **A click on the Effects screen ends a spell — CONFIRMED.** Both
+   relayed bytes (ovr36, files 0x7F226 `7C 51` and 0x7F236
+   `7D 41`) are the spell-vs-psionics band branch in the
+   click-removal path: spells (id < 0x8A) take the jump straight to
+   record removal exactly like powers; only the psionics band gets
+   the extra mirror-byte clear. What a stray click loses is a
+   running spell's active effect (Armor, Bless, ...), not a
+   memorized uncast slot.
+6. **Scare's elf/half-elf exception never fires — CONFIRMED.** The
+   situational save modifier (effects module, file 0x79FA4-0x7A01B):
+   spell id 21 (Scare) gives +100 to the save roll at target level
+   >= 6 and -100 below 6, and its only no-modifier escape requires
+   the target's race byte to be both 3 (elf) and 4 (half-elf) --
+   one byte, two different compares, unreachable. Every elf rolls
+   the same -100 as everyone else below level 6.
+7. **Preserver's Dispel Magic sets the no-spells bit — CONFIRMED
+   (data).** Spell record 26 (SPIN 27, preserver Dispel) carries
+   effect byte +0x19 = 0x32 = 50, the spell-blocking status the
+   Insect Plague handler applies; the priest Dispel (SPIN 99,
+   record 98) carries 0x00 there. Both are target-point records
+   with the area-walk aoe, so the bit lands on every creature in
+   the radius, caster's party included. Sub-part not proven: the
+   relay's "Dispel Magic cannot remove it" (the removal matcher was
+   not traced).
+8. **Cause Serious/Critical Wounds roll d9s — CONFIRMED (data).**
+   SPIN 114 damage word 0xa0091100 = 2d9 and SPIN 129 0xa0091900 =
+   3d9, while the matching Cure handlers pay 2d8+1 / 3d8+1 (and the
+   Cure Critical game text promises 3d8+3, which the handler does
+   not pay either -- a small text-vs-code discrepancy of its own).
+9. **The elf Cilla draws the half-elf woman's figure — CONFIRMED
+   (data).** Both her creature row (307) and pregen template (32003)
+   carry base-figure index 7 = the half-elf female sprite while her
+   character record says race 3 (elf). Corpus controls agree (elf
+   female Saria carries 5, thri-kreen K'ratchek 13, human male
+   Cermak 0).
+10. **The acid corrosion checks — CONFIRMED, with the sites
+    swapped.** The relay had the two rules at each other's
+    addresses. The weapon check (file 0x7AA5A) rolls d20 against
+    8 minus the item-template enchantment plus (+0x14) and destroys
+    the weapon on failure; the armor check (file 0x7ABC4) tests the
+    template's +0x0F spell byte, not the plus: a piece with no
+    spell byte is destroyed outright with no roll, and one with a
+    spell byte survives on d20 >= 10 minus that byte. (A third
+    branch corrodes the lowest-+0x10 carried item on d20 <
+    15 - its plus.)
+11. **Hold Undead holds only the undead — REFUTED.** The relayed
+    claim is contradicted by the code: the whom-it-takes filter
+    (a 14-spell table in the effects module) routes Hold Undead and
+    Turn Undead to a predicate testing character race == 9
+    (undead), and both traced application routes enforce it (the
+    cast engine skips filtered targets; area-target walks remove
+    them from the list). yuan-ti's own reference agrees with the
+    code, not the relay.
+12. **Remaining unverified (searched, not traced)**: the roster
+    DELETE-when-scrolled and new-character thief-skills-0 rows.
+    Neither handler is documented in any corpus; the dig targets
+    are now named (the "DELETE CHARS"/"DROP THIS CHARACTER?" string
+    cluster at DSUN.EXE 0x4A4C9+ and 0x48CF1+; the sheet renderer
+    for thief percentages -- which has no display string in the
+    image at all). The Sling +1 blank-icon row resolved as data:
+    no Sling +1 exists (the name pool has Sling, Staff Sling, and
+    unused Sling +2 / magic sling names), every sling's picture
+    reference resolves, and the closest real defect is the
+    OJFF-less chest sling 2644, whose inventory icon computes to 0.
+
 ## 4. SSI patch lineage
 
 | Game | Patch | Distribution                                  |
