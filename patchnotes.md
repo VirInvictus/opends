@@ -118,7 +118,7 @@ is that release's entry here, verbatim (see `docs/versioning.md`).
   editable glyph PNGs (one per glyph plus a manifest of widths and
   a preview grid of all 256 glyphs), renders translated text
   through a transliteration rules file, and `font-pack` rebuilds
-  the chunk byte-exactly from edited glyphs -- glyph edits must
+  the chunk byte-exactly from edited glyphs: glyph edits must
   keep each glyph's width, so the chunk lands in place and the
   header (carried opaquely, exactly as upstream treats it) is
   never touched. The codec is a port of TimQuester's
@@ -131,10 +131,11 @@ is that release's entry here, verbatim (see `docs/versioning.md`).
   byte-identical. The batch also landed two cross-checks: the DS1
   name-pool record shape verified and documented
   (file-formats.md: 322 x 25-byte records, NUL-terminated name +
-  path-suffix, u16 index @22, flag @24 -- upstream's
-  variable-length parser miscounts the fixed stride), and a
-  convergence note on the 0x02 uncompressed-string format (their
-  codec comment matches our 2026-09-19 decode).
+  path-suffix, u16 index @22, flag @24. Upstream's variable-length
+  parser miscounts that fixed stride, so the doc says which reading
+  the shipped data supports, plus a convergence note on the 0x02
+  uncompressed-string format (their codec comment matches our
+  2026-09-19 decode).
 
 ## gpl-disasm v0.9.0 (2026-11-17)
 
