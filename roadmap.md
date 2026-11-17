@@ -50,7 +50,7 @@ consumer.
 | `verify-install` | 0.3.0 | shipped |
 | `gff-edit` | 0.6.3 | shipped; kind catalogue complete (10 kinds registered 2026-10-06, coverage gap list zero); segmented-type builder deferred |
 | `repro` | 0.5.0 | shipped; `--diff` differential capture landed (2026-09-06); bug-triggering save curation open |
-| `gpl-disasm` | 0.8.1 | shipped; 100% corpus alignment, CFG, callgraph, symbol catalogues, global-state + dead-trigger sweeps (2026-09-06) |
+| `gpl-disasm` | 0.9.0 | shipped; 100% corpus alignment, CFG, callgraph, symbol catalogues (now incl. REQUEST codes from yuan-ti), global-state + dead-trigger sweeps (2026-09-06); DarkSunTools string-codec cross-check port + BITSNOOP handler evidence (0.9.0, 2026-11-17) |
 | `dialog-extract` | 0.7.1 | shipped; path-aware caller picking queued |
 | `save-inspect` | 0.9.7 | shipped; SAVE/1 + SAVE/7 decoded into the field catalogue, game-scoped hypothesis rows (2026-09-06); spec-compliant empty free list in `write_gff` (0.9.7) |
 | `image-extract` | 0.5.1 | shipped; animated GIF export landed (2026-09-06); PLNR symbol-width + RLE dimension bounds hardened (0.5.1); APNG deferred |

@@ -233,6 +233,7 @@ mod tests {
             best_effort: false,
             string_run: None,
             raw_tail: None,
+            request_name: None,
         }
     }
 
@@ -246,6 +247,7 @@ mod tests {
             best_effort: false,
             string_run: None,
             raw_tail: None,
+            request_name: None,
         }
     }
 
@@ -297,6 +299,7 @@ mod tests {
             best_effort: false,
             string_run: None,
             raw_tail: None,
+            request_name: None,
         };
         let d = dr(vec![instr], 0x100);
         let r = validate(&d);
@@ -323,6 +326,7 @@ mod tests {
             best_effort: false,
             string_run: None,
             raw_tail: None,
+            request_name: None,
         };
         let r = validate(&dr(vec![instr], 0x100));
         assert!(r.is_ok(), "{:?}", r.errors);
@@ -355,6 +359,7 @@ mod tests {
             best_effort: false,
             string_run: None,
             raw_tail: None,
+            request_name: None,
         };
         let r = validate(&dr(vec![at_max.clone()], 0x100));
         assert!(r.is_ok(), "at-max should pass: {:?}", r.errors);

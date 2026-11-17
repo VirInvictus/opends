@@ -102,6 +102,7 @@ fn hand_crafted_out_of_bounds_branch_is_flagged() {
         best_effort: false,
         string_run: None,
         raw_tail: None,
+        request_name: None,
     }];
     let result = DisasmResult {
         instructions: instrs,

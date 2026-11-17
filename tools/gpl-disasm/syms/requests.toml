@@ -1,0 +1,116 @@
+# gpl-disasm symbol catalogue — REQUEST codes for `gpl request` (0x22).
+#
+# Each row names one REQUEST code the host dispatches on. Decoration
+# is JSON-only: `Symbols::apply` writes the name into the instruction's
+# `request_name` field (and the first param's code is what matched);
+# the text listing is unchanged so gpl-asm can still re-parse it.
+#
+# Provenance: Calvin Rodo's yuan-ti `GplRequests.cs` (MIT; the
+# community catalogue the yuan-ti host dispatches on), imported
+# verbatim-in-meaning and curated here. Effect detail lives in the
+# credited upstream writeup (`docs/community-crossread-2026-11-13.md`
+# and yuan-ti's dsun-exe-reference.md); `doc` here carries the
+# one-line summaries. See CREDITS.md "Community contributions".
+#
+# Curation rule (matching opcodes.toml's spirit): rows come from the
+# credited catalogue; adding rows beyond it needs handler evidence.
+
+[[request]]
+code = 1
+name = "REST_RAISE"
+doc = "the party rests; fallen members get up too"
+
+[[request]]
+code = 2
+name = "SET_DOOR"
+doc = "open (a = 0) or close (a = 1) the matching doors"
+
+[[request]]
+code = 3
+name = "SKILL_CHECK"
+doc = "a thief skill check: skill a, situation b"
+
+[[request]]
+code = 4
+name = "REST"
+doc = "the party rests"
+
+[[request]]
+code = 5
+name = "TOGGLE_STATE"
+doc = "toggle the object's state and play its animation"
+
+[[request]]
+code = 6
+name = "CINEMATIC"
+doc = "play cinematic a; the script goes on after it"
+
+[[request]]
+code = 7
+name = "TRAP"
+doc = "a trap: item -who at (a, b), avoided or set off"
+
+[[request]]
+code = 8
+name = "RANDOM_MONSTER"
+doc = "the region's random monster (a = 0), or how many of it (a != 0)"
+
+[[request]]
+code = 9
+name = "TRANSFORM"
+doc = "replace the object with OJFF a (b != 0: at its start)"
+
+[[request]]
+code = 10
+name = "BLOCK_CELL"
+doc = "cell (a, b) blocks movement"
+
+[[request]]
+code = 11
+name = "UNBLOCK_CELL"
+doc = "cell (a, b) no longer blocks movement"
+
+[[request]]
+code = 12
+name = "BLOCK_SIGHT"
+doc = "cell (a, b) blocks sight"
+
+[[request]]
+code = 13
+name = "UNBLOCK_SIGHT"
+doc = "cell (a, b) no longer blocks sight"
+
+[[request]]
+code = 14
+name = "ARENA_BOUT"
+doc = "the arena bout with Celgor at (a, b); the script goes on after it"
+
+[[request]]
+code = 15
+name = "MOVE_CURSOR"
+doc = "back to the move pointer"
+
+[[request]]
+code = 16
+name = "MUSIC_LEVEL"
+doc = "the music's intensity level a"
+
+[[request]]
+code = 17
+name = "PLACE_OBJECT"
+doc = "place OJFF -who at cell (a, b)"
+
+[[request]]
+code = 18
+name = "SET_ALLEGIANCE"
+doc = "the matching creatures' allegiance = a"
+
+[[request]]
+code = 19
+name = "GAME_OVER"
+doc = "the game is over"
+
+[[request]]
+code = 20
+name = "COUNT_CREATURES"
+doc = "how many creatures have an allegiance bit of a (all with 0)"

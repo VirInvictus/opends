@@ -987,6 +987,7 @@ fn parse_instruction_line(
             best_effort: false,
             string_run: None,
             raw_tail,
+            request_name: None,
         });
     }
     // The format string `{:<22}` left-pads to 22 chars. Mnemonic
@@ -1019,6 +1020,7 @@ fn parse_instruction_line(
         best_effort: false,
         string_run: None,
         raw_tail,
+        request_name: None,
     })
 }
 

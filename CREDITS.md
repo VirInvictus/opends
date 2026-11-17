@@ -145,7 +145,7 @@ release tags) name yuan-ti / Calvin Rodo.
 | Same-length edits implementing our unshipped triage candidates: the serf follow range (GPL 60 @0xCD8, immediate 14 -> 127), the Mindhome XP award-once gate (GPL 204 @0x5C9, `gflag[695] == 0` around the +5000), the messenger trigger re-arms x3 (GPL 58 @0x1A/0x99/0xCC: register MAS 9's sight trigger on -1297 once `gflag[245]` flips, while `gflag[339] == 0`) | `CalvinRodo/yuan-ti` `GplRepairs.cs` (findings 3.2(1a)/(1c)/(4) are ours, [`docs/ds1-sweep-triage-2026-10-07.md`](docs/ds1-sweep-triage-2026-10-07.md); byte encodings are his) | MIT |
 | Script-bug discoveries, 17 repairs in 4 families: the halfling greeting/insult race test (GPL 31 @0x3B/0x254: combat-record race byte 0 -> sheet `.71.20`), the ranger tracking chain (GPL 210 @0x5FD/0x60C/0x622/0x638/0x6CC: `.71.17` class read, level 13-16 range checks, roll direction), the sewer grate logic (GPL 137 @0x9E0/0xA14/0xA65/0xB5C: offer gate, hack opens, Strength roll, his/her line), the Legcrusher-gone dialog guards (GPL 136 @0x130, 139 @0x218, 141 @0x6B4/0x70B/0x766/0xF29: `RANGE(gname[5], name(-326)) < 999` gates with replacement lines) | `CalvinRodo/yuan-ti` `GplRepairs.cs` (catalog rows with evidence: [`docs/known-bugs.md`](docs/known-bugs.md) §3.6; fixes pending the adoption gate) | MIT |
 
-| Knowledge mining, 2026-11-13 pass: the GPLX 1 field map (99 fields x 5 record groups, type bytes, record sizes 21/58/25/71/20) and the field meanings behind every repair path (race/sex/alignment at character +0x18..0x1A, class codes 35-37, most-HP field 43 reading 0 on items, class bits at character +0x12 with the 0x200 ranger bit), the difficulty-scaling trace (`((difficulty - 1) x 50 + 100) / 100` on non-party creatures at load), 117 named REQUEST codes, the IT1R class-bit and starting-gear tables | `CalvinRodo/yuan-ti` `engine/src/DarkSun.Game/Scripting/GplFieldMap.cs` + `.github/instructions/dsun-exe-reference.md` + `GplRequests.cs` | MIT (facts cited: [`docs/gplx-field-map.md`](docs/gplx-field-map.md), [`docs/community-crossread-2026-11-13.md`](docs/community-crossread-2026-11-13.md)) |
+| Knowledge mining, 2026-11-13 pass: the GPLX 1 field map (99 fields x 5 record groups, type bytes, record sizes 21/58/25/71/20) and the field meanings behind every repair path (race/sex/alignment at character +0x18..0x1A, class codes 35-37, most-HP field 43 reading 0 on items, class bits at character +0x12 with the 0x200 ranger bit), the difficulty-scaling trace (`((difficulty - 1) x 50 + 100) / 100` on non-party creatures at load), the 20 named REQUEST codes (`GplRequests.cs`; an earlier draft of this row said 117, which the current tree does not carry), the IT1R class-bit and starting-gear tables | `CalvinRodo/yuan-ti` `engine/src/DarkSun.Game/Scripting/GplFieldMap.cs` + `.github/instructions/dsun-exe-reference.md` + `GplRequests.cs` | MIT (facts cited: [`docs/gplx-field-map.md`](docs/gplx-field-map.md), [`docs/community-crossread-2026-11-13.md`](docs/community-crossread-2026-11-13.md)) |
 | Engine-bug catalog relay (15 original-engine bugs with DSUN.EXE addresses: Mirror Image friendly-fire, double-charge armor, Share Strength's end, preserver Dispel, thri-kreen claws, Scare's impossible elf exception, the Trustee's GPL rounds, and more), the acid-check rules, and the dice-log test oracle | Obsidian Edition's findings, relayed through `CalvinRodo/yuan-ti` `.github/instructions/ref_notes_from_obsidian.md` | MIT (yuan-ti's writeup; Obsidian's findings recorded in [`docs/community-crossread-2026-11-13.md`](docs/community-crossread-2026-11-13.md) §1 pending our own verification) |
 
 **OpenDS work this feeds (pending the adoption gate):**
@@ -157,21 +157,24 @@ release tags) name yuan-ti / Calvin Rodo.
 - `docs/exchange-yuan-ti-2026-11-13.md`: the give-back briefs
   (DS2 decode, region change, symbols, runtime QA)
 
-## Community facts (DarkSunTools, TimQuester — NO LICENSE: facts only)
+## Community adoption (DarkSunTools, TimQuester — Apache-2.0)
 
-No code has been ported and nothing may be until the repo carries
-an OSI license (asked 2026-11-13 in opends issue #14). Everything
-below is verified format fact, credited as insight. Revert method:
-the whole set lives in one commit whose message is marked
-"DarkSunTools facts, revertable"; `git revert` of that commit
-removes every DarkSunTools-derived statement at once (this
-section, the upstream-projects.md §5 row, and the file-formats.md
-FONT section).
+TimQuester added the Apache-2.0 license on 2026-11-16 (answering
+the 2026-11-13 ask in opends issue #14), which graduated this
+section from facts-only to credited code adoption through the
+standard gate. The earlier facts-only constraint ("nothing may be
+ported until the repo carries an OSI license") is resolved and no
+longer applies. The verified format facts below were landed
+2026-11-13 in one revertable commit (message marked "DarkSunTools
+facts, revertable"); that commit stays in history as the record of
+the facts-only era, and the first ported piece now carries its own
+credit row.
 
-| Fact | Source | Verified |
-|------|--------|----------|
-| FONT chunk layout: 264-byte header with the glyph height at byte +2 (9 on the shipped DS1 font); 256 u16 LE glyph offsets at 264 (glyph data starts at 776); each glyph is a u16 LE width followed by width x height pixel bytes; the offset table is strictly increasing; the last glyph runs to chunk end | `TimQuester/DarkSunTools` `Common/Font/FontResourceCodec.cs` `Parse`/`Build` (round-trip tested upstream) | DS1 `RESOURCE.GFF` FONT 100 (8,299 bytes): all 256 glyphs satisfy every rule, checked 2026-11-13 |
-| GPL 7-bit packed strings, fixed-length invariant: same character count => same encoded byte count (packed length = ((n+1)*7+7)/8), and no padding may follow the 0x03 terminator because the next instruction starts immediately after it | `TimQuester/DarkSunTools` `Common/Gpl/GplStringCodec.cs` (documented as a translation invariant) | Consistent with our `gpl-disasm`/`gpl-asm` string handling; the invariant framing for fixed-length translation editing is the borrowed insight |
+| What | Source | License |
+|------|--------|---------|
+| FONT chunk layout: 264-byte header with the glyph height at byte +2 (9 on the shipped DS1 font); 256 u16 LE glyph offsets at 264 (glyph data starts at 776); each glyph is a u16 LE width followed by width x height pixel bytes; the offset table is strictly increasing; the last glyph runs to chunk end | `TimQuester/DarkSunTools` `Common/Font/FontResourceCodec.cs` `Parse`/`Build` (round-trip tested upstream) | Apache-2.0; verified as fact against DS1 `RESOURCE.GFF` FONT 100 (8,299 bytes): all 256 glyphs satisfy every rule, checked 2026-11-13 |
+| GPL 7-bit packed strings, fixed-length invariant: same character count => same encoded byte count (packed length = ((n+1)*7+7)/8), and no padding may follow the 0x03 terminator because the next instruction starts immediately after it | `TimQuester/DarkSunTools` `Common/Gpl/GplStringCodec.cs` (documented as a translation invariant) | Apache-2.0; the invariant framing for fixed-length translation editing is the borrowed insight |
+| String codec cross-check implementation: `tools/gpl-disasm/src/darksun_tools_codec.rs` ports `GplStringCodec`'s decode/pack as an independent implementation, and `tools/gpl-disasm/tests/string_codec_crosscheck.rs` runs both decoders over every candidate packed string in both games (44,851 candidates agree as of gpl-disasm 0.9.0) | `TimQuester/DarkSunTools` `Common/Gpl/GplStringCodec.cs` | Apache-2.0; first ported code (2026-11-17, gpl-disasm 0.9.0) |
 
 ## Influences (read but not yet ported)
 

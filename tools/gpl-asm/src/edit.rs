@@ -142,6 +142,7 @@ impl Editor {
             best_effort: false,
             string_run: None,
             raw_tail,
+            request_name: None,
         };
         instr.length = encoded_length(&instr)?;
         Ok(instr)
@@ -472,6 +473,7 @@ mod tests {
             best_effort: false,
             string_run: None,
             raw_tail: None,
+            request_name: None,
         };
         new.length = encoded_length(&new).unwrap();
         ed.replace_instruction(0x01, new).unwrap();

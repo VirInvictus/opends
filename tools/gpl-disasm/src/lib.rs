@@ -113,6 +113,8 @@ pub const MAX_PACKED_STRING_LEN: usize = 1024;
 /// to bound worst-case parse time on malformed input.
 pub const MAX_RETVAL_DEPTH: u8 = 4;
 
+pub mod darksun_tools_codec;
+
 /// Inner opcodes libgff permits inside a `GPL_RETVAL` dispatch
 /// (per `parse.c` `gpl_retval` lines 1791-1826). All of these are
 /// "safe in RETVAL context" per the row notes in
@@ -775,6 +777,14 @@ pub struct Instruction {
     /// these bytes verbatim after `params[0]` to round-trip.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub raw_tail: Option<Vec<u8>>,
+    /// Host-dispatch name of the REQUEST code in `params[0]`, for
+    /// `gpl request` (0x22) instructions, populated by
+    /// [`Symbols::apply`] from `syms/requests.toml` (yuan-ti
+    /// lineage; CREDITS.md). JSON-only decoration: the text listing
+    /// stays assembler-parseable, so the name surfaces as this
+    /// field and nowhere else.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub request_name: Option<String>,
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
@@ -1171,6 +1181,23 @@ pub struct Symbols {
     /// `LFLAG` / etc. references in matching chunks only.
     #[serde(default)]
     pub locals: Vec<LocalSymbol>,
+    /// REQUEST-code catalogue keyed by code. Populated from
+    /// `tools/gpl-disasm/syms/requests.toml` (gpl-disasm v0.9.0+).
+    /// Decorates the first operand of `gpl request` (0x22) with the
+    /// host-dispatch name (JSON `request_name` field only; the text
+    /// listing stays assembler-parseable). Source: yuan-ti
+    /// `GplRequests.cs` (Calvin Rodo, MIT; CREDITS.md).
+    #[serde(default)]
+    pub requests: BTreeMap<u16, RequestSymbol>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RequestSymbol {
+    /// Host-dispatch name, e.g. `TOGGLE_STATE`.
+    pub name: String,
+    /// One-line effect summary from the source catalogue.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub doc: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1348,6 +1375,32 @@ impl Symbols {
                 }
             }
             syms.locals = combined;
+        }
+        // v0.9.0: load requests.toml. Rows are flat `[[request]]`
+        // tables (code, name, doc); the loader keys them by code for
+        // the `gpl request` (0x22) decoration.
+        let requests_path = dir.join("requests.toml");
+        if requests_path.is_file() {
+            let body = fs::read_to_string(&requests_path).map_err(|e| SymbolsLoadError::Io {
+                path: requests_path.display().to_string(),
+                source: e,
+            })?;
+            let parsed: RequestsFile =
+                toml::from_str(&body).map_err(|e| SymbolsLoadError::Parse {
+                    path: requests_path.display().to_string(),
+                    source: e,
+                })?;
+            let mut map = BTreeMap::new();
+            for entry in parsed.request.unwrap_or_default() {
+                map.insert(
+                    entry.code,
+                    RequestSymbol {
+                        name: entry.name,
+                        doc: entry.doc,
+                    },
+                );
+            }
+            syms.requests = map;
         }
         Ok(syms)
     }
@@ -1547,6 +1600,40 @@ impl Symbols {
             }
         }
     }
+
+    /// Apply every decoration this catalogue carries: the curated
+    /// opcode-name overrides of [`Self::apply_to_mnemonics`] plus the
+    /// REQUEST-code names for `gpl request` (0x22) from
+    /// `syms/requests.toml` (v0.9.0). The name lands on
+    /// [`Instruction::request_name`] (JSON only) so the text listing
+    /// stays assembler-parseable.
+    pub fn apply(&self, result: &mut DisasmResult) {
+        self.apply_to_mnemonics(result);
+        if self.requests.is_empty() {
+            return;
+        }
+        for instr in &mut result.instructions {
+            if instr.opcode != 0x22 {
+                continue;
+            }
+            let Some(code) = instr
+                .params
+                .first()
+                .and_then(|p| p.first())
+                .and_then(|e| match e {
+                    Expression::Immediate14 { value } => Some(*value),
+                    Expression::ImmediateByte { value } => Some(*value as u16),
+                    Expression::ImmediateBigNum { value } => u16::try_from(*value).ok(),
+                    _ => None,
+                })
+            else {
+                continue;
+            };
+            if let Some(sym) = self.requests.get(&code) {
+                instr.request_name = Some(sym.name.clone());
+            }
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -1580,6 +1667,20 @@ struct VariablesFile {
 #[derive(Debug, Deserialize)]
 struct VariableEntry {
     id: u16,
+    name: String,
+    #[serde(default)]
+    doc: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct RequestsFile {
+    #[serde(default)]
+    request: Option<Vec<RequestEntry>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RequestEntry {
+    code: u16,
     name: String,
     #[serde(default)]
     doc: Option<String>,
@@ -1935,6 +2036,15 @@ fn read_simple_num_var(bytes: &[u8], cursor: usize, extended: bool) -> (u16, usi
 /// `src/gpl/gpl-string.c` `sol_gpl_read_text` + `read_compressed`
 /// (MIT). Downstream consumers read it through `gpl-disasm --json`
 /// (dialog-extract v0.2.0+ and the sweep scripts).
+///
+/// `read_string_at` is the public one-call wrapper over this
+/// decoder, exposed for the DarkSunTools codec cross-check
+/// (`tests/string_codec_crosscheck.rs`) and any tooling that wants
+/// to probe string candidates at raw offsets.
+pub fn read_string_at(bytes: &[u8], cursor: usize) -> Option<(StringSubType, String, usize)> {
+    read_text(bytes, cursor)
+}
+
 fn read_text(bytes: &[u8], cursor: usize) -> Option<(StringSubType, String, usize)> {
     if cursor >= bytes.len() {
         return None;
@@ -2253,6 +2363,7 @@ pub fn disassemble(bytes: &[u8]) -> DisasmResult {
             best_effort: be,
             string_run,
             raw_tail,
+            request_name: None,
         });
     }
 
@@ -3526,6 +3637,7 @@ mod tests {
             best_effort: false,
             string_run: None,
             raw_tail: None,
+            request_name: None,
         }
     }
 
@@ -3695,6 +3807,7 @@ mod tests {
             best_effort: false,
             string_run: None,
             raw_tail: None,
+            request_name: None,
         };
         let instrs = vec![instr, fake_instr(5, 0x15, None)];
         let (_, calls) = build_cfg(&instrs, 6);
@@ -3719,6 +3832,7 @@ mod tests {
             best_effort: false,
             string_run: None,
             raw_tail: None,
+            request_name: None,
         };
         let instrs = vec![instr, fake_instr(5, 0x67, None), fake_instr(8, 0x67, None)];
         let (cfg, _) = build_cfg(&instrs, 9);
@@ -3859,6 +3973,7 @@ mod tests {
             ],
             variables: Vec::new(),
             locals: Vec::new(),
+            requests: BTreeMap::new(),
         };
         let gcfg = build_global_cfg("TEST.GFF", &summaries, Some(&syms));
         assert_eq!(gcfg.edges.len(), 1);
@@ -3904,6 +4019,7 @@ mod tests {
             ],
             variables: Vec::new(),
             locals: Vec::new(),
+            requests: BTreeMap::new(),
         };
         syms.apply_to_labels(&mut cfg, "TEST.GFF", "GPL ", 7);
         assert_eq!(
@@ -3928,6 +4044,7 @@ mod tests {
             }],
             variables: Vec::new(),
             locals: Vec::new(),
+            requests: BTreeMap::new(),
         };
         assert_eq!(syms.function_name("gpldata.gff", "GPL ", 1, 1), Some("n"));
         assert_eq!(syms.function_name("GPLDATA.GFF", "GPL ", 1, 1), Some("n"));
@@ -3965,6 +4082,7 @@ mod tests {
             functions: vec![],
             variables: Vec::new(),
             locals: Vec::new(),
+            requests: BTreeMap::new(),
         };
         syms.apply_to_mnemonics(&mut result);
         assert_eq!(
@@ -4023,6 +4141,7 @@ mod tests {
             functions: vec![],
             variables: Vec::new(),
             locals: Vec::new(),
+            requests: BTreeMap::new(),
         };
         syms.apply_to_mnemonics(&mut result);
         assert_eq!(
@@ -4128,6 +4247,7 @@ name = "PARTY_GOLD"
             best_effort: false,
             string_run: None,
             raw_tail: None,
+            request_name: None,
         });
         let syms = Symbols {
             opcodes: BTreeMap::new(),
@@ -4139,6 +4259,7 @@ name = "PARTY_GOLD"
                 doc: None,
             }],
             locals: Vec::new(),
+            requests: BTreeMap::new(),
         };
         syms.apply_to_variables(&mut result);
         let last = result.instructions.last().unwrap();
@@ -4169,6 +4290,7 @@ name = "PARTY_GOLD"
             best_effort: false,
             string_run: None,
             raw_tail: None,
+            request_name: None,
         }
     }
 
@@ -4238,6 +4360,7 @@ name = "hp_temp"
             opcodes: BTreeMap::new(),
             functions: vec![],
             variables: vec![],
+            requests: BTreeMap::new(),
             locals: vec![LocalSymbol {
                 var_kind: VarKind::Lbyte,
                 file: "GPLDATA.GFF".to_string(),
@@ -4274,6 +4397,7 @@ name = "hp_temp"
             opcodes: BTreeMap::new(),
             functions: vec![],
             variables: vec![],
+            requests: BTreeMap::new(),
             locals: vec![LocalSymbol {
                 var_kind: VarKind::Lbyte,
                 file: "GPLDATA.GFF".to_string(),
@@ -4290,5 +4414,61 @@ name = "hp_temp"
             Expression::Variable { name, .. } => assert!(name.is_none()),
             _ => panic!("expected Variable"),
         }
+    }
+
+    #[test]
+    fn apply_decorates_request_code_from_catalogue() {
+        // `gpl request 5, ...` (0x22): the first operand's code
+        // looks up the TOGGLE_STATE row in syms/requests.toml.
+        let mut syms = Symbols::default();
+        syms.requests.insert(
+            5,
+            RequestSymbol {
+                name: "TOGGLE_STATE".to_string(),
+                doc: None,
+            },
+        );
+        let result = disassemble(&[0x22, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x67]);
+        assert!(result.aligned, "synthetic request chunk must align");
+        let mut result = result;
+        syms.apply(&mut result);
+        assert_eq!(
+            result.instructions[0].request_name.as_deref(),
+            Some("TOGGLE_STATE")
+        );
+        // Non-request opcodes stay untouched.
+        assert_eq!(result.instructions[1].request_name, None);
+    }
+
+    #[test]
+    fn apply_leaves_unknown_request_codes_alone() {
+        let mut syms = Symbols::default();
+        syms.requests.insert(
+            5,
+            RequestSymbol {
+                name: "TOGGLE_STATE".to_string(),
+                doc: None,
+            },
+        );
+        let result = disassemble(&[0x22, 0x12, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x67]);
+        let mut result = result;
+        syms.apply(&mut result);
+        assert_eq!(result.instructions[0].request_name, None);
+    }
+
+    #[test]
+    fn loads_requests_toml_from_syms_dir() {
+        let dir = std::env::temp_dir().join(format!("gpl-disasm-reqs-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("create");
+        std::fs::write(
+            dir.join("requests.toml"),
+            "[[request]]\ncode = 19\nname = \"GAME_OVER\"\ndoc = \"the game is over\"\n",
+        )
+        .expect("write");
+        let syms = Symbols::load_from_dir(&dir).expect("load");
+        let _ = std::fs::remove_dir_all(&dir);
+        let sym = syms.requests.get(&19).expect("GAME_OVER row loaded");
+        assert_eq!(sym.name, "GAME_OVER");
+        assert_eq!(sym.doc.as_deref(), Some("the game is over"));
     }
 }

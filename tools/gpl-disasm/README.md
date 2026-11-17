@@ -21,9 +21,18 @@ chunks so modders can read what a script does.
   labeled jump targets, Graphviz DOT via `--global-cfg` (whole-file
   inter-chunk callgraph; 587 edges / 250 DS1 chunks, 797 / 350 DS2).
 - **Curated symbol catalogues** under `syms/` (functions, opcodes,
-  variables, per-chunk locals) decorate labels and mnemonics in both
-  text and JSON output. Load an alternate set with `--syms <dir>`;
-  skip with `--no-syms`.
+  variables, per-chunk locals, REQUEST codes) decorate labels and
+  mnemonics in both text and JSON output; the REQUEST catalogue
+  (`syms/requests.toml`, from yuan-ti's MIT `GplRequests.cs`) adds a
+  JSON-only `request_name` field to `gpl request` (0x22) instructions
+  so the text listing stays assembler-parseable. Load an alternate
+  set with `--syms <dir>`; skip with `--no-syms`.
+- **Independent string-codec cross-check** (`darksun_tools_codec`
+  module): a port of TimQuester/DarkSunTools' `GplStringCodec`
+  (Apache-2.0) run against our own decoder over the whole corpus
+  (`tests/string_codec_crosscheck.rs`; 44,851 candidates agree).
+  A divergence in either implementation is now a corpus failure,
+  not a silent disagreement.
 - **JSON output** (`--json`) is the machine contract consumed by
   `gpl-asm`, `dialog-extract` and `opcode-fuzz`.
 - **Round-trippable text rendering** via the public

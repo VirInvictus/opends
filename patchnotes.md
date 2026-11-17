@@ -4,6 +4,37 @@ Released versions appear here, newest first: one heading per
 tagged release or dated batch. A `<tool>-vX.Y.Z` tag's message
 is that release's entry here, verbatim (see `docs/versioning.md`).
 
+## gpl-disasm v0.9.0 (2026-11-17)
+
+- **`gpl-disasm` v0.9.0**: the community symbol decoration release
+  (#25 and the DarkSunTools port lane from #14). Three additions.
+  (1) The first licensed code port: `darksun_tools_codec` ports
+  TimQuester's DarkSunTools `GplStringCodec` (Apache-2.0; credited
+  in `CREDITS.md`, whose DarkSunTools section flips from
+  facts-only to licensed adoption) as an independent string-codec
+  implementation, and a corpus cross-check runs both decoders over
+  every candidate packed string in both games: 44,851 candidates
+  agree on decode, so a bug in either implementation is now a
+  corpus failure instead of a silent divergence. The one
+  documented divergence is the safety cap (ours 1024 chars, the
+  port 300, matching upstream), and the corpus carries 455
+  false-positive scan hits past that cap. (2) `syms/requests.toml`
+  imports yuan-ti's `GplRequests.cs` REQUEST-code catalogue
+  (Calvin Rodo, MIT): 20 named codes; `Symbols::apply` decorates
+  `gpl request` (0x22) instructions with a JSON-only
+  `request_name` field, leaving the text listing
+  assembler-parseable. Correction on the record: the 2026-11-13
+  knowledge pass called this catalogue "117 named REQUEST codes";
+  the current yuan-ti tree names exactly 20, and `CREDITS.md` now
+  says so. (3) The BITSNOOP question is closed with handler
+  evidence: DS1's 0x20 handler (file `0xa5a3`) pops two operands
+  and stores the boolean `(a & b) == b` (a bitmask-inclusion
+  test) into the DGROUP result slot `0x31b`; the neighbouring
+  `gpl award` handler corroborates the operand and result slots.
+  The libgff mnemonic stands (two independent lineages agree, and
+  with the semantics documented the name reads accurately);
+  recorded in `docs/gpl-opcodes.md` "Verified semantics".
+
 ## image-extract v0.5.1 (2026-11-17)
 
 - **`image-extract` v0.5.1**: two corruption-refusal fixes from the
