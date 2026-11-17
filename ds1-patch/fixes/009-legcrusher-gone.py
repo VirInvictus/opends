@@ -10,10 +10,10 @@ plays a replacement line. Beta: UNTESTED at runtime; disabled by
 default, per the beta QA gate (issue #18). Discovery: CalvinRodo /
 yuan-ti (MIT); the detour sources are OUR assembly of the recorded
 design (issue #20, gpl-asm 0.10.0 movable mode), with one
-correction: Calvin's source reads gname[5], which never appears in
-the shipped corpus; GNAME[37] is the active-member register every
-in-chunk alive-check uses (367 get-range uses; GPL 139 @0x275 is
-the model). The replacement lines are Calvin's, invented dialog by
+notation note: Calvin's gname[5] and our GNAME[37] are the same
+register (raw gname index 0x25, POV -- yuan-ti displays gname
+indices minus 0x20, we keep the raw byte); the identity table is
+docs/gff-data-reference.md. The replacement lines are Calvin's, invented dialog by
 recorded decision (known-bugs.md 3.6 row 4).
 """
 

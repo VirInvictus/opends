@@ -13,11 +13,11 @@ is that release's entry here, verbatim (see `docs/versioning.md`).
   detour guards on `RANGE(GNAME[37], NAME(-326)) < 999`, playing
   Calvin Rodo's replacement lines once the party has killed him
   (discovery: yuan-ti, MIT; invented dialog by the recorded
-  2026-11-13 decision). One correction on the record: yuan-ti's
-  source reads `gname[5]`, which never appears in the shipped
-  corpus; our assembly reads GNAME[37], the active-member register
-  every in-chunk alive-check uses (367 get-range uses; GPL 139
-  @0x275 is the model). Authored with gpl-asm 0.10.0's movable
+  2026-11-13 decision). Notation note: yuan-ti's `gname[5]` and our
+  `GNAME[37]` are the same register (raw gname index 0x25, POV;
+  yuan-ti displays gname indices minus 0x20, we keep the raw byte;
+  the identity table is `docs/gff-data-reference.md`). Authored
+  with gpl-asm 0.10.0's movable
   assembly; every expect fingerprint verified against the
   canonical chunk bytes, every label word read back from the
   encoded bytes, all three patched chunks reassemble

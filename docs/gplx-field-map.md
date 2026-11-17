@@ -62,8 +62,12 @@ items making each the "thing" (`gname[11]`), from the first again
 when n is 9999 or the owner changes. The 0x8000-flagged operand
 forms our decoder renders as `obj_name 32805/32806/32812` in the
 repair sites are these keyword objects seen through complex
-access; their per-value identities (0x25 / 0x26 / 0x0C) are not
-named in yuan-ti's notes either and stay open here.
+access; their identities are now on the record:
+[gff-data-reference.md](gff-data-reference.md) (issue #26) names
+all six: 32805 = 0x8025 POV (the active member), 32806 = 0x8026
+ACTIVE (the actor), 32812 = 0x802C OTHER1 (SET_OTHER's result).
+What stays open there is only the engine's own resolution shape,
+not the identities.
 
 ## Class bits (character +0x12, field 17's target)
 

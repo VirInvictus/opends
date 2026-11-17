@@ -43,13 +43,16 @@ appends `[EXIT_GPL][body][JUMP back]` past each chunk's end and
 jumps to it from the site, so no shipped address moves
 (`docs/detour-repairs.md`).
 
-### Correction on the record: GNAME[5] -> GNAME[37]
+### Notation note: gname[5] and GNAME[37] are the same register
 
-Yuan-ti's source gates on `gname[5]`, which never appears anywhere
-in the shipped DS1 corpus; the engine's own register for the
-active/party member in range checks is `GNAME[37]`. Our assembly
-reads `GNAME[37]` (evidence above). The design is Calvin's; the
-register correction is ours, corpus-evidenced.
+Yuan-ti's source gates on `gname[5]`; our assembly reads
+`GNAME[37]`. These are the same register -- raw gname index 0x25,
+the POV/active-character slot: yuan-ti displays gname indices minus
+0x20 (raw 0x25 -> 5), our decoder keeps the raw byte (0x25 -> 37).
+The corpus agrees: the register does the active-member work in 367
+`get range` alive-checks (GPL 139 @0x275 is the model). The design
+is Calvin's throughout; the identity table is
+`docs/gff-data-reference.md` (issue #26).
 
 ### The replacement lines
 
