@@ -1,4 +1,11 @@
 # Community knowledge cross-read (2026-11-13)
+(Second mining pass, 2026-11-17: the remaining instruction files --
+save/item field semantics, thief-skill rules, character rules,
+saving throws, combat mechanics, SCMD/RDFF/UI record shapes, the
+segment map and the offset bridge -- are landed as
+[`yuan-ti-mining-2026-11-17.md`](yuan-ti-mining-2026-11-17.md),
+with four verification digs settled.)
+
 
 The knowledge-mining pass over yuan-ti (Calvin Rodo) and its
 Obsidian Edition relay, following the repair-lane gate review

@@ -76,18 +76,25 @@ The character under construction is a full charrec (DS1 DGROUP [0x119c]);
 on finalize it copies into the party arrays [0x1661] (charrec) / [0x1665]
 (combat), 4 slots.
 
-- Race/gender: UI list 0..13 -> race (idx>>1)+1, gender (idx&1)+1; idx
-  12/13 are the two thri-kreen entries. Races 1..8 = human, dwarf, elf,
-  half-elf, half-giant, mul, kreen-a, kreen-b (DS2 adds race 9).
+- Race/gender: UI list 0..13 -> gender (idx&1)+1; the race behind each
+  pair reads off the chargen race-name far-pointer table (DSUN.EXE
+  0x49812, DGROUP 0x4356-relative, race bytes 1..8 = HUMAN, DWARF, ELF,
+  HALF-ELF, HALF-GIANT, HALFLING, MUL, THRI-KREEN; MALE/FEMALE sit right
+  before it as the gender array). Races 1..8 as listed (DS2 adds race 9).
+  CORRECTED 2026-11-17: this doc previously labeled race 6 "mul" and 7/8
+  "kreen-a/kreen-b"; Calvin Rodo's played-save reads plus the game's own
+  pointer array settle it -- 6 = HALFLING (which is why the UI's race
+  pairs need a remap past half-giant: DS1's chargen creates seven races,
+  skipping halfling).
 - Stat generation (engine-proven): BEST OF 4 ATTEMPTS of (4d4 + racial
   modifier + 4) per stat, floored at the class minimum. Reroll service
   DS1 0x6490d (roll loop 0x64978..0x6499d, dice helper 0x648c1, RNG =
   Borland rand at 0x822, deterministic: see section 5). Racial modifiers
   are signed bytes at DS1 record 103 +0x14d + race*6 + stat (DS2: record
   108 +0x120): human all 0; dwarf +1/-1/+2/0/0/-2; elf 0/+2/-2/+1/-1/0;
-  half-elf 0/+1/-1/0/0/0; half-giant +4/-5/+2/-5/-3/-3; mul -2/+2/-1/0/
-  +2/-1; kreen-a +2/0/+1/-1/0/-2; kreen-b 0/+2/0/-1/+1/-2 (STR DEX CON
-  INT WIS CHA). Manual adjust clamps to [class_min, racial_mod + 20].
+  half-elf 0/+1/-1/0/0/0; half-giant +4/-5/+2/-5/-3/-3; halfling -2/+2/-1/0/
+  +2/-1; mul +2/0/+1/-1/0/-2; thri-kreen 0/+2/0/-1/+1/-2 (STR DEX CON
+  INT WIS CHA; labels per the corrected race order above). Manual adjust clamps to [class_min, racial_mod + 20].
 - Class stat minimums (record 103 +0x180, rows {u16 prime_stat, i8 min}):
   Cleric WIS 9, Druid WIS 12, Fighter STR 9, Gladiator STR 13, Preserver
   INT 9, Psionicist WIS 12, Ranger WIS 14, Thief DEX 9; max over selected
@@ -96,8 +103,12 @@ on finalize it copies into the party arrays [0x1661] (charrec) / [0x1665]
   below 17.
 - Race/class legality: a u16 mask per race (DS1 record 104 +2*(race-1) =
   file 0x3e300; DS2 record 109): bit (0x80 >> (c-1)) = creation class c.
-  Human 0xFF; dwarf 0xB5; elf 0xBF; half-elf 0xFF; half-giant 0xB6; mul
-  0xF7; kreen-a 0xF5; kreen-b 0xF6; DS2 race 9 = 0x0201.
+  Human 0xFF; dwarf 0xB5; elf 0xBF; half-elf 0xFF; half-giant 0xB6; halfling
+  0xF7; mul 0xF5; thri-kreen 0xF6; DS2 race 9 = 0x0201. (Label-corrected
+  2026-11-17 with the race order above; the class lists behind these
+  masks -- e.g. halfling = all but preserver, mul = no gladiator,
+  preserver or ranger -- now read on the right races and are worth a
+  rules-tables pass.)
 - Multi-class: the race x classA x classB legality grid is DATA:1001
   (RESOLVED; 576 B, byte at [race-1]*0x48 + (classA-1)*9 + classB, classB
   = 0 while single-class): a bitmask of classes that may still be ADDED.
