@@ -1,4 +1,4 @@
-# QA packet: darkfix-ds1 v0.2.0-beta.1 script repairs
+# QA packet: darkfix-ds1 beta script repairs (v0.2.0-beta.1 through beta.3)
 
 How to test the beta fixes and report what you see. Every check
 below is a local scene: a save anywhere near the site, one or two
@@ -27,9 +27,10 @@ helps.
 3. **Sound on.** The game's MEL DSP detect fails without sound and
    some scenes misbehave.
 4. **Get the beta zip** from the
-   [release page](https://github.com/VirInvictus/opends/releases/tag/darkfix-ds1-v0.2.0-beta.1)
-   (the zip is the release), unzip it, and apply with the default
-   set (001 + 002, enabled, previously shipped):
+   [release page](https://github.com/VirInvictus/opends/releases/tag/darkfix-ds1-v0.2.0-beta.3)
+   (the zip is the release; beta.3 carries every beta fix so far),
+   unzip it, and apply with the default set (001 + 002, enabled,
+   previously shipped):
 
    ```
    python3 apply.py /path/to/your-install-copy
@@ -107,6 +108,20 @@ Not in this beta: the six Legcrusher dialog guards (they need
 tooling that is not built yet) and the re-ask half of the
 Mindhome bug.
 
+- **L. Legcrusher gone (fix.ds1.legcrusher-gone, beta.3)**: in
+  the slave pens, kill Legcrusher (the half-giant monster
+  trainer, -326), then walk to the arena gate and talk to Kurzak,
+  and talk to Dinos. Pass: after he is dead, Kurzak's call, his
+  three greetings, the half-giant answer, and Dinos's warning all
+  use the replacement lines (fixes/009-legcrusher-gone.md lists
+  each); before he is dead, the shipped lines play unchanged.
+- **R. Trustee rounds (fix.ds1.trustee-rounds, beta.3)**: knock on
+  the pen door and pick the fight path, then watch the Trustee
+  work and talk to him afterwards. Pass: he keeps moving between
+  his corners and his dialog is not stuck on "I'd love to talk
+  more, but I have to get back to work"; he still opens for a
+  bribe.
+
 ## Reporting
 
 Open an issue at
@@ -114,7 +129,7 @@ Open an issue at
 titled `beta QA: <site letter(s)> <pass/fail>` with:
 
 ```
-site(s):      D1..D6, T, G, W, M, S, H
+site(s):      D1..D6, T, G, W, M, S, H, L, R
 result:       pass / fail per site
 game version: GOG 1.10
 fixes enabled: (which manifest entries)
