@@ -103,7 +103,7 @@ targeted dig ran (results in §Verification digs).
 11. **RDFF load-action grammar** (dark_sun-game-data): 10-byte
     headers (load action, block, type, index, from, length) each
     followed by `length` bytes; type 1 item (21 B), type 2 combat
-    (58 B), type 4 character (71 B, +0x3D size -- see the digs
+    (58 B), type 4 character (71 B, +0x3D size; see the digs
     below), types 3/5 reference NAME/IT1R by index with length 0;
     0xFF ends the list; load actions 1 = own record, 2 = new
     object in a field of `block`, 3 = reference, 4 = linked after
@@ -184,9 +184,9 @@ targeted dig ran (results in §Verification digs).
     VMEM (EMS int 67h / XMS int 2Fh).
 21. **Offset-conversion bridge** (ref_notes §0): a seven-row table
     pairing yuan-ti seg:off with DSUN.EXE file offsets (e.g.
-    80F5:1999 = 7A539h, 612E:1359 = 58019h -- the melee resolver,
+    80F5:1999 = 7A539h, 612E:1359 = 58019h (the melee resolver,
     matching our own combat-flow citation) plus the conversion
-    recipe against their `ovl_unpack.py`.
+    recipe against their `ovl_unpack.py`.)
 22. **Cinematics**: ACF 1-8 intro, 9-10 arrival, 11-13 ending; op
     0x7F (9944:1AD7) is the ending's battlefield pan (extends our
     cinematics-ds1 "12-operand scene draw" reading).
@@ -222,7 +222,7 @@ targeted dig before anything was adopted:
    THRI-KREEN (MALE/FEMALE sit right before it as the gender
    array). chargen-flow.md relabeled: our old "mul, kreen-a,
    kreen-b" for races 6/7/8 was wrong, and the UI's
-   "(idx>>1)+1" formula only holds through half-giant -- DS1's
+   "(idx>>1)+1" formula only holds through half-giant: DS1's
    chargen creates seven races and skips halfling, so pairs
    10-13 remap past it.
 2. **charrec +0x3D (footprint vs save descriptor): OUR READING
