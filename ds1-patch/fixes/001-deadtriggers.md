@@ -82,9 +82,11 @@ re-disassembled end to end: all 250 chunks still decode aligned,
 the four repointed registrations name their new handlers, and the
 dead-trigger sweep (gpl-disasm 0.8.0) reports exactly the two
 known GNAME[39] rows as its remaining dead triggers, down from
-six. The shipped EDITS below are those verified bytes at absolute
-`GPLDATA.GFF` offsets; the fingerprints make them refuse to apply
-to any other build.
+six. The shipped repairs are those verified bytes, now addressed
+chunk-relative (kind, chunk id, in-chunk offset; migrated from
+absolute file offsets 2026-11-17, issue #22, same patched bytes,
+hash pinned by the selftest's real-install cycle); the
+fingerprints make them refuse to apply to any other build.
 
 Patched-file hash (records the hash test, patch-workflow 5.1):
 

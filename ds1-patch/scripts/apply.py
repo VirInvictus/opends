@@ -1399,7 +1399,16 @@ def selftest() -> int:
     # itself.)
     gamedir = DEFAULT_PATCH_ROOT.parent / ".games" / "ds1"
     real_files = {"DSUN.EXE", "GPLDATA.GFF"}
-    if all((gamedir / f).is_file() for f in real_files):
+    if os.environ.get("DARKFIX_GFF_CAT") or shutil.which("gff-cat"):
+        real_gff_cat = True
+    else:
+        real_gff_cat = False
+        print(
+            "  SKIP: gff-cat not found; the real-install cycle needs it"
+            " now that 001/002 ride the chunk-relative REPAIRS path"
+            " (build gff-edit or set DARKFIX_GFF_CAT)"
+        )
+    if real_gff_cat and all((gamedir / f).is_file() for f in real_files):
         with tempfile.TemporaryDirectory(prefix="darkfix-real-") as td:
             tmp = Path(td)
             install = tmp / "ds1"

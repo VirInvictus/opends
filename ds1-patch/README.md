@@ -16,9 +16,15 @@ strand), shipped disabled for one day under the old
 one-enabled-fix-per-file rule, then enabled by default when spec 5
 was amended to compose disjoint same-file fixes (v0.1.3;
 [`fixes/002-script-repairs.md`](fixes/002-script-repairs.md)).
-The distribution format and applier were proven in `v0.0.1`. See
-[`../roadmap.md`](../roadmap.md) and `fixes/` for per-fix
-writeups.
+The distribution format and applier were proven in `v0.0.1`.
+v0.1.4 shipped the community-cycle release; v0.2.0-beta.1 added
+six script repairs adopted from Calvin Rodo's yuan-ti
+(`GplRepairs.cs`, MIT) through the static adoption gate, shipped
+disabled and explicitly untested at runtime (runtime QA, issue
+#18, gates the 0.2.0 final); beta.2 migrated the two shipped
+GPLDATA.GFF fixes to chunk-relative addressing, byte-identical
+output. See [`../roadmap.md`](../roadmap.md) and `fixes/` for
+per-fix writeups.
 
 ## Layout
 

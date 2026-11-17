@@ -4,6 +4,27 @@ Released versions appear here, newest first: one heading per
 tagged release or dated batch. A `<tool>-vX.Y.Z` tag's message
 is that release's entry here, verbatim (see `docs/versioning.md`).
 
+## darkfix-ds1 v0.2.0-beta.2 (2026-11-17)
+
+- **`darkfix-ds1` v0.2.0-beta.2**: the shipped GPLDATA.GFF fixes
+  move to chunk-relative addressing (#22). `fix.ds1.deadtriggers`
+  and `fix.ds1.script-repairs` declare chunk-relative REPAIRS now
+  (kind, chunk id, in-chunk offset at GPL 41 @0x1D, 195 @0x2B,
+  203 @0x3FE/0x406, 100 @0x684, 68 @0xAA, 62 @0x10F1) instead of
+  absolute file offsets, riding the same `apply_gpl_repairs` path
+  the beta's detour fixes use. The bytes are identical: the
+  selftest's real-install cycle pins the merged patched hash
+  (`2c851de...`), which the migration must not and does not
+  change: same bytes, new addressing, and that hash is the
+  migration's regression net. Two consequences land with it. The
+  last doc constraint in `patch-workflow.md` 4.2 shrinks: no
+  shipped absolute-offset fix targets GPLDATA.GFF anymore, so
+  only a future one would conflict with the standalone repairs
+  path. And the real-install cycle now needs `gff-cat` on PATH
+  (the REPAIRS path drives it): the selftest skips the cycle with
+  a message when it is missing rather than failing. No new fixes,
+  no enable changes: the beta QA gate (#18) still holds.
+
 ## gpl-asm v0.10.0 (2026-11-17)
 
 - **`gpl-asm` v0.10.0**: movable assembly mode for detour repairs

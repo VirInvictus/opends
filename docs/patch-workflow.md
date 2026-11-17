@@ -147,11 +147,18 @@ convention (index of the label word's first byte inside
 `replace`). The selftest's detour block exercises the math, the
 gff-cat end-to-end on a synthetic GFF (when `gff-cat` is
 available), and the mixed EDITS+REPAIRS composition with verify
-and unapply. One residual rule: the standalone
-`apply_gpl_repairs` path (a fix module calling it directly,
-outside the applier's compose flow) must not share its target
-file with an absolute-offset fix applied afterwards, because a
-grown chunk moves file bytes.
+and unapply. The shipped GPLDATA.GFF fixes are all chunk-relative
+REPAIRS now (001/002 migrated 2026-11-17, issue #22; the merged
+patched hash is unchanged, pinned by the selftest's real-install
+cycle), so the file no longer carries any absolute-offset fix.
+The residual rule for the standalone `apply_gpl_repairs` path (a
+fix module calling it directly, outside the applier's compose
+flow) keeps one clause: it must not share its target file with a
+future absolute-offset fix applied afterwards, because a grown
+chunk moves file bytes. Note the runtime dependency this
+migration introduced: the REPAIRS path drives `gff-cat`
+(build `gff-edit`, or set `DARKFIX_GFF_CAT`); without it the
+selftest skips the real-install cycle rather than failing it.
 
 ## 5. Test the fix
 
