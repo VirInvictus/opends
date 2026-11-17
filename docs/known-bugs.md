@@ -461,10 +461,16 @@ below are yuan-ti's `engine/src/DarkSun.Game/Scripting/GplRepairs.cs`.
    greets the party as if he were about, and Dinos still warns of
    him. Six detour repairs (GPL 136 @0x130, GPL 139 @0x218, GPL 141
    @0x6B4/0x70B/0x766/0xF29) gate each line on
-   `RANGE(gname[5], name(-326)) < 999` and substitute replacement
-   dialog when he is gone. NOTE: these invent new game dialog text;
-   adopting them crosses our no-invented-behavior line deliberately
-   (decision recorded 2026-11-13). NEW DISCOVERY.
+   `RANGE(GNAME[37], NAME(-326)) < 999` and substitute replacement
+   dialog when he is gone (AUTHORED 2026-11-17 as
+   `fix.ds1.legcrusher-gone`, disabled pending runtime QA, issue
+   #20; correction on the record: yuan-ti's source reads
+   `gname[5]`, which never appears in the shipped corpus -- the
+   engine's own alive-checks use GNAME[37], the active-member
+   register with 367 get-range uses, so our assembly reads that).
+   NOTE: these invent new game dialog text; adopting them crosses
+   our no-invented-behavior line deliberately (decision recorded
+   2026-11-13). NEW DISCOVERY.
 5. **Serf follow range (Fields of Draj)**: our triage 3.2(1a)
    concluded no same-length edit exists for the persistent-guard
    approach; Calvin's fix is a different design, a one-byte
@@ -484,15 +490,21 @@ below are yuan-ti's `engine/src/DarkSun.Game/Scripting/GplRepairs.cs`.
    `gflag[695] == 0` via a detour at GPL 204 @0x5C9. The re-ask half
    of that bug (the GPL-204 router at 0xb2/0xd2 never consulting
    GF695) is still unimplemented by either project.
-8. **The Trustee in the slave pens can stop for good** (queued,
-   not yet traced by us): his two scripted pauses take their
-   corner from numbers other pen scripts change, so he can set
-   off for a spot that does not exist and stay busy ("I'd love to
-   talk more...") for good. Relayed from the Obsidian Edition's
-   findings via yuan-ti (see
+8. **The Trustee in the slave pens can stop for good**
+   (VERIFIED + AUTHORED 2026-11-17 as `fix.ds1.trustee-rounds`,
+   disabled pending runtime QA, issue #23): the trace confirms the
+   relayed mechanism -- GPL 137's knock-fight path (@0x1740)
+   subtracts 2 from the rounds state `GNUM[20]` unguarded, driving
+   it negative from states 0 or 1; a negative state matches no
+   corner arm in GPL 8's rounds switch, so on a fresh load (locals
+   zeroed) the Trustee walks toward tile (0,0), never arrives,
+   never advances, and the busy flag (cleared only by GPL 8's
+   state-0 arm @0xedc) never lifts. The fix guards the writer:
+   below 2, the knock clamps the state to 0. Trace record:
+   [`../ds1-patch/fixes/010-trustee-rounds.md`](../ds1-patch/fixes/010-trustee-rounds.md).
+   Relayed from the Obsidian Edition's findings via yuan-ti (see
    [community-crossread-2026-11-13.md](community-crossread-2026-11-13.md)
-   §1); a GPL-script bug in our lane, needing our own trace of
-   the rounds before it becomes a fix candidate.
+   §1).
 
 
 ## 4. SSI patch lineage

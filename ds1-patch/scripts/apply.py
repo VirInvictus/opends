@@ -1434,6 +1434,8 @@ def selftest() -> int:
                     for f in real_files
                 ),
             )
+    elif not real_gff_cat:
+        pass  # the gff-cat SKIP above already explained this cycle
     else:
         print(
             "  SKIP: .games/ds1/ install files not present;"

@@ -440,11 +440,15 @@ def _extract_chunk(source: Path, kind: str, chunk_id: int, gff_cat: str) -> byte
 def apply_gpl_repairs(
     source_path: Path,
     dest_path: Path,
-    repairs: list[GplRepair],
+    repairs: list[GplRepair | dict],
     *,
     gff_cat: str | None = None,
 ) -> Path:
     """Apply GplRepairs to their chunks, writing the modified GFF.
+
+    Dict forms are coerced through [`GplRepair.from_dict`], so a fix
+    module's standalone ``apply`` can pass its raw REPAIRS list
+    exactly as the applier's compose flow does.
 
     All chunks are extracted and every fingerprint verified before
     the first write; chunks are then replaced in one pass through
@@ -455,8 +459,11 @@ def apply_gpl_repairs(
     its sites are file offsets and a grown chunk moves file bytes.
     """
     binary = _gff_cat(gff_cat)
+    coerced = [
+        r if isinstance(r, GplRepair) else GplRepair.from_dict(r) for r in repairs
+    ]
     grouped: dict[tuple[str, int], list[GplRepair]] = {}
-    for repair in repairs:
+    for repair in coerced:
         grouped.setdefault((repair.kind, repair.chunk_id), []).append(repair)
 
     # Read + compute everything first: a fingerprint mismatch in any

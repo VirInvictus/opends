@@ -85,3 +85,25 @@ enabled = false
 id = "fix.ds1.mindhome-award"
 path = "fixes/008-mindhome-award.py"
 enabled = false
+
+# ---- 0.2.0-beta.3: the first source-authored detour fix -------------
+# The Legcrusher dialog guards (issue #20; discovery Calvin Rodo /
+# yuan-ti, MIT). Detour sources are ours (gpl-asm 0.10.0 movable
+# assembly); replacement lines are Calvin's, invented dialog by the
+# recorded 2026-11-13 decision (known-bugs.md 3.6 row 4). Disabled:
+# runtime QA (#18) gates every beta fix; the GNAME register
+# correction (yuan-ti's gname[5] -> the engine's GNAME[37]) is
+# documented in fixes/009-legcrusher-gone.md.
+[[fixes]]
+id = "fix.ds1.legcrusher-gone"
+path = "fixes/009-legcrusher-gone.py"
+enabled = false
+
+# ---- 0.2.0-beta.3: the Trustee rounds guard -------------------------
+# issue #23: the relayed stall verified by our own trace; the knock
+# path's unguarded -= 2 is the invalid-state producer. Disabled
+# pending runtime QA (#18), like every beta fix.
+[[fixes]]
+id = "fix.ds1.trustee-rounds"
+path = "fixes/010-trustee-rounds.py"
+enabled = false

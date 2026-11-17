@@ -4,6 +4,37 @@ Released versions appear here, newest first: one heading per
 tagged release or dated batch. A `<tool>-vX.Y.Z` tag's message
 is that release's entry here, verbatim (see `docs/versioning.md`).
 
+## darkfix-ds1 v0.2.0-beta.3 (2026-11-17)
+
+- **`darkfix-ds1` v0.2.0-beta.3**: two new script fixes, both
+  disabled pending runtime QA (#18). **`fix.ds1.legcrusher-gone`**
+  (#20): the slave pens' six Legcrusher lines (Kurzak's call,
+  three greetings, the half-giant answer, Dinos's warning) gain
+  detour guards on `RANGE(GNAME[37], NAME(-326)) < 999`, playing
+  Calvin Rodo's replacement lines once the party has killed him
+  (discovery: yuan-ti, MIT; invented dialog by the recorded
+  2026-11-13 decision). One correction on the record: yuan-ti's
+  source reads `gname[5]`, which never appears in the shipped
+  corpus; our assembly reads GNAME[37], the active-member register
+  every in-chunk alive-check uses (367 get-range uses; GPL 139
+  @0x275 is the model). Authored with gpl-asm 0.10.0's movable
+  assembly; every expect fingerprint verified against the
+  canonical chunk bytes, every label word read back from the
+  encoded bytes, all three patched chunks reassemble
+  byte-identically. **`fix.ds1.trustee-rounds`** (#23): the
+  relayed Trustee stall, verified by our own trace. GPL 137's
+  knock-fight path subtracts 2 from the rounds state GNUM[20]
+  unguarded; a negative state matches no corner arm in GPL 8's
+  rounds switch, so on a fresh load the Trustee walks toward tile
+  (0,0), never arrives, and the busy flag never lifts ("I'd love
+  to talk more, but I have to get back to work", forever). The fix
+  guards the writer: below 2, the knock clamps the state to 0.
+  Also landed here: `apply_gpl_repairs` now coerces dict repairs
+  through `GplRepair.from_dict`, fixing the standalone-apply path
+  of every REPAIRS-form fix module (003-008 shipped with the same
+  latent break; the applier's compose flow was unaffected, which
+  is why the selftest never saw it).
+
 ## darkfix-ds1 v0.2.0-beta.2 (2026-11-17)
 
 - **`darkfix-ds1` v0.2.0-beta.2**: the shipped GPLDATA.GFF fixes
