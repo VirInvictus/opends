@@ -74,6 +74,42 @@ is that release's entry here, verbatim (see `docs/versioning.md`).
   source-authored detour fixes this enables. Design record in
   `docs/detour-repairs.md` section 3.
 
+## gpl-disasm v0.9.1 / gpl-asm v0.10.1 / gpl-text v0.1.0 (2026-11-17)
+
+- **`gpl-disasm` v0.9.1**: the uncompressed (0x02) string form now
+  decodes. gpl-vm.md documented the shape from the 2026-09-19
+  interpreter read (each payload byte stores the character rotated
+  right 2, terminator = stored 0xC0), and DarkSunTools' codec
+  comment independently corroborated it -- but neither project
+  implemented it. The decoder fails soft past the cap or the chunk
+  end, and the release also adds
+  `parse_string_operand_spans`: the string-span walker the new
+  gpl-text tool consumes, reporting each operand's packed payload
+  offset and length with a per-span self-check, stopping at the
+  first best-effort instruction (whose tail would mislocate
+  edits). No shipped chunk carries a 0x02 string (verified across
+  both games), so the decode path is unit-test-covered only.
+- **`gpl-asm` v0.10.1**: the matching 0x02 pack (char rotated
+  right 2 + 0xC0 terminator), cross-checked in a test that runs
+  gpl-disasm's own decoder over the packed bytes. Also fixes two
+  `EncodeError` field names in the RETVAL encoding paths that a
+  refactor had left wrong (unreachable sites; caught by the new
+  arm's compile).
+- **`gpl-text` v0.1.0**: new tool, the fixed-length GPL string
+  editor -- the port of TimQuester's DarkSunTools `GPLDocument`
+  validate/apply layer (Apache-2.0, credited), the survey's top
+  PORT-later item, built now that the text tool it was gated on
+  exists (we built it). `list` reports every editable string
+  operand with its exact packed span; `edit` validates a
+  replacement (same character count -> same packed byte count,
+  7-bit only, no terminator), splices it in place, and writes the
+  GFF. Verified end to end on GPL 141: a one-character edit
+  changed exactly one byte at 0x888b5 with the file size intact
+  and the disassembler reading the new text back. Length changes
+  are refused by design (those are gpl-asm detour territory).
+  Spans stop at the first best-effort instruction (menus), whose
+  tail is reported as a warning rather than silently mislocated.
+
 ## font-extract v0.1.0 (2026-11-17)
 
 - **`font-extract` v0.1.0**: new tool, the FONT chunk codec, the

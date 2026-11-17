@@ -95,6 +95,9 @@ pub const GPL_PASSIVE_FLAG_TAG: u8 = 0x33;
 pub const STRING_INTRODUCE: u8 = 0x01;
 pub const STRING_UNCOMPRESSED: u8 = 0x02;
 pub const STRING_COMPRESSED: u8 = 0x05;
+/// Stored terminator byte of the uncompressed (0x02) string form:
+/// the game's 0x03 rotated right 2.
+pub const STRING_UNCOMPRESSED_TERMINATOR: u8 = 0xC0;
 /// Terminator byte inside a 7-bit packed string stream.
 pub const STRING_TERMINATOR: u8 = 0x03;
 
@@ -2057,11 +2060,10 @@ fn read_text(bytes: &[u8], cursor: usize) -> Option<(StringSubType, String, usiz
             "<active_character_name>".to_string(),
             1,
         )),
-        STRING_UNCOMPRESSED => Some((
-            StringSubType::Uncompressed,
-            "<uncompressed; decoder not implemented>".to_string(),
-            1,
-        )),
+        STRING_UNCOMPRESSED => {
+            let (s, consumed) = decode_uncompressed(bytes, after_marker)?;
+            Some((StringSubType::Uncompressed, s, 1 + consumed))
+        }
         STRING_COMPRESSED => {
             let (s, consumed) = decode_compressed(bytes, after_marker)?;
             Some((StringSubType::Compressed, s, 1 + consumed))
@@ -2109,6 +2111,99 @@ fn decode_compressed(bytes: &[u8], cursor: usize) -> Option<(String, usize)> {
     }
     // Ran off the end of the chunk without seeing 0x03. Soft-fail.
     None
+}
+
+/// The uncompressed GPL string form (sub-type 0x02). Documented in
+/// `gpl-vm.md` from the 2026-09-19 interpreter read: each payload
+/// byte stores the character ROTATED RIGHT 2 bits, the terminator
+/// is the stored byte 0xC0 (= 0x03 ror 2), and the next instruction
+/// starts right after it. Decode walks the payload rotating each
+/// byte left 2 until the terminator; fails soft past the cap or the
+/// chunk end. No shipped chunk carries one (verified 2026-11-17,
+/// both games), so this path is unit-test-covered only.
+fn decode_uncompressed(bytes: &[u8], cursor: usize) -> Option<(String, usize)> {
+    let mut chars: Vec<u8> = Vec::with_capacity(64);
+    let mut i = cursor;
+    while chars.len() < MAX_PACKED_STRING_LEN && i < bytes.len() {
+        let stored = bytes[i];
+        i += 1;
+        if stored == STRING_UNCOMPRESSED_TERMINATOR {
+            return Some((string_from_lossy(&chars), i - cursor));
+        }
+        chars.push(stored.rotate_left(2));
+    }
+    None
+}
+
+/// Walk a chunk and report every string operand's payload span:
+/// `(running index, payload byte offset, packed payload length,
+/// sub-type, decoded text)`. Spans are reported only while the
+/// linear walk is trustworthy: a best-effort instruction consumes
+/// just its opcode byte and may misalign everything after it, so
+/// the walk stops there and returns the reason. Each span is
+/// self-checked by re-decoding the payload at the reported offset.
+/// One reported string span: (running index, payload byte
+/// offset, packed payload length, sub-type, decoded text).
+pub type StringSpanTuple = (usize, usize, usize, StringSubType, String);
+
+pub fn parse_string_operand_spans(chunk: &[u8]) -> (Vec<StringSpanTuple>, Option<String>) {
+    let result = disassemble(chunk);
+    let mut spans = Vec::new();
+    let mut index = 0usize;
+    for instr in &result.instructions {
+        if instr.best_effort {
+            return (
+                spans,
+                Some(format!(
+                    "instruction at offset {:#x} (opcode {:#04x}) is best-effort; string spans after it are unreliable",
+                    instr.offset, instr.opcode
+                )),
+            );
+        }
+        for param in &instr.params {
+            for tok in param {
+                if let Expression::ImmediateString { sub_type, value } = tok {
+                    let chars = value.chars().count();
+                    let payload_len = match sub_type {
+                        StringSubType::Compressed => ((chars + 1) * 7).div_ceil(8),
+                        StringSubType::Uncompressed => chars + 1,
+                        StringSubType::Introduce => 0,
+                    };
+                    if payload_len == 0 {
+                        spans.push((
+                            index,
+                            instr.offset + instr.length,
+                            0,
+                            *sub_type,
+                            value.clone(),
+                        ));
+                        index += 1;
+                        continue;
+                    }
+                    let payload_offset = instr.offset + instr.length - payload_len;
+                    // Self-check: the bytes at the computed span must
+                    // decode back to the listed text.
+                    let check = read_text(chunk, payload_offset - 1);
+                    match check {
+                        Some((st, text, consumed))
+                            if st == *sub_type && text == *value && consumed == payload_len + 1 => {
+                        }
+                        _ => {
+                            return (
+                                spans,
+                                Some(format!(
+                                    "string span self-check failed at offset {payload_offset:#x}; spans after it are unreliable"
+                                )),
+                            );
+                        }
+                    }
+                    spans.push((index, payload_offset, payload_len, *sub_type, value.clone()));
+                    index += 1;
+                }
+            }
+        }
+    }
+    (spans, None)
 }
 
 fn string_from_lossy(bytes: &[u8]) -> String {
@@ -3481,6 +3576,23 @@ mod tests {
         assert_eq!(sub, StringSubType::Compressed);
         assert_eq!(s.as_bytes(), &[0x09]);
         assert_eq!(consumed, 3);
+    }
+
+    #[test]
+    fn read_text_uncompressed_decodes_ror2_payload() {
+        // gpl-vm.md: stored = char ror 2, terminator = stored 0xC0.
+        // "Hi": H=0x48 -> 0x12, i=0x69 -> 0x5A, then 0xC0.
+        let buf = vec![STRING_UNCOMPRESSED, 0x12, 0x5A, 0xC0];
+        let (sub, s, consumed) = read_text(&buf, 0).unwrap();
+        assert_eq!(sub, StringSubType::Uncompressed);
+        assert_eq!(s, "Hi");
+        assert_eq!(consumed, 4);
+    }
+
+    #[test]
+    fn read_text_uncompressed_fails_without_terminator() {
+        let buf = vec![STRING_UNCOMPRESSED, 0x12, 0x5A];
+        assert!(read_text(&buf, 0).is_none());
     }
 
     #[test]

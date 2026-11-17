@@ -182,7 +182,7 @@ dependencies = [
 
 [[package]]
 name = "gpl-asm"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -196,7 +196,7 @@ dependencies = [
 
 [[package]]
 name = "gpl-disasm"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -205,6 +205,17 @@ dependencies = [
  "serde_json",
  "thiserror",
  "toml",
+]
+
+[[package]]
+name = "gpl-text"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "gff-edit",
+ "gpl-disasm",
+ "thiserror",
 ]
 
 [[package]]

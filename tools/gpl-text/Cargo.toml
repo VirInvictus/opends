@@ -1,0 +1,23 @@
+[package]
+name = "gpl-text"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Fixed-length GPL string editing: list, validate, and splice string operands in place."
+
+[dependencies]
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+clap = { workspace = true }
+gff-edit = { path = "../gff-edit" }
+gpl-disasm = { path = "../gpl-disasm" }
+
+[[bin]]
+name = "gpl-text"
+path = "src/main.rs"
+
+[lib]
+name = "gpl_text"
+path = "src/lib.rs"

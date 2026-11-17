@@ -523,11 +523,22 @@ fn encode_string_payload(
             out.push(STRING_INTRODUCE);
         }
         StringSubType::Uncompressed => {
-            // The decoder emits a placeholder string for this case
-            // (`<uncompressed; decoder not implemented>`), so we can
-            // only safely write the marker byte. The corpus has zero
-            // occurrences.
+            // Inverse of gpl-disasm's decode_uncompressed (gpl-vm.md:
+            // stored = char rotated right 2, 0xC0 terminator). No
+            // shipped chunk carries the form; the round trip is
+            // unit-test-covered on both sides.
             out.push(STRING_UNCOMPRESSED);
+            for c in value.chars() {
+                let b = c as u32;
+                if b > 0x7F || b == UNCOMPRESSED_TERMINATOR as u32 {
+                    return Err(EncodeError::NonAsciiString {
+                        offset,
+                        value: value.to_string(),
+                    });
+                }
+                out.push((b as u8).rotate_right(2));
+            }
+            out.push(UNCOMPRESSED_TERMINATOR);
         }
         StringSubType::Compressed => {
             out.push(STRING_COMPRESSED);
@@ -551,6 +562,10 @@ fn encode_string_payload(
 /// bytes < 0x80 (the decoder can never produce one), so packing
 /// `value.bytes() & 0x7F` would emit wrong symbols with no error.
 /// The corpus is pure ASCII; hand-authored strings must be too.
+/// Stored terminator byte of the uncompressed (0x02) string form
+/// (the game's 0x03 rotated right 2; mirrors gpl-disasm's constant).
+const UNCOMPRESSED_TERMINATOR: u8 = 0xC0;
+
 pub fn pack_compressed_string(out: &mut Vec<u8>, offset: usize, value: &str) -> Result<()> {
     if !value.is_ascii() {
         return Err(EncodeError::NonAsciiString {
@@ -751,6 +766,29 @@ mod tests {
                 assert_eq!(vk.to_tag(), tag);
             }
         }
+    }
+
+    #[test]
+    fn uncompressed_string_pack_matches_disasm_decode() {
+        // The 0x02 form: marker + char ror 2 + 0xC0 terminator, then
+        // decoded back by gpl-disasm's read_string_at.
+        use gpl_disasm::{StringSubType, read_string_at};
+        let mut out = Vec::new();
+        encode_expression(
+            &mut out,
+            0,
+            &Expression::ImmediateString {
+                sub_type: StringSubType::Uncompressed,
+                value: "Hi".to_string(),
+            },
+        )
+        .unwrap();
+        // The operand carries the 0x92 string dispatch byte first.
+        assert_eq!(out, vec![0x92, STRING_UNCOMPRESSED, 0x12, 0x5A, 0xC0]);
+        let (sub, s, consumed) = read_string_at(&out, 1).unwrap();
+        assert_eq!(sub, StringSubType::Uncompressed);
+        assert_eq!(s, "Hi");
+        assert_eq!(consumed, 4);
     }
 
     #[test]

@@ -4,6 +4,7 @@ members = [
     "tools/gff-edit",
     "tools/gpl-asm",
     "tools/gpl-disasm",
+    "tools/gpl-text",
     "tools/image-extract",
     "tools/opends",
     "tools/ovr-carve",
