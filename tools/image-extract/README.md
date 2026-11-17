@@ -20,7 +20,12 @@ The companion binary reads a palette-indexed 8-bit PNG and
 writes a DS1 RLE-encoded bitmap chunk. The chunk
 format is universal across `BMP `, `PORT`, `ICON`, `BMAP`,
 `OMAP`, `TILE`; the engine reads PLNR and PLAN too, so DS1 RLE
-output works for any of them.
+output works for any of them. Dimensions above the format's
+own limits are refused with a named error, not silently
+corrupted: DS1 RLE row numbers are a u8 with 0xFF reserved as
+the frame terminator (so height <= 255) and span columns are
+9-bit (so width <= 512); the decoder likewise rejects PLNR
+frames whose `bits_per_symbol` is outside 1..=8.
 
 ```sh
 # Extract a sprite for editing.

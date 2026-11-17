@@ -638,6 +638,24 @@ pub fn encode_bitmap_rle(frames: &[Frame]) -> Result<Vec<u8>> {
                 kind: "STRP".to_string(),
             });
         }
+        // DS1 RLE row numbers are u8 and 0xFF is the reserved frame
+        // terminator: a height of 256 would emit row 255 as 0xFF and
+        // silently truncate the frame at the row before last, and
+        // anything taller wraps modulo 256, duplicating row headers.
+        // Span columns are 9-bit (0..=511 via the startx high flag),
+        // so a wider row wraps columns onto earlier ones.
+        if f.height > 255 {
+            return Err(ImageError::UnsupportedFrameType {
+                frame: i,
+                kind: format!("DS1 RLE height {} exceeds maximum supported 255", f.height),
+            });
+        }
+        if f.width > 512 {
+            return Err(ImageError::UnsupportedFrameType {
+                frame: i,
+                kind: format!("DS1 RLE width {} exceeds maximum supported 512", f.width),
+            });
+        }
     }
 
     let frame_count = frames.len() as u16;
@@ -686,6 +704,19 @@ fn decode_plnr(bytes: &[u8], frame_offset: usize, width: u16, height: u16) -> Re
         });
     }
     let bits_per_symbol = bytes[frame_offset + 9] as usize;
+    // Parity with decode_plan's guard: this is a u8 read from
+    // possibly-corrupted input, and `1usize << bits_per_symbol` below
+    // panics for widths >= 64 before the dictionary bounds check can
+    // reject the frame (widths 32..=63 overflow the chomper's u32
+    // shifts instead). The corpus only ever ships 4..=7
+    // (1974/1245/496/175 frames across both games), so anything else
+    // is corruption.
+    if bits_per_symbol == 0 || bits_per_symbol > 8 {
+        return Err(ImageError::UnsupportedFrameType {
+            frame: frame_offset,
+            kind: format!("PLNR with bits_per_symbol={bits_per_symbol}"),
+        });
+    }
     let dict_size = 1usize << bits_per_symbol;
     let dict_start = frame_offset + 10;
     if dict_start + dict_size > bytes.len() {
