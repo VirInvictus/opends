@@ -2566,3 +2566,58 @@ review in the workspace audit repo
   the gpl-asm round-trip, so the DS2 decode brief applies. When
   the first port lands, flip the CREDITS.md DarkSunTools section
   framing from facts-only to licensed adoption.
+
+### The release campaign (2026-11-17; issues #18-#32)
+
+The issue queue drove the day: eight releases across six tools and
+the patch, every resolvable issue closed, and the two contributor
+threads (#13, #14) kept open per the standing rule. All green CI on
+every release commit; tags carry their patchnotes entries verbatim;
+contributor releases carry @mentions.
+
+- **Tool hardening (five patch releases)**: image-extract 0.5.1
+  (PLNR symbol-width + RLE dimension bounds), gpl-asm 0.9.3
+  (Immediate14 enforced 15-bit at parse/edit/encode), ovr-carve
+  0.1.1 (relocation word-boundary check), save-inspect 0.9.7
+  (spec-compliant empty free list in write_gff), audio-extract 0.1.1
+  (stereo type-8 VOC rate + the type-1 defers-to-extended fix; no
+  shipped block 8, latent-correctness). Issues #27-#32.
+- **gpl-disasm 0.9.0**: the first licensed code port (DarkSunTools'
+  GplStringCodec, Apache-2.0, corpus cross-check: 44,851 candidates
+  agree), the REQUEST-code catalogue from yuan-ti (20 named codes;
+  the "117" figure in CREDITS.md corrected), and BITSNOOP resolved
+  as a bitmask-inclusion test with handler evidence (issue #25).
+  The DarkSunTools CREDITS section flipped to licensed adoption.
+- **gpl-asm 0.10.0**: movable assembly mode (issue #19),
+  `assemble_movable(source, base)`, the enabler for source-authored
+  detour fixes.
+- **darkfix-ds1 0.2.0-beta.2**: the two shipped GPLDATA.GFF fixes
+  migrated to chunk-relative REPAIRS, byte-identical output (the
+  pinned merged hash held; issue #22). Also fixed en route:
+  `apply_gpl_repairs` coerces dict repairs, repairing the
+  standalone-apply path of every REPAIRS-form fix module (003-008
+  shipped with the same latent break).
+- **darkfix-ds1 0.2.0-beta.3**: two new disabled fixes authored
+  with the movable mode. `fix.ds1.legcrusher-gone` (#20, Calvin's
+  discovery; our assembly with the notation note -- gname[5] and
+  GNAME[37] are the same register) and `fix.ds1.trustee-rounds`
+  (#23, the relayed stall verified by our own trace: GPL 137's
+  knock path subtracts 2 from GNUM[20] unguarded; below 2 the fix
+  clamps to 0). The QA packet covers both (sites L, R).
+- **docs**: `docs/gff-data-reference.md` lands the 0x8000 keyword
+  identity table (issue #26; the notation bridge resolved the
+  gname display conventions across three projects), and
+  known-bugs.md 3.7 lands the Obsidian relay verification (issue
+  #24): nine rows confirmed with bytes, one corrected in an
+  unexpected direction (Share Strength's end removes nothing), one
+  refuted (Hold Undead's restriction exists), two UI rows left
+  with named dig targets, plus the Cure Critical text-vs-handler
+  gap.
+
+Still open: #18 (runtime QA gates every beta fix and 0.2.0 final;
+community lane), #21 (held by its recorded author-after-QA gate),
+and the contributor threads. The next dig targets on record: the
+roster DELETE handler (string clusters at DSUN.EXE 0x4A4C9+ /
+0x48CF1+), the thief-skill sheet renderer (no display string
+exists), and the engine's keyword-resolution shape (mask-and-index
+predicted).
