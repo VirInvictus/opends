@@ -226,11 +226,13 @@ Known chest contents (container-contents-ds1, exact):
 ### 1.7 The gear ledger (every major item: source, and when)
 
 Source types: **drop** = creature kill (creature-inventories-ds1),
-**shop** = merchant stock (the RGNFF/Limbo placement block plus
-merchant creatures; the walkthrough confirms the Draj merchant's
-stock), **chest** = container-contents-ds1, **ground** = world-dump
-placement (regions are unnamed in the data; the RGN id is given),
-**quest** = walkthrough reward. Stats from item-catalogue-ds1.
+**pool** = the RGNFF/Limbo placement block (region 255): the engine's
+item pool; the item exists in the data and reaches the player through
+shop or quest stock whose exact delivery path the static data does not
+name (walkthrough-attested where noted), **chest** =
+container-contents-ds1, **ground** = world-dump placement in a playable
+region (regions are unnamed; the RGN id is given), **quest** =
+walkthrough reward. Stats from item-catalogue-ds1.
 
 Weapons:
 
@@ -238,27 +240,27 @@ Weapons:
 |---|---|---|---|
 | Long Sword, metal (1014) | 1d8 | drops: Uskuye, Elven Leader, Elite Guards (the War), Weapon Merchant, Village Hero | first chances from the slaver arc (P11); the War is the big metal harvest |
 | Bloodwrath (1576) | 1d8 | Templar drop | Templar camps (P11) |
-| Hornblade (2270) | 1d8 | Kalinin drop | (drop; area unnamed in the data) |
-| Polearm (2271) | 2d4 | shop | whenever a merchant stocks it |
+| Hornblade (2270) | 1d8 | pooled NPC Kalinin (RGNFF) |
+| Polearm (2271) | 2d4 | pool (RGNFF) | whenever a merchant stocks it |
 | Dag's Dagger (30005) | 1d4; **the +3 CON item** (known-bugs 3.3.4) | Dagolar drop | **P4** |
-| Dagolar's Wand (31006) | 75 charges | Draj shop (walkthrough) + shop placements | **P6** |
+| Dagolar's Wand (31006) | 75 charges | Draj shop (walkthrough) + pool placements | **P6** |
 | Blackmace (30006) | 1d6+1, 11 charges; Shocking Grasp effect (walkthrough) | Shadow King drop | **P20** (Korbnor) |
 | Balk's Staff (30004) | 1d6+1 | Balkazar drop | **P18** (Wyrm School) |
-| Draketooth (30002) | 1d8+1, 3 charges | ground (RGN0D) + shop | **P18** (Wyrm School) |
+| Draketooth (30002) | 1d8+1, 3 charges | ground (RGN0D) + pool (RGNFF) | **P18** (Wyrm School) |
 | Terror Blade (2041) | 1d4 poison blade | walkthrough, Wyrm School | **P18** |
 | Dark Flame (30000) | 1d8 | chest 1360, Lower Castle | **P16** |
-| El's Drinker (30001) | 1d8 | shop | wish-duplicate candidate |
-| Swiftbite (2641) | 1d8 | shop | (the Teaquetzl chest of the same name is a different object) |
+| El's Drinker (30001) | 1d8 | pool (RGNFF) | wish-duplicate candidate |
+| Swiftbite (2641) | 1d8 | pool (RGNFF) | (the Teaquetzl chest of the same name is a different object) |
 | Great Axe, +3 two-handed (1018) | 1d10 | Cragg's reward; Army Commander drop | **P20**; **P21** |
-| Torch (2605) | 1d8 | shop | (a torch that fights) |
-| Phrain's Bow (30007) | 1d8 bow | shop | |
+| Torch (2605) | 1d8 | pool (RGNFF) | (a torch that fights) |
+| Phrain's Bow (30007) | 1d8 bow | pool (RGNFF) | |
 | Seeker (1604) | 1d8 bow | Kel drop | |
 | Mace (2642) | 1d6+1 | weapon rack (container doc, owner 2252) | |
 | Quicksilver Glove (30021) | 1d6+2, Detonate on hit (walkthrough) | genie war-aid wish | **P20** |
 | Iron Necklace (31012) | 12 charges | Hermit drop | **P15** (Lava Rifts; QA D4 watches for a duplicate) |
-| Wand of Missiles (31007) | 50 charges | chest 1526 + shop | |
+| Wand of Missiles (31007) | 50 charges | chest 1526 + pool (RGNFF) | |
 | Wildwynd Wand (1417) | | bag 1570 | |
-| Wand of Metal Detection (30120) | 25 charges | shop | its use is broken by bodies vanishing on map reload (known-bugs 3.4) |
+| Wand of Metal Detection (30120) | 25 charges | pool (RGNFF) | its use is broken by bodies vanishing on map reload (known-bugs 3.4) |
 
 Armor and accessories:
 
@@ -267,27 +269,27 @@ Armor and accessories:
 | Drake Armor (30013) | AC+1 | Wyvern Master drop | **P19** (Darkhold; the D1 scene) |
 | Shimmer Armor (30014) | AC+1 | Dakaren drop | |
 | Grey's Scale, arm + leg (2518/2531) | AC+2 each | Arant drop | |
-| Tanelyv's set (2004/1362/1363) | chest AC+4; arm/leg AC+2/AC+1 | (not in the mined data: quest-linked) | |
+| Tanelyv's set (2004/1362/1363) | chest AC+4; arm/leg AC+2/AC+1 | pool (RGNFF: chest 2004 + arm/leg 1362/1363) | |
 | Drake Shield (30016) | AC+2 | Templar drop | P11 arc |
-| El's Shield (30015) | AC+1 | shop | |
+| El's Shield (30015) | AC+1 | pool (RGNFF) | |
 | Belt of Might (30017) | 24 charges | ground (RGN0D) | |
 | Helm of Contemplation (30019) | | Warren Chief drop + Draj shop (walkthrough) | **P6** |
 | Chameleon Gloves (30020) | 1d2 weapon | Draj merchant stock (Mikquetzl) | **P6** |
 | Living Cloak (30022) | | Dagolar drop | **P4** |
-| Wind Ring (30011) | | Wyvern Master drop + shop | **P19** |
+| Wind Ring (30011) | | Wyvern Master drop + pool (RGNFF) | **P19** |
 | El's Ring (30012) | 3 charges | ground (RGN0F; pickup row handled by GPL-129) | |
-| Steadfast Ring (30009) / Ring of Insight (30010) | 3 / 2 charges | shop | |
-| Storm Ring (31010) | 50 charges | shop | |
+| Steadfast Ring (30009) / Ring of Insight (30010) | 3 / 2 charges | pool (RGNFF) | |
+| Storm Ring (31010) | 50 charges | pool (RGNFF) | |
 | Light of Dawn (30008) | | ground (RGN0D) | |
-| Golden Torque (30052) | | shop | |
+| Golden Torque (30052) | | pool (RGNFF) | |
 | Golden Pendant (30035) | | chest 1208 | |
 | Hound Necklace (2019) | quest item, cannot be sold | chests 1522/1526; Keldar drop; kills prisoners on talk (3.2.10) | carry caution |
 | Orb of Knowledge (31014) | | quest item (Korbnor area; sell for 10,000 after the War) | **P20** |
 
 Carry rule reminder: stat-boost gear applies while merely carried;
 re-equip after genie rests (known-bugs 3.3.4). Merchant note: the RGNFF
-(Limbo) placement block holds most of the shop stock above, so check
-merchant inventories first for anything marked "shop"; the walkthrough
+(Limbo) placement block holds most of the pooled stock above, so check
+merchant inventories first for anything marked "pool"; the walkthrough
 names the Draj stock (Chameleon Gloves, Dagolar's Wand, Helm of
 Contemplation) and Notaku at Red Sands as the component seller.
 
