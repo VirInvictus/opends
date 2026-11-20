@@ -142,7 +142,9 @@ Thresholds from chargen-flow §1 (entry k = minimum XP for level k+1):
   character carries exactly one XP bar for the rest of the run.
 - Reactivation: a dual's prior classes come back online as the active
   class's level exceeds theirs (slot 1 fully online at Gladiator 4;
-  slots 3-4 when Druid/Preserver pass 5). Ranger's class code sits in
+  slots 3-4 when Druid/Preserver pass 5). That is the AD&D dual rule
+  as the walkthrough describes it; the engine's exact reactivation
+  trigger is not separately decoded. Ranger's class code sits in
   real_class slot 0 permanently, so the T check sees a ranger whenever
   region 8 is reached regardless of dual progress.
 - 8-8-9 discipline: the LAST class of each chain is the one pushed to
@@ -177,7 +179,7 @@ come from the sphere list if the study window offers them; RESIST FIRE
 (88) rides the druid. The Thief leg does the traps; the Psionicist leg
 trains: CELL ADJUSTMENT (152), BIOFEEDBACK (150), ENHANCED STRENGTH
 (154), ID INSINUATION (165), SYNAPTIC STATIC (171), EGO WHIP (164).
-MIND BLANK is universal at zero cost.
+MIND BLANK is universal at zero cost (walkthrough).
 
 Slot 3 (Druid leg): BLESS (70), CURE LIGHT WOUNDS (72); L2 AID (81),
 BARKSKIN (82), RESIST FIRE (88); L3 REMOVE PARALYSIS (106), CURE
@@ -240,14 +242,14 @@ pass/fail, file it (section 5).
   (walkthrough 02arena).
 - **Do not save during scripted activity** anywhere (known-bugs §3.3.3).
 
-> ## 🔊 QA CHECKPOINT G — Sewer grate (fix.ds1.grate-hack, GPL 137)
+> ## 🔊 QA CHECKPOINT G: Sewer grate (fix.ds1.grate-hack, GPL 137)
 > **Save:** `QA-G-pre` · weapon in hand, open the grate's use menu.
 > **Pass:** "hack the lock off" is offered; a successful hack prints
 > `<name> successfully hacks the lock off with his/her <weapon>. The
 > grate opens.` and the grate opens; attacking it breaks the lock on a
 > Strength-sized roll (sometimes fails). Unpatched: none of the three.
 
-> ## 🔊 QA CHECKPOINT H — Halfling race test (fix.ds1.halfling-race, GPL 31)
+> ## 🔊 QA CHECKPOINT H: Halfling race test (fix.ds1.halfling-race, GPL 31)
 > **Blocked by R10** (no halfling creatable in DS1). File:
 > `H not testable: no halfling creatable in DS1 (chargen skips halfling)`.
 > Decision on record 2026-11-20: report, do not save-edit a race.
@@ -257,12 +259,13 @@ pass/fail, file it (section 5).
 Churr and the Ratpack, the damsel, the temple. Save: `sewers-pre-temple`
 at the entrance; no mid-event saves.
 
-### Phase 3: Escape, then Return to the Slave Pens (walkthrough ch 10)
+### Phase 3: Return to the Slave Pens (walkthrough ch 10)
 
-The return visit is the genocide/loot run (metal armor is the prize) and
-carries two QA sites:
+The walkthrough's order is: sewers first visit -> RETURN to the pens ->
+Dagolar -> escape from the sewers. The return visit is the genocide/
+loot run (metal armor is the prize) and carries two QA sites:
 
-> ## 🔊 QA CHECKPOINT L — Legcrusher gone (fix.ds1.legcrusher-gone; GPL 136/139/141)
+> ## 🔊 QA CHECKPOINT L: Legcrusher gone (fix.ds1.legcrusher-gone; GPL 136/139/141)
 > **Save:** `QA-L-pre` · kill Legcrusher (half-giant trainer, -326),
 > then walk to the arena gate and talk to Kurzak, then to Dinos.
 > **Pass:** after he is dead, Kurzak's call, his three greetings, the
@@ -271,7 +274,7 @@ carries two QA sites:
 > shipped lines play unchanged. The invented dialog is the designed
 > behavior (2026-11-13 decision), not corruption.
 
-> ## 🔊 QA CHECKPOINT R — Trustee rounds (fix.ds1.trustee-rounds; GPL 137 @0x1740 -> GPL 8)
+> ## 🔊 QA CHECKPOINT R: Trustee rounds (fix.ds1.trustee-rounds; GPL 137 @0x1740 -> GPL 8)
 > **Save:** `QA-R-pre` · knock on the pen door and pick the fight path,
 > watch the Trustee work, then talk to him.
 > **Pass:** he keeps moving between his corners and his dialog is not
@@ -280,20 +283,34 @@ carries two QA sites:
 > drives the rounds state negative and he stalls at tile (0,0) on a
 > fresh load.
 
-### Phase 4: Fields of Draj
+### Phase 4: Dagolar (walkthrough ch 11)
+
+The inner sanctum. **Save before the Keldar fight: it can drag in
+Dagolar and ten slimes** (known-bugs §3.2.11). Loot targets from the
+item catalogue: **Dag's Dagger (30005: the +3 CON item excepted from
+the carried-gear buff rule, known-bugs §3.3.4)**, Dagolar's Wand
+(31006, 75 charges), Dagolar's Book (2021). The Big Reveal and rewards
+close the chapter.
+
+### Phase 5: Escape from the Sewers (walkthrough ch 12)
+
+Save: `escaped-fresh` on the surface.
+
+### Phase 6: Fields of Draj
 
 - Shops: fruit are single-cast components: green grapes = Bless, black
   grapes = Cure Blindness/Deafness, corn = Barkskin, pear = Cure Light
   (ids 31017-31031); never eat guavas (poison). Bracelets live here.
 - Old One Eye (point 7): all his dialogue patiently, ask him to
   distract the guards, **stay behind him the whole way**, kill the
-  guards when they leave. Reward: Armor scroll (1400).
+  guards when they leave. Reward: Armor scroll (the qty-1 scroll, item
+  1400; id derived from the qty=spell-id mapping).
 - **MUST: the serf escort.** Point 9: take his proposition; he hands
   over the obelisk gem (deposit it at the obelisk, point 5; similar
   gems appear later, **never sell them**). Return to point 8 and wait
   for him to catch up before leaving through the gate.
 
-> ## 🔊 QA CHECKPOINT S — Draj serf follow (fix.ds1.serf-follow, GPL 60 @0xCD8)
+> ## 🔊 QA CHECKPOINT S: Draj serf follow (fix.ds1.serf-follow, GPL 60 @0xCD8)
 > **Save:** `QA-S-pre` · during the escort, walk more than 14 cells
 > ahead of him, then exit through the region gate.
 > **Pass:** the serf comes along anyway, and the obelisk gem is awarded
@@ -305,44 +322,46 @@ carries two QA sites:
   it mutates inventory state in ways that can mask or fake QA
   observations.
 
-### Phase 5: White Sands
+### Phase 7: White Sands
 
 Laussa & Ssovan, the obelisk. The dead body here carries the
-**Messenger's Scroll (30058)**. Rule: in inventory from pickup until
-after the final battle trigger; never drop it (known-bugs §3.1.1, no
-fix exists). Save: `whitesands-scroll-in-inventory`.
+**Messenger's Scroll (30058)** (known-bugs calls the scroll "game
+start"; the walkthrough's route reaches White Sands after Draj: either
+way the rule below is what matters). Rule: in inventory from pickup
+until after the final battle trigger; never drop it (known-bugs
+§3.1.1, no fix exists). Save: `whitesands-scroll-in-inventory`.
 
-### Phase 6: Teaquetzl
+### Phase 8: Teaquetzl
 
 Chahl, the equipment merchant, the Visionary, the obelisk. **Never
 store anything in the Swiftbite chest**: the alliance rewards later
 spawn into it and can wipe stored items (known-bugs §3.2.8).
 
-### Phase 7: Nazca Lines
+### Phase 9: Nazca Lines
 
 Salt quest, the psionicist Maris. Chest 1066: **A'poss's Heart (30050,
 quest item for Temple Ruins) + Flame Arrow scroll (1403)**.
 
-### Phase 8: Red Sands Plateau
+### Phase 10: Red Sands Plateau
 
 Obelisk; **Notaku, a merchant: sell spell components here, buy dye
 later**; the Master of Mastyrials drops the Mastyrial Sting (1560).
 Save: `redsands-post-obelisk`.
 
-### Phase 9: Wagon Train, Sand Oasis, Elven Slavers
+### Phase 11: Wagon Train, Sand Oasis, Elven Slavers
 
 Wagon Train: **MUST, first allies**. Sand Oasis: Tyrian Butterfly
 Wings (1558), A Dish Served Cold. Elven Slavers: the capture/release
 arc, **MUST, second allies**.
 
-### Phase 10: Elvish Caravan
+### Phase 12: Elvish Caravan
 
 Merchants, obelisk, the ambush, Drisana, Tidzio. **The caravan raid
 here is the precondition for QA site A2 at the end: let it play out.**
 
-### Phase 11: Messenger Route (region 9)
+### Phase 13: Messenger Route (region 9)
 
-> ## 🔊 QA CHECKPOINT M — Region 9 messenger (fix.ds1.messenger-trigger, GPL 58 + MAS 9)
+> ## 🔊 QA CHECKPOINT M: Region 9 messenger (fix.ds1.messenger-trigger, GPL 58 + MAS 9)
 > **Save:** `QA-M-pre` · enter region 9 and stay through the elves'
 > departure; do NOT leave the region.
 > **Pass:** the messenger (-1297) arrives and his scene plays without a
@@ -353,7 +372,7 @@ The messenger fight: kill him first (he summons a Blue Slaad next
 round); his body holds the **Fire Shield scroll (1402)** and Pehtucl's
 note (1,000 XP each for reading it once).
 
-> ## 🔊 QA CHECKPOINT F — Battlefield slave (fix.ds1.slave-follow)
+> ## 🔊 QA CHECKPOINT F: Battlefield slave (fix.ds1.slave-follow)
 > **Save:** `QA-F-pre` · Hototo mistakes the party for Dagger (do not
 > correct him; a female leader poses as the deputy); take custody of
 > the slave, let Hototo walk off (killing the gang freezes the slave:
@@ -365,30 +384,47 @@ Elven Slavers Redux (Metiklt): clifftop slavers are reachable only by
 summons/missiles/Hold Person (walkthrough). Sell components to Notaku
 before teleporting to the caravan.
 
-### Phase 12: Hot Springs, then Gedron
+### Phase 14: Region 8 outskirts: the tracking bodies (QA site T)
+
+The walkthrough never names region 8; the region dump pins the sites
+(looktriggers -1561/-1562 -> GPL 210, the tracking chain, with attack
+rows -71/-92/-94/-95 around them). Route position is unconfirmed: run
+this check the first time the route crosses an outskirts area with
+bodies, and treat the ranger requirement as the real gate.
+
+> ## 🔊 QA CHECKPOINT T: Ranger tracking chain (fix.ds1.tracking, GPL 210)
+> **Save:** `QA-T-pre` · with a ranger (class code 13-16) in the party
+> (slot 3 qualifies from creation), use the tracking interaction at the
+> bodies on region 8's outskirts.
+> **Pass:** the roll can succeed and reads as a roll (roughly
+> score-minus-chance). Unpatched: it never succeeds no matter what
+> (three stacked faults: the item-class read, the class-code bitmask
+> test, and the inverted roll).
+
+### Phase 15: Hot Springs, then Gedron
 
 Hot Springs: copper mining (Metiklt's trick), patrol duty.
 
 Gedron: deliver the extract, then:
 
-> ## 🔊 QA CHECKPOINT D5 — Linara (fix.ds1.script-repairs, GPL-68 @0xaa)
+> ## 🔊 QA CHECKPOINT D5: Linara (fix.ds1.script-repairs, GPL-68 @0xaa)
 > **Save:** `QA-D5-pre` · deliver the extract, then talk to Linara
 > again.
 > **Pass:** her menu opens (unpatched: a one-line dead end at sub 4942)
 > and Jasmine's spellbook topic is discussable.
 
-> ## 🔊 QA CHECKPOINT D4 — Lava Rifts ranger (fix.ds1.script-repairs, GPL-100 @0x684)
+> ## 🔊 QA CHECKPOINT D4: Lava Rifts ranger (fix.ds1.script-repairs, GPL-100 @0x684)
 > **Save:** `QA-D4-pre` · approach the ranger, leave, return, twice.
 > **Pass:** the ranger's own scene plays once, no endless hermit
 > dialog (escape is clicking west), and **no duplicate Iron Necklace
 > (31012)** lands in inventory. The Iron Necklace itself (12 charges)
-  is the must-grab here.
+> is the must-grab here.
 - **Statue Wyrmias in Gedron: kill him outright or let him flee
   cleanly.** Half-striking him (neither kill nor clean escape) breaks
   the final battle; letting him flee properly adds him to it
   (known-bugs §3.1.3).
 
-### Phase 13: Salt Oasis, Cedrilte, Undermountain, Castles
+### Phase 16: Salt Oasis, Cedrilte, Undermountain, Castles
 
 - Salt Oasis; Cedrilte (obelisk, Terror Bloom extract 1554, Uskuye:
   third-alliance material).
@@ -396,13 +432,25 @@ Gedron: deliver the extract, then:
   the prince can body-block the exit and asking him to move may not
   work; soft-lock (known-bugs §3.2.7). The Outcast, the Entity, the
   Queen, the Pact.
+
+> ## 🔊 QA CHECKPOINT W: Rebel Mindhome XP loop (fix.ds1.mindhome-award, GPL 204)
+> **Save:** `QA-W-pre` · complete the spider task, then talk to the
+> leader twice more.
+> **Pass:** the +5000 XP award appears exactly once. Unpatched: every
+> re-talk re-awards (the triage doc's bonus finding: sub 830 adds
+> GNUM16 += 5000 per re-talk once the spiders are dead). The re-ask
+> half of this bug (the router never consulting GF695) is in NO
+> shipped fix: NPCs re-asking the spider quest after completion is
+> expected on this run.
+> Placement note: kibbitz 3.21 covers the Mindhome together with the
+> Undermountain arc; run this check during the Undermountain visit.
+
 - Lower Castle: Serpent Boots; chest 1360 = **Dark Flame (30000)** +
-  gems. The Keldar-fight caution (Dagolar + ten slimes dragging in,
-  §3.2.11) belongs to the Dagolar chapter: save before it.
+  gems.
 - Upper Castle: **MUST, third allies**, the Tara arc, return to
   Cedrilte.
 
-### Phase 14: Temple Ruins, Lava Rift, Gem Fields
+### Phase 17: Temple Ruins, Lava Rift, Gem Fields
 
 - Temple Ruins: Tynan's Heart (30030), Tristram-heart (30031), A'Poss
   (Heart from Nazca), The Lovers.
@@ -412,7 +460,7 @@ Gedron: deliver the extract, then:
 - Charm re-entry caution (§3.2.13): a charmed enemy that triggered a
   battle script can re-trigger it by talking again.
 
-### Phase 15: Silt Sea South/North, Ssurran Ruins, Wyrm chain, Wyrm School
+### Phase 18: Silt Sea South/North, Ssurran Ruins, Wyrm chain, Wyrm School
 
 - Silt Sea: Jasmine (she joins the War). Silt Sea North guards pull
   one-by-one vs going hostile as a group (cosmetic, §3.4).
@@ -425,7 +473,33 @@ Gedron: deliver the extract, then:
 - Wyrm School: **Draketooth (30002, 1d8+1, 3 charges)**, Balkazar,
   **Terror Blade (2041, poison blade)**, Balk's Staff (30004).
 
-### Phase 16: Captured Gladiators, Korbnor
+### Phase 19: The Darkhold (regions 30/31, the endgame dungeon)
+
+The QA packet's D1-D3 sites live here, grounded in the region dump
+(RGN1E carries the 2263/1209/2248 placements and the
+`looktrigger -2248 -> GPL 41@1` row). The walkthrough's chapter names
+for this crawl differ, so find the sites by content:
+
+> ## 🔊 QA CHECKPOINT D1: Darkhold wyvern look (fix.ds1.deadtriggers, GPL-41 entry 1)
+> **Save:** `QA-D1-pre` · approach the wyvern scene's creature (-2248)
+> and LOOK at it.
+> **Pass:** the look text appears. Unpatched: silence (the trigger is
+> dead).
+
+> ## 🔊 QA CHECKPOINT D2: Darkhold portcullis guard (fix.ds1.deadtriggers, GPL-200 @0x33b)
+> **Save:** `QA-D2-pre` · attack the portcullis guard (-255).
+> **Pass:** it fights back. Unpatched: it never registers an attack
+> trigger.
+
+> ## 🔊 QA CHECKPOINT D3: Darkhold queen's chamber (fix.ds1.deadtriggers, GPL-203 @0x389)
+> **Save:** `QA-D3-pre` · LOOK at the chamber creatures (-2263, -1209).
+> **Pass:** look text for each.
+
+Expected residual: the two runtime-variable GNAME[39] rows stay as
+shipped (known-bugs §3.5): if one of those looks still does nothing,
+that is the documented remainder, not a regression.
+
+### Phase 20: Captured Gladiators, Korbnor
 
 War preparations. Korbnor: Cragg's body (reward: the +3 two-handed
 Great Axe, 4,000 XP), the **Genie Bottle (30029)** and its **three
@@ -438,7 +512,7 @@ skipping wave 1). Duplicate-a-weapon second (El's Drinker 30001 or
 Dark Flame 30000; heavy weapons cannot be dual-wielded). Wealth is the
 worst. The bottle dies after the War. Save: `korbnor-pre-wishes`.
 
-### Phase 17: THE WAR (final battle)
+### Phase 21: THE WAR (final battle)
 
 Pre-trigger checklist (all MUST): Messenger's Scroll (30058) in
 inventory; all three alliances formed; the ssurran quest-giver's exit
@@ -450,7 +524,7 @@ to conserve slots, **both Walls of Fire pre-cast before entering
 combat** (furthest wall first; allies will walk into them, leave
 maneuvering room).
 
-> ## 🔊 QA CHECKPOINT D6 — Final battle stage gate (fix.ds1.script-repairs, GPL-62 @4323)
+> ## 🔊 QA CHECKPOINT D6: Final battle stage gate (fix.ds1.script-repairs, GPL-62 @4323)
 > **Save:** `QA-D6-pre` immediately before the War triggers · clear a
 > stage quickly, inside the inter-stage time window.
 > **Pass:** the next stage still starts. Unpatched: the battle strands
@@ -465,9 +539,9 @@ commander's body has the +3 Great Axe and full metal armor. **Loot
 everything before leaving: bodies vanish on map reload** (ground items
 persist). 20,000 XP to the party.
 
-### Phase 18: Epilogue
+### Phase 22: Epilogue
 
-> ## 🔊 QA CHECKPOINT A2 — Alhena at the campfire (fix.ds1.alhena-campfire)
+> ## 🔊 QA CHECKPOINT A2: Alhena at the campfire (fix.ds1.alhena-campfire)
 > **Save:** `QA-A2-pre` · with the caravan raided earlier in the run,
 > after winning the final battle, arrive at the Elvish Caravan
 > campfire.
