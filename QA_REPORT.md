@@ -3,7 +3,10 @@
 The testing environment for darkfix play-through QA (the runtime-QA pass
 over `darkfix-ds1` beta fixes, issue #18, and the DS2 played-save
 confirmations). Written 2026-11-20. Machine-local facts; everything here
-is reproducible on Brandon's laptop and nowhere else.
+is reproducible on Brandon's laptop and nowhere else. The play plan
+itself (party build, route, per-site QA checks, save names, reporting)
+is the companion file
+[`docs/playthrough-qa-guide-2026-11-20.md`](docs/playthrough-qa-guide-2026-11-20.md).
 
 ## Host
 
