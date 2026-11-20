@@ -102,14 +102,25 @@ Thresholds from chargen-flow §1 (entry k = minimum XP for level k+1):
 
 - Creation: single-class starts at level 3 (XP = row entry 2 x100);
   the multiclass slot starts 2/2/2.
-- Duals happen in play at level-up (human-only; gates in R7). Chain
-  order per slot: 1) Preserver -> Thief -> Gladiator; 3) Ranger ->
-  Gladiator -> Druid; 4) Thief -> Gladiator -> Preserver.
-- The walkthrough's slot-1 anchor: Thief leg to ~1,250 XP (level 2 on
-  row 8) before dualing to Gladiator.
-- Slot 3's working milestones: Gladiator 5 (-1 AC, 16,000 XP on the
-  warrior row) and Druid 5 (Raise Dead, 12,500 XP on the druid row,
-  the cheapest L5 in the game). Ranger's class code sits in
+- Duals fire from the level-up window (human-only; gates in R7:
+  current prime >= 15, new prime >= 17, level >= 2). Creation level 3
+  already satisfies level >= 2, so the first dual fires at the FIRST
+  level-up prompt after creation. The exact chain:
+  - Slot 1: Preserver 3 -> Thief at the first prompt; Thief to 2
+    (1,200 XP on row 8); -> Gladiator; Gladiator to 9. Endgame =
+    Preserver 3 / Thief 2 / Gladiator 9 (the walkthrough's Arcturus
+    exactly).
+  - Slot 3: Ranger 3 -> Gladiator at the first prompt; Gladiator to 5
+    (16,000 XP, the -1 AC point); -> Druid; Druid to 9 (Raise Dead
+    lands at Druid 5, 12,500 XP, the cheapest L5 in the game).
+  - Slot 4: Thief 3 -> Gladiator at the first prompt; Gladiator to 5;
+    -> Preserver; Preserver to 9.
+  - Slot 2 never duals: multiclass legs advance from the shared pool.
+- Every dual action lands in the first arena session; after that each
+  character carries exactly one XP bar for the rest of the run.
+- Reactivation: a dual's prior classes come back online as the active
+  class's level exceeds theirs (slot 1 fully online at Gladiator 4;
+  slots 3-4 when Druid/Preserver pass 5). Ranger's class code sits in
   real_class slot 0 permanently, so the T check sees a ranger whenever
   region 8 is reached regardless of dual progress.
 - 8-8-9 discipline: the LAST class of each chain is the one pushed to
