@@ -69,7 +69,7 @@ have drifted and must be reconciled before the run counts.
 |---|---|---|
 | R1 | A ranger (engine class band 13-16) in the party | QA site T (fix.ds1.tracking reads those codes) |
 | R2 | Divine healing incl. Raise Dead: a druid leg (walkthrough: druids get full Cosmos, clerics cap at Cosmos 3; community-sourced, the decoded catalogue has no sphere column) | walkthrough + rules-tables.md |
-| R3 | Preserver arcane coverage (Enlarge, Strength, Haste, Blink, Fireball, 2x Wall of Fire for the War) | walkthrough + spell-catalogue-ds1 |
+| R3 | Preserver arcane coverage (Enlarge, Strength, Haste, Blink, Fireball, 2x Wall of Fire for the War); the L3+ half is delivered by slot 4, since slot 1's Preserver leg freezes at level 3 and tops out at L1/L2 slots | walkthrough + spell-catalogue-ds1 |
 | R4 | One dedicated thief leg (traps/locks; matters again in the DS2 import) | walkthrough |
 | R5 | Gladiator frontline (-1 AC at level 5 per the walkthrough; XP row identical to fighter's) | walkthrough + chargen-flow §1 |
 | R6 | A psionicist leg (Cell Adjustment self-heal, Biofeedback) | walkthrough |
@@ -82,10 +82,10 @@ have drifted and must be reconciled before the run counts.
 
 | Slot | Race/class | Sphere | Covers |
 |---|---|---|---|
-| 1 | Human **Preserver -> dual Thief -> Gladiator** | Metabolics | R3, R4 backup, R5 |
+| 1 | Human **Preserver -> dual Thief -> Gladiator** | Metabolics | R3 (L1/L2 ceiling only), R4 backup, R5 |
 | 2 | Half-elf **Cleric/Psionicist/Thief** (multiclass 2/2/2 start) | Fire | R4 primary, R6, partial R2 |
 | 3 | Human **Ranger -> dual Gladiator -> Water Druid** | Water | **R1**, R2, R5 |
-| 4 | Human **Thief -> dual Gladiator -> Preserver** | Metabolics | R3, R5 |
+| 4 | Human **Thief -> dual Gladiator -> Preserver** | Metabolics | R3 (the L3+ half: Haste, Fireball, Blink, both Walls of Fire), R5 |
 
 All four True Neutral (walkthrough convention; keeps druid and sphere
 choices clean). Legality (chargen-flow §2 masks, decoded): human 0xFF =
@@ -156,16 +156,36 @@ Thresholds from chargen-flow §1 (entry k = minimum XP for level k+1):
 
 ### 1.5 Level-up spell picks (spell ids = SPIN ids, spell-catalogue-ds1)
 
-Slot 1 + 4 (Preserver):
+Slot 4 (Preserver, the progression caster; Thief 3 -> Gladiator 5 ->
+Preserver 9):
 
 - L1: MAGIC MISSILE (9); ENLARGE (6) only if the scroll (item 1413) is
   not yet found; ARMOR comes from the scroll (1400), do not spend a slot.
 - L2: STRENGTH (24); MIRROR IMAGE (20, or scroll 1409).
 - L3: HASTE (30), FIREBALL (28), BLINK (26); LIGHTNING BOLT (33) is
   scroll 1408.
-- L4: WALL OF FIRE (55); STONESKIN via the scroll (1414, priced 400
+- L4: WALL OF FIRE (55) x2; STONESKIN via the scroll (1414, priced 400
   ceramic: grab on sight), MINOR GLOBE via scroll (1407).
-- L5: keep two WALL OF FIRE memorizations reserved for the War.
+- L5: reserve whatever the circle offers; the War plan's two Walls of
+  Fire are both slot 4's casts (the walkthrough's Dubhe runs exactly
+  this: two level-4 slots to two Walls of Fire).
+
+Slot 1 (Preserver FROZEN at level 3: the Preserver -> Thief dual fires
+at the first prompt, this leg never gains another level, and its
+ceiling is L1/L2 slots forever):
+
+- L1: MAGIC MISSILE (9), ENLARGE (6).
+- L2: STRENGTH (24) or MIRROR IMAGE (20, or scroll 1409); ARMOR from
+  the scroll (1400).
+- Nothing above L2 is learnable on this leg, ever. The walkthrough's
+  Arcturus still casts exactly these in WotR (Magic Missile, Color
+  Spray via the scroll, Enlarge, Mirror Image), so the frozen leg
+  remains a small casting resource after the Gladiator leg reactivates.
+
+Division of labor for the War (phase 21): slot 4 owns both Walls of
+Fire, Haste, Fireball and Blink; slot 1 contributes Enlarge, Strength
+and Mirror Image pre-battle and fights as Gladiator 9. Do not count
+slot 1 as a second high-level Preserver.
 
 Slot 2 (Cleric leg, Fire sphere): the Cosmos band only, levels 1-3.
 The walkthrough's rule is that clerics cap at Cosmos 3 (no Cure
@@ -595,11 +615,12 @@ Pre-trigger checklist (all MUST): Messenger's Scroll (30058) in
 inventory; all three alliances formed; the ssurran quest-giver's exit
 played out; Wyrmias handled correctly.
 
-Pre-battle (walkthrough): Strength/Enlarge up, Blink + Haste on the
-preservers, Resist Fire on everyone (your own walls), fruit consumed
-to conserve slots, **both Walls of Fire pre-cast before entering
-combat** (furthest wall first; allies will walk into them, leave
-maneuvering room).
+Pre-battle (walkthrough): Strength/Enlarge up (slot 1's frozen leg and
+the scrolls cover these), Blink + Haste from slot 4 (the only leg with
+L3+ slots), Resist Fire on everyone (your own walls), fruit consumed
+to conserve slots, **both Walls of Fire pre-cast by slot 4 before
+entering combat** (furthest wall first; allies will walk into them,
+leave maneuvering room).
 
 > ## 🔊 QA CHECKPOINT D6: Final battle stage gate (fix.ds1.script-repairs, GPL-62 @4323)
 > **Save:** `QA-D6-pre` immediately before the War triggers · clear a
