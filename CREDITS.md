@@ -85,7 +85,7 @@ comments next to the relevant code.
 | Palette parser (`PAL ` / `CPAL` chunk = 768 bytes = 256 × RGB 6-bit; scaled to 8-bit by `intensity_multiplier = 4`) | `dsoageofheroes/libgff` `src/gpl/image.c` `gff_palettes_read_type` | MIT |
 | Bitmap chunk header (6-byte preamble + `u16 frame_count` at +4 + `u32` per-frame offset table at +6; each frame at its offset is `u16 width + u16 height + 1 unknown byte + 4-byte frame_type tag`) | `dsoageofheroes/libgff` `src/gpl/image.c` `gff_get_frame_rgba_palette_img` + `gff_frame_info` | MIT |
 | DS1 RLE pixel decoder (per-row spans: `byte row_num` (0xFF terminates) + sub-spans of `startx / flags / unknown / compressed_length / RLE codes`; even RLE codes are direct palette indices, odd codes are repeat-single; image is stored bottom-up so rows go at `height - row_num - 1`) | `dsoageofheroes/libgff` `src/gpl/image.c` `create_ds1_rgba` | MIT |
-| PLNR bit-packed dictionary decoder (`bits_per_symbol` byte + `(1 << bits) byte dictionary` + bit-packed symbol stream via `plnr_get_next` / `plnr_get_bits`) — state machine | `dsoageofheroes/libgff` `src/gpl/image.c` `plnr_get_next` + `plnr_get_bits` + `plnr_get_mask` | MIT |
+| PLNR bit-packed dictionary decoder (`bits_per_symbol` byte + `(1 << bits) byte dictionary` + bit-packed symbol stream via `plnr_get_next` / `plnr_get_bits`), a state machine | `dsoageofheroes/libgff` `src/gpl/image.c` `plnr_get_next` + `plnr_get_bits` + `plnr_get_mask` | MIT |
 | PLNR bit-extraction order (big-endian chomp; replaced libgff's 4-bit-rotated extraction in image-extract v0.2.0) | `JohnGlassmyer/dsun_music` `common/src/main/java/net/johnglassmyer/dsun/common/gff/image/BitChomper.java` (BIG_ENDIAN path) + `ImageReading.java` `PlnrSymbolSource` | MIT |
 | PLAN planar frame decoder (`readPlanarImageFrame`, RE'd by upstream at DSUN.EXE 0x1A1B0; planar row plan + per-plane bit chomping) | `JohnGlassmyer/dsun_music` `common/src/main/java/net/johnglassmyer/dsun/common/gff/image/ImageReading.java` lines 244-291 + `BitChomper.java` lines 41-78 | MIT |
 
@@ -128,7 +128,7 @@ comments next to the relevant code.
   of flattening) and the XDIR FORM-size quirk (declared extent
   covers only INFO; CAT follows as a sibling)
 
-## Community contributions (yuan-ti, Calvin Rodo — MIT)
+## Community contributions (yuan-ti, Calvin Rodo, MIT)
 
 Adoption status: the gate has run and the adoption has shipped.
 The 2026-11-13 gate review
@@ -174,7 +174,7 @@ design record in [`docs/detour-repairs.md`](docs/detour-repairs.md).
 - `docs/exchange-yuan-ti-2026-11-13.md`: the give-back briefs
   (DS2 decode, region change, symbols, runtime QA)
 
-## Community adoption (DarkSunTools, TimQuester — Apache-2.0)
+## Community adoption (DarkSunTools, TimQuester, Apache-2.0)
 
 TimQuester added the Apache-2.0 license on 2026-11-14 (commit
 `1a5fe61`, answering the 2026-11-13 ask in opends issue #14),
