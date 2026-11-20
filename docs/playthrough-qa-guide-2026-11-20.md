@@ -37,6 +37,28 @@ darksun ds2      # Wake of the Ravager, straight in
 - DS2's 40 CD tracks load from GOG's OGGs automatically (verified in the
   launch log); DS1 music rides the primary conf.
 
+**The enabled-fix inventory (the regression-vs-untested reference).**
+The DS1 install carries 13 journal entries, in manifest order:
+`fix.ds1.noop`, `fix.ds1.deadtriggers`, `fix.ds1.script-repairs`,
+`fix.ds1.halfling-race`, `fix.ds1.tracking`, `fix.ds1.grate-hack`,
+`fix.ds1.serf-follow`, `fix.ds1.messenger-trigger`,
+`fix.ds1.mindhome-award`, `fix.ds1.legcrusher-gone`,
+`fix.ds1.trustee-rounds`, `fix.ds1.slave-follow`,
+`fix.ds1.alhena-campfire`. DS2 carries exactly `fix.ds2.deadtriggers`.
+Cross-check before playing:
+
+```sh
+jq -r '.fixes[].id' .testing_facility/ds1-patched/darkfix-applied.json
+rg -c 'enabled = true' .testing_facility/ds1-patch/manifest.toml   # expect 13
+```
+
+Failure triage under this inventory: a checkpoint failing where its
+letter's fix is enabled is either a fix bug (report the site) or a
+genuine regression/new bug (report it); a failure at a site with no
+enabled fix behind it is the unpatched baseline behaving as documented.
+If the journal and this list ever disagree, the manifest and the guide
+have drifted and must be reconciled before the run counts.
+
 ---
 
 ## 1. The party
@@ -46,7 +68,7 @@ darksun ds2      # Wake of the Ravager, straight in
 | # | Requirement | Source |
 |---|---|---|
 | R1 | A ranger (engine class band 13-16) in the party | QA site T (fix.ds1.tracking reads those codes) |
-| R2 | Divine healing incl. Raise Dead: a druid leg (druids get full Cosmos; clerics cap at Cosmos 3, no Cure Serious/Raise Dead) | walkthrough + rules-tables.md |
+| R2 | Divine healing incl. Raise Dead: a druid leg (walkthrough: druids get full Cosmos, clerics cap at Cosmos 3; community-sourced, the decoded catalogue has no sphere column) | walkthrough + rules-tables.md |
 | R3 | Preserver arcane coverage (Enlarge, Strength, Haste, Blink, Fireball, 2x Wall of Fire for the War) | walkthrough + spell-catalogue-ds1 |
 | R4 | One dedicated thief leg (traps/locks; matters again in the DS2 import) | walkthrough |
 | R5 | Gladiator frontline (-1 AC at level 5 per the walkthrough; XP row identical to fighter's) | walkthrough + chargen-flow §1 |
@@ -143,12 +165,19 @@ Slot 1 + 4 (Preserver):
   ceramic: grab on sight), MINOR GLOBE via scroll (1407).
 - L5: keep two WALL OF FIRE memorizations reserved for the War.
 
-Slot 2 (Cleric leg): BLESS (70), REMOVE FEAR (78), CURE LIGHT WOUNDS
-(72); L2 AID (81), RESIST FIRE (88); L3 PRAYER (102), HOLD PERSON (87);
-L4 CURE SERIOUS WOUNDS (113). The Thief leg does the traps; the
-Psionicist leg trains: CELL ADJUSTMENT (152), BIOFEEDBACK (150),
-ENHANCED STRENGTH (154), ID INSINUATION (165), SYNAPTIC STATIC (171),
-EGO WHIP (164). MIND BLANK is universal at zero cost.
+Slot 2 (Cleric leg, Fire sphere): the Cosmos band only, levels 1-3.
+The walkthrough's rule is that clerics cap at Cosmos 3 (no Cure
+Serious/Raise Dead); the decoded catalogue carries no sphere column,
+so sphere access is community-sourced, not engine-decoded: BLESS (70),
+REMOVE FEAR (78), CURE LIGHT WOUNDS (72); L2 AID (81); L3 PRAYER (102),
+HOLD PERSON (87). **No L4+ picks on this leg: CURE SERIOUS WOUNDS
+(113) and RAISE DEAD (136) are Cosmos 4/5 and the druid slot owns all
+L4+ healing.** Fire-sphere flavor picks (PRODUCE FIRE (121) and kin)
+come from the sphere list if the study window offers them; RESIST FIRE
+(88) rides the druid. The Thief leg does the traps; the Psionicist leg
+trains: CELL ADJUSTMENT (152), BIOFEEDBACK (150), ENHANCED STRENGTH
+(154), ID INSINUATION (165), SYNAPTIC STATIC (171), EGO WHIP (164).
+MIND BLANK is universal at zero cost.
 
 Slot 3 (Druid leg): BLESS (70), CURE LIGHT WOUNDS (72); L2 AID (81),
 BARKSKIN (82), RESIST FIRE (88); L3 REMOVE PARALYSIS (106), CURE
@@ -579,7 +608,8 @@ File issues at VirInvictus/opends titled `beta QA: <site letter(s)>
 site(s):       D1..D6, T, G, W, M, S, H, L, R, F, A2
 result:        pass / fail per site
 game version:  GOG 1.10
-fixes enabled: darkfix-ds1 0.2.0-beta.4, all 12 (+noop); see
+fixes enabled: the section-0 inventory (darkfix-ds1 0.2.0-beta.4,
+               13 entries incl. noop); see
                .testing_facility/ds1-patched/darkfix-applied.json
 environment:   QA_REPORT.md at the repo root (Fedora 45,
                dosbox-staging 0.82.2, SB IRQ 7 rig)
