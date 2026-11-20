@@ -198,13 +198,19 @@ expression grammar, and a combat/AI chapter.
 - `engine/src/DarkSun.Game/Scripting/GplRepairs.cs` ports our
   darkfix-ds1 fixes byte-for-byte (verified against GOG 1.10 on
   2026-11-13: 23/23 fingerprints clean), implements three of our
-  unshipped triage candidates, and adds 17 script-bug discoveries
-  of Calvin's own. The full classification and adoption gate:
+  triage candidates, and adds 17 script-bug discoveries
+  of Calvin's own. Ours shipped as darkfix-ds1 0.2.0-beta.1's
+  serf-follow / mindhome-award / messenger-trigger; Calvin's
+  findings shipped through the gate as the beta.1 halfling-race /
+  tracking / grate-hack fixes and beta.3's legcrusher-gone. The
+  full classification and adoption gate:
   [`detour-repairs.md`](detour-repairs.md); the catalog rows:
   [`known-bugs.md`](known-bugs.md) §3.6.
 - The detour mechanism (length-changing script repairs without
-  moving any address) is adopted as the design for our own applier
-  work; credited in [`../CREDITS.md`](../CREDITS.md).
+  moving any address) is adopted and implemented: the applier's
+  REPAIRS path (darkfix-ds1 0.2.0-beta.1) plus gpl-asm 0.10.0's
+  `assemble_movable`; credited in
+  [`../CREDITS.md`](../CREDITS.md).
 - Exchange briefs prepared 2026-11-13 (DS2 decode, the DS1
   region-change question, symbol exchange, runtime QA):
   [`exchange-yuan-ti-2026-11-13.md`](exchange-yuan-ti-2026-11-13.md).
@@ -242,15 +248,16 @@ back onto the Latin glyph codes the 7-bit font actually stores.
 [`../CREDITS.md`](../CREDITS.md)): the string codec as the
 reference for our independent cross-check implementation
 (`tools/gpl-disasm/src/darksun_tools_codec.rs`, gpl-disasm 0.9.0;
-44,851 corpus candidates agree), and the FONT codec +
+44,851 corpus candidates agree), the FONT codec +
 transliteration + the Cyrillic mapping data as a straight port
 (`tools/font-extract/`, font-extract 0.1.0, corpus round-trip
-pinning both shipped FONT 100 chunks). The portability survey
-(2026-11-17) verdicts for the rest of the repo:
+pinning both shipped FONT 100 chunks), and the `GPLDocument`
+fixed-length editing layer as `tools/gpl-text/` (gpl-text 0.1.0,
+the survey's top PORT-later item, built once its gating text
+tool existed). The portability survey (2026-11-17) verdicts for
+the rest of the repo:
 
-- **PORT later**: the `GPLDocument` fixed-length editing layer
-  (validate/apply rules; becomes the second implementation the day
-  we build a GPL text tool), the `NAME` record decode (additive;
+- **PORT later**: the `NAME` record decode (additive;
   our verified DS1 shape is in
   [`file-formats.md`](file-formats.md) §NAME), the TEXT/MSG batch
   export JSON schema (prior art for a translation batch format),

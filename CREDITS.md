@@ -1,6 +1,6 @@
 # CREDITS
 
-OpenDS stands on the shoulders of three public reverse-engineering
+OpenDS stands on the shoulders of five public reverse-engineering
 projects. This file maps each OpenDS feature to the specific
 upstream file or function that informed it.
 
@@ -130,45 +130,66 @@ comments next to the relevant code.
 
 ## Community contributions (yuan-ti, Calvin Rodo — MIT)
 
-Adoption status: byte fingerprints verified against the canonical
-GOG 1.10 install on 2026-11-13 (23/23 clean); semantic review and
-runtime QA are still pending before any of this becomes canon.
-Credit is recorded now; code adoption lands only through the gate
-in [`docs/detour-repairs.md`](docs/detour-repairs.md). When adopted
-fixes ship, the darkfix-ds1 patchnotes entries (and therefore the
-release tags) name yuan-ti / Calvin Rodo.
+Adoption status: the gate has run and the adoption has shipped.
+The 2026-11-13 gate review
+([`docs/gate-review-yuan-ti-2026-11-13.md`](docs/gate-review-yuan-ti-2026-11-13.md))
+verified the byte fingerprints against the canonical GOG 1.10
+install (23/23 clean), reviewed every site against our own
+disassembly with zero disagreements, and reassembled all 250
+corpus chunks through gpl-asm byte-identically. Eight
+community-sourced fixes now ship across darkfix-ds1 0.2.0-beta.1
+and 0.2.0-beta.3 (six yuan-ti same-length repairs, the Legcrusher
+guards carrying Calvin's replacement lines, and the relayed
+Trustee rounds guard), every one disabled pending runtime QA
+(issue #18); the patchnotes entries (and therefore the release
+tags) name yuan-ti / Calvin Rodo. The detour mechanism is
+implemented, not just adopted: gpl-asm 0.10.0's `assemble_movable`
+plus the applier's `apply_gpl_repairs` REPAIRS path, per the
+design record in [`docs/detour-repairs.md`](docs/detour-repairs.md).
 
 | Feature | Upstream | License |
 |---------|----------|---------|
-| Detour repair mechanism: length-changing script repairs that move no address. Append `[EXIT_GPL sentinel][detour body][JUMP back]` after the script's end, overwrite the expect range with a JUMP to the detour (EXIT_GPL fill for any remainder), and rebase the big-endian label words listed in `Relocate` (labels counted from the detour's start, rebased to the detour's absolute address) | `CalvinRodo/yuan-ti` `engine/src/DarkSun.Game/Scripting/GplRepairs.cs` `GplRepair` record + `GplRepairs.Apply` + `GplAssembler.AssembleMovable` | MIT (design adopted; our implementation will be gpl-asm + the darkfix applier, not a C# port; see [`docs/detour-repairs.md`](docs/detour-repairs.md)) |
+| Detour repair mechanism: length-changing script repairs that move no address. Append `[EXIT_GPL sentinel][detour body][JUMP back]` after the script's end, overwrite the expect range with a JUMP to the detour (EXIT_GPL fill for any remainder), and rebase the big-endian label words listed in `Relocate` (labels counted from the detour's start, rebased to the detour's absolute address) | `CalvinRodo/yuan-ti` `engine/src/DarkSun.Game/Scripting/GplRepairs.cs` `GplRepair` record + `GplRepairs.Apply` + `GplAssembler.AssembleMovable` | MIT (design adopted and implemented, not C#-ported: the applier's `apply_gpl_repairs` REPAIRS path shipped in darkfix-ds1 0.2.0-beta.1 and gpl-asm 0.10.0's `assemble_movable` is the label-rebasing half; the source-authored detour fixes riding it are `legcrusher-gone` (0.2.0-beta.3) and our own `slave-follow` / `alhena-campfire` (0.2.0-beta.4); design record [`docs/detour-repairs.md`](docs/detour-repairs.md) §3) |
 | Repair authoring discipline: every repair carries expect-byte fingerprints and is skipped when the bytes differ (another release or a mod leaves the script alone); per-repair default on/off; same-length edits applied in place, detours only when the replacement is longer | `CalvinRodo/yuan-ti` `GplRepairs.cs` `Apply` guard rails | MIT |
-| Same-length edits implementing our unshipped triage candidates: the serf follow range (GPL 60 @0xCD8, immediate 14 -> 127), the Mindhome XP award-once gate (GPL 204 @0x5C9, `gflag[695] == 0` around the +5000), the messenger trigger re-arms x3 (GPL 58 @0x1A/0x99/0xCC: register MAS 9's sight trigger on -1297 once `gflag[245]` flips, while `gflag[339] == 0`) | `CalvinRodo/yuan-ti` `GplRepairs.cs` (findings 3.2(1a)/(1c)/(4) are ours, [`docs/ds1-sweep-triage-2026-10-07.md`](docs/ds1-sweep-triage-2026-10-07.md); byte encodings are his) | MIT |
-| Script-bug discoveries, 17 repairs in 4 families: the halfling greeting/insult race test (GPL 31 @0x3B/0x254: combat-record race byte 0 -> sheet `.71.20`), the ranger tracking chain (GPL 210 @0x5FD/0x60C/0x622/0x638/0x6CC: `.71.17` class read, level 13-16 range checks, roll direction), the sewer grate logic (GPL 137 @0x9E0/0xA14/0xA65/0xB5C: offer gate, hack opens, Strength roll, his/her line), the Legcrusher-gone dialog guards (GPL 136 @0x130, 139 @0x218, 141 @0x6B4/0x70B/0x766/0xF29: `RANGE(gname[5], name(-326)) < 999` gates with replacement lines) | `CalvinRodo/yuan-ti` `GplRepairs.cs` (catalog rows with evidence: [`docs/known-bugs.md`](docs/known-bugs.md) §3.6; fixes pending the adoption gate) | MIT |
+| Same-length edits shipped as darkfix-ds1 0.2.0-beta.1's disabled fixes: the serf follow range (GPL 60 @0xCD8, immediate 14 -> 127 -> `fix.ds1.serf-follow`), the Mindhome XP award-once gate (GPL 204 @0x5C9, `gflag[695] == 0` around the +5000 -> `fix.ds1.mindhome-award`), the messenger trigger re-arms x3 (GPL 58 @0x1A/0x99/0xCC: register MAS 9's sight trigger on -1297 once `gflag[245]` flips, while `gflag[339] == 0` -> `fix.ds1.messenger-trigger`) | `CalvinRodo/yuan-ti` `GplRepairs.cs` (findings 3.2(1a)/(1c)/(4) are ours, [`docs/ds1-sweep-triage-2026-10-07.md`](docs/ds1-sweep-triage-2026-10-07.md); byte encodings are his) | MIT |
+| Script-bug discoveries, 17 repairs in 4 families: the halfling greeting/insult race test (GPL 31 @0x3B/0x254: combat-record race byte 0 -> sheet `.71.20`), the ranger tracking chain (GPL 210 @0x5FD/0x60C/0x622/0x638/0x6CC: `.71.17` class read, level 13-16 range checks, roll direction), the sewer grate logic (GPL 137 @0x9E0/0xA14/0xA65/0xB5C: offer gate, hack opens, Strength roll, his/her line), the Legcrusher-gone dialog guards (GPL 136 @0x130, 139 @0x218, 141 @0x6B4/0x70B/0x766/0xF29: `RANGE(gname[5], name(-326)) < 999` gates with replacement lines) | `CalvinRodo/yuan-ti` `GplRepairs.cs` (catalog rows with evidence: [`docs/known-bugs.md`](docs/known-bugs.md) §3.6; shipped as `fix.ds1.halfling-race` / `fix.ds1.tracking` / `fix.ds1.grate-hack` in 0.2.0-beta.1 and `fix.ds1.legcrusher-gone` in 0.2.0-beta.3, the guards detour-authored with gpl-asm 0.10.0 and playing Calvin's replacement lines per the recorded 2026-11-13 dialog decision) | MIT |
 
-| Knowledge mining, 2026-11-13 pass: the GPLX 1 field map (99 fields x 5 record groups, type bytes, record sizes 21/58/25/71/20) and the field meanings behind every repair path (race/sex/alignment at character +0x18..0x1A, class codes 35-37, most-HP field 43 reading 0 on items, class bits at character +0x12 with the 0x200 ranger bit), the difficulty-scaling trace (`((difficulty - 1) x 50 + 100) / 100` on non-party creatures at load), the 20 named REQUEST codes (`GplRequests.cs`; an earlier draft of this row said 117, which the current tree does not carry), the IT1R class-bit and starting-gear tables | `CalvinRodo/yuan-ti` `engine/src/DarkSun.Game/Scripting/GplFieldMap.cs` + `.github/instructions/dsun-exe-reference.md` + `GplRequests.cs` | MIT (facts cited: [`docs/gplx-field-map.md`](docs/gplx-field-map.md), [`docs/community-crossread-2026-11-13.md`](docs/community-crossread-2026-11-13.md)) |
-| Engine-bug catalog relay (15 original-engine bugs with DSUN.EXE addresses: Mirror Image friendly-fire, double-charge armor, Share Strength's end, preserver Dispel, thri-kreen claws, Scare's impossible elf exception, the Trustee's GPL rounds, and more), the acid-check rules, and the dice-log test oracle | Obsidian Edition's findings, relayed through `CalvinRodo/yuan-ti` `.github/instructions/ref_notes_from_obsidian.md` | MIT (yuan-ti's writeup; Obsidian's findings recorded in [`docs/community-crossread-2026-11-13.md`](docs/community-crossread-2026-11-13.md) §1 pending our own verification) |
+| Knowledge mining, 2026-11-13 pass: the GPLX 1 field map (99 fields x 5 record groups, type bytes, record sizes 21/58/25/71/20) and the field meanings behind every repair path (race/sex/alignment at character +0x18..0x1A, class codes 35-37, most-HP field 43 reading 0 on items, class bits at character +0x12 with the 0x200 ranger bit), the difficulty-scaling trace (`((difficulty - 1) x 50 + 100) / 100` on non-party creatures at load), the 20 named REQUEST codes (`GplRequests.cs`; an earlier draft of this row said 117, which the current tree does not carry), the IT1R class-bit and starting-gear tables; the REQUEST catalogue shipped as `tools/gpl-disasm/syms/requests.toml` in gpl-disasm 0.9.0 (`Symbols::apply` decorates `gpl request` (0x22) with a JSON-only `request_name`) | `CalvinRodo/yuan-ti` `engine/src/DarkSun.Game/Scripting/GplFieldMap.cs` + `.github/instructions/dsun-exe-reference.md` + `GplRequests.cs` | MIT (facts cited: [`docs/gplx-field-map.md`](docs/gplx-field-map.md), [`docs/community-crossread-2026-11-13.md`](docs/community-crossread-2026-11-13.md)) |
+| Engine-bug catalog relay (15 original-engine bugs with DSUN.EXE addresses: Mirror Image friendly-fire, double-charge armor, Share Strength's end, preserver Dispel, thri-kreen claws, Scare's impossible elf exception, the Trustee's GPL rounds, and more), the acid-check rules, and the dice-log test oracle | Obsidian Edition's findings, relayed through `CalvinRodo/yuan-ti` `.github/instructions/ref_notes_from_obsidian.md` | MIT (yuan-ti's writeup; the relay verified 2026-11-17 and recorded as [`docs/known-bugs.md`](docs/known-bugs.md) §3.7, with the Trustee stall shipped as `fix.ds1.trustee-rounds` in 0.2.0-beta.3 after our own trace confirmed it) |
 
-**OpenDS work this feeds (pending the adoption gate):**
-- `docs/detour-repairs.md`: the detour design for our own
-  applier/gpl-asm work, which re-opens the chunk-growth FIX-CANDIDATE
-  rows of the 2026-10-07 triage (1b, 2, 4; 1a/1c have yuan-ti
-  implementations to review)
-- `docs/known-bugs.md` §3.6: the catalog rows for Calvin's findings
+**OpenDS code this now feeds:**
+- `tools/gpl-disasm/syms/requests.toml` + `Symbols::apply`
+  (gpl-disasm 0.9.0): the imported REQUEST catalogue decorating
+  `gpl request` (0x22) with a JSON-only `request_name`
+- `ds1-patch/fixes/` 003-010: the eight community-sourced fixes
+  shipped disabled in darkfix-ds1 0.2.0-beta.1 and 0.2.0-beta.3
+- `tools/gpl-asm` 0.10.0 + the applier's REPAIRS path: the detour
+  implementation; our own re-opened sweep-triage rows 1b/2
+  authored through it in 0.2.0-beta.4 (`fix.ds1.slave-follow`,
+  `fix.ds1.alhena-campfire`; 1c downgraded, since the
+  disassembly shows the GF[245] gate is the shipped messenger
+  fix's block)
+- `docs/known-bugs.md` §3.6 (Calvin's findings) and §3.7 (the
+  verified Obsidian relay)
 - `docs/exchange-yuan-ti-2026-11-13.md`: the give-back briefs
   (DS2 decode, region change, symbols, runtime QA)
 
 ## Community adoption (DarkSunTools, TimQuester — Apache-2.0)
 
-TimQuester added the Apache-2.0 license on 2026-11-16 (answering
-the 2026-11-13 ask in opends issue #14), which graduated this
-section from facts-only to credited code adoption through the
-standard gate. The earlier facts-only constraint ("nothing may be
-ported until the repo carries an OSI license") is resolved and no
-longer applies. The verified format facts below were landed
-2026-11-13 in one revertable commit (message marked "DarkSunTools
-facts, revertable"); that commit stays in history as the record of
-the facts-only era, and the first ported piece now carries its own
-credit row.
+TimQuester added the Apache-2.0 license on 2026-11-14 (commit
+`1a5fe61`, answering the 2026-11-13 ask in opends issue #14),
+which graduated this section from facts-only to credited code
+adoption through the standard gate. The earlier facts-only
+constraint ("nothing may be ported until the repo carries an OSI
+license") is resolved and no longer applies. The verified format
+facts below were landed 2026-11-13 in one revertable commit
+(message marked "DarkSunTools facts, revertable"); that commit
+stays in history as the record of the facts-only era. The ports
+have since shipped: the string-codec cross-check (gpl-disasm
+0.9.0), the FONT codec and the GPL transliteration (font-extract
+0.1.0), and the `GPLDocument` editing layer as gpl-text 0.1.0;
+region-render 0.9.0's `--annotate` backlog unblock rode the same
+adoption wave.
 
 | What | Source | License |
 |------|--------|---------|
@@ -177,6 +198,8 @@ credit row.
 | String codec cross-check implementation: `tools/gpl-disasm/src/darksun_tools_codec.rs` ports `GplStringCodec`'s decode/pack as an independent implementation, and `tools/gpl-disasm/tests/string_codec_crosscheck.rs` runs both decoders over every candidate packed string in both games (44,851 candidates agree as of gpl-disasm 0.9.0) | `TimQuester/DarkSunTools` `Common/Gpl/GplStringCodec.cs` | Apache-2.0; first ported code (2026-11-17, gpl-disasm 0.9.0) |
 | FONT codec: `tools/font-extract/src/lib.rs` ports `FontResourceCodec`'s Parse/Build (validation and the opaque-header rule included), with the corpus round-trip test pinning both shipped FONT 100 chunks byte-identical | `TimQuester/DarkSunTools` `Common/Font/FontResourceCodec.cs` | Apache-2.0 (2026-11-17, font-extract 0.1.0) |
 | GPL transliteration: `tools/font-extract/src/translit.rs` ports `GplTransliteration`'s display-to-game-charset encode/decode, and `tools/font-extract/data/cyrillic_rules.txt` redistributes the committed Cyrillic mapping (`FontTool/CyrillicOutput/cyrillic_rules.txt`) | `TimQuester/DarkSunTools` `Common/Gpl/GplTransliteration.cs` + `FontTool/CyrillicOutput/` | Apache-2.0 (2026-11-17, font-extract 0.1.0) |
+| Uncompressed (0x02) string form corroboration: payload byte = character rotated right 2, terminator stored 0xC0. The decode is ours (`docs/gpl-vm.md`, the 2026-09-19 interpreter read; implemented in gpl-disasm 0.9.1 / gpl-asm 0.10.1, and no shipped chunk carries one), with the codec's own comment as the independent corroboration | `TimQuester/DarkSunTools` `Common/Gpl/GplStringCodec.cs` (comment) | Apache-2.0; corroboration credit, the decode is ours |
+| GPL string editing: `tools/gpl-text/src/lib.rs` ports the `GPLDocument` validate/apply layer (every string operand's packed span tracked as payload offset + length with a per-span self-check; a replacement validated to the fixed-length invariant, 7-bit only, no terminator; spliced in place; length changes refused, since that is a gpl-asm detour job) | `TimQuester/DarkSunTools` `DarkSunRE/Models/GPLDocument.cs` | Apache-2.0 (2026-11-17, gpl-text 0.1.0) |
 
 ## Influences (read but not yet ported)
 
@@ -232,11 +255,11 @@ mirrors for the maintainer's machine.
 ## Licensing
 
 OpenDS itself is MIT-licensed. The upstream ports listed in
-this file are all from MIT-licensed sources (`libgff`,
-`soloscuro-archive`, `dsun_music`). Re-implementation in
-idiomatic Rust / Python with attribution is permitted by the
-MIT terms; we preserve the copyright notice and license
-intent by:
+this file come from MIT-licensed sources (`libgff`,
+`soloscuro-archive`, `dsun_music`, yuan-ti) and one Apache-2.0
+source (DarkSunTools). Re-implementation in idiomatic Rust /
+Python with attribution is permitted by both licenses; we
+preserve the copyright notice and license intent by:
 
 1. Naming the upstream file and function in a comment next to
    each ported piece of code.
