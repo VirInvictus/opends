@@ -223,6 +223,74 @@ Known chest contents (container-contents-ds1, exact):
 | 1570 (bag) | Wildwynd Wand (1417) |
 | 2249 | Gem (1351) + Sling (2533) |
 
+### 1.7 The gear ledger (every major item: source, and when)
+
+Source types: **drop** = creature kill (creature-inventories-ds1),
+**shop** = merchant stock (the RGNFF/Limbo placement block plus
+merchant creatures; the walkthrough confirms the Draj merchant's
+stock), **chest** = container-contents-ds1, **ground** = world-dump
+placement (regions are unnamed in the data; the RGN id is given),
+**quest** = walkthrough reward. Stats from item-catalogue-ds1.
+
+Weapons:
+
+| Item (id) | Stats | Source | When |
+|---|---|---|---|
+| Long Sword, metal (1014) | 1d8 | drops: Uskuye, Elven Leader, Elite Guards (the War), Weapon Merchant, Village Hero | first chances from the slaver arc (P11); the War is the big metal harvest |
+| Bloodwrath (1576) | 1d8 | Templar drop | Templar camps (P11) |
+| Hornblade (2270) | 1d8 | Kalinin drop | (drop; area unnamed in the data) |
+| Polearm (2271) | 2d4 | shop | whenever a merchant stocks it |
+| Dag's Dagger (30005) | 1d4; **the +3 CON item** (known-bugs 3.3.4) | Dagolar drop | **P4** |
+| Dagolar's Wand (31006) | 75 charges | Draj shop (walkthrough) + shop placements | **P6** |
+| Blackmace (30006) | 1d6+1, 11 charges; Shocking Grasp effect (walkthrough) | Shadow King drop | **P20** (Korbnor) |
+| Balk's Staff (30004) | 1d6+1 | Balkazar drop | **P18** (Wyrm School) |
+| Draketooth (30002) | 1d8+1, 3 charges | ground (RGN0D) + shop | **P18** (Wyrm School) |
+| Terror Blade (2041) | 1d4 poison blade | walkthrough, Wyrm School | **P18** |
+| Dark Flame (30000) | 1d8 | chest 1360, Lower Castle | **P16** |
+| El's Drinker (30001) | 1d8 | shop | wish-duplicate candidate |
+| Swiftbite (2641) | 1d8 | shop | (the Teaquetzl chest of the same name is a different object) |
+| Great Axe, +3 two-handed (1018) | 1d10 | Cragg's reward; Army Commander drop | **P20**; **P21** |
+| Torch (2605) | 1d8 | shop | (a torch that fights) |
+| Phrain's Bow (30007) | 1d8 bow | shop | |
+| Seeker (1604) | 1d8 bow | Kel drop | |
+| Mace (2642) | 1d6+1 | weapon rack (container doc, owner 2252) | |
+| Quicksilver Glove (30021) | 1d6+2, Detonate on hit (walkthrough) | genie war-aid wish | **P20** |
+| Iron Necklace (31012) | 12 charges | Hermit drop | **P15** (Lava Rifts; QA D4 watches for a duplicate) |
+| Wand of Missiles (31007) | 50 charges | chest 1526 + shop | |
+| Wildwynd Wand (1417) | | bag 1570 | |
+| Wand of Metal Detection (30120) | 25 charges | shop | its use is broken by bodies vanishing on map reload (known-bugs 3.4) |
+
+Armor and accessories:
+
+| Item (id) | Stats | Source | When |
+|---|---|---|---|
+| Drake Armor (30013) | AC+1 | Wyvern Master drop | **P19** (Darkhold; the D1 scene) |
+| Shimmer Armor (30014) | AC+1 | Dakaren drop | |
+| Grey's Scale, arm + leg (2518/2531) | AC+2 each | Arant drop | |
+| Tanelyv's set (2004/1362/1363) | chest AC+4; arm/leg AC+2/AC+1 | (not in the mined data: quest-linked) | |
+| Drake Shield (30016) | AC+2 | Templar drop | P11 arc |
+| El's Shield (30015) | AC+1 | shop | |
+| Belt of Might (30017) | 24 charges | ground (RGN0D) | |
+| Helm of Contemplation (30019) | | Warren Chief drop + Draj shop (walkthrough) | **P6** |
+| Chameleon Gloves (30020) | 1d2 weapon | Draj merchant stock (Mikquetzl) | **P6** |
+| Living Cloak (30022) | | Dagolar drop | **P4** |
+| Wind Ring (30011) | | Wyvern Master drop + shop | **P19** |
+| El's Ring (30012) | 3 charges | ground (RGN0F; pickup row handled by GPL-129) | |
+| Steadfast Ring (30009) / Ring of Insight (30010) | 3 / 2 charges | shop | |
+| Storm Ring (31010) | 50 charges | shop | |
+| Light of Dawn (30008) | | ground (RGN0D) | |
+| Golden Torque (30052) | | shop | |
+| Golden Pendant (30035) | | chest 1208 | |
+| Hound Necklace (2019) | quest item, cannot be sold | chests 1522/1526; Keldar drop; kills prisoners on talk (3.2.10) | carry caution |
+| Orb of Knowledge (31014) | | quest item (Korbnor area; sell for 10,000 after the War) | **P20** |
+
+Carry rule reminder: stat-boost gear applies while merely carried;
+re-equip after genie rests (known-bugs 3.3.4). Merchant note: the RGNFF
+(Limbo) placement block holds most of the shop stock above, so check
+merchant inventories first for anything marked "shop"; the walkthrough
+names the Draj stock (Chameleon Gloves, Dagolar's Wand, Helm of
+Contemplation) and Notaku at Red Sands as the component seller.
+
 ---
 
 ## 2. DS1 route, in order
@@ -253,6 +321,10 @@ pass/fail, file it (section 5).
 > **Blocked by R10** (no halfling creatable in DS1). File:
 > `H not testable: no halfling creatable in DS1 (chargen skips halfling)`.
 > Decision on record 2026-11-20: report, do not save-edit a race.
+
+Quests (walkthrough ch 8): arena leveling; Gilal & Dinos; the haunted
+house; freeing Semyon; Merzol; King of the Pens; Mirlon & Pehtucl; the
+Great Escape.
 
 ### Phase 2: The Sewers
 
@@ -497,7 +569,10 @@ for this crawl differ, so find the sites by content:
 
 Expected residual: the two runtime-variable GNAME[39] rows stay as
 shipped (known-bugs §3.5): if one of those looks still does nothing,
-that is the documented remainder, not a regression.
+that is the documented remainder, not a regression. With D1, D2 and D3
+passing, fix.ds1.deadtriggers is runtime-confirmed: those four static
+rows are the entire repair, and the loot on the Wyvern Master (Drake
+Armor 30013, Wind Ring 30011) is the area's must-grab.
 
 ### Phase 20: Captured Gladiators, Korbnor
 
@@ -569,9 +644,10 @@ touch; extra heavy weapons enable dual-wielding.
    exists in the shipped data; documented remainder, do not report).
    Attack row -418 is one of the 37 fixed rows: if fought, note the
    response.
-2. **The Sorrows**: Shandel & Ladle, umber hulks, feyr teeth. The
-   chest-transform trap is on the SSI 1.02 fixed list: a character
-   turning into a chest is a REGRESSION report.
+2. **The Sorrows**: Shandel & Ladle, umber hulks, the temple region,
+   the captured villager, feyr teeth, the barrier. The chest-transform
+   trap is on the SSI 1.02 fixed list: a character turning into a chest
+   is a REGRESSION report.
 3. **Heist**: Arslan, Fayina, Acar, Boric, templars, Kalaobuta.
 4. **Tapestry Puzzle 1**: the mosaic-region trap is 1.02-fixed.
 5. **Magnolia**: ranger boots, rescue options.
@@ -647,6 +723,31 @@ touch; extra heavy weapons enable dual-wielding.
     Lord Warrior finale. "The Lord Warrior will give his speech and
     combat will begin" is a 1.02-fixed item: if he stands silent, that
     is a REGRESSION report.
+
+### The deadtrigger check tables (fix.ds2.deadtriggers: all 37 rows)
+
+Run these as you pass. A FAIL row is a fix bug: file it. The two -900
+rows are expected dead, not findings.
+
+| Object(s) | Area | Interaction | Handler repointed to | Fixed in |
+|---|---|---|---|---|
+| Shared prop -2975 (20 use rows) | 13 region scripts (the Limbo-placed prop) | use | each region's own alive handler | 18 rows v0.1.0 + 2 rows v0.1.1 |
+| -418 | Tyr + Silt Giants | attack | own region's handler | v0.1.0 |
+| -406, -209 | Silt Giants; Volcano | attack | own region's handler | v0.1.0 |
+| -1923, -445, -2994 | VA HQ; forest; Crypt | look | own region's handler | v0.1.0 |
+| -1922 (the tapestry) | VA HQ | look | GPL-163 @1800 (MAS-51 attested) | v0.1.1 |
+| -146 | forest | attack | GPL-29 @1229 (MAS-1 attested) | v0.1.0 |
+| Jann talk pair | Jann tribe | talk | GPL-69 @1 (MAS-59 attested) | v0.1.0 |
+| GPL-30 row | shared-prop use | use | GPL-45 @1556 (GPL-40 attested) | v0.1.1 |
+| GPL-64 row | shared-prop use | use | GPL-64 @1 (the self-rearming shape, GPL-74 attested) | v0.1.1 |
+| -4413..-4419 with -4407 (7 pairs) | Underdark wizard laboratory | use-with | GPL-98 @1 (alive twins GPL-114 register the same pairs) | v0.1.1 |
+| -900 (2 rows) | Tyr thief chase | pickup | LEFT: no pickup handler exists anywhere in the shipped data | not fixed, by proof |
+
+DS2 gear worth knowing (drops from creature-inventories-ds2): **Lotulis
+(652, 35,000 ceramic)** on a body in the Heist arc; **Longsword 645
+(35,000)** drops from Surrakina, Firegazer, Donno and Romila; Boric
+readies a 15,000 Lotulis; the map-owner stock block carries a Great
+Axe (608), Gythka (630, 20,800) and Axes (635, 20,000).
 
 Audio residuals that close with this run: one ear test of the OGG
 music under the GOG conf (known-bugs §2.5; staging loads all 40 tracks,
