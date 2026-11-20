@@ -4,6 +4,10 @@
 # Brandon's private test-install staging area (GOG installers).
 /testing_facility/
 
+# Patched play installs + save overlays for the darksun launcher
+# (darkfix QA runs; machine-local, user-specific game state).
+/.testing_facility/
+
 # Upstream reference repos cloned for reverse-engineering research.
 # Each is its own checkout under a dot-prefixed directory.
 .dsun_music/
