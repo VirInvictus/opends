@@ -819,6 +819,18 @@ evidenced by every boot). One line each in the report.
 - Roster caution (unverified engine rows, §3.7.12): pause before any
   DELETE in the roster while scrolled; check thief skills on any newly
   created character (may spawn at 0).
+- Bug-capture saves: the companion suite
+  ([qa-save-suite-2026-11-20.md](qa-save-suite-2026-11-20.md)) defines
+  the three-tier save campaign beyond the QA checkpoints above (the
+  full SSI 1.02 regression set, community-bug investigation branches,
+  and the evidence/metadata templates). Tier 1 rides this run at sites
+  the route already visits: `DS2-PYR-rest-pre`,
+  `DS2-SNAGGLE-potion-pre`, `DS2-MAGNOLIA-second-pre`,
+  `DS2-CHAND-quest-pre`, `DS2-PRAYER-cast-pre` + `DS2-CHARM-clear-pre`,
+  `DS2-UMB-HULK-combat-pre`, `DS1-MINDHOME-reask-pre`,
+  `DS1-GEMFIELDS-domes-pre`, `DS1-KELDAR-encounter-pre`,
+  `DS1-WYRMTEMPLE-spawner-pre`. Tier 2/3 are dedicated branches fired
+  on copied saves, never on the playthrough state.
 
 ## 5. Reporting
 
