@@ -22,14 +22,25 @@ classifying anything as a defect, and keep known limitations,
 intentional behavior, exploits, and genuine regressions separate in the
 final report.
 
+**Two result classes, kept separate in every report**: **fix
+validation** (does the enabled repair behave correctly: the guide's QA
+checkpoints) and **game regression testing** (does unrelated original
+behavior still hold: this suite's 1.1 README set and community cards).
+A passing checkpoint establishes the first only: passing the Darkhold
+dead-trigger checks confirms those repaired registrations, not that the
+whole Darkhold sequence is sound.
+
 ---
 
-## 1. DS2: the SSI 1.02 regression set (all 20 items)
+## 1. DS2: the SSI 1.1 README regression set (all 20 items)
 
-The official 1.02 notes (known-bugs.md section 1) are the baseline: the
+The fix list SSI documented in the README.TXT shipped with 1.10
+(known-bugs.md section 1) is the baseline; known-bugs.md section 4
+records that no separate DS2 1.02 artifact ever surfaced, so this is
+the pre-1.10 accumulated fix list, historically mislabeled "1.02". The
 1.10 build should retain every one of these fixes. One save each.
 
-| Save | Route anchor | 1.02 item | Evidence to record |
+| Save | Route anchor | 1.1 README item | Evidence to record |
 |---|---|---|---|
 | `DS2-SORROWS-chest-pre` | Sorrows, before the trapped chest | 3 | does a character transform into a chest? |
 | `DS2-PYR-rest-pre` | Kalak's Pyramid entry | 1 | rest lockup? repeat after reload |
@@ -43,13 +54,13 @@ The official 1.02 notes (known-bugs.md section 1) are the baseline: the
 | `DS2-TRANSFER-pre` | several ordinary transitions | 10 | no lockups outside the (known) elevator |
 | `DS2-MUSIC-combat-pre` | a long combat | 11 | music dropout/stutter? (audio rides GOG's OGG remap under staging) |
 | `DS2-PRAYER-cast-pre` | damaged-party combat | 12 | Prayer effect on party and enemies |
-| `DS2-SPEED-config-pre` | the Preferences screen | 13 | CAUTION: the walkthrough reports opening Preferences via Tab hangs when closed early in DS2. Attempt with a fresh save + backup; if it hangs, that IS the evidence (a 1.02-regression datum). Do not force it. |
+| `DS2-SPEED-config-pre` | the Preferences screen | 13 | CAUTION: the walkthrough reports opening Preferences via Tab hangs when closed early in DS2. Attempt with a fresh save + backup; if it hangs, that IS the evidence (a 1.1-README regression datum). Do not force it. |
 | `DS2-MAGNOLIA-second-pre` | second Magnolia rescue | 14 | no teleport off-screen |
 | `DS2-UMB-HULK-combat-pre` | Sorrows umber hulks | 15 | hulks engage and behave |
 | `DS2-LW-finale-pre` | before the Lord Warrior | 16 | speech plays, combat begins |
 | `DS2-CRASH-<n>-pre` | before a few substantial encounters | 17 | non-deterministic: pre-encounter saves + dosbox logs + video; no single save guarantees reproduction |
 | `DS2-CHAND-quest-pre` | before the chandelier repair | 18 | quest advances after the repair |
-| `DS2-RANGER-XP-pre` | ranger XP tracking | 19 | SCOPED: the level-15 cap and the XP bank clamp (chargen-flow section 3) make 1,440,000 practically unreachable in this run; record N/A unless the party approaches the figure |
+| `DS2-RANGER-XP-pre` | ranger XP tracking | 19 | SCOPED: the level-15 cap and the XP bank clamp (chargen-flow section 3) make 1,440,000 practically unreachable in this run; record N/A unless the party approaches the figure. Do not manufacture the test through save editing: a documented limitation beats an artificial result. |
 | `DS2-PENDANT-DARIYA-pre` | before the pendant goes to Dariya | 20 | no freeze |
 
 **Difficulty note**: the imported party forces Hideous. Record it with
@@ -297,6 +308,7 @@ steps_to_reproduce:
 workaround_attempted:
 workaround_result:
 related_issue:
+report_class:
 ```
 
 ## 7. References

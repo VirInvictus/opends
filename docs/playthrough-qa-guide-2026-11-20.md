@@ -414,6 +414,11 @@ Save: `escaped-fresh` on the surface.
 > ## 🔊 QA CHECKPOINT S: Draj serf follow (fix.ds1.serf-follow, GPL 60 @0xCD8)
 > **Save:** `QA-S-pre` · during the escort, walk more than 14 cells
 > ahead of him, then exit through the region gate.
+> **Branch discipline:** run this check on a COPY of `QA-S-pre` (copy
+> the save out of the overlay first). The test deliberately violates
+> the route's wait-for-him rule and could strand the escort: the main
+> route resumes from the untouched `QA-S-pre` unless the test pass
+> explicitly confirms the escort and quest state remain valid.
 > **Pass:** the serf comes along anyway, and the obelisk gem is awarded
 > exactly once (a later re-talk must not yield a second gem). This is
 > the one balance-class fix; enabled for this run by decision.
@@ -622,6 +627,13 @@ Pre-trigger checklist (all MUST): Messenger's Scroll (30058) in
 inventory; all three alliances formed; the ssurran quest-giver's exit
 played out; Wyrmias handled correctly.
 
+Pre-trigger evidence (the blame baseline): screenshot the party
+inventory showing the scroll, record the alliance state in writing,
+note the Wyrmias disposition and the ssurran exit, and keep `QA-D6-pre`
+plus a `save-inspect.py` dump of it alongside the screenshots. If the
+battle ever fails, this separates an earlier quest-state problem from
+the stage-gate fix.
+
 Pre-battle (walkthrough): Strength/Enlarge up (slot 1's frozen leg and
 the scrolls cover these), Blink + Haste from slot 4 (the only leg with
 L3+ slots), Resist Fire on everyone (your own walls), fruit consumed
@@ -666,35 +678,45 @@ forces Hideous difficulty; back up CharSave.gff first) or roll fresh
 with Telepathy for everyone. Import notes: Helm of Contemplation and
 Belt of Might become chest armor, leave equipped; cloaks/necklaces/
 rings need re-equipping; bags of ceramics from conversion: do not
-touch; extra heavy weapons enable dual-wielding.
+touch; extra heavy weapons enable dual-wielding. Outside the mines,
+create `DS2-TRANSFER-pre` saves across a few ordinary region
+transitions (1.1 README item 10: transfer lockups).
 
 1. **Tyr**: first battle; Notaku (merchant: dye, drake hides); Boric
-   later (1,000 cp mine fee, haggles to 600). **Expected dead: the two
+   later (1,000 cp mine fee, haggles to 600). Create `DS2-TYR-guard-talk-pre`
+   before speaking to the Tyrian guard (1.1 README item 9: the old crash
+   report). **Expected dead: the two
    Tyr thief-chase pickup rows on object -900** (no pickup handler
    exists in the shipped data; documented remainder, do not report).
    Attack row -418 is one of the 37 fixed rows: if fought, note the
    response.
 2. **The Sorrows**: Shandel & Ladle, umber hulks, the temple region,
-   the captured villager, feyr teeth, the barrier. The chest-transform
-   trap is on the SSI 1.02 fixed list: a character turning into a chest
-   is a REGRESSION report.
+   the captured villager, feyr teeth, the barrier. Create
+   `DS2-SORROWS-chest-pre` before the trapped chest and
+   `DS2-UMB-HULK-combat-pre` before an Umber Hulk fight. The
+   chest-transform trap is on the SSI 1.1 README fix list: a character
+   turning into a chest is a REGRESSION report.
 3. **Heist**: Arslan, Fayina, Acar, Boric, templars, Kalaobuta.
-4. **Tapestry Puzzle 1**: the mosaic-region trap is 1.02-fixed.
+4. **Tapestry Puzzle 1**: the mosaic-region trap is 1.1-README-fixed.
+   Create `DS2-TAPESTRY-transition-pre` here: enter, leave, and make
+   the return trip through a mosaic region (1.1 README item 7).
 5. **Magnolia**: ranger boots, rescue options.
 6. **Jann Tribe**: Sultan's tent, the traitor. **Fixed row: the Jann
    talk pair -> GPL-69@1; talk to the Jann and note the scene plays.**
 7. **Humbleton Forest**: Dariya, food run, pool of heroism, snake eggs.
    **Fixed rows: forest attack -146 -> GPL-29@1229 and forest look
-   -445.** The pendant/Dariya freeze is a 1.02-fixed item: regression
-   test. Charged-weapon caution starts here: **a Beast Club or Life
+   -445.** The pendant/Dariya freeze is a 1.1-README-fixed item: create
+   `DS2-PENDANT-DARIYA-pre` before the delivery. Charged-weapon caution starts here: **a Beast Club or Life
    Stealer whose charges run out VANISHES instead of reverting
    (known-bugs §2.3, unfixed): treat charge exhaustion as disposal.**
 8. **Yuan-ti Temple**: Surrakina, Jestris, captives, Tantris, Solurnis.
-   Party-disappearing-in-caves is a 1.02-fixed item: regression test.
+   Party-disappearing-in-caves is a 1.1-README-fixed item: create
+   `DS2-YUANTI-party-pre` before the cave transition.
 9. **The Veiled Alliance**: Matthias, Aleka, Nnamdi; Tapestry puzzles
    2-3.
 10. **Kalak's Pyramid**: Kovar's mansion, Abelard, Raenika. Resting
-    here locking up is a 1.02-fixed item: regression test.
+    here locking up is a 1.1-README-fixed item: create `DS2-PYR-rest-pre`
+    at the entry and test rest + reload.
 11. **VA HQ Assault**: the archives, four artifacts, Tapestry Puzzle 4.
     **Fixed rows: look -1923 and the tapestry look -1922 -> GPL-163@1800:
     LOOK at both.** Must-grabs: **Zorani's tunic (you are stuck and
@@ -761,9 +783,10 @@ touch; extra heavy weapons enable dual-wielding.
 20. **Cup of Life** -> **The Crypt**: grates, Kovar, Jumah, Hall of
     Heroes. **Fixed row: look -2994: LOOK at it.**
 21. **Temple of the Cosmos**: Cosmic Scepter, the elemental gates, the
-    Lord Warrior finale. "The Lord Warrior will give his speech and
-    combat will begin" is a 1.02-fixed item: if he stands silent, that
-    is a REGRESSION report.
+    Lord Warrior finale. Create `DS2-LW-finale-pre` immediately before
+    the finale: "The Lord Warrior will give his speech and
+    combat will begin" is a 1.1-README-fixed item; if he stands silent,
+    that is a REGRESSION report.
 
 ### The deadtrigger check tables (fix.ds2.deadtriggers: all 37 rows)
 
@@ -822,7 +845,7 @@ evidenced by every boot). One line each in the report.
 - Bug-capture saves: the companion suite
   ([qa-save-suite-2026-11-20.md](qa-save-suite-2026-11-20.md)) defines
   the three-tier save campaign beyond the QA checkpoints above (the
-  full SSI 1.02 regression set, community-bug investigation branches,
+  full SSI 1.1 README regression set, community-bug investigation branches,
   and the evidence/metadata templates). Tier 1 rides this run at sites
   the route already visits: `DS2-PYR-rest-pre`,
   `DS2-SNAGGLE-potion-pre`, `DS2-MAGNOLIA-second-pre`,
@@ -833,6 +856,14 @@ evidenced by every boot). One line each in the report.
   on copied saves, never on the playthrough state.
 
 ## 5. Reporting
+
+Report results in two separate classes: **fix validation** (does the
+enabled repair behave: the QA checkpoints) and **game regression
+testing** (does unrelated original behavior still hold: the save
+suite's 1.1 README set and community cards). A passing checkpoint
+establishes the first only: passing the Darkhold dead-trigger checks
+confirms those repaired registrations, not that the whole Darkhold
+sequence is sound.
 
 File issues at VirInvictus/opends titled `beta QA: <site letter(s)>
 <pass/fail>` with:
