@@ -112,15 +112,15 @@ rest come from rerolling until they land. Everything else: push toward
 
 Thresholds from chargen-flow §1 (entry k = minimum XP for level k+1):
 
-| Class row | L2 | L3 | L4 | L5 | L6 | L8 | L9 |
-|---|---|---|---|---|---|---|---|
-| Cleric | 1,500 | 3,000 | 6,000 | 13,000 | 27,500 | 110,000 | 225,000 |
-| Druid | 2,000 | 4,000 | 7,500 | 12,500 | 20,000 | 60,000 | 90,000 |
-| Fighter/Gladiator | 2,000 | 4,000 | 8,000 | 16,000 | 32,000 | 125,000 | 250,000 |
-| Preserver | 2,500 | 5,000 | 10,000 | 20,000 | 40,000 | 90,000 | 135,000 |
-| Psionicist | 2,200 | 4,400 | 8,800 | 16,500 | 30,000 | 100,000 | 200,000 |
-| Ranger | 2,200 | 4,500 | 9,000 | 18,000 | 36,000 | 150,000 | 300,000 |
-| Thief | 1,200 | 2,500 | 5,000 | 10,000 | 20,000 | 70,000 | 110,000 |
+| Class row | L2 | L3 | L4 | L5 | L6 | L7 | L8 | L9 |
+|---|---|---|---|---|---|---|---|---|
+| Cleric | 1,500 | 3,000 | 6,000 | 13,000 | 27,500 | 55,000 | 110,000 | 225,000 |
+| Druid | 2,000 | 4,000 | 7,500 | 12,500 | 20,000 | 35,000 | 60,000 | 90,000 |
+| Fighter/Gladiator | 2,000 | 4,000 | 8,000 | 16,000 | 32,000 | 64,000 | 125,000 | 250,000 |
+| Preserver | 2,500 | 5,000 | 10,000 | 20,000 | 40,000 | 60,000 | 90,000 | 135,000 |
+| Psionicist | 2,200 | 4,400 | 8,800 | 16,500 | 30,000 | 55,000 | 100,000 | 200,000 |
+| Ranger | 2,200 | 4,500 | 9,000 | 18,000 | 36,000 | 75,000 | 150,000 | 300,000 |
+| Thief | 1,200 | 2,500 | 5,000 | 10,000 | 20,000 | 40,000 | 70,000 | 110,000 |
 
 - Creation: single-class starts at level 3 (XP = row entry 2 x100);
   the multiclass slot starts 2/2/2.
@@ -246,6 +246,8 @@ Known chest contents (container-contents-ds1, exact):
 ### 1.7 The gear ledger (every major item: source, and when)
 
 Source types: **drop** = creature kill (creature-inventories-ds1),
+**carried** = on an NPC's inventory (kill loot, ally transfer, or shop
+stock: the data records possession, not the transfer path),
 **pool** = the RGNFF/Limbo placement block (region 255): the engine's
 item pool; the item exists in the data and reaches the player through
 shop or quest stock whose exact delivery path the static data does not
@@ -258,7 +260,7 @@ Weapons:
 
 | Item (id) | Stats | Source | When |
 |---|---|---|---|
-| Long Sword, metal (1014) | 1d8 | drops: Uskuye, Elven Leader, Elite Guards (the War), Weapon Merchant, Village Hero | first chances from the slaver arc (P11); the War is the big metal harvest |
+| Long Sword, metal (1014) | 1d8 | kill loot: Elven Leader, Elite Guards (the War); carried by Uskuye (ally), Weapon Merchant, Village Hero | first chances from the slaver arc (P11); the War is the big metal harvest |
 | Bloodwrath (1576) | 1d8 | Templar drop | Templar camps (P11) |
 | Hornblade (2270) | 1d8 | pooled NPC Kalinin (RGNFF) |
 | Polearm (2271) | 2d4 | pool (RGNFF) | whenever a merchant stocks it |
@@ -293,7 +295,7 @@ Armor and accessories:
 | Drake Shield (30016) | AC+2 | Templar drop | P11 arc |
 | El's Shield (30015) | AC+1 | pool (RGNFF) | |
 | Belt of Might (30017) | 24 charges | ground (RGN0D) | |
-| Helm of Contemplation (30019) | | Warren Chief drop + Draj shop (walkthrough) | **P6** |
+| Helm of Contemplation (30019) | | carried by the Warren Chief + Draj shop (walkthrough) | **P6** |
 | Chameleon Gloves (30020) | 1d2 weapon | Draj merchant stock (Mikquetzl) | **P6** |
 | Living Cloak (30022) | | Dagolar drop | **P4** |
 | Wind Ring (30011) | | Wyvern Master drop + pool (RGNFF) | **P19** |
@@ -714,13 +716,23 @@ touch; extra heavy weapons enable dual-wielding.
 > `load_resource("PAL ", region)` inside the transition window, which
 > is the freeze lead (elevator-digs-2026-11-02.md).
 > **Save:** `elevator-pre-ride` to slot 1 immediately before using the
-> switch; copy `before.SAV` out of the overlay. **Do:** ride.
-> **If it freezes:** quit, copy the overlay's `DARKRUN.GFF` out
-> untouched (its half-committed bytes at the freeze point are the
-> evidence). **If it succeeds:** save slot 2, copy `after.SAV`.
-> Either way run
+> switch; copy `before.SAV` out of the overlay. **Do:** ride. The two
+> outcomes collect DIFFERENT evidence; only the success branch produces
+> a save pair.
+> **If it succeeds:** save to slot 2, copy `after.SAV` out of the
+> overlay, then run
 > `save-inspect.py save-diff before.SAV after.SAV` +
 > `save-semantic-diff.py` on the pair.
+> **If it freezes:** quit IMMEDIATELY and copy the overlay's
+> `DARKRUN.GFF` out untouched BEFORE relaunching the game (the engine
+> rewrites DARKRUN from DARKSAVE at every boot: one careless relaunch
+> erases the freeze evidence). There is NO after.SAV in this branch and
+> no pair comparison: the primary artifact is the frozen `DARKRUN.GFF`
+> itself (its half-committed bytes at the freeze point are the
+> evidence, Card B route 1), preserved together with `before.SAV` as
+> the known-good baseline state. Run the single-save inspection
+> (`save-inspect.py before.SAV`) for context if useful; the differ
+> needs a pair that does not exist here.
 > **Workaround to keep playing:** dismiss all party members except
 > one, ride solo, re-hire below. The walkthrough's alternate (drop
 > enough items; the bug may be party weight) matches the engine's
