@@ -134,7 +134,8 @@ Thresholds from chargen-flow §1 (entry k = minimum XP for level k+1):
     exactly).
   - Slot 3: Ranger 3 -> Gladiator at the first prompt; Gladiator to 5
     (16,000 XP, the -1 AC point); -> Druid; Druid to 9 (Raise Dead
-    lands at Druid 5, 12,500 XP, the cheapest L5 in the game).
+    lands at Druid 5, 12,500 XP, the cheapest L5 among the casting
+    rows).
   - Slot 4: Thief 3 -> Gladiator at the first prompt; Gladiator to 5;
     -> Preserver; Preserver to 9.
   - Slot 2 never duals: multiclass legs advance from the shared pool.
@@ -260,7 +261,7 @@ Weapons:
 
 | Item (id) | Stats | Source | When |
 |---|---|---|---|
-| Long Sword, metal (1014) | 1d8 | kill loot: Elven Leader, Elite Guards (the War); carried by Uskuye (ally), Weapon Merchant, Village Hero | first chances from the slaver arc (P11); the War is the big metal harvest |
+| Long Sword, metal (1014) | 1d8 | kill loot: Elven Leader, Elite Guards (the War); carried by Uskuye (ally), Weapon Merchant, Village Hero; chest 1517 | first chances from the slaver arc (P11); the War is the big metal harvest |
 | Bloodwrath (1576) | 1d8 | Templar drop | Templar camps (P11) |
 | Hornblade (2270) | 1d8 | pooled NPC Kalinin (RGNFF) |
 | Polearm (2271) | 2d4 | pool (RGNFF) | whenever a merchant stocks it |
@@ -301,7 +302,7 @@ Armor and accessories:
 | Wind Ring (30011) | | Wyvern Master drop + pool (RGNFF) | **P19** |
 | El's Ring (30012) | 3 charges | ground (RGN0F; pickup row handled by GPL-129) | |
 | Steadfast Ring (30009) / Ring of Insight (30010) | 3 / 2 charges | pool (RGNFF) | |
-| Storm Ring (31010) | 50 charges | pool (RGNFF) | |
+| Storm Ring (31010) | 50 charges | pool (RGNFF) + chest 1068 | |
 | Light of Dawn (30008) | | ground (RGN0D) | |
 | Golden Torque (30052) | | pool (RGNFF) | |
 | Golden Pendant (30035) | | chest 1208 | |
@@ -769,19 +770,24 @@ touch; extra heavy weapons enable dual-wielding.
 Run these as you pass. A FAIL row is a fix bug: file it. The two -900
 rows are expected dead, not findings.
 
-| Object(s) | Area | Interaction | Handler repointed to | Fixed in |
-|---|---|---|---|---|
-| Shared prop -2975 (20 use rows) | 13 region scripts (the Limbo-placed prop) | use | each region's own alive handler | 18 rows v0.1.0 + 2 rows v0.1.1 |
-| -418 | Tyr + Silt Giants | attack | own region's handler | v0.1.0 |
-| -406, -209 | Silt Giants; Volcano | attack | own region's handler | v0.1.0 |
-| -1923, -445, -2994 | VA HQ; forest; Crypt | look | own region's handler | v0.1.0 |
-| -1922 (the tapestry) | VA HQ | look | GPL-163 @1800 (MAS-51 attested) | v0.1.1 |
-| -146 | forest | attack | GPL-29 @1229 (MAS-1 attested) | v0.1.0 |
-| Jann talk pair | Jann tribe | talk | GPL-69 @1 (MAS-59 attested) | v0.1.0 |
-| GPL-30 row | shared-prop use | use | GPL-45 @1556 (GPL-40 attested) | v0.1.1 |
-| GPL-64 row | shared-prop use | use | GPL-64 @1 (the self-rearming shape, GPL-74 attested) | v0.1.1 |
-| -4413..-4419 with -4407 (7 pairs) | Underdark wizard laboratory | use-with | GPL-98 @1 (alive twins GPL-114 register the same pairs) | v0.1.1 |
-| -900 (2 rows) | Tyr thief chase | pickup | LEFT: no pickup handler exists anywhere in the shipped data | not fixed, by proof |
+| Object(s) | Area | Interaction | Handler repointed to | Fixed in | Rows |
+|---|---|---|---|---|---|
+| Shared prop -2975 | 13 region scripts (the Limbo-placed prop) | use | each region's own alive handler; the two v0.1.1 rows are GPL-30 -> GPL-45@1556 (GPL-40 attested) and GPL-64 -> GPL-64@1 (the self-rearming shape, GPL-74 attested), already counted here | 18 rows v0.1.0 + 2 rows v0.1.1 | 20 |
+| -418 | one row; the object is placed in both Tyr and the Silt Giant lands | attack | own region's handler | v0.1.0 | 1 |
+| -406, -209 | Silt Giants; Volcano | attack | own region's handler | v0.1.0 | 2 |
+| -1923, -445, -2994 | VA HQ; forest; Crypt | look | own region's handler | v0.1.0 | 3 |
+| -1922 (the tapestry) | VA HQ | look | GPL-163 @1800 (MAS-51 attested) | v0.1.1 | 1 |
+| -146 | forest | attack | GPL-29 @1229 (MAS-1 attested) | v0.1.0 | 1 |
+| Jann talk pair (-106) | Jann tribe | talk | GPL-69 @1 (MAS-59 attested) | v0.1.0 | 2 |
+| -4413..-4419 with -4407 (7 pairs) | Underdark wizard laboratory | use-with | GPL-98 @1 (alive twins GPL-114 register the same pairs) | v0.1.1 | 7 |
+| **Total repointed** | | | | | **37** |
+| -900 (2 rows) | Tyr thief chase | pickup | LEFT: no pickup handler exists anywhere in the shipped data | not fixed, by proof | 0 |
+
+Rows column reconciles to the fix doc's census: 27 rows in v0.1.0 (18
+shared-prop + the attack trio and three looks = 24 within-chunk, plus
+the Jann pair and the forest attack = 3 cross-chunk) + 10 rows in
+v0.1.1 (the tapestry look, the two shared-prop rows above, and the
+seven wizard-lab pairs).
 
 DS2 gear worth knowing (drops from creature-inventories-ds2): **Lotulis
 (652, 35,000 ceramic)** on a body in the Heist arc; **Longsword 645
