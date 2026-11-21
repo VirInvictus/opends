@@ -321,7 +321,11 @@ Contemplation) and Notaku at Red Sands as the component seller.
 
 Phases follow the walkthrough's chapter order. Every 🔊 block is a QA
 checkpoint: save first with the exact name, run the check, note
-pass/fail, file it (section 5).
+pass/fail, file it (section 5). Marker convention: every inline
+point/marker number ("point 9", "marker 25", "chest 18") is the
+sorcerers.net walkthrough's own per-area map marker, NOT this guide's
+phase or route numbering; the walkthrough pages carry the maps those
+numbers resolve against.
 
 ### Phase 1: Arena and Slave Pens
 
@@ -697,9 +701,10 @@ touch; extra heavy weapons enable dual-wielding.
     is done)**, the Ring of Strength (drain cover at 14, pushes STR to
     25), Coal Ember (brazier 16 -> opens Ringing Mountains), Feather
     Fan + Dye (chest 18), the torn tapestry (17). Cup of Life from
-    Sylvain (ask anytime). Mine entrance: pay Boric (Boric is in Tyr,
-    site 13); the mines sit northwest of Humbleton Forest, deliberately
-    delayed until Notaku's drake-hide quest is done (walkthrough).
+    Sylvain (ask anytime). Mine entrance: pay Boric in Tyr (marker 13
+    on the walkthrough's Tyr map, not a route number here); the mines
+    sit northwest of Humbleton Forest, deliberately delayed until
+    Notaku's drake-hide quest is done (walkthrough).
 12. **Silt Sea Islands**: missions, Keign and Drisha, Generoe.
     **Fixed rows: the Silt Giants attack trio -418/-209/-406.**
 13. **Cloud Tops**: half a flute, air drakes, **Lyre of the Winds**.
