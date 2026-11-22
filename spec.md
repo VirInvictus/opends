@@ -153,7 +153,7 @@ Each binary fix:
 
 *(Updated 2026-09-12 to the shape darkfix-ds1 0.1.0 actually
 ships; the authoritative artifact specification is
-[`docs/fix-format.md`](docs/fix-format.md), which absorbs the
+[`docs/reference/fix-format.md`](docs/reference/fix-format.md), which absorbs the
 earlier sketches in `binary-patching.md` and here.)*
 
 A darkfix patch is a directory tree:
@@ -206,7 +206,7 @@ Reverse step (`apply.py --unapply`) restores from `darkfix-backup/`.
 Each fix:
 
 1. Targets a documented bug (preserved in
-   [`docs/known-bugs.md`](docs/known-bugs.md) or a new entry).
+   [`docs/reference/known-bugs.md`](docs/reference/known-bugs.md) or a new entry).
 2. Ships with a writeup explaining the symptom, the root cause,
    and the patch.
 3. Has a stable identifier (`fix.ds2.mines-elevator`) that
@@ -265,8 +265,8 @@ greg-kennedy's wiki) shipped with debug symbols including GPL
 function names: the highest-value cross-reference we have, now
 curated into `tools/gpl-disasm/syms/`.
 
-See [`docs/gpl-bytecode.md`](docs/gpl-bytecode.md) and
-[`docs/fix-format.md`](docs/fix-format.md).
+See [`docs/reference/gpl-bytecode.md`](docs/reference/gpl-bytecode.md) and
+[`docs/reference/fix-format.md`](docs/reference/fix-format.md).
 
 ## 7. Tooling stack
 
@@ -286,7 +286,7 @@ See [`docs/gpl-bytecode.md`](docs/gpl-bytecode.md) and
 offset-keyed byte edits, so no diff format is needed.
 
 All available on Fedora via `dnf`. See
-[`docs/build-environment.md`](docs/build-environment.md).
+[`docs/reference/build-environment.md`](docs/reference/build-environment.md).
 
 ## 7a. Implementation languages
 
@@ -312,6 +312,15 @@ Tool-by-tool assignment:
 | `save-inspect`                        | Python                                            |
 | `region-render`                       | Rust                                              |
 | `gpl-asm`                             | Rust                                              |
+| `gpl-text` (fixed-length GPL strings) | Rust                                              |
+| `font-extract` (FONT codec)           | Rust                                              |
+| `image-extract`                       | Rust                                              |
+| `audio-extract`                       | Python                                            |
+| `xmi2mid`                             | Python                                            |
+| `opends` (umbrella CLI)               | Rust                                              |
+| `atlas` (static-HTML site)            | Python                                            |
+| `ovr-map` (overlay mapper)            | Python                                            |
+| `ovr-carve` (analysis MZ flattener)   | Rust                                              |
 | `opcode-fuzz`                         | Python (drives DOSBox debugger over IPC)          |
 | Per-fix patch scripts                 | Python                                            |
 | `apply.py` (applier)                  | Python                                            |
@@ -360,14 +369,13 @@ opends/
 ├── logo.svg
 ├── .gitignore              # .games/, scratch/
 ├── docs/
-│   ├── research.md         # engine research
-│   ├── file-formats.md     # GFF and chunks
-│   ├── known-bugs.md       # the target bug list
-│   ├── upstream-projects.md
-│   ├── build-environment.md
-│   ├── gpl-bytecode.md
-│   ├── binary-patching.md
-│   └── patch-workflow.md
+│   ├── README.md           # the documentation index
+│   ├── reference/          # evergreen reference (formats, flows, GPL, RE, patching)
+│   ├── catalogues/         # machine-generated data dumps (regenerated, never hand-edited)
+│   ├── reports/            # dated campaign dig records
+│   ├── qa/                 # runtime-QA plans and rig notes
+│   ├── cookbook/           # tested walkthroughs
+│   └── source-hashes/      # canonical SHA256 install manifests
 ├── ds1-patch/              # darkfix patch for Shattered Lands
 │   ├── README.md
 │   ├── manifest.toml
@@ -403,7 +411,7 @@ inherits the umbrella name: OpenDS.
 - PATCH for fixes-to-fixes.
 - There is no umbrella version and nothing ships from the repo root;
   the only tags are per-tool / per-patch (`<item>-vX.Y.Z`), per
-  `docs/versioning.md`. *(This section previously described an
+  `docs/reference/versioning.md`. *(This section previously described an
   umbrella `vYYYY.MM.X` scheme that was never the policy.)*
 
 ## 10. Distribution
@@ -446,6 +454,14 @@ read the bulk of `GPLDATA.GFF`, *then* an engine project is no
 longer an act of single-handed reverse-engineering. It's
 plumbing. At that point, spinning it up makes sense.
 
+(Updated 2026-11-22: every precondition named above has since
+shipped: gpl-disasm, gpl-asm with byte-identical round-trips,
+gff-edit's writer, region-render, and the fully decoded opcode
+set, including the resolved dispatch tables and the GPL VM spec
+in `docs/reference/`. The gate this section describes is open;
+the "not before" framing stands: it remains a roadmap
+aspiration, not a commitment.)
+
 Not before. Not as a roadmap commitment. We get there if we get
 there. Every shipped tool and patch is independently valuable.
 
@@ -482,4 +498,9 @@ this prematurely. One repo until friction proves we need two.
   the applier: back it up too, or leave it alone?
 - Should we publish the GPL disassembly itself, or treat it as
   internal-only (for risk-reducing the project's relationship with
-  WotC's IP)?
+  WotC's IP)? PARTIALLY RESOLVED: the resolved dispatch tables for
+  both games shipped as reference docs
+  (`docs/reference/dispatch-table-ds1.md`, `dispatch-table-ds2.md`)
+  and the opcode semantics are published in
+  `docs/reference/gpl-opcodes.md`; a full annotated disassembly
+  listing remains unpublished.

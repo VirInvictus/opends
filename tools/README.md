@@ -6,8 +6,10 @@ Each has its own `README.md` and `VERSION`. Releases are tagged
 untagged).
 
 Version history lives in [`../patchnotes.md`](../patchnotes.md)
-(newest first); this table describes each tool as it is now.
-See [`../docs/versioning.md`](../docs/versioning.md) for the
+(newest first); this table describes each tool as it is now. Each
+tool's `VERSION` file is the single source of truth for its
+version; the numbers below are a snapshot.
+See [`../docs/reference/versioning.md`](../docs/reference/versioning.md) for the
 versioning policy and [`../spec.md`](../spec.md) §7a for the
 implementation-language split.
 
@@ -19,24 +21,26 @@ implementation-language split.
 | [`opends`](opends/) | Rust | 0.1.1 | **Umbrella CLI.** "I have this file, what is it?" Auto-dispatches by file magic to the right tool; `opends tools` prints the version table; thin shells over extract / render / find. |
 | [`verify-install`](verify-install/) | Python | 0.3.1 | Checks an install against the canonical pristine-hash manifest. Repairs from the GOG installer (`--repair`, `--dry-run`), rolls repairs back (`--rollback`), and answers in one line with `--summary`. |
 | [`gff-edit`](gff-edit/) | Rust | 0.6.3 | Pure-Rust GFF read/write (library `gff_edit` + CLI `gff-cat`): dump, extract, replace, text codec, JSON, catalogue, and the `gff-cat what` per-chunk describer. The foundation everything else builds on. |
-| [`gpl-disasm`](gpl-disasm/) | Rust | 0.8.1 | GPL bytecode disassembler: text or JSON, CFG labels, curated symbol catalogues (functions, variables, per-chunk locals), inter-chunk callgraph (`--global-cfg`), lossless packed-string decode. |
-| [`gpl-asm`](gpl-asm/) | Rust | 0.9.2 | GPL reassembler and patch author: consumes `gpl-disasm` text/JSON (600/600 corpus chunks round-trip byte-identical) and applies fingerprint-checked, label-relative `--patch` byte edits. |
-| [`audio-extract`](audio-extract/) | Python | 0.1.0 | Dumps the audio chunk kinds of a GFF container: BVOC/FVOC decode to WAV (Creative Voice decoder), the *SEQ family dumps verbatim, inventory JSON with ids/sizes/rates/durations; `scripts/audio-cue-sweep.py` collects every `gpl sound`/`gpl music` call site with its operand and script context. |
+| [`gpl-disasm`](gpl-disasm/) | Rust | 0.9.1 | GPL bytecode disassembler: text or JSON, CFG labels, curated symbol catalogues (functions, variables, per-chunk locals), inter-chunk callgraph (`--global-cfg`), lossless packed-string decode. |
+| [`gpl-asm`](gpl-asm/) | Rust | 0.10.1 | GPL reassembler and patch author: consumes `gpl-disasm` text/JSON (600/600 corpus chunks round-trip byte-identical) and applies fingerprint-checked, label-relative `--patch` byte edits. |
+| [`gpl-text`](gpl-text/) | Rust | 0.1.0 | Edits fixed-length GPL strings in place: the consumer side of the 7-bit packed string decoder, for translation and text mods. |
+| [`audio-extract`](audio-extract/) | Python | 0.1.1 | Dumps the audio chunk kinds of a GFF container: BVOC/FVOC decode to WAV (Creative Voice decoder), the *SEQ family dumps verbatim, inventory JSON with ids/sizes/rates/durations; `scripts/audio-cue-sweep.py` collects every `gpl sound`/`gpl music` call site with its operand and script context. |
 | [`xmi2mid`](xmi2mid/) | Python | 0.1.0 | Branch-aware XMI-to-standard-MIDI converter for the *SEQ payloads: format-0 SMF at 120 Hz plus a JSON sidecar carrying the RBRN branch tables, FOR/NEXT loop spans, and TIMB patch lists. |
-| [`save-inspect`](save-inspect/) | Python | 0.9.6 | Save-file inspector and editor: dump, diff, edit PCs and items, write back with round-trip verification; `save-semantic-diff` annotates save diffs with field meaning. |
+| [`save-inspect`](save-inspect/) | Python | 0.9.7 | Save-file inspector and editor: dump, diff, edit PCs and items, write back with round-trip verification; `save-semantic-diff` annotates save diffs with field meaning. |
 | [`dialog-extract`](dialog-extract/) | Python | 0.7.1 | Pulls NPC dialog out of GPL chunks as JSON, a plain-text transcript, or a single-file browsable HTML page. |
-| [`image-extract`](image-extract/) | Rust | 0.5.0 | Decodes Dark Sun bitmap chunks to palette-indexed PNG (multi-frame, spritesheets, animated GIF via ffmpeg) and packs edited PNGs back as DS1 RLE chunks: the sprite-modding loop. |
-| [`region-render`](region-render/) | Rust | 0.8.0 | Composites a region's tiles, walls and entities into a map PNG; animates entities and the VGA colour-cycle palette (`--animate-entities`, `--animate-palette`) and exports GIF (`--gif`, `--gif-fps`). |
+| [`image-extract`](image-extract/) | Rust | 0.5.1 | Decodes Dark Sun bitmap chunks to palette-indexed PNG (multi-frame, spritesheets, animated GIF via ffmpeg) and packs edited PNGs back as DS1 RLE chunks: the sprite-modding loop. |
+| [`font-extract`](font-extract/) | Rust | 0.1.0 | The FONT codec: extracts bitmap fonts to PNG sheets and packs edited sheets back, with a transliteration preview against the known glyph inventory. |
+| [`region-render`](region-render/) | Rust | 0.9.0 | Composites a region's tiles, walls and entities into a map PNG; animates entities and the VGA colour-cycle palette (`--animate-entities`, `--animate-palette`), exports GIF (`--gif`, `--gif-fps`), and overlays entity names (`--annotate`). |
 | [`repro`](repro/) | Shell + Python | 0.5.0 | DOSBox-Staging repro harness: per-bug fixtures under overlay mounts (the install is never written), session continuity, scheduled keystrokes, video capture, and `--diff` differential capture (patched-vs-baseline with a structured delta). |
 | [`opcode-fuzz`](opcode-fuzz/) | Python | 0.3.1 | GPL opcode-discovery harness: chunk pack/extract/roundtrip, swap-and-run against DOSBox with world-state diffing (the full loop, first driven 2026-10-07), and `boot-chunks` to surface directly-dispatched chunks. |
 | [`ovr-map`](ovr-map/) | Python | 0.4.0 | Maps `DSUN.EXE`'s Borland overlay structure: segments, entry stubs, 16-bit disassembly, curated symbol catalogue (`syms/<game>.toml`), Ghidra bridges, and the string-xref tooling under `scripts/`. |
-| [`ovr-carve`](ovr-carve/) | Rust | 0.1.0 | Flattens Borland VROOM overlays into a single analysis MZ whose initialized module spans the file, so overlay code decompiles in REA/Ghidra; byte offsets preserved, per-module relocations applied in place, `verify` mode, module/entry mapping JSON. Analysis artifact only, never a patch target. |
+| [`ovr-carve`](ovr-carve/) | Rust | 0.1.1 | Flattens Borland VROOM overlays into a single analysis MZ whose initialized module spans the file, so overlay code decompiles in REA/Ghidra; byte offsets preserved, per-module relocations applied in place, `verify` mode, module/entry mapping JSON. Analysis artifact only, never a patch target. |
 | [`exe-patch`](exe-patch/) | Python | 0.1.1 | Authors, verifies, and applies in-place byte patches to `DSUN.EXE`: `ovr:`/symbol addressing resolved against ovr-map, mandatory `bytes_old` fingerprints, and hard refusals for length changes, segment straddles, and padding sites. |
 
 
 `tools/` also carries one non-tool: `build-release.sh`, the
 maintainer script that assembles the darkfix player zips
-(`tools/build-release.sh ds1 0.1.0`; docs/patch-workflow.md §7).
+(`tools/build-release.sh ds1 0.1.0`; docs/reference/patch-workflow.md §7).
 It versions with the repo, not as a tool.
 
 ## Planned

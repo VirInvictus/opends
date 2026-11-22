@@ -17,7 +17,7 @@ written down. Every utility we build gets published.
 In build order: **tools first, patches second**:
 
 - **Tools**: every utility built to make the digging easier.
-  Fifteen ship today, each independently with its own README
+  Nineteen ship today, each independently with its own README
   and `VERSION`. MIT-licensed. → [`tools/`](tools/)
 
   | Tool | What it does |
@@ -28,8 +28,12 @@ In build order: **tools first, patches second**:
   | [`gpl-asm`](tools/gpl-asm/) | GPL reassembler and patch authoring: 600/600 corpus chunks round-trip byte-identical. |
   | [`save-inspect`](tools/save-inspect/) | Save-file inspector and editor: dump, diff, edit PCs and items, write back safely. |
   | [`dialog-extract`](tools/dialog-extract/) | Pull NPC dialog out of GPL chunks as JSON, transcript, or browsable HTML. |
+  | [`gpl-text`](tools/gpl-text/) | Edit fixed-length GPL strings in place; the consumer side of the 7-bit packed string decoder. |
+  | [`font-extract`](tools/font-extract/) | Extract and repack FONT bitmap fonts, with a transliteration preview. |
   | [`image-extract`](tools/image-extract/) | Decode bitmap chunks to PNG and pack edited PNGs back (sprite modding). |
   | [`region-render`](tools/region-render/) | Composite a region's tiles, walls, and entities into a map PNG or animated GIF. |
+  | [`audio-extract`](tools/audio-extract/) | Dump and decode GFF audio chunks to WAV plus an inventory JSON of every audio-bearing chunk. |
+  | [`xmi2mid`](tools/xmi2mid/) | Branch-aware XMI→MIDI converter with an adaptive-music sidecar for the sequence-switching tracks. |
   | [`atlas`](tools/atlas/) | Static-HTML site generator: browse a whole install's sprites, maps, and dialog offline. |
   | [`verify-install`](tools/verify-install/) | Check an install against canonical hashes; repair from the GOG installer; roll back. |
   | [`repro`](tools/repro/) | DOSBox repro harness with overlay mounts (the install is never written), input automation, video capture. |
@@ -79,10 +83,10 @@ language, with no public spec, and most of the game's logic
 written in it.
 
 That spec now exists, here.
-[`docs/gpl-vm.md`](docs/gpl-vm.md) documents the VM end to end
+[`docs/reference/gpl-vm.md`](docs/reference/gpl-vm.md) documents the VM end to end
 (both games ship one engine; the interpreter loop, the variable
 model, and every opcode family, read out of the binaries), and
-the catalogues under [`docs/`](docs/) carry the complete game
+the catalogues under [`docs/catalogues/`](docs/catalogues/) carry the complete game
 data it operates on. What still separates this repo from a
 playable engine is not knowledge of the data: it is the runtime
 behavior only a live engine can reveal (combat timing, the
@@ -101,20 +105,26 @@ we get there. The toolkit and patches matter even if we don't.
 The toolkit is read-complete and write-capable: every shipped
 file format can be inspected, and GFF chunks, GPL bytecode,
 sprites, saves, and `DSUN.EXE` bytes can all be edited and
-written back with verification. Roadmap Phases 0-5.7 have
-shipped: the toolkit phases (documentation, GFF foundation,
-repro harness, disassembler, exploration tools, assembler, the
-overlay map, the naming campaign, the bug-site census, and the
-EXE patch authoring surface). The patches have shipped too:
-darkfix-ds1 0.1.0 (`fix.ds1.deadtriggers`, the Darkhold
-dead-trigger family) and darkfix-ds2 0.1.0 (`fix.ds2.deadtriggers`,
-27 dead registrations across Wake of the Ravager's story
-regions), each with its repro fixture and differential capture.
-Phase 7 is the DS2 mines-elevator fix, one runtime capture from a
-complete site report.
+written back with verification. Roadmap Phases 0-5.7 and the
+phase-6 patch pipeline have shipped: the toolkit phases
+(documentation, GFF foundation, repro harness, disassembler,
+exploration tools, assembler, the overlay map, the naming
+campaign, the bug-site census, and the EXE patch authoring
+surface) plus the darkfix authoring and distribution machinery.
+The patches are live: darkfix-ds1 0.2.0-beta.4 (the Darkhold
+deadtrigger family and the script-repair family enabled by
+default; the six yuan-ti beta script repairs and the four
+sweep-triage fixes ship disabled, gated on the runtime QA run)
+and darkfix-ds2 0.1.2 (`fix.ds2.deadtriggers`: 37 dead
+registrations across Wake of the Ravager's story regions
+repointed to their objects' working handlers, the 2 provably
+handlerless pickup rows documented as left). The DS2 mines
+elevator, the last headline bug, has its site investigation
+done: one runtime capture from a complete report, scheduled in
+the [QA run](docs/qa/playthrough-qa-guide-2026-11-20.md).
 
 The game data itself is documented end to end: machine-generated
-catalogues under `docs/` cover every creature record (290 in
+catalogues under `docs/catalogues/` cover every creature record (290 in
 *Shattered Lands*, 352 in *Wake of the Ravager*), every item and
 spell, every chest's contents, every creature inventory, every
 map placement (13,028 + 13,559 across all 53 regions), and the
@@ -124,10 +134,10 @@ from the shipped files by
 and gated on known-value checks (a named monster's stats, a known
 chest, the elevator's sprite), so the numbers are verified, not
 transcribed. The format references
-([`object-formats.md`](docs/object-formats.md),
-[`region-formats.md`](docs/region-formats.md),
-[`presentation-formats.md`](docs/presentation-formats.md),
-[`dialogs.md`](docs/dialogs.md)) document how it all fits
+([`object-formats.md`](docs/reference/object-formats.md),
+[`region-formats.md`](docs/reference/region-formats.md),
+[`presentation-formats.md`](docs/reference/presentation-formats.md),
+[`dialogs.md`](docs/reference/dialogs.md)) document how it all fits
 together: the substrate a total conversion or engine project
 would build on.
 
@@ -145,7 +155,7 @@ would build on.
 You need a legitimate copy of one or both games (GOG installers
 recommended). Place the GOG `.exe` installers under `.games/`
 (gitignored) and extract with `innoextract`; see
-[`docs/build-environment.md`](docs/build-environment.md) for the
+[`docs/reference/build-environment.md`](docs/reference/build-environment.md) for the
 walkthrough. `verify-install --repair` can also extract single
 files from the installer to heal a damaged install.
 
@@ -216,7 +226,7 @@ Standing on the shoulders of every prior attempt:
 [`CREDITS.md`](CREDITS.md) is the per-feature attribution
 manifest: it maps each OpenDS feature to the specific upstream
 file or function it was ported from.
-[`docs/upstream-projects.md`](docs/upstream-projects.md) is the
+[`docs/reference/upstream-projects.md`](docs/reference/upstream-projects.md) is the
 broader catalogue of every upstream project we read or might
 read. If you've worked on Dark Sun reverse-engineering and
 aren't listed, open an issue: we'd rather over-credit than

@@ -135,7 +135,7 @@ applied.
 
 ## Phase 8 — DS2 sweep
 
-**Goal**: every bug in [`docs/known-bugs.md`](docs/known-bugs.md)
+**Goal**: every bug in [`docs/reference/known-bugs.md`](docs/reference/known-bugs.md)
 section 2 (community-reported, post-1.10) has either a fix or an
 explicit "won't fix" note with rationale.
 
@@ -194,7 +194,7 @@ explicit "won't fix" note with rationale.
       variants.)
 - [ ] Fix each.
       (TRIAGED 2026-10-07: every catalogued entry carries a verdict
-      in docs/ds1-sweep-triage-2026-10-07.md: three FIXED via
+      in docs/reports/ds1-sweep-triage-2026-10-07.md: three FIXED via
       darkfix-ds1 0.1.2's `fix.ds1.script-repairs` (hermit/ranger
       occlusion, Linara dead-end, final-battle stage-gate strand;
       shipped toggled off under the old one-enabled-fix-per-file
@@ -244,12 +244,12 @@ condition that promotes it into scheduled work. Nothing here is
 abandoned; nothing here is scheduled.
 
 - [x] **Cut the per-tool git tags, or drop the requirement.**
-      `docs/versioning.md` says each release ships a
+      `docs/reference/versioning.md` says each release ships a
       `<tool>-vX.Y.Z` tag; `git tag` returns nothing, so no
       release has ever complied. Two honest resolutions:
       backfill tags against the commits that bumped each
       `VERSION` (a one-off script walking `git log -- VERSION`
-      makes this mechanical), or amend `docs/versioning.md` to
+      makes this mechanical), or amend `docs/reference/versioning.md` to
       name `VERSION` + `patchnotes.md` as the whole release
       record and drop tags. Open since the 2026-07-23
       reconciliation sweep. **Decide before the first darkfix
@@ -316,12 +316,11 @@ abandoned; nothing here is scheduled.
       > the README palette-precedence table, stale since the
       > v0.5.0 preset flag and CPAL:200-first fallback, is
       > repaired in the same release.)
-- [ ] **`region-render --annotate`.** Entity-name overlays on
-      rendered maps; deferred for lack of an in-tree font
-      without a new dep. Promote when atlas or a modder
-      workflow wants labelled maps badly enough to revisit
-      (SVG output or a tiny embedded bitmap font are the
-      escape hatches).
+- [x] **`region-render --annotate`.** Entity-name overlays on
+      rendered maps. SHIPPED in region-render 0.9.0 (2026-11-17)
+      after the embedded-font blocker fell away; the box was
+      left unticked against the ledger below until the
+      2026-11-22 docs sweep caught it.
 - [ ] **`dialog-extract` path-aware caller picking.** For the
       32 LSTR reads resolved via `possible_writers` arrays:
       CFG-distance ordering or symbolic trace instead of the
@@ -409,7 +408,7 @@ Optional, only if a phase asks for it:
   stdlib (in-place offset-keyed edits need no diff library),
   and assembly goes through system nasm (`tools/exe-patch
   --asm`, round-tripped against ndisasm; pwntools cannot
-  assemble 16-bit x86 at all). `docs/build-environment.md` §2
+  assemble 16-bit x86 at all). `docs/reference/build-environment.md` §2
   carries the full reasoning.
 
 Not needed, for the record: LE/LX Ghidra loaders (the DOS/4GW
@@ -424,27 +423,27 @@ line each here; the evidence chains live at the targets):
 - Freeze-mechanism candidates and the complete mines dossier
   (scheduler deadlock, dangling GF[647-652], the intra-region
   floor system, the freeze window, the capture recipes):
-  `docs/engine-quirks.md` section 6.
+  `docs/reference/engine-quirks.md` section 6.
 - GF flags are GPL-layer-only; the EXE never reads individual
-  flags: `docs/engine-quirks.md` section 7.
+  flags: `docs/reference/engine-quirks.md` section 7.
 - GPLI-1's real format (and the retracted dispatch-index
-  theory): `docs/engine-quirks.md` section 8 and the
-  `docs/file-formats.md` GPLI row.
+  theory): `docs/reference/engine-quirks.md` section 8 and the
+  `docs/reference/file-formats.md` GPLI row.
 - DS1 has no region names; RDAT is config, not names:
-  `docs/engine-quirks.md` section 9.
+  `docs/reference/engine-quirks.md` section 9.
 - The DS2 GPL request dispatcher map, the DGROUP BSS layout,
   and the scheduler's 0x100:0x2 character-output function:
-  `docs/engine-quirks.md` sections 10-11 (the scheduler also
+  `docs/reference/engine-quirks.md` sections 10-11 (the scheduler also
   appears in section 6 as freeze candidate A).
 - DS2 overlay manager at file 0x404c4 and FBOV segnum =
   exeinfo record count: already durable in
-  `docs/dsun-exe-re.md` / `docs/dsun-exe-survey.md`
+  `docs/reference/dsun-exe-re.md` / `docs/reference/dsun-exe-survey.md`
   (corrected 2026-09-05; the syms row fixed in ovr-map 0.3.1).
 
 The elevator site-report narrative inside the 5.6.1 box is the
 Phase 7 site report's draft; it assembles into
 `ds2-patch/fixes/fix.ds2.mines-elevator.md` when Phase 7 opens,
-from this ledger, `docs/engine-quirks.md` 6, and the census row.
+from this ledger, `docs/reference/engine-quirks.md` 6, and the census row.
 
 
 ## Campaign ledger (condensed 2026-11-17)
@@ -467,19 +466,19 @@ lives.
   mining (bestiary/items/spells/inventories/world-dumps, 12
   anchor-gated docs), complete GPL VM spec, presentation stack,
   dialogs; verdict: static bulk mining done. Record:
-  `docs/bestiary-ds1.md` + kin.
+  `docs/catalogues/bestiary-ds1.md` + kin.
 - **Port-mining campaign (2026-09-19)**: the Godot-readiness lane
   mined out; the Draj demo built; record:
-  `docs/godot-port-readiness.md` + `docs/port-digs-*.md`.
+  `docs/reference/godot-port-readiness.md` + `docs/port-digs-*.md`.
 - **Mineout campaign (2026-10-06/07)**: format-coverage gap list
   driven to zero; audio-extract + xmi2mid shipped; DS2 dead
   triggers 37/39; sweep verdicts in
-  `docs/port-digs-2026-10-07.md`; `docs/mining-complete.md`.
+  `docs/reports/port-digs-2026-10-07.md`; `docs/reports/mining-complete.md`.
 - **Community lane (2026-11-13/16)**: yuan-ti + DarkSunTools
   adoption opened; gate review, exchange briefs, contributor
   surfaces; the DarkSunTools Apache-2.0 license landed 11-16.
-  Record: `docs/community-crossread-2026-11-13.md` +
-  `docs/exchange-yuan-ti-2026-11-13.md` + `docs/detour-repairs.md`.
+  Record: `docs/reports/community-crossread-2026-11-13.md` +
+  `docs/reports/exchange-yuan-ti-2026-11-13.md` + `docs/reference/detour-repairs.md`.
 - **Release campaigns (2026-11-17)**: issues #19/#20/#22/#23/#24/
   #25/#26 closed; 12 releases (five tool hardening patches,
   gpl-disasm 0.9.0 codec port + REQUEST catalogue + BITSNOOP
@@ -488,5 +487,5 @@ lives.
   rows, region-render 0.9.0 --annotate, gpl-text 0.1.0, font-extract
   0.1.0); yuan-ti mining batch 2 (23 findings, 4 digs) +
   DarkSunTools portability survey landed as docs. Record:
-  `patchnotes.md` + `docs/yuan-ti-mining-2026-11-17.md`.
+  `patchnotes.md` + `docs/reports/yuan-ti-mining-2026-11-17.md`.
 
