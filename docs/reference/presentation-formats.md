@@ -5,7 +5,12 @@ verified on the GOG 1.10 corpus with the repo's own decoders as
 the authority (tools/image-extract 0.5.0 implements the container
 and all three frame codecs, corpus-tested; cite its
 `src/lib.rs`). This is what a faithful Godot presentation layer
-consumes and what it still has to decode itself.
+consumes and what it still has to decode itself. Routing note:
+this file holds the byte-level chunk census; the engine-side
+binding facts (which id becomes which on-screen asset) live in
+[`asset-bindings.md`](asset-bindings.md), and the DS1 cinematic
+codec deep-dive lives in
+[`cinematics-ds1.md`](cinematics-ds1.md).
 
 ## 1. Images
 

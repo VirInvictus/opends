@@ -4,8 +4,8 @@
 to the engine. This page explains the language and its encoding;
 the per-opcode table lives in [`gpl-opcodes.md`](gpl-opcodes.md);
 the tools that operate on all of this are
-[`gpl-disasm`](../tools/gpl-disasm/) and
-[`gpl-asm`](../tools/gpl-asm/).*
+[`gpl-disasm`](../../tools/gpl-disasm/) and
+[`gpl-asm`](../../tools/gpl-asm/).*
 
 GPL: "Game Programming Language": is the engine's embedded
 scripting language. Quest logic, dialogue trees, NPC AI hooks,
@@ -90,7 +90,7 @@ a few weeks.
 ## 5. `gpl-disasm` design
 
 Lives at `tools/gpl-disasm/` (Rust crate; workspace member).
-Depends on `gff-edit` for GFF I/O. Per [`../spec.md`](../spec.md)
+Depends on `gff-edit` for GFF I/O. Per [`../../spec.md`](../../spec.md)
 §7a, heavy-lifting tools are Rust; `gpl-disasm` is the
 keystone tool that everything else in this corner relies on.
 
@@ -127,7 +127,7 @@ scripts (GPL 76-79, 2026-09-05):
 The request number dispatches through a second table inside the
 opcode 0x22 handler in DSUN.EXE's GPL VM. Full mapping of all
 request numbers requires the name-pool-free trigger identification
-(see `docs/dispatch-table-ds2.md` for the handler entry point).
+(see `docs/reference/dispatch-table-ds2.md` for the handler entry point).
 
 ### Variable addressing
 
@@ -158,7 +158,7 @@ parentheses: `GF[42 (POV_FLAGS)]`.
 ### Versioning
 
 The version history lives in
-[`../patchnotes.md`](../patchnotes.md) (newest first). Current
+[`../../patchnotes.md`](../../patchnotes.md) (newest first). Current
 state, briefly: byte-annotation pass (v0.1.0), parameter decoding
 with the variable-length expression decoder and the 7-bit
 packed-string reader (v0.2.x), recursive-descent CFG with labeled
@@ -337,19 +337,25 @@ End-to-end, once `gpl-disasm` exists:
    disassembly reads correctly. Run the bug repro; bug should
    not fire.
 
-## 7. The reassembler ("`gpl-asm`"): not in v1
+## 7. The reassembler ("`gpl-asm`"): shipped
 
-A reassembler that takes our disassembly format back to bytecode
-is desirable but not required for v1. v1 patches edit specific
-bytes in a chunk; the disassembly is read-only. Reassembly only
-becomes necessary if a fix needs to insert or delete bytes
-(changing chunk size, requiring offset shifts).
+(Updated 2026-11-22: this section's original stance, "not in v1;
+the disassembly is read-only," described the toolkit before
+`gpl-asm` existed. It shipped and outgrew the constraint.)
 
-If a fix requires shifting offsets, we either:
+`gpl-asm` takes `gpl-disasm` text/JSON back to bytecode:
+600/600 corpus chunks round-trip byte-identical, so the
+round-trip is lossless and the disassembly is no longer
+read-only in practice. Patch authoring uses the assembler for
+in-place edits (`--patch`, fingerprint-checked, label-relative)
+and movable code where a fix needs bytes to land differently.
 
-- Find a no-op padding region inside the chunk to absorb the
-  delta, or
-- Defer the fix until `gpl-asm` exists.
+What remains true from the original framing: a fix that must
+*insert or delete* bytes (changing chunk size, shifting
+offsets) is still out of reach for in-place patches; that case
+is the detour-repairs design note
+([`detour-repairs.md`](detour-repairs.md)), contract only, not
+implemented in-tree.
 
 ## 8. Risks
 

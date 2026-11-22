@@ -1,13 +1,13 @@
 # GPL Opcode Catalogue
 
 The opcode table embedded in
-[`tools/gpl-disasm`](../tools/gpl-disasm/). Each row maps a byte
+[`../../tools/gpl-disasm`](../../tools/gpl-disasm/). Each row maps a byte
 value (`0x00`..`0x80`) to libgff's mnemonic for that opcode and
 to its parameter shape. Sourced verbatim from libgff's
 `gpl_commands` table at `dsoageofheroes/libgff` `src/gpl/parse.c`
 lines 1554-1684 (MIT-licensed). Parameter counts derived from
 the per-handler bodies in the same file; see
-[`docs/gpl-bytecode.md`](gpl-bytecode.md) for the encoding rules.
+[`docs/reference/gpl-bytecode.md`](gpl-bytecode.md) for the encoding rules.
 
 **Coverage status**:
 
@@ -20,8 +20,13 @@ the per-handler bodies in the same file; see
   honesty. The fifteen unknown bytes (`0x26`, `0x4a`, `0x4c`-`0x4e`,
   `0x53`, `0x55`-`0x57`, `0x60`, `0x71`-`0x75`) cannot be named
   from the DSO table by elimination (see
-  [`dso-symbols.md`](dso-symbols.md)'s Decode\* study); pinning
-  them needs the DSUN.EXE dispatch table.
+  [`dso-symbols.md`](dso-symbols.md)'s Decode\* study). (Updated
+  2026-11-22: the DSUN.EXE dispatch tables this paragraph was
+  waiting on have since been resolved for both games;
+  [`dispatch-table-ds1.md`](dispatch-table-ds1.md) and
+  [`dispatch-table-ds2.md`](dispatch-table-ds2.md) carry the
+  resolved tables, and all fifteen slots are proven
+  unimplemented: the engine never dispatches them.)
 - **DSO cross-reference facts** (from the same study): DSO's
   handler for `0x64` wend is the same function as `0x12` jump
   (`DecodeWend == DecodeJump`); `0x1e`/`0x1f` are one handler in

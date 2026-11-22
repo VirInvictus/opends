@@ -66,10 +66,18 @@ blocking quest progression. Reproducible across save reloads.
 elevator solo, re-hire below.
 
 **Surface**: likely GPL (region-transition script) or DSUN.EXE
-(transition state machine). Investigation needed.
+(transition state machine). (Updated 2026-11-22: investigated
+2026-11-02; see
+[`../reports/elevator-digs-2026-11-02.md`](../reports/elevator-digs-2026-11-02.md).
+The Request machinery and the ride chain are pinned; the
+remaining unknown is the runtime confirmation, which the
+[QA playthrough](../qa/playthrough-qa-guide-2026-11-20.md)
+captures.)
 
-**Status**: headline target for `darkfix-ds2-v0.1.0`. See
-[`../roadmap.md`](../roadmap.md) Phase 7.
+**Status**: the headline DS2 target. The deadtrigger fix that
+shipped in `darkfix-ds2-v0.1.0` deliberately did not touch the
+elevator; the ride-chain work is Phase 7
+([`../../roadmap.md`](../../roadmap.md)).
 
 ### 2.2. Doorway / item graphics disappearance
 
@@ -128,7 +136,7 @@ own OGG re-encodes (`MUSIC/TrackNN.ogg`), so the defective
 masters never reach the player. The roadmap box's "OPL/MT-32
 emulation paths" framing was a category error and is retired:
 DS2's CD line has no MIDI music at all (see
-`docs/install-variants.md`), so those synthesis paths are never
+`docs/reference/install-variants.md`), so those synthesis paths are never
 in the audio chain, and no DOSBox-specific static report for
 DS2 exists in the community record. Residual: one in-game ear
 test on the GOG install, which can ride the Phase 10
@@ -172,7 +180,7 @@ noted; sources are cited, and the "surface" column is the repo's
 guess (GPL script/data vs `DSUN.EXE`), not a finding. PHASE 9
 TRIAGE (2026-10-07): every entry below now carries a verdict
 (FIXED / fix-candidate / engine-side / no static site) with
-evidence in docs/ds1-sweep-triage-2026-10-07.md; the three
+evidence in docs/reports/ds1-sweep-triage-2026-10-07.md; the three
 shipped repairs ride darkfix-ds1's `fix.ds1.script-repairs`
 (0.1.2, default-on from 0.1.3; see the triage doc).
 
@@ -366,7 +374,7 @@ North). Surface: mixed engine/data; low severity each.
   the same no-op-or-restoration design as the DS1 fix. Ten of the
   12 rows left at 0.1.0 followed in darkfix-ds2 0.1.1
   (2026-10-07) after the correlation dig
-  (docs/port-digs-2026-10-07.md 2): the tapestry look -1922, two
+  (docs/reports/port-digs-2026-10-07.md 2): the tapestry look -1922, two
   more shared-prop use rows, and the seven GPL-98 use-with rows,
   whose entry immediates were already correct and only the chunk
   id wrong (alive twins in GPL-114 attest every pair). 2 rows
@@ -501,16 +509,16 @@ below are yuan-ti's `engine/src/DarkSun.Game/Scripting/GplRepairs.cs`.
    never advances, and the busy flag (cleared only by GPL 8's
    state-0 arm @0xedc) never lifts. The fix guards the writer:
    below 2, the knock clamps the state to 0. Trace record:
-   [`../ds1-patch/fixes/010-trustee-rounds.md`](../ds1-patch/fixes/010-trustee-rounds.md).
+   [`../../ds1-patch/fixes/010-trustee-rounds.md`](../../ds1-patch/fixes/010-trustee-rounds.md).
    Relayed from the Obsidian Edition's findings via yuan-ti (see
-   [community-crossread-2026-11-13.md](community-crossread-2026-11-13.md)
+   [../reports/community-crossread-2026-11-13.md](../reports/community-crossread-2026-11-13.md)
    §1).
 
 
 ### 3.7. Engine-side rows verified from the Obsidian relay (2026-11-17)
 
 The Obsidian Edition's 15-row relay (issue #24; see
-[`community-crossread-2026-11-13.md`](community-crossread-2026-11-13.md)
+[`../reports/community-crossread-2026-11-13.md`](../reports/community-crossread-2026-11-13.md)
 §1 for the original claims) verified by our own disassembly passes
 over the DS1 image. Engine-side bugs are EXE patches, out of
 darkfix's data scope; these rows are the verified documentation, not
@@ -652,7 +660,7 @@ Each fix:
 4. Is documented here with the original report and the fix rationale.
 
 Bug fixes that change balance (e.g., XP exploits, item duplication)
-are **off by default**, on by toggle. See [`../spec.md`](../spec.md) §5.
+are **off by default**, on by toggle. See [`../../spec.md`](../../spec.md) §5.
 Amended 2026-10-07: several enabled fixes may share one target file
 when their edit ranges are disjoint; the applier composes them into
 one write and refuses overlapping ranges at check time. (The old
