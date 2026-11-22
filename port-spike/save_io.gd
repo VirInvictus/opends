@@ -2,7 +2,7 @@
 # Chunks written: SAVE/5 party combat rows (58 B each, ds1_combat_t),
 # SAVE/6 party character rows (71 B each, ds1_character_t), STXT/0 the
 # display label, SAVE/60 the port's own state blob (JSON: region, tile,
-# fight counter, gold). Layout per docs/file-formats.md 3.2-3.4; the
+# fight counter, gold). Layout per docs/reference/file-formats.md 3.2-3.4; the
 # container mirrors save-inspect's parse_gff (indexed chunks only).
 class_name SaveIO
 

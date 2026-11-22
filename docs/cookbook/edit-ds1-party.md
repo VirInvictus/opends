@@ -3,7 +3,7 @@
 End-to-end walkthrough for the `ds1-party-edit.py` script. This
 is the surface a modder actually uses; the underlying SAVE-chunk
 RE is documented in
-[`docs/file-formats.md`](../file-formats.md) §3.
+[`../reference/file-formats.md`](../reference/file-formats.md) §3.
 
 **Audience**: DS1 player who wants to mod their active party.
 **Risk**: low. Auto-backup on every edit; `restore` rolls back.
@@ -234,5 +234,5 @@ engine reloads SAVE01 over it. The script writes to both.
   inactive char templates)
 - [`bootstrap-items.md`](bootstrap-items.md): the items.toml
   catalogue bootstrap loop
-- [`../file-formats.md`](../file-formats.md) §3: the SAVE-5 /
+- [`../reference/file-formats.md`](../reference/file-formats.md) §3: the SAVE-5 /
   SAVE-6 layout details

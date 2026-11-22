@@ -30,7 +30,7 @@ detail lives in the docs it points at.
 
 ## Getting set up
 
-[`docs/build-environment.md`](docs/build-environment.md) walks
+[`docs/reference/build-environment.md`](docs/reference/build-environment.md) walks
 the whole thing (innoextract, DOSBox-Staging, toolchains, the
 Python gate). Short version:
 
@@ -51,16 +51,16 @@ different version, run the Python checks through
 
 - [`roadmap.md`](roadmap.md) is the worklist; anything unticked
   is fair game to ask about.
-- [`docs/known-bugs.md`](docs/known-bugs.md) is the bug census;
+- [`docs/reference/known-bugs.md`](docs/reference/known-bugs.md) is the bug census;
   new bugs get recorded there before (or instead of) getting
   fixed.
 - Fix authoring follows
-  [`docs/patch-workflow.md`](docs/patch-workflow.md), with worked
+  [`docs/reference/patch-workflow.md`](docs/reference/patch-workflow.md), with worked
   examples in
   [`docs/cookbook/author-first-darkfix.md`](docs/cookbook/author-first-darkfix.md)
   and the rest of the [cookbook](docs/cookbook/).
 - The applier contract is
-  [`docs/fix-format.md`](docs/fix-format.md); the security
+  [`docs/reference/fix-format.md`](docs/reference/fix-format.md); the security
   guarantees it makes are in
   [SECURITY.md](.github/SECURITY.md).
 
@@ -68,7 +68,7 @@ different version, run the Python checks through
 
 - **The docs set travels with every change**: README, CLAUDE.md,
   spec.md, roadmap.md, patchnotes.md. Version bumps follow the
-  full cadence in [`docs/versioning.md`](docs/versioning.md):
+  full cadence in [`docs/reference/versioning.md`](docs/reference/versioning.md):
   per-tool `VERSION` + its manifest + a patchnotes entry + a
   `<tool>-vX.Y.Z` tag whose message is that patchnotes entry,
   verbatim.

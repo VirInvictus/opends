@@ -128,7 +128,7 @@ The screens (ids, sizes, border plate, item highlights):
 border_bmp ids bound in headers: 3012/3013->BMP 20087, 15503->15002,
 17500->17000, 17501->17001, 17502->17002 (plate size == window size).
 All other furniture = APFM items. Engine open-sites for every screen
-are in docs/screen-flow.md section 2 (e.g. inventory 0x6C243, sheet
+are in docs/reference/screen-flow.md section 2 (e.g. inventory 0x6C243, sheet
 0x7E90B).
 
 ### 2.2 Art (292 ICON + 105 BMP, fully classified)
@@ -187,7 +187,7 @@ Story scroll text is baked into BMA bitmaps.
   0x48 MENU -> dynamic menu inside 3007; 0x42-44 input -> 3500/3004/
   3008) and shop mode (0x24 = inventory 13500 with SELL enabled). ALL
   other screens are engine input handlers (open-sites in
-  docs/screen-flow.md section 2).
+  docs/reference/screen-flow.md section 2).
 - **Inventory model**: one global item-instance array, DGROUP [0x165d],
   400 rows x 21 B (object-formats.md 4.1: id -n, qty, next, value,
   pack_index, IT1R index, icon, charges, qty-mirror, special, slot,

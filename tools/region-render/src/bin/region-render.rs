@@ -79,7 +79,7 @@ struct Cli {
     animate_entities: bool,
     /// Animate the VGA colour-cycle palette: emit the frame
     /// sequence with the palette rotated per the decoded engine
-    /// cycle mechanism (docs/dsun-exe-re.md 4.5.5-4.5.6: DS1
+    /// cycle mechanism (docs/reference/dsun-exe-re.md 4.5.5-4.5.6: DS1
     /// arms four boot-time ranges, colours 1-5 / 6-10 / 11-15 /
     /// 240-248, delay 2). One rendered frame is one pump pass,
     /// so a delay-2 range rotates every 2 frames; `--gif-fps`
@@ -452,7 +452,7 @@ fn main() -> Result<()> {
 /// 3. Inline `PAL ` / `CPAL` in the region GFF (DS2 case).
 /// 4. Default: `RESOURCE.GFF` in the same directory as the region
 ///    GFF. Try `CPAL:200` first (matches what the engine does
-///    per the DSUN.EXE RE in `docs/dsun-exe-re.md`: the engine
+///    per the DSUN.EXE RE in `docs/reference/dsun-exe-re.md`: the engine
 ///    loads `CMAT[region_family_id]` with `CPAL[region_family_id]`
 ///    as the fallback, and CPAL:200 is the more common of the
 ///    two known family ids). If `CPAL:200` is missing, fall back
@@ -525,7 +525,7 @@ fn resolve_palette(
 
     // 4. Default fallback: sibling RESOURCE.GFF. v0.5.0 prefers
     //    CPAL:200 (matches the engine's per-region behaviour per
-    //    docs/dsun-exe-re.md) and falls back to PAL :1000 if the
+    //    docs/reference/dsun-exe-re.md) and falls back to PAL :1000 if the
     //    install doesn't carry CPAL:200.
     let mut sibling = region_path.to_path_buf();
     sibling.set_file_name("RESOURCE.GFF");

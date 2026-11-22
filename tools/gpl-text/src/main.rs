@@ -4,7 +4,7 @@
 //! editing rules are GPLDocument's (DarkSunTools, Apache-2.0):
 //! same character count implies the same packed byte count, 7-bit
 //! symbols only, and no length changes (those are gpl-asm detour
-//! territory, see docs/detour-repairs.md).
+//! territory, see docs/reference/detour-repairs.md).
 
 use anyhow::{Context, Result};
 use clap::Parser;

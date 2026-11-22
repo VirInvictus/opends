@@ -3,7 +3,7 @@
 Stdlib-only. Python 3.11+ (tomllib). This is the library half of
 the applier; apply.py is the CLI half. Per-fix scripts import
 ``apply_bytes`` / ``apply_gff_chunk`` from here, matching the
-contract in docs/patch-workflow.md §4.2.
+contract in docs/reference/patch-workflow.md §4.2.
 
 Refusals are exceptions; the CLI turns them into exit code 1.
 Everything is all-or-nothing per fix: fingerprints are checked on
@@ -194,7 +194,7 @@ def apply_edits(data: bytes, edits: list[Edit], *, what: str = "fix") -> bytes:
 def apply_bytes(source_path: Path, dest_path: Path, edits) -> Path:
     """Read source_path, apply byte edits, write dest_path.
 
-    Per-fix authoring helper (docs/patch-workflow.md §4.2). Accepts
+    Per-fix authoring helper (docs/reference/patch-workflow.md §4.2). Accepts
     Edit objects or the raw dicts fix scripts declare.
     """
     edits = [

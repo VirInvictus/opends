@@ -26,7 +26,7 @@ Depends on `gff-edit` for GFF I/O and `image-extract` for the
   `<stem>-frames/` directory for editing reuse.
 - **Animated palette** (`--animate-palette`): the engine's VGA
   colour cycling, decoded from `DSUN.EXE` (see
-  `docs/dsun-exe-re.md` 4.5.5-4.5.6). One rendered frame is one
+  `docs/reference/dsun-exe-re.md` 4.5.5-4.5.6). One rendered frame is one
   pump pass; every active cycle record's counter ticks down and
   at zero its colour range rotates toward higher indices by one
   step (the range's last colour wraps to its first slot).
@@ -79,7 +79,7 @@ period in frame ticks.
 DS2 region GFFs ship an inline `PAL ` (typically id `1`), so the
 default just works. DS1 region GFFs ship no inline palette and
 fall through to the `RESOURCE.GFF` lookup (CPAL:200 first, the
-engine-default reading per `docs/dsun-exe-re.md`; `PAL :1000` if
+engine-default reading per `docs/reference/dsun-exe-re.md`; `PAL :1000` if
 CPAL:200 is absent).
 
 ## Animated palette: what is game-accurate

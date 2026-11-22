@@ -16,7 +16,7 @@
 #   dso_source = "DSO::Name"     # optional: DSO v1.0 symbol the name came from
 #   notes = "..."                # optional: rationale, falsification conditions
 #
-# Addressing follows docs/dsun-exe-survey.md: resident functions are
+# Addressing follows docs/reference/dsun-exe-survey.md: resident functions are
 # addressed by file offset; overlay functions by (segment index,
 # segment-local cs: offset), the same coordinates as the entry stubs.
 #
@@ -33,7 +33,7 @@
 # Curation rule (do not relax without surfacing it):
 #
 #   Add or change a row only with a written evidence chain in this
-#   repo's docs (docs/dsun-exe-re.md, docs/dsun-exe-survey.md, or a
+#   repo's docs (docs/reference/dsun-exe-re.md, docs/reference/dsun-exe-survey.md, or a
 #   fix writeup). Machine-generated proposals from
 #   scripts/propose-exe-symbols.py are review input, never commits;
 #   every row here is hand-accepted.
@@ -43,7 +43,7 @@ name = "load_resource"
 segment = "resident"
 offset = 0x2e69b
 confidence = "verified"
-evidence = "docs/overlay-formats.md 7 (worked example 2): the overlay-side call seg word 0x0128 is a segtab BYTE OFFSET (record 37, start_para 0x28ff), giving file 0x5200 + 0x28ff0 + 0x4ab; prologue 55 8B EC 39 26 9C 00 byte-verified 2026-09-19"
+evidence = "docs/reference/overlay-formats.md 7 (worked example 2): the overlay-side call seg word 0x0128 is a segtab BYTE OFFSET (record 37, start_para 0x28ff), giving file 0x5200 + 0x28ff0 + 0x4ab; prologue 55 8B EC 39 26 9C 00 byte-verified 2026-09-19"
 notes = """
 The four-CC resource loader, `load_resource(fourcc, id, far *buf)`. \
 Same call shape as DS1's loader. CORRECTED 2026-09-19: 0x692b lands \
@@ -58,7 +58,7 @@ name = "overlay_manager"
 segment = "resident"
 offset = 0x40544
 confidence = "verified"
-evidence = "docs/overlay-formats.md 5: INT 3Fh handler entry (segment 0x3ae5 = segtab record 85, offset 0x4f4); prologue 55 8B EC F7 C5 01 00 74 05 EA DF 02 00 00 (push bp; mov bp,sp; test bp,1; odd-BP abort via jmp far 0000:0x2df) byte-verified 2026-09-19; iret at 0x405a9. The survey's 0x4aff0 is a null stub (CD 3F 00 00 00), not code"
+evidence = "docs/reference/overlay-formats.md 5: INT 3Fh handler entry (segment 0x3ae5 = segtab record 85, offset 0x4f4); prologue 55 8B EC F7 C5 01 00 74 05 EA DF 02 00 00 (push bp; mov bp,sp; test bp,1; odd-BP abort via jmp far 0000:0x2df) byte-verified 2026-09-19; iret at 0x405a9. The survey's 0x4aff0 is a null stub (CD 3F 00 00 00), not code"
 notes = """
 The Borland VROOM overlay dispatch body (INT 3Fh handler side). \
 CORRECTED 2026-09-19: 0x404c4 (this row's home since 2026-09-06) is \
@@ -74,7 +74,7 @@ name = "vga_start_cycle"
 segment = "resident"
 offset = 0x2cee7
 confidence = "verified"
-evidence = "docs/dsun-exe-re.md 4.5.6: StartCycle(slot, first, count, delay) - fills cycle-table record, sets flags=3; the four boot-time calls at 0x1cecf..0x1cf0b target it (DS1)"
+evidence = "docs/reference/dsun-exe-re.md 4.5.6: StartCycle(slot, first, count, delay) - fills cycle-table record, sets flags=3; the four boot-time calls at 0x1cecf..0x1cf0b target it (DS1)"
 notes = """
 The registration API for the colour-cycle pump (entry 0x387 of the palette segment, base 0x28380 DS1 / 0x2cb60 DS2). Bodies byte-identical across games.
 """
@@ -84,7 +84,7 @@ name = "vga_stop_cycle"
 segment = "resident"
 offset = 0x2cf1f
 confidence = "verified"
-evidence = "docs/dsun-exe-re.md 4.5.6: StopCycle(slot) - flags = 0; bodies byte-identical across games"
+evidence = "docs/reference/dsun-exe-re.md 4.5.6: StopCycle(slot) - flags = 0; bodies byte-identical across games"
 notes = """
 Disables a cycle-table slot.
 """
@@ -94,7 +94,7 @@ name = "vga_color_cycle_pump"
 segment = "resident"
 offset = 0x2cfdc
 confidence = "verified"
-evidence = "docs/dsun-exe-re.md 4.5.5: walks 16x8-byte cycle records at cs:0x6, reads ranges via DAC 0x3c7/0x3c9, rotates by one, writes back via vga_write_palette_range; instruction stream identical to DS1 0x287fc (near-call displacements differ)"
+evidence = "docs/reference/dsun-exe-re.md 4.5.5: walks 16x8-byte cycle records at cs:0x6, reads ranges via DAC 0x3c7/0x3c9, rotates by one, writes back via vga_write_palette_range; instruction stream identical to DS1 0x287fc (near-call displacements differ)"
 notes = """
 The per-tick colour-cycle walker (DSO::VGAColorCycle family). \
 Record layout: flags(bit0+bit1), reload, counter, first, count. \
@@ -107,7 +107,7 @@ name = "vga_write_palette_range"
 segment = "resident"
 offset = 0x2d074
 confidence = "verified"
-evidence = "docs/dsun-exe-re.md 4.5.5: body byte-identical to DS1 0x28894 (out 0x3c8 at 0x2d08d); writes count RGB triples from a far buffer starting at DAC index first"
+evidence = "docs/reference/dsun-exe-re.md 4.5.5: body byte-identical to DS1 0x28894 (out 0x3c8 at 0x2d08d); writes count RGB triples from a far buffer starting at DAC index first"
 notes = """
 DSO::VGASetPalette correspondence. Args (*buf far, first, count). \
 6-bit DAC-domain buffer (no shift in the loop).
@@ -118,7 +118,7 @@ name = "vga_read_palette_range"
 segment = "resident"
 offset = 0x2d0a4
 confidence = "verified"
-evidence = "docs/dsun-exe-re.md 4.3 + 4.5.5: inverse of vga_write_palette_range; body byte-identical to DS1 0x288c4 (in-loop read port at 0x2d0bb)"
+evidence = "docs/reference/dsun-exe-re.md 4.3 + 4.5.5: inverse of vga_write_palette_range; body byte-identical to DS1 0x288c4 (in-loop read port at 0x2d0bb)"
 notes = """
 DSO::VGAGETPALETTE correspondence.
 """
@@ -128,7 +128,7 @@ name = "load_game_from_disk"
 segment = 18
 offset = 0xa6c
 confidence = "verified"
-evidence = "scripts/xref-string.py: pushes 'Failed Uncompress in Loadgamefromdisk' (file 0x4e6ba, DGROUP offset 0x16ba) at 0x70975. RE-VERIFIED 2026-11-01 by decompilation (ovr-carve + rea, docs/engine-quirks.md 6 addendum): the body READS - it calls load_resource (the 0x128:0x4AB read API, FUN_38ff_04ab) with the SAVE fourCC and a param_1 * 0x3d + n record stride, and anchors 'Not enough memory in Loadgamefromdisk' in-body; gpl_disk_change_region calls it with the NEW region id as its load-world-state step"
+evidence = "scripts/xref-string.py: pushes 'Failed Uncompress in Loadgamefromdisk' (file 0x4e6ba, DGROUP offset 0x16ba) at 0x70975. RE-VERIFIED 2026-11-01 by decompilation (ovr-carve + rea, docs/reference/engine-quirks.md 6 addendum): the body READS - it calls load_resource (the 0x128:0x4AB read API, FUN_38ff_04ab) with the SAVE fourCC and a param_1 * 0x3d + n record stride, and anchors 'Not enough memory in Loadgamefromdisk' in-body; gpl_disk_change_region calls it with the NEW region id as its load-world-state step"
 dso_source = "DSO::LoadGameFromDisk"
 notes = """
 Reads a region's SAVE-tagged world-state records out of DARKRUN.GFF \
@@ -209,7 +209,7 @@ name = "gpl_disk_change_region"
 segment = 18
 offset = 0x1132
 confidence = "verified"
-evidence = "scripts/xref-string.py: pushes 'Fatal error: Region change, Invalid save' (file 0x4e75d, DGROUP offset 0x175d) at 0x71112; decompiled 2026-11-01 (ovr-carve + rea, docs/engine-quirks.md 6 addendum): the body carries both region-change fatals and its call order matches the documented phase sequence exactly (record sweep 5..0x140, save pair into save_record_writer, the despawn pump, region-id update, load_game_from_disk(new_region), DARKRUN close, presentation orchestrator, region load)"
+evidence = "scripts/xref-string.py: pushes 'Fatal error: Region change, Invalid save' (file 0x4e75d, DGROUP offset 0x175d) at 0x71112; decompiled 2026-11-01 (ovr-carve + rea, docs/reference/engine-quirks.md 6 addendum): the body carries both region-change fatals and its call order matches the documented phase sequence exactly (record sweep 5..0x140, save pair into save_record_writer, the despawn pump, region-id update, load_game_from_disk(new_region), DARKRUN close, presentation orchestrator, region load)"
 dso_source = "DSO::GplDiskChangeRegion"
 notes = """
 DS2's region-change machine, fully decompiled; the gpldisk.c module \
@@ -234,7 +234,7 @@ name = "region_presentation_orchestrator"
 segment = 18
 offset = 0x1e63
 confidence = "probable"
-evidence = "docs/engine-quirks.md 6 addendum (2026-11-01 decompile): called by gpl_disk_change_region between the DARKRUN close and the region load; the body is a per-region-id switch special-casing 0x3e/0x42/0x43/0x44 with cinematic setup calls, default path otherwise"
+evidence = "docs/reference/engine-quirks.md 6 addendum (2026-11-01 decompile): called by gpl_disk_change_region between the DARKRUN close and the region load; the body is a per-region-id switch special-casing 0x3e/0x42/0x43/0x44 with cinematic setup calls, default path otherwise"
 notes = """
 The presentation half of the region change (speech prefetch, map \
 draw, entry cinematics per the 5.6 survey). Region 57 (0x39, the \
@@ -247,7 +247,7 @@ name = "npc_record_despawn"
 segment = "resident"
 offset = 0x275bb
 confidence = "probable"
-evidence = "docs/engine-quirks.md 6 addendum (2026-11-01 decompile): FUN_31e0_05bb at Ghidra linear 0x323bb; called per iteration by gpl_disk_change_region's despawn pump; the body unlinks a record from the 8-byte array at DAT_5b7c_2df7 (flags at +5, &0x20 active) via FUN_289b_0094 and cross-links the 37-byte records"
+evidence = "docs/reference/engine-quirks.md 6 addendum (2026-11-01 decompile): FUN_31e0_05bb at Ghidra linear 0x323bb; called per iteration by gpl_disk_change_region's despawn pump; the body unlinks a record from the 8-byte array at DAT_5b7c_2df7 (flags at +5, &0x20 active) via FUN_289b_0094 and cross-links the 37-byte records"
 notes = """
 Removes one world-record entry (the pump's per-iteration worker). \
 Naming from role; no DSO row. The pump loop (while head.flags & 8 \
@@ -260,7 +260,7 @@ name = "gpl_request_dispatcher"
 segment = 35
 offset = 0x169
 confidence = "probable"
-evidence = "docs/elevator-digs-2026-11-02.md 1 (2026-11-02): the VM 0x22 arm (resident 0xd444) far-calls stub 0x4787:0x66 whose entry field is this offset; the body bounds-checks code-1 <= 0x34 and jumps through the table at cs:0x6c7 (file 0x8c487)"
+evidence = "docs/reports/elevator-digs-2026-11-02.md 1 (2026-11-02): the VM 0x22 arm (resident 0xd444) far-calls stub 0x4787:0x66 whose entry field is this offset; the body bounds-checks code-1 <= 0x34 and jumps through the table at cs:0x6c7 (file 0x8c487)"
 notes = """
 The Request dispatcher itself: 53 codes, jump table per code. Arms \
 37/38/39 (elevator operate/state-query/state-write) decoded in the \
@@ -272,7 +272,7 @@ name = "elevator_ride_service"
 segment = 35
 offset = 0x1d2e
 confidence = "probable"
-evidence = "docs/elevator-digs-2026-11-02.md 3 (2026-11-02): arm 37 case 3 (arg3==1) calls this entry; the body clears the elevator-state byte 0x14e5 and calls load_resource('PAL ', [0x140c]) via the raw 0x128:0x4ab form, then a sound-staging loop"
+evidence = "docs/reports/elevator-digs-2026-11-02.md 3 (2026-11-02): arm 37 case 3 (arg3==1) calls this entry; the body clears the elevator-state byte 0x14e5 and calls load_resource('PAL ', [0x140c]) via the raw 0x128:0x4ab form, then a sound-staging loop"
 notes = """
 The ride pickup's native half, invoked from GPL-287's noorders \
 entry when the arrived car finds a party member within distance 15.
@@ -283,7 +283,7 @@ name = "npc_despawn_marker"
 segment = 31
 offset = 0xe2
 confidence = "probable"
-evidence = "docs/elevator-digs-2026-11-02.md 4 (2026-11-02): linear 0x94042 (file 0x89242, stub entry); the body walks the 8-byte record chain negating +6 links, setting flags |= 8, and incrementing DAT_57e0_264e - the flag the gpl_disk_change_region despawn pump consumes"
+evidence = "docs/reports/elevator-digs-2026-11-02.md 4 (2026-11-02): linear 0x94042 (file 0x89242, stub entry); the body walks the 8-byte record chain negating +6 links, setting flags |= 8, and incrementing DAT_57e0_264e - the flag the gpl_disk_change_region despawn pump consumes"
 notes = """
 Marks records for despawn-on-region-change. Callers unresolved \
 (stub-indirect; ovr-map --callgraph has no direct edge). Open \
@@ -295,7 +295,7 @@ name = "npc_record_sweep_helper"
 segment = "resident"
 offset = 0x2c3d2
 confidence = "probable"
-evidence = "docs/engine-quirks.md 6 addendum (2026-11-01 decompile): FUN_371d_0002 at Ghidra linear 0x371d2; called once per record (id, 0xffff, 0, 0, 1) by gpl_disk_change_region's record sweep over DGROUP:0x6874 stride 0x25"
+evidence = "docs/reference/engine-quirks.md 6 addendum (2026-11-01 decompile): FUN_371d_0002 at Ghidra linear 0x371d2; called once per record (id, 0xffff, 0, 0, 1) by gpl_disk_change_region's record sweep over DGROUP:0x6874 stride 0x25"
 notes = """
 Per-record expire/clear worker for the region transition sweep. \
 Large body (Ghidra flags an overlapping-instruction site and a \
@@ -307,7 +307,7 @@ name = "save_record_writer"
 segment = 18
 offset = 0x08e3
 confidence = "verified"
-evidence = "subagent boundary scan: same SAVE fourCC + count pattern as load_game_from_disk, but calls 0x118:0x5C5 (write API) instead of 0x128:0x4AB (read API); writes computed values into segment 0x378. Offset CORRECTED 2026-09-19 (docs/overlay-formats.md 7, worked example 6): the stub entry and prologue are at 0x8e3 (file 0x70713), not 0x8e5"
+evidence = "subagent boundary scan: same SAVE fourCC + count pattern as load_game_from_disk, but calls 0x118:0x5C5 (write API) instead of 0x128:0x4AB (read API); writes computed values into segment 0x378. Offset CORRECTED 2026-09-19 (docs/reference/overlay-formats.md 7, worked example 6): the stub entry and prologue are at 0x8e3 (file 0x70713), not 0x8e5"
 notes = """
 The save-writer twin of load_game_from_disk. Same 'SAVE' fourCC and 17-slot loop, but calls the WRITE API and writes into segment 0x378 rather than reading into a stack buffer. Deserves its own syms row (was missing from the catalogue).
 """
@@ -317,7 +317,7 @@ name = "buffer_capacity_helper"
 segment = "resident"
 offset = 0x6902
 confidence = "verified"
-evidence = "prologue 55 8B EC + segment-grow shape byte-verified 2026-09-19; docs/overlay-formats.md 7 (worked example 2 note)"
+evidence = "prologue 55 8B EC + segment-grow shape byte-verified 2026-09-19; docs/reference/overlay-formats.md 7 (worked example 2 note)"
 notes = """
 Segment-grow helper (grows segment bx to hold dx:ax bytes), prologue \
 at 0x6902. RESOLVED 2026-09-19: this is NOT load_resource; the real \
@@ -1471,7 +1471,7 @@ The GPL VM's handler for opcode 0x80 (GetRange). Resolved through the dispatch t
 # the symbols.txt offsets (only AIL proper is stubbed there). DS2
 # carries Mel Real Mode 2.2.7 (DS1 the older 2.0.9b); DS2 and DSO
 # (2.2.5) are adjacent versions, so bodies match function for
-# function. Full evidence chain in docs/port-digs-2026-10-07.md 2.
+# function. Full evidence chain in docs/reports/port-digs-2026-10-07.md 2.
 
 [[function]]
 name = "mel_error"

@@ -4,7 +4,7 @@
 Stdlib-only. Decodes the well-understood save chunks: the CHAR
 header, the per-game CHAR record data (the RDFF schemas,
 decoded per game and writable since v0.8.0; see
-docs/file-formats.md §2), PSIN/PSST psionics, and TEXT. Chunks
+docs/reference/file-formats.md §2), PSIN/PSST psionics, and TEXT. Chunks
 whose internal layout is still undocumented per game (SPST,
 CACT, PREF, GREQ) are emitted as opaque hex previews only:
 there is no structured edit path for them.
@@ -264,7 +264,7 @@ def _decode_combat(body: bytes) -> dict[str, Any]:
     special_defense). v0.4.0 extends the DS2 decode beyond the
     prefix with a structured field map derived from inspecting
     every CHAR sub-block in DS1 and DS2 GOG 1.10. See
-    `docs/file-formats.md` §2 for the full layout.
+    `docs/reference/file-formats.md` §2 for the full layout.
     """
     out: dict[str, Any] = {}
     n = len(body)
@@ -905,7 +905,7 @@ def decode_save_chunk(chunk_id: int, payload: bytes) -> dict[str, Any]:
 
     Per-game tag: v0.7.0 ships only `_format: ds1_save_chunk`.
     DS2 likely shares the wire format (the engine code is the
-    same shape per `docs/dso-symbols.md`) but we have no played
+    same shape per `docs/reference/dso-symbols.md`) but we have no played
     DS2 sample to verify. The tag is updated to `ds2_save_chunk`
     or split into two variants once that data exists.
     """
@@ -1467,7 +1467,7 @@ def write_gff(
     # (types-list, free-list); the types-list comes first (offset
     # 8 = right after these two u32s). The free list sits at the END
     # of the TOC and is always empty here: a 2-byte free_count = 0
-    # sentinel (docs/file-formats.md; gff-edit's builder writes the
+    # sentinel (docs/reference/file-formats.md; gff-edit's builder writes the
     # same shape). free_list_offset points at those 2 bytes -- a 0
     # would aim the free-list pointer at the TOC header itself, where
     # the types_offset bytes read back as free_count = 8.

@@ -10,7 +10,7 @@ MAS 9's own gflag[339] == 0 guard (set by GPL 133/132 once the
 messenger fires). Site ours, implementation his; gate-verified
 2026-11-13. Beta: UNTESTED at runtime; disabled by default.
 Source: CalvinRodo/yuan-ti GplRepairs.cs (MIT);
-docs/gate-review-yuan-ti-2026-11-13.md.
+docs/reports/gate-review-yuan-ti-2026-11-13.md.
 """
 
 from darkfix.patcher import apply_gpl_repairs

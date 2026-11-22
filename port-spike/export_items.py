@@ -2,7 +2,7 @@
 """Export item inventory icons + cell overlay art for the Godot port.
 
 - Item icons: an item's inventory icon is its base object's OJFF bmp_id
-  sprite, decoded from SEGOBJEX.GFF with PAL/1000 (docs/asset-bindings.md
+  sprite, decoded from SEGOBJEX.GFF with PAL/1000 (docs/reference/asset-bindings.md
   1; proven against the DOSBox oracle: K'tarchek's blue cell icon is
   object 1010 Chatkcha -> BMP 2381, and the sprite is what renders).
 - Cell overlays: RESOURCE BMP 13007. Frames 9..22 are the 14 paperdoll
@@ -42,7 +42,7 @@ ec = importlib.util.module_from_spec(_spec)
 sys.modules["opds_extract"] = ec
 _spec.loader.exec_module(ec)
 
-# The demo party's gear, picked from docs/creature-inventories-ds1.md:
+# The demo party's gear, picked from docs/catalogues/creature-inventories-ds1.md:
 # common field kit, legal for each member's classes. K'ratchek's Chatkcha
 # matches the factory save the oracle capture came from.
 KITS = {

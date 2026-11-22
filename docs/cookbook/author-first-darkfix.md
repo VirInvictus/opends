@@ -10,7 +10,7 @@ the examples here are the command-level trail.
 
 ## The pipeline at a glance
 
-1. **Pick and scope the bug** (`docs/known-bugs.md`).
+1. **Pick and scope the bug** (`docs/reference/known-bugs.md`).
 2. **Build the repro fixture** (`tools/repro/`).
 3. **Characterize it** (baseline run + the census table).
 4. **Locate the site** (data side: `gpl-disasm` + `gff-edit`;
@@ -24,7 +24,7 @@ the examples here are the command-level trail.
 
 ## 1. Pick and scope the bug
 
-- Source list: `docs/known-bugs.md` (the community list and the
+- Source list: `docs/reference/known-bugs.md` (the community list and the
   bug-site census at §3a).
 - Prefer, in order: a data-surface bug (GPL script or GFF data;
   no EXE work), a bug whose site the census already
@@ -83,7 +83,7 @@ flag / constant, and note the exact byte positions (the
 disassembly's offset annotations are byte-accurate).
 
 Binary surface: `ovr-map --disasm <seg>` names entry points; a
-site report in `docs/dsun-exe-re.md` (or the fix writeup) is
+site report in `docs/reference/dsun-exe-re.md` (or the fix writeup) is
 mandatory before authoring. `ovr-map --syms` catalogue names and
 string-xref anchors (via `scripts/xref-string.py`) are the
 evidence chain.

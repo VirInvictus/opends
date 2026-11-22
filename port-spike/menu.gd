@@ -5,7 +5,7 @@
 # the furniture, the four ICON/2048..2051 static flame-text buttons at
 # their WIND/3000 positions, accelerator keys S/C/L/E from ACCL/8100
 # (screen-flow.md 2). Creation mechanics follow the mined pipeline
-# (docs/chargen-flow.md): race list with class masks (record 104), stat
+# (docs/reference/chargen-flow.md): race list with class masks (record 104), stat
 # roll = best of 4 x (4d4 + racial modifier + 4) with prime stats
 # floored at 17 and the racial+20 cap, level 3 start with XP from the
 # class row, HP from the class hit die.

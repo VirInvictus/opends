@@ -16,7 +16,7 @@ insertion in either binary shows up as noise instead of a silent
 misalignment.
 
 DS1 is out of scope on purpose: no DS1 1.0 base exists to diff against
-(docs/install-variants.md 1), and the floppy line is a different
+(docs/reference/install-variants.md 1), and the floppy line is a different
 product build. Defaults target the canonical comparison; both binaries
 are overridable. Stdlib-only; needs `ndisasm` (nasm) for excerpts.
 """

@@ -5,8 +5,8 @@ and the insult names no race. The fix reads the character sheet's
 race field (the 71-byte record, +0x18) instead. Beta: UNTESTED at
 runtime; disabled by default. Source: CalvinRodo/yuan-ti
 GplRepairs.cs (MIT), byte-encodings gate-verified 2026-11-13
-(docs/gate-review-yuan-ti-2026-11-13.md); field meanings per
-docs/gplx-field-map.md.
+(docs/reports/gate-review-yuan-ti-2026-11-13.md); field meanings per
+docs/reference/gplx-field-map.md.
 """
 
 from darkfix.patcher import apply_gpl_repairs

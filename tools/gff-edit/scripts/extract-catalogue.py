@@ -4,13 +4,13 @@
 Reads the canonical installs under .games/ and emits machine-generated
 markdown catalogues (bestiary, item catalogue, spell catalogue, one of
 each per game) with a verification footer. The field layouts are
-docs/object-formats.md; this script is their executable form.
+docs/reference/object-formats.md; this script is their executable form.
 Corpus-wide invariants (negated-id anchors, name joins, sprite
 references) are counted into the footer, and a fixed anchor list must
 pass or the run fails loudly (exit 2), so a data or layout regression
 cannot ship as a quietly-wrong catalogue.
 
-Stdlib-only. Regenerate the docs with:
+Stdlib-only. Regenerate the catalogues (docs/catalogues/) with:
 
     python3 tools/gff-edit/scripts/extract-catalogue.py
 
@@ -43,7 +43,7 @@ NULL16 = 9999
 
 
 # --------------------------------------------------------------------------
-# GFF container parsing (docs/file-formats.md section 1)
+# GFF container parsing (docs/reference/file-formats.md section 1)
 
 
 @dataclass
@@ -207,7 +207,7 @@ class Creature:
     sp_alt: int  # DS2 cb+14 unresolved candidate
 
 
-# Alignment enum (docs/object-formats.md 2.3, confirmed wave 2:
+# Alignment enum (docs/reference/object-formats.md 2.3, confirmed wave 2:
 # book-anchored; 0 = none/unlisted).
 ALIGNMENT_NAMES = ("-", "LG", "LN", "LE", "NG", "N", "NE", "CG", "CN", "CE")
 
@@ -898,7 +898,7 @@ def extract_world(
 ) -> list[RegionDump]:
     """Per-region geography: placements (ETAB), passability grids
     (GMAP), tile counts, and trigger registrations (MAS chunks). The
-    record layouts are docs/region-formats.md."""
+    record layouts are docs/reference/region-formats.md."""
     objdb = games_dir / game / ("SEGOBJEX.GFF" if game == "ds1" else "OBJEX.GFF")
     gff = parse_gff(objdb)
     ojff_bmp = {cid: u16(p, 12) for cid, p in resolve_type(gff, "OJFF")}
@@ -1121,7 +1121,7 @@ def fmt_duration(s: dict) -> str:
 
 def unpack_damage(d: int) -> tuple[int, int, int, int, int, int, int, int, int]:
     """The packed damage word, byte-wise, low-bits-first per byte
-    (docs/object-formats.md section 6). Returns (plus, dice_plus, div,
+    (docs/reference/object-formats.md section 6). Returns (plus, dice_plus, div,
     dice, sides, scale, savable, save_mod, save_type)."""
     b0 = d & 0xFF
     b1 = (d >> 8) & 0xFF
@@ -1149,7 +1149,7 @@ def fmt_damage(s: dict) -> str:
     dice_plus*lvl (+dice) and plus is per-level; div > 1 = grouped
     ((lvl+dice_plus)/div) dice when the scale flag is set, else flat
     dice_plus dice (FLAME ARROW). The raw hex is always appended
-    (docs/object-formats.md section 6)."""
+    (docs/reference/object-formats.md section 6)."""
     d = s["dmg"]
     plus, dice_plus, div, dice, sides, scale, _sav, _sm, _st = unpack_damage(d)
     if not sides:
@@ -1213,7 +1213,7 @@ def emit_spells(out: GameData, lines: list[str]) -> None:
         " I = innate monster power. Ids are SPIN ids (record index + 1)"
         " where one exists. The damage column is a partial derivation of"
         " the packed engine word; the raw hex is authoritative"
-        " (docs/object-formats.md section 6). DS1 names come from SPIN;"
+        " (docs/reference/object-formats.md section 6). DS1 names come from SPIN;"
         " DS2 names from the engine power table."
     )
     lines.append("")
@@ -1261,7 +1261,7 @@ def emit_bestiary(out: GameData, lines: list[str]) -> None:
     lines.append("")
     lines.append(
         "Every creature record in the game's object database"
-        " (combat + character blocks, docs/object-formats.md section 2)."
+        " (combat + character blocks, docs/reference/object-formats.md section 2)."
         " Attacks are the half-round slots (value/2 per round) with"
         " their damage dice. THAC0 is a stored byte in both games"
         " (DS1 combat+31, DS2 combat+22; DS2's was located by the"
@@ -1312,7 +1312,7 @@ def emit_bestiary(out: GameData, lines: list[str]) -> None:
         if out.game == "ds2":
             lines.append(
                 "DS2's MONR is stale DS1 carryover"
-                " (docs/object-formats.md section 7); rows reference DS1"
+                " (docs/reference/object-formats.md section 7); rows reference DS1"
                 " region and creature ids."
             )
             lines.append("")
@@ -1412,14 +1412,14 @@ def _emit_inventory_doc(out: GameData, lines: list[str], kind: str) -> None:
             " weapons and ammo, worn = armor slots in template order,"
             " pack/stock = everything else; shop stock is a shopkeeper"
             " creature's pack list. DS1 ships one undifferentiated list"
-            " per owner. Encoding: docs/object-formats.md section 1."
+            " per owner. Encoding: docs/reference/object-formats.md section 1."
         )
     else:
         lines.append(
             "DS1 ships one undifferentiated inventory list per owner"
             " (the la=2 block starts it and carries the first item;"
             " la=4 blocks chain the rest). Encoding:"
-            " docs/object-formats.md section 1."
+            " docs/reference/object-formats.md section 1."
         )
     lines.append("")
     lines.append(
@@ -1469,7 +1469,7 @@ def emit_world(out: GameData, lines: list[str]) -> None:
         "Every region's entity placements (ETAB), passability summary"
         "(GMAP), and trigger registrations (the region's MAS chunk,"
         " decoded via gpl-disasm --json). Record layouts and the full"
-        " grid byte semantics: docs/region-formats.md; the grids"
+        " grid byte semantics: docs/reference/region-formats.md; the grids"
         " themselves regenerate from the game files via this script."
         " Coordinates are pixels on the 2048x1568 grid; tile = px // 16."
         " Sprites are OJFF-only decorations labelled by their BMP."
@@ -1616,8 +1616,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--out",
         type=Path,
-        default=REPO_ROOT / "docs",
-        help="output directory (default: docs)",
+        default=REPO_ROOT / "docs" / "catalogues",
+        help="output directory (default: docs/catalogues)",
     )
     ap.add_argument("--game", choices=("ds1", "ds2", "both"), default="both")
     ap.add_argument(

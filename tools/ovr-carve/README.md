@@ -5,7 +5,7 @@ Flatten a Borland VROOM executable (Dark Sun `DSUN.EXE`) into a single
 code decompiles in [REA](https://github.com/morluto/rea)/Ghidra beside
 the resident image. REA's MZ lane maps only the initialized module,
 which excludes the overlay area, where ~93% of the games' overlaid code
-lives. The transform is documented in `docs/overlay-formats.md`
+lives. The transform is documented in `docs/reference/overlay-formats.md`
 (sections 2-5); the module map comes from `ovr-map --json`.
 
 The output is an **analysis artifact only**: not runnable, not a patch
@@ -83,5 +83,5 @@ markers) and a verify round-trip per game.
   call resolves to a real address; no runtime dispatch is modeled.
 - The reloc table position assumes the documented layout
   (`code | table | pad`, table directly after the code); the corpus
-  validation in `docs/overlay-formats.md` section 4 covers all 101
+  validation in `docs/reference/overlay-formats.md` section 4 covers all 101
   modules of both games.

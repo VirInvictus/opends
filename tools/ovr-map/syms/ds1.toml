@@ -16,7 +16,7 @@
 #   dso_source = "DSO::Name"     # optional: DSO v1.0 symbol the name came from
 #   notes = "..."                # optional: rationale, falsification conditions
 #
-# Addressing follows docs/dsun-exe-survey.md: resident functions are
+# Addressing follows docs/reference/dsun-exe-survey.md: resident functions are
 # addressed by file offset; overlay functions by (segment index,
 # segment-local cs: offset), the same coordinates as the entry stubs.
 #
@@ -33,7 +33,7 @@
 # Curation rule (do not relax without surfacing it):
 #
 #   Add or change a row only with a written evidence chain in this
-#   repo's docs (docs/dsun-exe-re.md, docs/dsun-exe-survey.md, or a
+#   repo's docs (docs/reference/dsun-exe-re.md, docs/reference/dsun-exe-survey.md, or a
 #   fix writeup). Machine-generated proposals from
 #   scripts/propose-exe-symbols.py are review input, never commits;
 #   every row here is hand-accepted.
@@ -43,13 +43,13 @@ name = "load_resource"
 segment = "resident"
 offset = 0x29ea4
 confidence = "verified"
-evidence = "docs/overlay-formats.md 7 (worked example 3): the overlay-side call seg word bytes 00 01 = 0x0100 is a segtab BYTE OFFSET (record 32, start_para 0x2460), giving file 0x5400 + 0x24600 + 0x4a4; prologue 55 8B EC 39 26 9C 00 byte-verified 2026-09-19. The old 0x58b4 was an endian misread of the seg word as segment value 1"
+evidence = "docs/reference/overlay-formats.md 7 (worked example 3): the overlay-side call seg word bytes 00 01 = 0x0100 is a segtab BYTE OFFSET (record 32, start_para 0x2460), giving file 0x5400 + 0x24600 + 0x4a4; prologue 55 8B EC 39 26 9C 00 byte-verified 2026-09-19. The old 0x58b4 was an endian misread of the seg word as segment value 1"
 notes = """
 The four-CC resource loader, `load_resource(fourcc, id, far *buf)`. \
 Identified by the CMAT/CPAL fallback call shape and the FOURCC push \
 census. CORRECTED 2026-09-19: 0x58b4 (from reading '0001:04a4' as \
 segment 1) is mid-function bytes; the real entry is 0x29ea4 via the \
-segtab-byte-offset reading in docs/overlay-formats.md. 96 overlay-side \
+segtab-byte-offset reading in docs/reference/overlay-formats.md. 96 overlay-side \
 call sites plus 14 resident-side raw 0x2460:0x4a4 calls.
 """
 
@@ -58,7 +58,7 @@ name = "overlay_manager"
 segment = "resident"
 offset = 0x3be27
 confidence = "verified"
-evidence = "docs/overlay-formats.md 5: INT 3Fh handler entry (segment 0x3653 = segtab record 80, offset 0x4f7); prologue 55 8B EC F7 C5 01 00 74 05 EA DF 02 00 00 (push bp; mov bp,sp; test bp,1; odd-BP abort via jmp far 0000:0x2df) byte-verified 2026-09-19; iret at 0x3be8c"
+evidence = "docs/reference/overlay-formats.md 5: INT 3Fh handler entry (segment 0x3653 = segtab record 80, offset 0x4f7); prologue 55 8B EC F7 C5 01 00 74 05 EA DF 02 00 00 (push bp; mov bp,sp; test bp,1; odd-BP abort via jmp far 0000:0x2df) byte-verified 2026-09-19; iret at 0x3be8c"
 notes = """
 The Borland VROOM overlay dispatch body (INT 3Fh handler side). \
 CORRECTED 2026-09-19 from 0x466e0, which is a degenerate 5-byte \
@@ -73,7 +73,7 @@ name = "vga_start_cycle"
 segment = "resident"
 offset = 0x28707
 confidence = "verified"
-evidence = "docs/dsun-exe-re.md 4.5.6: StartCycle(slot, first, count, delay) - fills cycle-table record, sets flags=3; the four boot-time calls at 0x1cecf..0x1cf0b target it (DS1)"
+evidence = "docs/reference/dsun-exe-re.md 4.5.6: StartCycle(slot, first, count, delay) - fills cycle-table record, sets flags=3; the four boot-time calls at 0x1cecf..0x1cf0b target it (DS1)"
 notes = """
 The registration API for the colour-cycle pump (entry 0x387 of the palette segment, base 0x28380 DS1 / 0x2cb60 DS2). Bodies byte-identical across games.
 """
@@ -83,7 +83,7 @@ name = "vga_stop_cycle"
 segment = "resident"
 offset = 0x2873f
 confidence = "verified"
-evidence = "docs/dsun-exe-re.md 4.5.6: StopCycle(slot) - flags = 0; bodies byte-identical across games"
+evidence = "docs/reference/dsun-exe-re.md 4.5.6: StopCycle(slot) - flags = 0; bodies byte-identical across games"
 notes = """
 Disables a cycle-table slot.
 """
@@ -93,7 +93,7 @@ name = "vga_color_cycle_pump"
 segment = "resident"
 offset = 0x287fc
 confidence = "verified"
-evidence = "docs/dsun-exe-re.md 4.5.5: walks 16x8-byte cycle records at cs:0x6, reads ranges via DAC 0x3c7/0x3c9, rotates by one, writes back via vga_write_palette_range (near-call at 0x28879 targets 0x28894 exactly)"
+evidence = "docs/reference/dsun-exe-re.md 4.5.5: walks 16x8-byte cycle records at cs:0x6, reads ranges via DAC 0x3c7/0x3c9, rotates by one, writes back via vga_write_palette_range (near-call at 0x28879 targets 0x28894 exactly)"
 notes = """
 The per-tick colour-cycle walker (DSO::VGAColorCycle family). \
 Record layout: flags(bit0+bit1), reload, counter, first, count. \
@@ -106,7 +106,7 @@ name = "vga_write_palette_range"
 segment = "resident"
 offset = 0x28894
 confidence = "verified"
-evidence = "docs/dsun-exe-re.md 4.3 (corrected 2026-09-06: entry is 0x28894, not 0x288a4; the pump's near-call pins it) + 4.5.5. Writes count RGB triples from a far buffer starting at DAC index first (out 0x3c8 at 0x288ad)"
+evidence = "docs/reference/dsun-exe-re.md 4.3 (corrected 2026-09-06: entry is 0x28894, not 0x288a4; the pump's near-call pins it) + 4.5.5. Writes count RGB triples from a far buffer starting at DAC index first (out 0x3c8 at 0x288ad)"
 notes = """
 DSO::VGASetPalette correspondence. Args (*buf far, first, count). \
 6-bit DAC-domain buffer (no shift in the loop).
@@ -117,7 +117,7 @@ name = "vga_read_palette_range"
 segment = "resident"
 offset = 0x288c4
 confidence = "verified"
-evidence = "docs/dsun-exe-re.md 4.3 + 4.5.5: inverse of vga_write_palette_range; reads count triples into es:di via DAC 0x3c7/0x3c9 (in-loop read port at 0x288db)"
+evidence = "docs/reference/dsun-exe-re.md 4.3 + 4.5.5: inverse of vga_write_palette_range; reads count triples into es:di via DAC 0x3c7/0x3c9 (in-loop read port at 0x288db)"
 notes = """
 DSO::VGAGETPALETTE correspondence. Byte-identical body to DS2's \
 0x2d0a4.
@@ -1136,8 +1136,8 @@ evidence = "DS1 GPL dispatch table at DGROUP:0xc0 (file 0x48a20), opcode 0x80, b
 notes = "The GPL VM handler for opcode 0x80 (GetRange). Resolved through the dispatch table (DGROUP:0xc0, 129 entries, segment 0x43d)."
 
 # 2026-10-06 mineout wave 1: the capability/trigger plumbing, from
-# docs/port-digs-2026-10-06.md 3 (writer side) and
-# docs/port-digs-2026-09-21.md 2 (consumer side). DS1 has no DSO
+# docs/reports/port-digs-2026-10-06.md 3 (writer side) and
+# docs/reports/port-digs-2026-09-21.md 2 (consumer side). DS1 has no DSO
 # counterpart (DSO inherits the DS2-lineage codebase), so all names
 # here are descriptive, grounded in the cited digs.
 
@@ -1146,7 +1146,7 @@ name = "capability_mask_build"
 segment = "resident"
 offset = 0x967a
 confidence = "verified"
-evidence = "docs/port-digs-2026-09-21.md 2: maps an instance to a creature id, then ORs a capability bit per trigger-list membership (six head cells at GSTATE +0xd..+0x17); called from the examine-opener wrapper 0x5ECD0"
+evidence = "docs/reports/port-digs-2026-09-21.md 2: maps an instance to a creature id, then ORs a capability bit per trigger-list membership (six head cells at GSTATE +0xd..+0x17); called from the examine-opener wrapper 0x5ECD0"
 notes = "The consumer side of steal/talk/give availability. Returns flags A; item-side flags B is 0x5F8FD."
 
 [[function]]
@@ -1154,7 +1154,7 @@ name = "capability_list_walk"
 segment = "resident"
 offset = 0x9720
 confidence = "verified"
-evidence = "docs/port-digs-2026-09-21.md 2: 13-byte records via far pointer [0x4356]:[0x42cc], chain link +0xB (0xFFFF terminates), match on record+4 (+6 for the usewith head), imul stride 13 at entry"
+evidence = "docs/reports/port-digs-2026-09-21.md 2: 13-byte records via far pointer [0x4356]:[0x42cc], chain link +0xB (0xFFFF terminates), match on record+4 (+6 for the usewith head), imul stride 13 at entry"
 notes = "Walks one trigger list for a creature id; the capability bits fall out of its return."
 
 [[function]]
@@ -1162,7 +1162,7 @@ name = "run_gpl_script"
 segment = "resident"
 offset = 0x97d1
 confidence = "verified"
-evidence = "docs/port-digs-2026-10-06.md 3: gated on [MISC(0x377c):0xb]==2; the session-init call at 0x52FFD (ovr0 entry[0]) runs chunk 99 type 2 through it"
+evidence = "docs/reports/port-digs-2026-10-06.md 3: gated on [MISC(0x377c):0xb]==2; the session-init call at 0x52FFD (ovr0 entry[0]) runs chunk 99 type 2 through it"
 notes = "The GPL script entry service. Registrations made while running chunk 99 type 2 are persistent (record +6 flag)."
 
 [[function]]
@@ -1170,7 +1170,7 @@ name = "gpl_executor"
 segment = "resident"
 offset = 0x9ac3
 confidence = "verified"
-evidence = "docs/port-digs-2026-10-06.md 3: writes the current (chunk, type) into MISC+0x12/+0x14 (0x9C3A mov [es:0x12],si; 0x9C44 mov [es:0x14],di), then reaches the opcode dispatch"
+evidence = "docs/reports/port-digs-2026-10-06.md 3: writes the current (chunk, type) into MISC+0x12/+0x14 (0x9C3A mov [es:0x12],si; 0x9C44 mov [es:0x14],di), then reaches the opcode dispatch"
 notes = "The bytecode interpreter loop. The MISC stamp is what makes chunk-99 registrations persistent."
 
 [[function]]
@@ -1178,7 +1178,7 @@ name = "gpl_opcode_dispatch"
 segment = "resident"
 offset = 0x99c5
 confidence = "verified"
-evidence = "docs/port-digs-2026-10-06.md 3: `call near [bx+0xc0]` - the same DGROUP:0xc0, 129-entry handler table the gpl_handler_* rows resolve through"
+evidence = "docs/reports/port-digs-2026-10-06.md 3: `call near [bx+0xc0]` - the same DGROUP:0xc0, 129-entry handler table the gpl_handler_* rows resolve through"
 notes = "Dispatches one opcode to its handler."
 
 [[function]]
@@ -1186,7 +1186,7 @@ name = "trigger_insert"
 segment = "resident"
 offset = 0xcd25
 confidence = "verified"
-evidence = "docs/port-digs-2026-10-06.md 3: single-key sorted insert, key = record+4 (creature id), replace-on-match copies 7 bytes via helper 0x5852; called by the five single-key trigger handlers with (0x377e, headoffset)"
+evidence = "docs/reports/port-digs-2026-10-06.md 3: single-key sorted insert, key = record+4 (creature id), replace-on-match copies 7 bytes via helper 0x5852; called by the five single-key trigger handlers with (0x377e, headoffset)"
 notes = "PickupItem/TalkTo/Attack/Look/Use registrations land here."
 
 [[function]]
@@ -1194,7 +1194,7 @@ name = "trigger_insert_twokey"
 segment = "resident"
 offset = 0xcc71
 confidence = "verified"
-evidence = "docs/port-digs-2026-10-06.md 3: two-key sorted insert (keys +4 then +6, cmp ax,[bp+0xc] 0xCCC7 / cmp ax,[bp+0xe] 0xCCE9); the UseWith handler 0xBA5A calls it"
+evidence = "docs/reports/port-digs-2026-10-06.md 3: two-key sorted insert (keys +4 then +6, cmp ax,[bp+0xc] 0xCCC7 / cmp ax,[bp+0xe] 0xCCE9); the UseWith handler 0xBA5A calls it"
 notes = "UseWith registrations only; the second key is the second creature id."
 
 [[function]]
@@ -1202,7 +1202,7 @@ name = "trigger_list_link"
 segment = "resident"
 offset = 0xcfab
 confidence = "verified"
-evidence = "docs/port-digs-2026-10-06.md 3: on empty list `call 0xcfff; mov [es:bx],ax` (0xCFC6-0xCFCC); else table[new].+0xB = old; *cell = new (0xCFF2/0xCFF9)"
+evidence = "docs/reports/port-digs-2026-10-06.md 3: on empty list `call 0xcfff; mov [es:bx],ax` (0xCFC6-0xCFCC); else table[new].+0xB = old; *cell = new (0xCFF2/0xCFF9)"
 notes = "The head-index writer for all ten trigger lists."
 
 [[function]]
@@ -1210,7 +1210,7 @@ name = "trigger_record_alloc"
 segment = "resident"
 offset = 0xcfff
 confidence = "verified"
-evidence = "docs/port-digs-2026-10-06.md 3: pops the free-list head at [VM(0x3781):0x32d], threads through +0xB (0xD03A, 0xD049); no heap call at insert time"
+evidence = "docs/reports/port-digs-2026-10-06.md 3: pops the free-list head at [VM(0x3781):0x32d], threads through +0xB (0xD03A, 0xD049); no heap call at insert time"
 notes = "Records come from the one far-heap pool allocated at session init (ovr0 entry[0])."
 
 [[function]]
@@ -1218,7 +1218,7 @@ name = "trigger_list_remove_head"
 segment = "resident"
 offset = 0x9616
 confidence = "verified"
-evidence = "docs/port-digs-2026-10-06.md 3: *cell = record[+0xB] (0x9646-0x964D), freed record pushed onto the free list (0x9669-0x9672)"
+evidence = "docs/reports/port-digs-2026-10-06.md 3: *cell = record[+0xB] (0x9646-0x964D), freed record pushed onto the free list (0x9669-0x9672)"
 notes = "Unregister path; the freed slot returns to the allocator."
 
 [[function]]
@@ -1226,7 +1226,7 @@ name = "trigger_flush_nonpersistent"
 segment = "resident"
 offset = 0x8ecb
 confidence = "verified"
-evidence = "docs/port-digs-2026-10-06.md 3: removes head records while byte [record+6] == 0 (0x8EF8), keeps flag-1 (chunk-99) records, recurses (0x8F2D)"
+evidence = "docs/reports/port-digs-2026-10-06.md 3: removes head records while byte [record+6] == 0 (0x8EF8), keeps flag-1 (chunk-99) records, recurses (0x8F2D)"
 notes = "The persistence filter applied per list at region change."
 
 [[function]]
@@ -1234,5 +1234,5 @@ name = "trigger_table_flush"
 segment = "resident"
 offset = 0x8dd0
 confidence = "verified"
-evidence = "docs/port-digs-2026-10-06.md 3: empties area lists +5/+7/+9/+0xB entirely (0x8DFC-0x8E64), then filters the six entity lists via 0x8ECB/0x8F36 (0x8E66-0x8EA2); called at 0x6968F in the region-change path (ovr21 entry[24])"
+evidence = "docs/reports/port-digs-2026-10-06.md 3: empties area lists +5/+7/+9/+0xB entirely (0x8DFC-0x8E64), then filters the six entity lists via 0x8ECB/0x8F36 (0x8E66-0x8EA2); called at 0x6968F in the region-change path (ovr21 entry[24])"
 notes = "The only function that clears the trigger table wholesale; guard [MISC:0xb]==2."

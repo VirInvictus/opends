@@ -1,7 +1,7 @@
 # fix.ds1.script-repairs
 
 **Bug**: three script-level defects from the 2026-10-07 DS1 sweep
-triage (docs/ds1-sweep-triage-2026-10-07.md): a trigger re-arm in
+triage (docs/reports/ds1-sweep-triage-2026-10-07.md): a trigger re-arm in
 the Lava Rifts occludes the ranger's own handler with the hermit's
 (the endless-dialog-loop and duplicate Iron Necklace bug); a
 Linara conversation route dead-ends with no menu after the extract

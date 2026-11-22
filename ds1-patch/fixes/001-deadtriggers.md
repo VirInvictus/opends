@@ -63,7 +63,7 @@ the stub) the 16-bit chunk immediate change; the opcode and the
 NAME(-object) operand are preserved. Full authoring record: the
 per-chunk `gpl-asm --patch` scripts, disassembly evidence, and
 byte diffs live in the Phase 6 boxes of `roadmap.md` and in
-`docs/known-bugs.md` 3.5.
+`docs/reference/known-bugs.md` 3.5.
 
 **Surface**: GPL data (`GPLDATA.GFF`, chunks GPL-41, GPL-195,
 GPL-203).

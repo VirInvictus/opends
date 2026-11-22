@@ -28,7 +28,7 @@
 //! discovery, per-region DS1 palette selection, and DS2's
 //! palette-cycle registration site (only DS1's is decoded).
 //!
-//! See `docs/file-formats.md` "Maps and world > Region geometry"
+//! See `docs/reference/file-formats.md` "Maps and world > Region geometry"
 //! for the layout this implements, ported from
 //! `dsun_music/region-tool/RegionTool.java` (MIT, attributed).
 
@@ -175,12 +175,12 @@ pub struct EntityRecord {
 }
 
 /// Slot count of the engine's VGA colour-cycle table
-/// (`docs/dsun-exe-re.md` 4.5.5: 16 records of 8 bytes at the
+/// (`docs/reference/dsun-exe-re.md` 4.5.5: 16 records of 8 bytes at the
 /// pump's `cs:0x6`).
 pub const CYCLE_SLOTS: usize = 16;
 
 /// One 8-byte VGA colour-cycle record, layout decoded from the
-/// cycle pump (`docs/dsun-exe-re.md` 4.5.5). `flags` bit0 AND
+/// cycle pump (`docs/reference/dsun-exe-re.md` 4.5.5). `flags` bit0 AND
 /// bit1 both set = the record cycles; `reload` is the value
 /// reloaded into `counter` each time it fires; `first`/`count`
 /// bound the rotating colour range.
@@ -203,7 +203,7 @@ impl CycleRecord {
 /// The engine's VGA colour-cycle state: [`CYCLE_SLOTS`] records
 /// walked once per pump pass. Modelled on the pump at DS1 file
 /// `0x287fc` / DS2 `0x2cfdc` and its `StartCycle`/`StopCycle`
-/// registration API (`docs/dsun-exe-re.md` 4.5.5-4.5.6).
+/// registration API (`docs/reference/dsun-exe-re.md` 4.5.5-4.5.6).
 ///
 /// Each [`tick`](PaletteCycle::tick) is one pump pass: every
 /// active record's counter decrements, and at zero the record's
@@ -219,7 +219,7 @@ impl PaletteCycle {
     /// DS1's decoded boot-time registration: `StartCycle` is
     /// called exactly four times at init, arming slots 0-3 with
     /// the ranges 1-5, 6-10, 11-15 and 240-248, all at delay 2
-    /// (`docs/dsun-exe-re.md` 4.5.6). Active from boot; DS1 has
+    /// (`docs/reference/dsun-exe-re.md` 4.5.6). Active from boot; DS1 has
     /// no per-region cycle configuration. `counter` is armed
     /// with the delay so the first rotation lands `delay` ticks
     /// in: the decode pins `reload`; the initial counter value is
@@ -278,7 +278,7 @@ impl PaletteCycle {
 /// Rotate the `count`-entry palette range starting at `first`
 /// toward higher indices by one step: the range's last colour
 /// moves to `first`, every other colour shifts one slot up. This
-/// is the pump's firing sequence (`docs/dsun-exe-re.md` 4.5.5).
+/// is the pump's firing sequence (`docs/reference/dsun-exe-re.md` 4.5.5).
 /// `count < 2` is the identity.
 pub fn rotate_palette_range(palette: &mut Palette, first: u8, count: u8) {
     let first = first as usize;
@@ -1212,7 +1212,7 @@ mod tests {
         }
     }
 
-    // ---- VGA colour-cycle mechanism (docs/dsun-exe-re.md 4.5.5-4.5.6)
+    // ---- VGA colour-cycle mechanism (docs/reference/dsun-exe-re.md 4.5.5-4.5.6)
 
     fn greyscale_palette() -> Palette {
         let mut colors = [Color { r: 0, g: 0, b: 0 }; image_extract::PALETTE_SIZE];

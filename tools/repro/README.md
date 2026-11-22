@@ -234,7 +234,7 @@ Mel Fatal Error #: 26 Trap #: 16     ; DSP Detect Fail
 ```
 
 and the engine exits. This is the same error family as
-[`docs/known-bugs.md`](../../docs/known-bugs.md) §2.6 ("MEL DSP
+[`../../docs/reference/known-bugs.md`](../../docs/reference/known-bugs.md) §2.6 ("MEL DSP
 detect fail").
 
 DOSBox-Staging emulates SB16 + MPU-401, but the factory probe
@@ -287,5 +287,5 @@ If you add a new fixture and see MEL Fatal Errors in
   path records `repro.mp4` when a fixture enables it, but
   pixel-diff assertions remain a maybe.
 - **Repro graph / per-bug catalog**. The catalogue
-  (cross-linking `bugs/<id>/` to `docs/known-bugs.md` entries)
+  (cross-linking `bugs/<id>/` to `docs/reference/known-bugs.md` entries)
   grows with the bug count.

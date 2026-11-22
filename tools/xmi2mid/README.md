@@ -36,7 +36,7 @@ converter keeps the linear note data and moves the adaptivity into
 the sidecar instead of guessing: a port's music director implements
 FOR/NEXT wraps and 0x78 branch switches from the JSON, which is
 exactly the machinery the engine's Mel library runs (see
-docs/file-formats.md 5 and docs/port-digs-2026-10-06.md 2).
+docs/reference/file-formats.md 5 and docs/reports/port-digs-2026-10-06.md 2).
 
 Corpus facts this tool encodes: XMI deltas are runs of bytes < 0x80
 summed to the next status byte; note-ons carry a VLQ duration; RBRN

@@ -1,5 +1,5 @@
 //! Corpus carve: run the flatten transform over the shipped DSUN.EXE
-//! binaries and assert the documented totals (docs/overlay-formats.md
+//! binaries and assert the documented totals (docs/reference/overlay-formats.md
 //! section 4: DS1 16,464 B = 8,232 entries; DS2 16,524 B = 8,262 entries;
 //! zero overlay markers), then verify the output round-trips.
 //!

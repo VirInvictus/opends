@@ -31,4 +31,4 @@ set once the messenger has fired).
 
 **Credit**: site ours (triage 3.2(1c)); implementation Calvin
 Rodo, yuan-ti (`GplRepairs.cs`, MIT). QA: the packet,
-docs/qa-packet-ds1-script-repairs-beta.md (site M).
+docs/qa/qa-packet-ds1-script-repairs-beta.md (site M).

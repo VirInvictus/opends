@@ -31,5 +31,5 @@ no address moves.
 `f1d6d94f4df1a1025327a80dacee708bb25dd87a288a9d5a605bf74476ddef24`.
 
 **Credit**: Calvin Rodo, yuan-ti (`GplRepairs.cs`, MIT); field
-meanings and the class-bit table per docs/gplx-field-map.md. QA:
-the packet, docs/qa-packet-ds1-script-repairs-beta.md (site T).
+meanings and the class-bit table per docs/reference/gplx-field-map.md. QA:
+the packet, docs/qa/qa-packet-ds1-script-repairs-beta.md (site T).

@@ -6,7 +6,7 @@
 #
 #   game     ds1 or ds2; the dsN-patch/ directory must exist
 #   version  optional; must match the patch's VERSION file (the
-#            single source of truth per docs/versioning.md);
+#            single source of truth per docs/reference/versioning.md);
 #            defaults to it
 #   --out    output directory (default: scratch/releases/, gitignored)
 #

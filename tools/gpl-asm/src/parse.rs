@@ -785,7 +785,7 @@ pub fn parse(input: &str) -> Result<DisasmResult> {
     parse_with(input, 0)
 }
 
-/// Detour assembly mode (docs/detour-repairs.md section 3; issue
+/// Detour assembly mode (docs/reference/detour-repairs.md section 3; issue
 /// #19, the yuan-ti `AssembleMovable` shape). Parse `source` with
 /// every declared label rebased by `base`: the detour body is
 /// authored against base 0 (labels at their in-detour offsets), and

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Export the DS1 intro cinematics for the Godot demo.
 
-Decodes CINE.GFF's BMA frames (codec per docs/cinematics-ds1.md) and
+Decodes CINE.GFF's BMA frames (codec per docs/reference/cinematics-ds1.md) and
 interprets the ACF scripts far enough to emit a flat playback timeline:
 
     generated/cine/p<part>_<frame>.png   baked frames (RGBA, 320x200)

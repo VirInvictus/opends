@@ -16,7 +16,7 @@ Usage:
 
 Stdlib-only. Python 3.11+ (tomllib). Distribution format and
 applier contract: spec.md §4; per-fix script contract:
-docs/patch-workflow.md §4.2.
+docs/reference/patch-workflow.md §4.2.
 """
 
 from __future__ import annotations
@@ -624,7 +624,7 @@ def _synth_bytes(n: int) -> bytes:
 
 def _minimal_gff(chunks: list[tuple[str, int, bytes]]) -> bytes:
     """Build a minimal valid GFF holding the given (kind, id, bytes)
-    chunks, one type per kind. Layout per docs/file-formats.md §1:
+    chunks, one type per kind. Layout per docs/reference/file-formats.md §1:
     28-byte header, chunk data from 28, TOC with one type list and an
     empty free list. Selftest-only; the applier itself never writes
     GFFs from scratch (gff-cat replace does the surgery).
@@ -1087,10 +1087,10 @@ def selftest() -> int:
         ok("all-disabled refusal wrote no journal", P.read_journal(inst6) is None)
         ok("all-disabled refusal left the target untouched", t6.read_bytes() == data4)
 
-    # Detour repairs (docs/detour-repairs.md): the pure chunk math
+    # Detour repairs (docs/reference/detour-repairs.md): the pure chunk math
     # first, then the gff-cat end-to-end when the binary is
     # available. Mechanism and gate review are the yuan-ti adoption
-    # (docs/gate-review-yuan-ti-2026-11-13.md).
+    # (docs/reports/gate-review-yuan-ti-2026-11-13.md).
     code = bytes(range(256))
     r_inplace = P.GplRepair(
         kind="GPL",

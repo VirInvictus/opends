@@ -13,7 +13,7 @@ design (issue #20, gpl-asm 0.10.0 movable mode), with one
 notation note: Calvin's gname[5] and our GNAME[37] are the same
 register (raw gname index 0x25, POV -- yuan-ti displays gname
 indices minus 0x20, we keep the raw byte); the identity table is
-docs/gff-data-reference.md. The replacement lines are Calvin's, invented dialog by
+docs/reference/gff-data-reference.md. The replacement lines are Calvin's, invented dialog by
 recorded decision (known-bugs.md 3.6 row 4).
 """
 

@@ -1,7 +1,7 @@
 # darkfix-ds2 patch manifest. Schema version 1 (spec.md §4).
 #
 # The patch version lives in this directory's VERSION file
-# (docs/versioning.md); it is never duplicated here.
+# (docs/reference/versioning.md); it is never duplicated here.
 #
 # First fix ships with v0.1.0: fix.ds2.deadtriggers (GPL data
 # surface). The target hashes below are canonical: the applier

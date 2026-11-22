@@ -44,7 +44,7 @@ DEFAULT_ROOTS = (".games", "testing_facility")
 def parse_gff_toc(data: bytes) -> dict[str, int] | None:
     """Parse the TOC type list: FOURCC -> chunk count. None if not a GFF.
 
-    Header (28 bytes) + TOC header + type list per docs/file-formats.md
+    Header (28 bytes) + TOC header + type list per docs/reference/file-formats.md
     1. Segmented type lists (0x80000000 count flag) contribute their
     low-31-bits count; per-chunk resolution is not needed for coverage.
     """

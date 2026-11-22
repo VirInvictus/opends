@@ -1,7 +1,7 @@
 # CreatureExamineScreen: the 15500 examine plate showing a world
 # entity's bestiary row. Opened by the interact strip's INFO button;
 # the row is the entity's ETAB creature id through
-# generated/ui/bestiary.json (the same records docs/bestiary-ds1.md
+# generated/ui/bestiary.json (the same records docs/catalogues/bestiary-ds1.md
 # was generated from). A missing row prints NO INFO, the engine's own
 # SPIN-failure precedent (screen-flow.md 8.4).
 extends WindScreen

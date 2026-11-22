@@ -11,7 +11,7 @@
 //! offset + payload length), validates a replacement against those
 //! rules, and splices the repacked payload in place. Length
 //! changes are refused by design; a length-changing edit is a
-//! gpl-asm job (see `docs/detour-repairs.md`), not a string edit.
+//! gpl-asm job (see `docs/reference/detour-repairs.md`), not a string edit.
 
 use gpl_disasm::{StringSubType, parse_string_operand_spans};
 use thiserror::Error;

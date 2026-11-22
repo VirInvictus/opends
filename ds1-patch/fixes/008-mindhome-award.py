@@ -6,7 +6,7 @@ which the first award sets. Calvin Rodo's fix gates the award
 bug (the GPL-204 router never consulting GF695) is NOT fixed
 here and remains queued. Beta: UNTESTED at runtime; disabled by
 default. Source: CalvinRodo/yuan-ti GplRepairs.cs (MIT);
-docs/gate-review-yuan-ti-2026-11-13.md.
+docs/reports/gate-review-yuan-ti-2026-11-13.md.
 """
 
 from darkfix.patcher import apply_gpl_repairs

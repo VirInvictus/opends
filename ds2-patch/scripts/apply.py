@@ -16,7 +16,7 @@ Usage:
 
 Stdlib-only. Python 3.11+ (tomllib). Distribution format and
 applier contract: spec.md §4; per-fix script contract:
-docs/patch-workflow.md §4.2.
+docs/reference/patch-workflow.md §4.2.
 """
 
 from __future__ import annotations

@@ -20,9 +20,9 @@ expected output, roll-back instructions.
 - Every edit takes an automatic `.bak.<...>` snapshot so roll
   back is a copy.
 - Every entry's "Roll back" section shows the explicit command.
-- The cookbook references the **`docs/file-formats.md`** entry
+- The cookbook references the **`docs/reference/file-formats.md`** entry
   that documents the on-disk layout the edit touches, and the
-  **`docs/engine-quirks.md`** entry that flags any "obvious
+  **`docs/reference/engine-quirks.md`** entry that flags any "obvious
   thing that doesn't work the obvious way."
 
 ## What's missing

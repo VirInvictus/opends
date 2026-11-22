@@ -87,7 +87,7 @@ landed 2026-09-21 (see the pits-parity pass section below).
    the 0x72D29 group table in CLASS_INK, printed per class with pale
    separators).
 6. Combat detail rules modelled (2026-09-20 night): DEX missile table
-   in the round threshold (docs/rules-tables.md 0x7dc), rear/flank
+   in the round threshold (docs/reference/rules-tables.md 0x7dc), rear/flank
    THAC0-2 with per-round direction memory (CSTATE2 +0x5b), crit roll
    4/1 doubling/halving the blow budget, and the monster damage bonus
    [0x11ae]-1 wired to the prefs text-speed setting. Live player

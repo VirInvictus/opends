@@ -16,7 +16,7 @@ target game and one-line description.
 | `ds2-smoke` | DS2  | (smoke; not a bug) | DS2 boots through `imgmount` of `game.ins` for CD audio, lives 25+ seconds. Validates the DS2 path of the harness. |
 
 The `bug catalogue ref` column will cross-link to entries in
-[`../../../docs/known-bugs.md`](../../../docs/known-bugs.md)
+[`../../../docs/reference/known-bugs.md`](../../../docs/reference/known-bugs.md)
 once real-bug fixtures land (v0.3.0+).
 
 ## Adding a new fixture

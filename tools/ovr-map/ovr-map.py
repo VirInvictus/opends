@@ -7,7 +7,7 @@ segment really starts, and which addresses are confirmed function entries.
 
 Stdlib-only. Python 3.11+.
 
-Format reference: docs/dsun-exe-re.md 1 and 3.5. Both games are Borland/TLINK
+Format reference: docs/reference/dsun-exe-re.md 1 and 3.5. Both games are Borland/TLINK
 (VROOM) overlaid 16-bit real-mode MZ programs, NOT DOS/4GW.
 """
 
@@ -82,7 +82,7 @@ def parse_fbov(data: bytes, image_end: int) -> dict[str, int]:
 
 
 def parse_segtab(data: bytes, exeinfo: int, segnum: int) -> list[dict[str, int]]:
-    """The exeinfo segment load table (docs/overlay-formats.md section 2).
+    """The exeinfo segment load table (docs/reference/overlay-formats.md section 2).
 
     `segnum` 8-byte records: load paragraph (base-relative, absolutized by
     the MZ relocation pass), byte size, class (1 code, 0 data, 3 overlay
@@ -354,7 +354,7 @@ def callgraph(
 ) -> dict[str, Any]:
     """Far-call edges whose target is an overlay entry stub.
 
-    An overlaid routine is never called at its own address (docs/dsun-exe-re.md
+    An overlaid routine is never called at its own address (docs/reference/dsun-exe-re.md
     §3.5). The caller far-calls the 5-byte INT 3Fh stub in the resident image,
     and the overlay manager pages the segment in. So the edge points at the
     stub, and that is what this resolves.
@@ -433,7 +433,7 @@ def disasm(
 ) -> str:
     """Disassemble one segment at its correct base, in 16-bit mode.
 
-    Shells out to ndisasm (nasm), matching docs/dsun-exe-re.md's own
+    Shells out to ndisasm (nasm), matching docs/reference/dsun-exe-re.md's own
     recommendation and the shell-out precedent in verify-install and repro.
     ⚠ 16-bit is not optional: decoding this binary as 32-bit does not error,
     it produces convincing garbage.
@@ -854,7 +854,7 @@ def selftest(paths: list[Path]) -> int:
         check(cov > 92.0, f"overlay coverage {cov}% is below the 92% floor")
         # exeinfo segtab: every record's word0 is the target of exactly one
         # MZ relocation at field offset 0, and the exeinfo block carries no
-        # other relocation targets (docs/overlay-formats.md section 2).
+        # other relocation targets (docs/reference/overlay-formats.md section 2).
         segtab = rep["segtab"]
         relocated = parse_relocations(data, rep["mz"])
         exeinfo, segnum = rep["fbov"]["exeinfo"], rep["fbov"]["segnum"]

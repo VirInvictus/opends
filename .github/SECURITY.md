@@ -4,7 +4,7 @@
 
 Only the latest tagged release of each artifact is supported: the
 `darkfix-dsN` player zips and the tools under `tools/` (each with
-its own `VERSION`, per `docs/versioning.md`). Older releases get
+its own `VERSION`, per `docs/reference/versioning.md`). Older releases get
 no backported fixes; the fix is the next tag.
 
 ## Reporting a vulnerability

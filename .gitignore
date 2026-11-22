@@ -34,7 +34,7 @@
 /scratch/
 
 # Generated Ghidra scripts (ovr-map --ghidra / --ghidra-rename).
-# Regenerate instead of editing; the recipe is docs/re-tooling.md.
+# Regenerate instead of editing; the recipe is docs/reference/re-tooling.md.
 /OvrMap.java
 /OvrRename.java
 
@@ -55,3 +55,6 @@ __pycache__/
 # capture rig for QC. User-specific artifacts, not redistributable
 # content; regenerate with the rig instead of committing.
 /port-spike/audit/videos/
+
+# ZCode local session state
+.zcode/

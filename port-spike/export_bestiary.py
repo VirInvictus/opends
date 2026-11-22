@@ -2,7 +2,7 @@
 """Export the DS1 bestiary rows the interact INFO path shows.
 
 Walks SEGOBJEX.GFF with extract-catalogue.py's decoder (the same
-source docs/bestiary-ds1.md was generated from) and writes
+source docs/catalogues/bestiary-ds1.md was generated from) and writes
 generated/ui/bestiary.json: object id -> {name, hp, ac, thac0, move,
 xp, align, dmg}. The interact strip's INFO button shows the row for
 the clicked entity's ETAB creature id. Stdlib-only.
@@ -29,7 +29,7 @@ _spec.loader.exec_module(ec)
 
 
 def fmt_damage(c) -> str:
-    # docs/bestiary-ds1.md style: "2x1d8+8 + 1x1d4+2"; attacks are
+    # docs/catalogues/bestiary-ds1.md style: "2x1d8+8 + 1x1d4+2"; attacks are
     # half-round slots, so per-round count = value / 2
     slots = []
     for k in range(3):

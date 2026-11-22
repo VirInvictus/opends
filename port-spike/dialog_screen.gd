@@ -4,7 +4,7 @@
 # dialog_plate_3007.png (regenerated from the oracle capture with the
 # text in-painted). Pages advance on Enter/Space/click (the invisible
 # 12300 hot zone); finished fires when the last page closes. Lines are
-# the real GPL-2 strings (docs/dialogs.md machinery).
+# the real GPL-2 strings (docs/reference/dialogs.md machinery).
 extends WindScreen
 class_name DialogScreen
 

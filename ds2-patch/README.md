@@ -17,7 +17,7 @@ Status: v0.1.1 ships `fix.ds2.deadtriggers`
 handlers; the 2 provably handlerless pickup rows are documented as
 left; see [`fixes/001-deadtriggers.md`](fixes/001-deadtriggers.md)).
 The headline target remains **the mines elevator freeze**
-([`../docs/known-bugs.md`](../docs/known-bugs.md) section 2.1);
+([`../docs/reference/known-bugs.md`](../docs/reference/known-bugs.md) section 2.1);
 see [`../roadmap.md`](../roadmap.md).
 
 The applier machinery is proven on the DS1 side
@@ -31,7 +31,7 @@ promotion to shared tooling waits for a third consumer.
 ## Layout
 
 - `LICENSE`: MIT, same as the toolkit (spec 14).
-- `VERSION`: patch version (docs/versioning.md; single source
+- `VERSION`: patch version (docs/reference/versioning.md; single source
   for the release tooling).
 - `manifest.toml`: schema v1 (spec.md §4); target game and the
   canonical hashes of every file an enabled fix touches. The
@@ -52,7 +52,7 @@ verifies your install hash, backs up touched files to
 `darkfix-backup/`, applies the enabled fixes, and journals;
 `--unapply` reverts. GOG 1.10 is the only supported base by
 policy; a non-canonical install gets a hard refusal
-([`../docs/install-variants.md`](../docs/install-variants.md)
+([`../docs/reference/install-variants.md`](../docs/reference/install-variants.md)
 section 7).
 
 ## Notes specific to DS2
@@ -69,7 +69,7 @@ section 7).
 
 ## Authoring a new fix
 
-See [`../docs/patch-workflow.md`](../docs/patch-workflow.md),
+See [`../docs/reference/patch-workflow.md`](../docs/reference/patch-workflow.md),
 the cookbook
 ([`../docs/cookbook/author-first-darkfix.md`](../docs/cookbook/author-first-darkfix.md)),
 and `tools/exe-patch` for the EXE-surface authoring gate.

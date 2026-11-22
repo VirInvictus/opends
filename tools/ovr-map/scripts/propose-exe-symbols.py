@@ -12,7 +12,7 @@ the catalogue headers).
 What it can and cannot do:
 
   CAN (mechanical, honest):
-    --census   The resident-target census (docs/dsun-exe-survey.md 3.3,
+    --census   The resident-target census (docs/reference/dsun-exe-survey.md 3.3,
                regenerated per game): every far-call decoded in every live
                overlay segment, targets resolved to resident file offsets,
                counted. This is the naming campaign's worklist: ~340
@@ -32,7 +32,7 @@ What it can and cannot do:
 
   CANNOT (and must not pretend to):
     Match a DSO name to an EXE function automatically. The DSO offsets are
-    v1.0-client-relative and do not transfer (docs/dso-symbols.md); the
+    v1.0-client-relative and do not transfer (docs/reference/dso-symbols.md); the
     transfer method is shape-matching verified by a second observable,
     which is hand work. Any name this script attached to an address would
     be fabrication.

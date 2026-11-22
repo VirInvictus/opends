@@ -29,7 +29,7 @@ per-fix writeups.
 ## Layout
 
 - `LICENSE`: MIT, same as the toolkit (spec 14).
-- `VERSION`: patch version (docs/versioning.md; read at runtime
+- `VERSION`: patch version (docs/reference/versioning.md; read at runtime
   by the applier).
 - `manifest.toml`: schema v1 (spec.md §4); target game, the
   canonical hashes of every file a fix touches, and the ordered
@@ -89,7 +89,7 @@ GOG 1.10 build this patch targets (wrong engine version, already
 patched, or damaged install). Nothing was changed. GOG 1.10 is
 the only supported base by policy: other pressings and variants
 are refused rather than patched blindly (see
-[`../docs/install-variants.md`](../docs/install-variants.md)
+[`../docs/reference/install-variants.md`](../docs/reference/install-variants.md)
 section 7); `verify-install.py --summary` from the toolkit tells
 you which files disagree and why.
 
@@ -123,7 +123,7 @@ patched `GPLDATA.GFF` hash). Never touches the canonical install.
 
 ## Authoring a new fix
 
-See [`../docs/patch-workflow.md`](../docs/patch-workflow.md)
+See [`../docs/reference/patch-workflow.md`](../docs/reference/patch-workflow.md)
 and the cookbook skeleton
 [`../docs/cookbook/author-first-darkfix.md`](../docs/cookbook/author-first-darkfix.md).
 Authoring-time full-install hash check: `--check-all` (uses
@@ -133,7 +133,7 @@ A fix script is a small Python module next to its writeup: it
 declares `ID`, `TARGET`, `SOURCE_SHA256`, `EDITS`, and
 `apply(source_path, dest_path)`. The canonical skeleton and
 contract live in
-[`../docs/fix-format.md`](../docs/fix-format.md);
+[`../docs/reference/fix-format.md`](../docs/reference/fix-format.md);
 [`fixes/000-noop.py`](fixes/000-noop.py) is the live example.
 Then add the fix to `manifest.toml` under `[[fixes]]`.
 Byte edits are strictly in-place (same length); chunk-level GFF

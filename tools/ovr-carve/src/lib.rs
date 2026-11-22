@@ -4,7 +4,7 @@
 //! Borland overlay area where most of the games' code lives. `ovr-carve`
 //! rewrites an overlaid executable into an *analysis* MZ whose initialized
 //! module spans the whole file, so overlay code decompiles alongside the
-//! resident image. The transform (docs/overlay-formats.md sections 2-5):
+//! resident image. The transform (docs/reference/overlay-formats.md sections 2-5):
 //!
 //! 1. Every byte keeps its original file offset, so every file offset the
 //!    rest of the toolkit publishes (syms catalogues, fix writeups, ovr-map
@@ -479,7 +479,7 @@ pub fn fixture() -> Vec<u8> {
     b[8..10].copy_from_slice(&2u16.to_le_bytes()); // e_cparhdr -> header 0x20
     b[0x18..0x1a].copy_from_slice(&0x1Cu16.to_le_bytes()); // e_lfarlc
     // MZ relocations: a code word at 0x50, and segtab record 0's word0 at
-    // 0x40 (docs/overlay-formats.md section 2: every record word0 is the
+    // 0x40 (docs/reference/overlay-formats.md section 2: every record word0 is the
     // target of exactly one MZ relocation).
     b[0x1c..0x20].copy_from_slice(&[0x30, 0x00, 0x00, 0x00]);
     b[0x20..0x24].copy_from_slice(&[0x00, 0x00, 0x02, 0x00]);

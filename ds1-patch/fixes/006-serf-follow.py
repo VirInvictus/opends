@@ -7,7 +7,7 @@ triage's persistent-flag candidate, which needed chunk growth.
 BALANCE-CLASS (item-duplication guard): off by default per spec 5
 policy, and it stays off in this beta like every fix in it. Beta:
 UNTESTED at runtime. Source: CalvinRodo/yuan-ti GplRepairs.cs
-(MIT); docs/gate-review-yuan-ti-2026-11-13.md.
+(MIT); docs/reports/gate-review-yuan-ti-2026-11-13.md.
 """
 
 from darkfix.patcher import apply_gpl_repairs

@@ -3,7 +3,7 @@
 
 Pipeline for the port demo (port-spike/): reads the two opening regions
 of Dark Sun: Shattered Lands with the repo's Python GFF reader, decodes
-DS1-RLE bitmaps directly (spec: docs/presentation-formats.md 1),
+DS1-RLE bitmaps directly (spec: docs/reference/presentation-formats.md 1),
 recolors through the engine-default CPAL 200, and emits per-region
 assets plus demo.json (start tile, party, and the region transitions,
 pinned from the games' own GPL handlers: see README).

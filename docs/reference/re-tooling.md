@@ -1,0 +1,178 @@
+# RE Tooling (host)
+
+Host reverse-engineering tooling for `DSUN.EXE`. Not a repo
+dependency: nothing under `tools/` imports any of it, and the
+stdlib-only rule for the Python tools is unaffected. Moved here
+from `dsun-exe-re.md` 8 (2026-09-04) so the behavioural doc stays
+about the binary.
+
+Installed 2026-08-08.
+
+| Tool | Where | What it is for here |
+|---|---|---|
+| **Ghidra 12.1.2** | `~/.local/share/ghidra_12.1.2_PUBLIC` | Static analysis and decompilation of `DSUN.EXE`. The heavy tool `dsun-exe-re.md` has always named as "when r2 stalls". |
+| Temurin **JDK 21** | `~/.local/share/jdk/jdk-21.0.12+8` | Ghidra requires JDK 21; Fedora 44 ships only 25/26. Pinned via `JAVA_HOME_OVERRIDE` so the system JDK is untouched. |
+| `pwntools` 4.15 | uv tool, Python 3.13 | ⚠ **Its 16-bit assembly path is broken for this target**: `pwn asm` at `arch='i386', bits=16` dies with `Invalid arch/bits combination: i386/16` (pwnlib rejects the combination; confirmed 2026-09-06 while confirming the Phase 5.7 assembler). The working path is `nasm -f bin` + `bits 16`, which `tools/exe-patch --asm` shells out to and round-trips against `ndisasm -b 16`. Not used for exploitation here. |
+| **REA** 6.8.0 | `~/.local/lib/node-v24.22.2-linux-x64/bin/rea` (private Node 24 runtime; the system Node is below its floor) | Agent-driven RE toolkit whose native MZ lane decompiles the carved overlays (see the carve lane under item 3 below). Installed later than the rest of this table: in use by 2026-11-01. The ZCode MCP lane times out on DSUN.EXE's ~90 s first import (30 s tool cap), so heavy decompiles go through the CLI. |
+
+## Ghidra against these binaries: read this before importing
+
+Three things are specific to a Borland-overlaid real-mode target
+and will waste a pass if assumed wrong.
+
+1. **Do not install an LE/LX loader extension.** The obvious
+   search result for "Ghidra + DOS game" is `ghidra-lx-loader`, for
+   the LX/LE linear-executable format. That is the DOS/4GW format
+   `dsun-exe-re.md` 1 disproved. It cannot load these binaries and
+   its presence would only re-suggest the wrong mental model.
+   Ghidra loads plain MZ and `x86:LE:16:Real Mode` natively, which
+   is what is needed.
+2. **The MZ loader already selects `x86:LE:16:Real Mode`.** So an
+   MZ import needs no manual language choice. A raw-binary import
+   does, and the failure mode is convincing nonsense, not an error
+   (the same class of bug as the Capstone `CS_MODE_32` trap in
+   `dsun-exe-re.md` 6).
+3. **Ghidra does not understand Borland overlays.** A plain import
+   leaves the overlay area as undifferentiated bytes. The fix is
+   `ovr-map` (Phase 5.5): its JSON carries each segment's base,
+   file range and entry stubs, which a Ghidra script replays as
+   overlay memory blocks with all 935 (DS1) / 854 (DS2) entry
+   points labelled. The headless pipeline (Phase 5.6.0):
+
+   ```sh
+   # 1. Generate the Java scripts from ovr-map. The generated files
+   #    must live in a dot-free directory: Ghidra resolves bare
+   #    -postScript names against $PWD first, and any path element
+   #    starting with '.' (e.g. the .gitrepos checkout) is rejected
+   #    as a script source location.
+   mkdir -p /tmp/ovrscripts
+   python3 tools/ovr-map/ovr-map.py .games/ds1/DSUN.EXE --ghidra -o /tmp/ovrscripts/OvrMap.java
+   python3 tools/ovr-map/ovr-map.py .games/ds1/DSUN.EXE        --ghidra-rename tools/ovr-map/syms/ds1.toml -o /tmp/ovrscripts/OvrRename.java
+
+   # 2. Run analyzeHeadless. Project location must also be dot-free.
+   #    Pass -postScript as absolute dot-free paths (see note 1);
+   #    OvrExport.java is checked into the repo, and a repo path is
+   #    not dot-free, so copy it next to the generated scripts first.
+   rm -rf /tmp/ghidra_proj && mkdir -p /tmp/ghidra_proj
+   cp tools/ovr-map/ghidra/OvrExport.java /tmp/ovrscripts/
+   ~/.local/share/ghidra_12.1.2_PUBLIC/support/analyzeHeadless \
+       /tmp/ghidra_proj ds1_proj \
+       -import .games/ds1/DSUN.EXE \
+       -scriptPath /tmp/ovrscripts \
+       -postScript /tmp/ovrscripts/OvrMap.java \
+       -postScript /tmp/ovrscripts/OvrRename.java \
+       -postScript /tmp/ovrscripts/OvrExport.java \
+                  /abs/path/scratch/ghidra_project/export/ds1-functions.txt \
+       -overwrite
+   ```
+
+   The three post-scripts: `OvrMap.java` creates one overlay memory
+   block per segment at its correct base and labels every entry
+   stub; `OvrRename.java` (generated from the curated catalogue,
+   `--ghidra-rename`) creates named functions with confidence and
+   evidence comments; `OvrExport.java` (checked in at
+   `tools/ovr-map/ghidra/`) writes the final function list as TSV.
+   RUN PROVEN 2026-09-10 on both games after the OSGi layer
+   recovered (below): DS1 52 blocks / 935 labels, 130/130
+   catalogue rows applied, 1,670 functions exported; DS2
+   equivalent in the same session. Three latent script bugs
+   surfaced on the way and are fixed in ovr-map 0.3.4: the
+   rename generator emitted a long where getAddress wants int
+   (caught by the manual-javac check), its row loop split on
+   `|` instead of `;` (caught at first execution), and
+   `OvrExport.java`'s header comment never closed, so it had
+   never compiled (caught by the in-Ghidra compiler, working
+   again).
+
+   **The carve lane (`ovr-carve` 0.1.0, 2026-11-01)**: a second
+   route to item 3's goal when the job is decompiling overlay
+   *bodies* rather than labelling a pristine import.
+   `target/debug/ovr-carve carve .games/ds2/DSUN.EXE` rewrites a
+   copy so the MZ header's initialized module spans the whole file
+   (per-module relocations applied in place, loud refusals before
+   any write), and the plain MZ loader then maps the overlay area
+   like any other segment: no generated Java scripts, no
+   memory-block replay. Every byte keeps its original file offset,
+   so file-offset facts from anywhere in the toolkit stay valid in
+   the carved image. Point REA at it
+   (`rea inspect-native-load-image` attests `dos-mz` with
+   `overlay_bytes 0`; `rea decompile --file-offset ...`) or import
+   it into Ghidra as a normal MZ. It does not replace the pipeline
+   above: entry-stub labels and curated-symbol renames stay the
+   `ovr-map --ghidra` pipeline's job on the pristine EXE; the two
+   lanes are complementary. First payoff: the 2026-11-01
+   decompiled-evidence addendum (`engine-quirks.md` 6) and the
+   elevator ride-chain dig (`elevator-digs-2026-11-02.md`) both
+   ran on carved output.
+
+Temper expectations on the decompiler: Ghidra's output is much
+weaker on 16-bit segmented code than on 32/64-bit. Far pointers
+and overlay thunks decompile badly. It still beats reading bytes
+by eye, but it will not hand over clean C.
+
+## Troubleshooting: "Failed to get OSGi bundle containing script"
+
+> **RESOLVED-OBSERVED 2026-09-10.** The breakage below stopped
+> reproducing between 2026-09-04 and 2026-09-10 with no deliberate
+> host change; a trivial script now compiles and runs through the
+> normal OSGi path in both import and `-process` mode. The root
+> cause was never pinned. The 09-04 evidence retains one durable
+> lesson: the bundle cache held a freshly compiled `.class` from a
+> failing run, so compilation was never the failing stage; the
+> failure was in Felix bundle wiring. The manual-javac recipe
+> below stays as the standing syntax check for generated scripts
+> (it is what caught two latent compile bugs in the rename/export
+> scripts during the 2026-09-10 pipeline run).
+
+Ghidra compiles Java scripts through its Felix/OSGi layer, and
+that layer broke on this host between 2026-08-29 (last successful
+compile; the bundle cache has the artifacts) and 2026-09-04.
+Symptoms: every script, including a trivial do-nothing one, fails
+with `ClassNotFoundException: Failed to get OSGi bundle`; the
+per-script directory under
+`~/.config/ghidra/ghidra_12.1.2_PUBLIC/osgi/compiled-bundles/` is
+created empty; no javac diagnostic is logged anywhere. The script
+source is not the problem: compiling the same file by hand with
+the pinned JDK produces no errors:
+
+```sh
+CP=$(fd -g '*.jar' ~/.local/share/ghidra_12.1.2_PUBLIC/Ghidra | tr '\n' ':')
+~/.local/share/jdk/jdk-21.0.12+8/bin/javac -cp "$CP" -d /tmp/ovrtest /tmp/ovrscripts/OvrMap.java
+```
+
+That manual compile is also the standing syntax check for
+generated scripts (cache nuking was tried during the outage; it
+did not help, and the outage self-resolved). The Ghidra-side
+function list export works again as of 2026-09-10;
+`scripts/propose-exe-symbols.py --census` remains useful as an
+ndisasm-based cross-check on the Ghidra function list.
+
+## Patterns worth borrowing (yuan-ti, 2026-11-13)
+
+Community harness designs observed in the cross-read
+([`../reports/community-crossread-2026-11-13.md`](../reports/community-crossread-2026-11-13.md) §5
+has the full notes); candidates for our lanes, not adopted yet:
+
+- **ScriptRun**: run the new-game script, every region script and
+  every registered trigger headlessly. A `gpl-disasm`/`gpl-asm`
+  equivalent would audit all 250 chunks through the interpreter's
+  shape in CI, not just byte round-trips.
+- **MoveCompare**: differential testing per system (A* vs a port
+  of DSUN.EXE's pathfinder, walking speeds vs the walk scripts).
+- **engine-compare**: two independent decoders whose outputs must
+  match or CI fails. The gate review did this by hand (our
+  disassembly vs their encodings); making it a standing CI gate
+  is the upgrade.
+- **The dice-log oracle** (Obsidian Edition, relayed via yuan-ti):
+  every original RNG call logged and labeled by purpose; replay a
+  golden fight from the same seed and diff the roll order. Sees
+  through identical totals; the natural instrument for runtime QA
+  and any rules work.
+
+## Not applicable
+
+`pwndbg` is installed on this machine for CTF work. It is a gdb
+plugin for live Linux ELF processes and does nothing for this
+project: the binaries run under DOSBox, and the debugger for that
+is DOSBox's own, already driven over IPC by `opcode-fuzz` (Phase
+5). Recorded here so it is not mistaken for opends tooling.

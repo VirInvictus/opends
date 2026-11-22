@@ -203,7 +203,7 @@ def build_region_gallery(
         cmd = [str(region_render), str(rgn), "-o", str(out_png)]
         # DS1 regions don't ship inline palettes and the engine's
         # per-region palette routine isn't fully RE'd yet (see
-        # docs/dsun-exe-re.md §4.5). region-render's default
+        # docs/reference/dsun-exe-re.md §4.5). region-render's default
         # fallback is CPAL:200 ("ds1-rust"), which renders
         # everything in one rusty-red colour family and loses
         # vegetation / sand / water distinctions. ds1-pink

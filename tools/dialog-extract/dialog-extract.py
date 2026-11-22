@@ -50,7 +50,7 @@ HERE = Path(__file__).resolve().parent
 VERSION = (HERE / "VERSION").read_text().strip()
 
 # Opcodes that consume one or more parameters likely to be a
-# string (literal or text-id). From docs/gpl-opcodes.md.
+# string (literal or text-id). From docs/reference/gpl-opcodes.md.
 STRING_OPCODES = {
     0x2C: "gpl log",  # one packed string (no param)
     0x42: "gpl input string",  # 1 param (the prompt)

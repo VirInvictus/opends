@@ -44,10 +44,10 @@ inventory (RESOURCE.GFF: GSEQ/LSEQ 1..23, CSEQ 1000, 111 BVOC in
 
 ## Format references
 
-Chunk ids and container layout follow `docs/file-formats.md`; the TOC
+Chunk ids and container layout follow `docs/reference/file-formats.md`; the TOC
 walker mirrors the in-repo authority `tools/gff-edit/src/lib.rs`
 (`parse_toc`, `resolve_segmented_type`). What the engine *plays* when
-is routing, not format: see `docs/audio-routing.md`. VOC block
+is routing, not format: see `docs/reference/audio-routing.md`. VOC block
 semantics are the standard Creative Voice File layout; repeat blocks
 expand with a bounded cap recorded in the inventory. The type-8
 extended block sets the following type-1's rate and channel count
@@ -60,7 +60,7 @@ carries one, so that path is covered by the selftest only.
 - `scripts/audio-cue-sweep.py`: sweeps `gpl-disasm --json` output for
   every `gpl sound` (0x5D) and `gpl music` (0x5F) instruction with
   its operand and inline-string context. Produces the cue evidence
-  `docs/audio-cues.md` is written from. Requires a built gpl-disasm
+  `docs/reference/audio-cues.md` is written from. Requires a built gpl-disasm
   (`cargo build -p gpl-disasm`).
 
 Sequence-to-MIDI conversion lives in the sibling tool

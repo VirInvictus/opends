@@ -2,7 +2,7 @@
 """Import DSO Crimson Sands debug symbols into gpl-disasm catalogues.
 
 Parses `.dso-online/tools/symbols.txt` (3,530 functions + 2,247
-globals from the DSO v1.0 client; see `docs/dso-symbols.md`) and
+globals from the DSO v1.0 client; see `docs/reference/dso-symbols.md`) and
 emits review-ready proposals for the curated symbol catalogues
 under `tools/gpl-disasm/syms/`.
 
@@ -22,7 +22,7 @@ Outputs (default: stdout):
 
   --functions-summary   Markdown table of DSO functions categorised
                         by GPL/GFF-related prefix. Suitable for
-                        pasting into docs/dso-symbols.md as the
+                        pasting into docs/reference/dso-symbols.md as the
                         "Highest-value GPL-related symbols" tier.
 
   --globals-summary     Markdown table of gGpl* / bGpl* engine
@@ -416,7 +416,7 @@ def main() -> int:
         sys.stderr.write(
             f"error: DSO symbols not found at {args.source}\n"
             f"hint: clone greg-kennedy/DarkSunOnline to .dso-online/\n"
-            f"      (see docs/dso-symbols.md for licence and scope)\n"
+            f"      (see docs/reference/dso-symbols.md for licence and scope)\n"
         )
         return 2
 

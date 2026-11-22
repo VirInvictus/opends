@@ -39,7 +39,7 @@ reason = "why this edit exists"
 
 | Form | Resolves to |
 |---|---|
-| `ovr:SEG+OFF` | segment `SEG`'s payload start + `OFF` (the `docs/dsun-exe-re.md` notation) |
+| `ovr:SEG+OFF` | segment `SEG`'s payload start + `OFF` (the `docs/reference/dsun-exe-re.md` notation) |
 | a catalogue name | the `ovr-map` syms row: resident file offset, or segment payload start + row offset |
 | a bare number | an absolute file offset (header, resident image, anywhere) |
 
@@ -85,7 +85,7 @@ confirmed 2026-09-06. `--asm` shells out to `nasm -f bin` in
 `bits 16` mode instead: the assembler half of the same toolchain as
 ovr-map's `ndisasm` disassembly, and the selftest round-trips one
 instruction through `ndisasm -b 16` to keep the pair honest. See
-`docs/re-tooling.md`.
+`docs/reference/re-tooling.md`.
 
 ## Self-test
 

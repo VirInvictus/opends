@@ -10,7 +10,7 @@ plus a stdout summary (per-file counts, per-id histograms).
 
 audio-routing.md owns the routing model (DS1: sound id = BVOC chunk
 id, music ids 1..23; DS2: sound id N -> BVOC id N+1, no GPL music
-exists). This tool produces the cue evidence docs/audio-cues.md is
+exists). This tool produces the cue evidence docs/reference/audio-cues.md is
 written from. Stdlib-only; requires a built gpl-disasm.
 """
 

@@ -13,7 +13,7 @@ implies the same packed byte count, only 7-bit symbols are
 representable, and the 0x03 terminator may never appear in text.
 Length changes are refused by design -- a length-changing edit is
 a `gpl-asm` detour job (see
-[`../../docs/detour-repairs.md`](../../docs/detour-repairs.md)),
+[`../../docs/reference/detour-repairs.md`](../../docs/reference/detour-repairs.md)),
 not a string edit.
 
 ## Usage

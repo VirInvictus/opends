@@ -1,6 +1,6 @@
 # The Draj demo: intro -> Slave Pens -> the Arena -> the first fight ->
 # back to the pens, repeatable. Combat follows the engine's structure
-# (docs/combat-flow.md + the turn-system research): a single-actor token
+# (docs/reference/combat-flow.md + the turn-system research): a single-actor token
 # passes to the highest morale-threshold combatant each pick, party and
 # monsters share one stream, a round is one pass of that queue, movement
 # costs 10 (orthogonal) / 14 (diagonal) from move x 10, and attacks use
@@ -713,7 +713,7 @@ func _combat_step_member(target: Vector2i) -> void:
 		tile = target
 
 
-# The arena announcer's lines: real GPL-2 strings (docs/dialogs.md
+# The arena announcer's lines: real GPL-2 strings (docs/reference/dialogs.md
 # machinery; extracted with dialog-extract), portrait PORT 119.
 const ANNOUNCER_PORT := 119
 const ANNOUNCER := {
@@ -1206,7 +1206,7 @@ func _party_down() -> void:
 	state = State.PLAY
 
 
-## DEX missile table (docs/rules-tables.md, DGROUP 0x7dc): the engine
+## DEX missile table (docs/reference/rules-tables.md, DGROUP 0x7dc): the engine
 ## reads this same table for the round threshold's dex_reaction
 ## (combat-flow.md section 4, ovr10 stub 14). Stat 3 -> -3 ... 25 -> +5.
 func _dex_reaction(dex: int) -> int:

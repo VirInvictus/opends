@@ -13,11 +13,11 @@ segmented chunk lists), slices out the audio chunk kinds, and writes:
   conversion is the sibling tool tools/xmi2mid, which consumes these
   dumps.
 
-Chunk ids and the fourcc set follow docs/file-formats.md; the TOC
+Chunk ids and the fourcc set follow docs/reference/file-formats.md; the TOC
 walker follows the in-repo authority (tools/gff-edit/src/lib.rs
 `parse_toc` / `resolve_segmented_type`, itself cross-checked against
 libgff and dsun_music). Routing context (which ids the engine plays
-when) lives in docs/audio-routing.md; this tool only opens the boxes.
+when) lives in docs/reference/audio-routing.md; this tool only opens the boxes.
 
 Stdlib-only. Exit codes: 0 ok, 1 decode errors recorded (output still
 written), 2 bad input paths.
@@ -40,7 +40,7 @@ CHUNK_COUNT_MASK = 0x7FFFFFFF
 # The audio chunk kinds this tool opens. BVOC/FVOC are Creative Voice
 # payloads (background/foreground digital samples); the *SEQ family is
 # XMI sequence data rendered per sound driver at content-build time,
-# every observed payload a FORM/XDIR directory (docs/file-formats.md
+# every observed payload a FORM/XDIR directory (docs/reference/file-formats.md
 # section 5). MSEQ (master XMI) is accepted for completeness; the
 # shipped corpus carries none.
 KINDS = ("BVOC", "FVOC", "GSEQ", "LSEQ", "PSEQ", "CSEQ", "MSEQ", "FSEQ")

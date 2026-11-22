@@ -109,7 +109,7 @@ fn every_gpl_and_mas_chunk_disassembles() {
 /// whose target falls between two instructions, which would mean
 /// either our instruction-boundary alignment is wrong or the
 /// branch-target semantics differ from those in
-/// `docs/gpl-bytecode.md` §5a.
+/// `docs/reference/gpl-bytecode.md` §5a.
 #[test]
 fn every_cfg_successor_resolves_to_instruction_boundary() {
     let mut total_chunks = 0usize;

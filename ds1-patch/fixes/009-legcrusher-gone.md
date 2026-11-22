@@ -22,7 +22,7 @@ line plays exactly as written regardless of his fate.
 
 A detour guard at each of the six sites (discovery: Calvin Rodo's
 yuan-ti, `GplRepairs.cs`, MIT; issue #20; static gate passed
-2026-11-13, `docs/gate-review-yuan-ti-2026-11-13.md`):
+2026-11-13, `docs/reports/gate-review-yuan-ti-2026-11-13.md`):
 
 ```
 gpl load accum  (RETVAL(gpl get range GNAME[37], NAME(-326))) < 999
@@ -41,7 +41,7 @@ the map (the same alive-test idiom the chunks themselves use: GPL
 `get range GNAME[37]` uses and zero `GNAME[5]`). The applier
 appends `[EXIT_GPL][body][JUMP back]` past each chunk's end and
 jumps to it from the site, so no shipped address moves
-(`docs/detour-repairs.md`).
+(`docs/reference/detour-repairs.md`).
 
 ### Notation note: gname[5] and GNAME[37] are the same register
 
@@ -52,7 +52,7 @@ the POV/active-character slot: yuan-ti displays gname indices minus
 The corpus agrees: the register does the active-member work in 367
 `get range` alive-checks (GPL 139 @0x275 is the model). The design
 is Calvin's throughout; the identity table is
-`docs/gff-data-reference.md` (issue #26).
+`docs/reference/gff-data-reference.md` (issue #26).
 
 ### The replacement lines
 

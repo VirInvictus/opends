@@ -38,7 +38,7 @@ object), and 3 repoint across chunks to the handler the region's
 own registrations attest (Jann's talk pair to `GPL-69@1` per
 MAS-59; the forest attack row -146 to `GPL-29@1229` per MAS-1).
 The 10 of v0.1.1 (the 2026-10-07 correlation dig,
-docs/port-digs-2026-10-07.md 2): the VA Headquarters tapestry
+docs/reports/port-digs-2026-10-07.md 2): the VA Headquarters tapestry
 look -1922 to `GPL-163@1800` (attested by MAS-51, and the same
 target the sibling -1923 row already uses); two more shared-prop
 use rows to their regions' attested handlers (`GPL-30` to

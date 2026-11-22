@@ -154,7 +154,7 @@ EDITS = [
         "expect": "6500010018",
         "replace": "6504cd001d",
     },  # GPL-30@0x1146 attacktrigger -146 -> GPL-29@1229 (attested by MAS-1)
-    # 2026-10-07 correlation dig (docs/port-digs-2026-10-07.md 2): ten
+    # 2026-10-07 correlation dig (docs/reports/port-digs-2026-10-07.md 2): ten
     # of the twelve rows left at 0.1.0 now correlate; the two -900
     # pickup rows stay (no handler of any verb exists corpus-wide).
     {

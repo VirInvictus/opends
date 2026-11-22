@@ -18,7 +18,7 @@ A small file container: 28-byte header, a contiguous chunk-data
 area, a table of contents, and a free list. Each chunk has a
 4-byte FOURCC type, a 32-bit resource id, an offset, and a
 length. The on-disk layout is documented in
-[`../../docs/file-formats.md`](../../docs/file-formats.md) §1.
+[`../../docs/reference/file-formats.md`](../../docs/reference/file-formats.md) §1.
 
 Not to be confused with **BioWare's GFF** (Aurora / NWN / Dragon
 Age), which shares only the abbreviation. SSI's GFF predates

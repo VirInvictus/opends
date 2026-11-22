@@ -64,7 +64,7 @@ python3 ovr-map.py .games/ds1/DSUN.EXE --disasm 4 --limit 40
 Shells out to `ndisasm -b 16` (install `nasm`) with the segment's real
 base, and inserts a labelled banner at every entry stub. Offsets in the
 output are segment-local, so they line up with the `cs:` values in the
-stubs and in `docs/dsun-exe-re.md`.
+stubs and in `docs/reference/dsun-exe-re.md`.
 
 ⚠ The 16-bit width is not optional. Decoding this binary as 32-bit does
 not error, it produces convincing garbage.
@@ -109,7 +109,7 @@ confidence level, and are hand-accepted; machine proposals from
 `--selftest` validates the shipped catalogues against the parsed maps,
 so a typo'd segment index or a row past a segment's end fails loudly
 instead of silently never matching. Names are facts we can cite; the
-DSO offsets they came from are not (docs/dso-symbols.md).
+DSO offsets they came from are not (docs/reference/dso-symbols.md).
 
 ### Ghidra bridge
 
@@ -130,7 +130,7 @@ name.
 
 Verified headless against Ghidra 12.1.2: 52 blocks, 935 labels, and
 `ovr04_042e` lands on `55 8b ec 83 ec 0e`, the dispatcher prologue in
-`docs/dsun-exe-re.md` §3.1.
+`docs/reference/dsun-exe-re.md` §3.1.
 
 Notes, each of which cost a debugging round:
 
@@ -164,7 +164,7 @@ rows. Pair both with `ghidra/OvrExport.java` (checked in, static) to
 write the final function list as TSV.
 
 The full headless recipe, including the dot-free path rules that make
-it runnable from this checkout, is in `docs/re-tooling.md`.
+it runnable from this checkout, is in `docs/reference/re-tooling.md`.
 
 ### Helper scripts (`scripts/`)
 
@@ -208,7 +208,7 @@ entry stub pointing outside its own segment, and coverage above 92%.
 ## Format notes
 
 Both games are **Borland/TLINK (VROOM) overlaid 16-bit real-mode** MZ
-programs, not DOS/4GW. See [`docs/dsun-exe-re.md`](../../docs/dsun-exe-re.md)
+programs, not DOS/4GW. See [`../../docs/reference/dsun-exe-re.md`](../../docs/reference/dsun-exe-re.md)
 §1 and §3.5 for the evidence and the calling mechanism.
 
 Layout, as parsed here:
@@ -233,7 +233,7 @@ Each 32-byte descriptor:
 then exactly that many 5-byte stubs (`CD 3F <entry_offset:2> <reserved:1>`;
 the 5th byte is always 0 on disk and the handler never reads it: overlay
 identity comes from the stub's SEGMENT, see
-[`docs/overlay-formats.md`](../../docs/overlay-formats.md)),
+[`../../docs/reference/overlay-formats.md`](../../docs/reference/overlay-formats.md)),
 then padding to a 16-byte boundary.
 
 ⚠ **Two things make a naive parse wrong**, both of which cost a pass

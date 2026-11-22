@@ -1,5 +1,5 @@
 """fix.ds1.script-repairs: three same-length script repairs from the
-2026-10-07 DS1 sweep triage (docs/ds1-sweep-triage-2026-10-07.md):
+2026-10-07 DS1 sweep triage (docs/reports/ds1-sweep-triage-2026-10-07.md):
 the Lava Rifts hermit/ranger occlusion, the Linara conversation
 dead-end, and the final-battle stage-gate strand. See
 002-script-repairs.md for the full analysis and the safety

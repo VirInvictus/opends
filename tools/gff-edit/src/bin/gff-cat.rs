@@ -8,7 +8,7 @@ use serde::Serialize;
 
 // Embedded chunk-type catalogue: the port of libgff's FOURCC
 // registry (`dsoageofheroes/libgff` `include/gff/gfftypes.h`,
-// ~70 defines; MIT), also mirrored in `docs/file-formats.md` §1.
+// ~70 defines; MIT), also mirrored in `docs/reference/file-formats.md` §1.
 const KIND_CATALOGUE: &[(&[u8; 4], &str)] = &[
     // Structural
     (

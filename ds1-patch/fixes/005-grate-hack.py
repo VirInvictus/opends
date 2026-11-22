@@ -9,8 +9,8 @@ points, which an item record does not carry and reads as 0) under
 220, so the lock always breaks. The attack fix uses the rip-open
 path's own roll form (RAND(30) < Str). Beta: UNTESTED at runtime;
 disabled by default. Source: CalvinRodo/yuan-ti GplRepairs.cs
-(MIT); docs/gate-review-yuan-ti-2026-11-13.md; field meanings per
-docs/gplx-field-map.md.
+(MIT); docs/reports/gate-review-yuan-ti-2026-11-13.md; field meanings per
+docs/reference/gplx-field-map.md.
 """
 
 from darkfix.patcher import apply_gpl_repairs

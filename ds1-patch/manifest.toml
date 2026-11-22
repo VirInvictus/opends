@@ -1,7 +1,7 @@
 # darkfix-ds1 patch manifest. Schema version 1 (spec.md §4).
 #
 # The patch version lives in this directory's VERSION file
-# (docs/versioning.md); it is never duplicated here.
+# (docs/reference/versioning.md); it is never duplicated here.
 
 [meta]
 schema_version = 1
@@ -47,11 +47,11 @@ enabled = true
 
 # ---- 0.2.0-beta.1 community fixes -----------------------------------
 # Calvin Rodo's yuan-ti repairs, adopted through the gate
-# (docs/gate-review-yuan-ti-2026-11-13.md: fingerprints, semantic
+# (docs/reports/gate-review-yuan-ti-2026-11-13.md: fingerprints, semantic
 # review, assemble check all pass; runtime QA pending). EVERY fix
 # below ships DISABLED: this is an explicitly untested beta, so no
 # one gets new behavior without opting in. Enable in this file (or
-# per-run) and follow docs/qa-packet-ds1-script-repairs-beta.md.
+# per-run) and follow docs/qa/qa-packet-ds1-script-repairs-beta.md.
 # The Legcrusher dialog guards are not in this beta: they are
 # runtime-assembled upstream and need our gpl-asm movable
 # assembly mode first (see the beta release notes).

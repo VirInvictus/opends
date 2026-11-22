@@ -77,7 +77,7 @@ The eventual `opcode-fuzz` flow:
    changes with the opcode's effect.
 5. **Iterate**. Bisect parameters to verify what each byte in
    the opcode's payload controls. Record the findings in
-   `docs/gpl-opcodes.md`.
+   `docs/reference/gpl-opcodes.md`.
 
 ## Status
 

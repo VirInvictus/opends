@@ -2,7 +2,7 @@
 //! format.
 //!
 //! Foundation library for the OpenDS toolkit. See the repository's
-//! `docs/file-formats.md` §1 for the on-disk layout implemented here.
+//! `docs/reference/file-formats.md` §1 for the on-disk layout implemented here.
 //!
 //! # Example
 //!
@@ -215,7 +215,7 @@ fn serialize_identity<S: Serializer>(id: &[u8; 4], s: S) -> Result<S::Ok, S::Err
 
 /// GFF file header (28 bytes). Port of libgff's `gff_file_header_s`
 /// (`dsoageofheroes/libgff` `include/gff/common.h` lines 43-51, MIT);
-/// field layout also in docs/file-formats.md §1.
+/// field layout also in docs/reference/file-formats.md §1.
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct FileHeader {
     /// Magic bytes; always "GFFI" for a valid file.

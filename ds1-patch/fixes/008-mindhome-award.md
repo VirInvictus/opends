@@ -24,4 +24,4 @@ our triage), so the award fires once.
 
 **Credit**: finding ours (triage 3.2(4) bonus); implementation
 Calvin Rodo, yuan-ti (`GplRepairs.cs`, MIT). QA: the packet,
-docs/qa-packet-ds1-script-repairs-beta.md (site W).
+docs/qa/qa-packet-ds1-script-repairs-beta.md (site W).

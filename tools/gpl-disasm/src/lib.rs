@@ -5,7 +5,7 @@
 //! labeled successors. Branch-target offsets render as labels
 //! (`gpl if label_0x0020`) and the `--cfg` flag emits a Graphviz
 //! DOT graph. Per-opcode branch semantics are documented in
-//! `docs/gpl-bytecode.md` §5a and verified across 600 / 600
+//! `docs/reference/gpl-bytecode.md` §5a and verified across 600 / 600
 //! DS1+DS2 chunks (71,403 successor edges, 0 computed-target).
 //!
 //! v0.2.0 baseline: **parameter decoding**. Each opcode consumes
@@ -121,7 +121,7 @@ pub mod darksun_tools_codec;
 /// Inner opcodes libgff permits inside a `GPL_RETVAL` dispatch
 /// (per `parse.c` `gpl_retval` lines 1791-1826). All of these are
 /// "safe in RETVAL context" per the row notes in
-/// [`docs/gpl-opcodes.md`](../docs/gpl-opcodes.md).
+/// [`docs/reference/gpl-opcodes.md`](../docs/reference/gpl-opcodes.md).
 pub const RETVAL_SAFE_OPCODES: &[u8] = &[
     0x0F, 0x10, 0x1A, 0x1E, 0x1F, 0x20, 0x22, 0x25, 0x2F, 0x33, 0x34, 0x38, 0x39, 0x3D, 0x41, 0x49,
     0x52, 0x59, 0x5A, 0x5C, 0x80,
@@ -824,7 +824,7 @@ pub struct DisasmResult {
 // ---------- CFG types (v0.3.0) ----------
 
 /// Control-flow graph for one disassembled chunk. Branch semantics
-/// are documented in `docs/gpl-bytecode.md` §5a.
+/// are documented in `docs/reference/gpl-bytecode.md` §5a.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Cfg {
     /// Discovered entry offsets, sorted and deduplicated. Includes
@@ -1151,7 +1151,7 @@ pub fn write_global_cfg_dot(gcfg: &GlobalCfg, out: &mut impl Write) -> io::Resul
 /// client's debug symbols (greg-kennedy/DarkSunOnline,
 /// `tools/symbols.txt`) and cross-checked against game content.
 /// Each row is verified before it lands here; see
-/// `docs/dso-symbols.md` for the curation surface.
+/// `docs/reference/dso-symbols.md` for the curation surface.
 ///
 /// v0.4.0 covers function-entry naming (chunk + offset → name).
 /// Opcode-mnemonic overrides and global-variable naming land in

@@ -33,5 +33,5 @@ two relocated label words.
 `2ef1aa813e8647a4226506133927fdacbd860f6b52fa859448e54af5c5548069`.
 
 **Credit**: Calvin Rodo, yuan-ti (`GplRepairs.cs`, MIT); field
-meanings per docs/gplx-field-map.md. QA: the packet,
-docs/qa-packet-ds1-script-repairs-beta.md (site G).
+meanings per docs/reference/gplx-field-map.md. QA: the packet,
+docs/qa/qa-packet-ds1-script-repairs-beta.md (site G).

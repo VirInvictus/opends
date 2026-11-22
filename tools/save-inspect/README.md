@@ -56,10 +56,10 @@ ds1-party-edit.py restore                                   # roll back
 
 Full walkthrough: [`docs/cookbook/edit-ds1-party.md`](
 ../../docs/cookbook/edit-ds1-party.md). The save-file layout
-this rests on: [`docs/file-formats.md`](
-../../docs/file-formats.md) §3. Engine quirks bystanders
-should know about: [`docs/engine-quirks.md`](
-../../docs/engine-quirks.md).
+this rests on: [`docs/reference/file-formats.md`](
+../../docs/reference/file-formats.md) §3. Engine quirks bystanders
+should know about: [`docs/reference/engine-quirks.md`](
+../../docs/reference/engine-quirks.md).
 
 ---
 

@@ -11,7 +11,7 @@ Done and committed (latest: 7c40231):
 - **Wave 0** (cc7c24a): 25 oracle stills at exact 320x200 committed
   under `port-spike/oracle/`. Capture recipe in the rig section below.
 - **Mining**: all seven open holes from BLITZ 2.5 closed and distilled
-  into `docs/screen-flow.md` section 8 and `docs/object-formats.md`
+  into `docs/reference/screen-flow.md` section 8 and `docs/reference/object-formats.md`
   (commits 1ffbb23, 0c29466, 33e54ff). Read section 8 before touching
   any screen: it has every handler address, the event dispatch model,
   the item cell arithmetic, the save format and the print formats.
@@ -57,7 +57,7 @@ Done and committed (latest: 7c40231):
    pipeline runs through the OJFF layer per asset-bindings.md 1; not
    exported yet - the port currently shows two-letter tags), and
    optionally wiring the shipped preset inventories from
-   docs/creature-inventories-ds1.md.
+   docs/catalogues/creature-inventories-ds1.md.
 2. **Damage floats**: the demo prints text floats; the engine also
    draws BMP 5014 splat frames (5 frames: small/big red, green, grey,
    gold, chosen by damage class - see screen-flow.md 8 notes and

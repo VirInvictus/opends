@@ -4,7 +4,7 @@
 is off, and this one is balance-class so it stays toggle-only
 after QA too), untested at runtime.
 
-**Bug** (our triage 3.2(1a), docs/ds1-sweep-triage-2026-10-07.md):
+**Bug** (our triage 3.2(1a), docs/reports/ds1-sweep-triage-2026-10-07.md):
 the Fields of Draj serf escort (GPL 60) only follows the party
 across the region-10 exit when within 14 cells; one further
 behind stays behind without his orders and can re-run the whole
@@ -27,4 +27,4 @@ hands.
 
 **Credit**: Calvin Rodo, yuan-ti (`GplRepairs.cs`, MIT); the
 finding and the alternative design are ours. QA: the packet,
-docs/qa-packet-ds1-script-repairs-beta.md (site S).
+docs/qa/qa-packet-ds1-script-repairs-beta.md (site S).

@@ -18,10 +18,10 @@ documented inter-tool contract), so the FBOV descriptor walk keeps exactly
 one implementation. Byte assembly (`--asm`) shells out to nasm in 16-bit
 mode, the same toolchain as ovr-map's ndisasm disassembly; pwntools 4.15
 cannot assemble this target (it rejects the i386/16 combination), see
-docs/re-tooling.md.
+docs/reference/re-tooling.md.
 
 Stdlib-only. Python 3.11+.
-Format reference: docs/dsun-exe-re.md 1 and 3.5; docs/binary-patching.md.
+Format reference: docs/reference/dsun-exe-re.md 1 and 3.5; docs/reference/binary-patching.md.
 """
 
 from __future__ import annotations
@@ -396,7 +396,7 @@ def assemble(insn: str) -> bytes:
 
     The previously documented fallback (`pwn asm` at arch='i386', bits=16)
     does not work on pwntools 4.15: pwnlib rejects the i386/16 combination.
-    Confirmed 2026-09-06; docs/re-tooling.md carries the correction.
+    Confirmed 2026-09-06; docs/reference/re-tooling.md carries the correction.
     """
     nasm = shutil.which("nasm")
     if nasm is None:

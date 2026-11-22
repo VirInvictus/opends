@@ -2,7 +2,7 @@
 
 **Status**: beta, disabled by default, untested at runtime (the
 adoption gate's static steps 1-3 passed; step 4, the DOSBox QA
-in docs/exchange-yuan-ti-2026-11-13.md, is pending).
+in docs/reports/exchange-yuan-ti-2026-11-13.md, is pending).
 
 **Bug** (new discovery, Calvin Rodo / yuan-ti): the slave pens'
 halfling (GPL 31) reads the speaker's race from the combat
@@ -26,5 +26,5 @@ byte each); no address moves.
 gate review's assemble check cover the bytes).
 
 **Credit**: Calvin Rodo, yuan-ti (`GplRepairs.cs`, MIT); field
-meanings per docs/gplx-field-map.md. QA: the packet,
-docs/qa-packet-ds1-script-repairs-beta.md (site H).
+meanings per docs/reference/gplx-field-map.md. QA: the packet,
+docs/qa/qa-packet-ds1-script-repairs-beta.md (site H).

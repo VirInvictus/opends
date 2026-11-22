@@ -3,7 +3,7 @@
 The three play sessions only a human at the keyboard can run,
 written as turnkey cards. Everything here rides the `tools/repro/`
 harness, so the installs are never writable (overlay mounts; see
-`docs/engine-quirks.md` entry 4 for what a bare run does to
+`docs/reference/engine-quirks.md` entry 4 for what a bare run does to
 `DARKRUN.GFF`).
 
 ## Card A: played-save pairs (SAVE-id mapping)
@@ -12,7 +12,7 @@ Goal: convert `save-inspect`'s speculation rows into per-id
 semantics, one in-game action at a time. The big two are decoded
 structurally already (SAVE/1 = the 320-slot actor record array,
 DS1 32-byte / DS2 37-byte records; SAVE/7 = the 1050x8 visible-
-object array; `docs/engine-quirks.md` entry 12), so card-A pairs
+object array; `docs/reference/engine-quirks.md` entry 12), so card-A pairs
 now fill in the per-field map inside an actor record: position,
 facing, sprite, HP. Then SAVE/2-4 and /7-9, the u16 scalar family
 at 10..17, and the 51-byte SAVE/18 boolean array.
@@ -47,7 +47,7 @@ five id families above maps the whole save surface in one sitting.
 ## Card B: the mines-elevator runtime capture
 
 Goal: the one capture between the site report and complete
-(`docs/engine-quirks.md` entry 6 has the full dossier). Two
+(`docs/reference/engine-quirks.md` entry 6 has the full dossier). Two
 routes, cheapest first.
 
 Route 1, save-diff only (no debugger):
