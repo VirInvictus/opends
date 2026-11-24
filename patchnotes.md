@@ -6,20 +6,28 @@ is that release's entry here, verbatim (see `docs/reference/versioning.md`).
 
 ## ovr-map v0.4.1 (2026-11-23)
 
-- **`ovr-map` v0.4.1**: one syms correction, `gpl_opcode_dispatch`
-  0x99c5 -> 0x9998. The old offset sat 44 bytes into the function,
-  past its `inc bp; push bp; mov bp,sp; cmp [0x9C],sp` far frame at
-  0x9998, which carries the two near callers (0x98a7, 0xd24c); the
-  row's own evidence instruction (`call near [bx+0xc0]`) stays
-  inside the corrected span. Found by the 291-row byte audit of
-  both syms catalogues prompted by daaki85's `frame_kind` critique
-  in [`darksun-recompiled`](https://github.com/daaki85/darksun-recompiled):
-  his shift fires on zero of our rows (every stack-check anchor is
-  a correct frameless entry and all 106 gpl_handler rows are
-  byte-exact dispatch-table targets), but the audit it prompted
-  surfaced this one real error. Credit: daaki85, for the
-  cross-check that found it. Selftest green (935 DS1 / 854 DS2
-  entries, coverage unchanged).
+- **`ovr-map` v0.4.1**: the DS1 syms correction plus the DS2 rows
+  that landed after v0.4.0's tag. `gpl_opcode_dispatch`
+  0x99c5 -> 0x9998: the old offset sat 44 bytes into the
+  function, past its `inc bp; push bp; mov bp,sp; cmp [0x9C],sp`
+  far frame at 0x9998, which carries the two near callers
+  (0x98a7, 0xd24c). Found by the 291-row byte audit of both
+  catalogues prompted by daaki85's `frame_kind` critique in
+  [`darksun-recompiled`](https://github.com/daaki85/darksun-recompiled)
+  -- his shift fires on zero of our rows (every stack-check
+  anchor is a correct frameless entry and all 106 gpl_handler
+  rows are byte-exact dispatch-table targets), but the audit it
+  prompted surfaced this one real error. Credit: daaki85, for
+  the cross-check that found it. Also shipping, deferred from
+  the 11-01/02 digs (they landed hours after v0.4.0 was cut):
+  six new DS2 rows (`region_presentation_orchestrator`,
+  `npc_record_despawn`, `npc_record_sweep_helper`,
+  `gpl_request_dispatcher`, `elevator_ride_service`,
+  `npc_despawn_marker`), the `gpl_disk_change_region` row
+  upgraded probable -> verified, and the `load_game_from_disk`
+  evidence rewritten (the 2026-09-05 "WRITES" annotation
+  reversed: the routine is the reader/loader). Selftest green:
+  935 DS1 / 854 DS2 entries.
 
 ## Documentation audit and the daaki85 worklist (2026-11-23)
 
