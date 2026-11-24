@@ -6,7 +6,7 @@ gate never gets opened.
 
 ## Symptom (relayed, then verified)
 
-Relayed from the Obsidian Edition's findings via yuan-ti
+Relayed from the [Obsidian Edition](https://github.com/daaki85/darksun-obsidian-edition)'s findings via yuan-ti
 (known-bugs.md 3.6 row 8): the Trustee's two scripted pauses take
 their corner from numbers other pen scripts change, so he can set
 off for a spot that does not exist and stay busy for good. This

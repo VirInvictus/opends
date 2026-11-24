@@ -102,7 +102,7 @@ and will waste a pass if assumed wrong.
    `ovr-map --ghidra` pipeline's job on the pristine EXE; the two
    lanes are complementary. First payoff: the 2026-11-01
    decompiled-evidence addendum (`engine-quirks.md` 6) and the
-   elevator ride-chain dig (`elevator-digs-2026-11-02.md`) both
+   elevator ride-chain dig (`../reports/elevator-digs-2026-11-02.md`) both
    ran on carved output.
 
 Temper expectations on the decompiler: Ghidra's output is much
@@ -163,7 +163,7 @@ has the full notes); candidates for our lanes, not adopted yet:
   match or CI fails. The gate review did this by hand (our
   disassembly vs their encodings); making it a standing CI gate
   is the upgrade.
-- **The dice-log oracle** (Obsidian Edition, relayed via yuan-ti):
+- **The dice-log oracle** ([Obsidian Edition](https://github.com/daaki85/darksun-obsidian-edition), relayed via yuan-ti):
   every original RNG call logged and labeled by purpose; replay a
   golden fight from the same seed and diff the roll order. Sees
   through identical totals; the natural instrument for runtime QA

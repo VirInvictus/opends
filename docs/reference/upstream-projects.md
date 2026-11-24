@@ -266,9 +266,10 @@ the rest of the repo:
   [`install-variants.md`](install-variants.md) before trusting).
 - **SKIP**: their GFF reader and GPL chunk parser/opcode table
   (the table is 129/129 identical to our PARAM_COUNTS and the
-  parser cites our walker as its source), their image module
-  (image-extract covers all three encodings and also encodes),
-  `BitChomper`/`Options`, `GFFtool`.
+  parser cites our walker as its source), their image module for
+  stills (image-extract covers all three encodings and also
+  encodes; the 2026-11-23 animation and import/export work below
+  is outside this verdict), `BitChomper`/`Options`, `GFFtool`.
 - **Do not mine as reference: `TextTools/`** (the legacy
   prototype). Its encoder pads edited strings with spaces/zero
   bytes to the original block size, which is exactly what the
@@ -283,12 +284,86 @@ the rest of the repo:
   [`gpl-vm.md`](gpl-vm.md)), and the FONT/name-pool facts behind
   [`file-formats.md`](file-formats.md) §FONT/§NAME.
 
+2026-11-23: upstream moved into the animation lane Tim flagged in
+issue #14: BMA animation decode and frame playback, per-frame
+palettes lifted from ACF animation scripts, and PNG export/import
+for the frames (his caveat: the palette comes from the animation
+scripts, so a changed palette can misdisplay). That is the same
+BMA/ACF ground [`cinematics-ds1.md`](cinematics-ds1.md) documents
+for DS1 cinematics, and the portability survey's image-module
+verdict above predates it.
+
 Their upstream CI drifts (a dotnet 8 pin against net9.0 targets)
 and the WPF project is Windows-bound; the portable surface is
 `Common/` plus three files in `DarkSunRE/Models/`, and its tests
 (`ToolsTests/`, xunit) run on Linux.
 
-## 6. Other tools
+## 6. daaki85 (Obsidian Edition + darksun-recompiled)
+
+One author, two projects: the mod whose findings reached us
+through yuan-ti's relay, and the recompilation that is the
+community's live engine lane. The mod's README credits OpenDS by
+link (our notes and script fixes); both directions run on the
+facts-only discipline.
+
+### `darksun-obsidian-edition`
+
+- URL: https://github.com/daaki85/darksun-obsidian-edition
+- Language: Python (the loader) plus patched game resources
+- License: GPL-3.0 for the mod's own code and documentation (the
+  game's own art is excluded)
+- Status: actively released as of 2026-11-23 (2.19.2)
+
+A mod for DS1 (the GOG release, still in DOSBox): rules closer to
+AD&D 2e, kits, new spells, items, and people, the party's gear
+drawn on the map, and every roll shown live in a combat log. A
+loader launches it and keeps the full dice log per session.
+
+**Where the work meets ours:** the findings relay (15 engine-bug
+rows with `DSUN.EXE` addresses, the acid-check rules, and the
+dice-log test oracle) reached us through yuan-ti's
+`.github/instructions/ref_notes_from_obsidian.md` before we knew
+the primary source. Ours verified the catalog into
+[`known-bugs.md`](known-bugs.md) §3.7 (the Trustee stall shipped
+as `fix.ds1.trustee-rounds` after our own trace), credited the
+rows in [`../../CREDITS.md`](../../CREDITS.md), and recorded the
+oracle in [`re-tooling.md`](re-tooling.md). Now that the primary
+repo is identified, future relays can go direct.
+
+### `darksun-recompiled`
+
+- URL: https://github.com/daaki85/darksun-recompiled
+- Language: C (generated from the original binary) plus a Python
+  lifting toolchain (`build_image.py`, `find_funcs.py`, `lift.py`,
+  `lift_drivers.py`)
+- License: **none shipped** (no license file; treat as
+  all-rights-reserved: facts-only reference, the same rule as
+  `libsoloscuro` above, until upstream adds one)
+- Status: prototype in play as of 2026-11-23
+
+A static recompilation of DS1's `DSUN.EXE` (GOG 1.10) to C,
+compiled natively for Windows and Linux on a small emulated PC
+(DOS, BIOS, VGA, timer, mouse, XMS) instead of DOSBox. Per its
+STATUS.md: the intro, main menu, START GAME, the Draj arena with
+its scripted fight, and party walking all run; Borland's overlay
+manager is kept from starting (52 overlay modules loaded, 935
+stubs patched), ~2,370 functions lift with no unhandled
+instructions, and the 16 Miles AIL 2 drivers in RESOURCE.GFF are
+translated too (the FM driver runs against Nuked OPL3 at its
+120 Hz). DS2 is planned on the same program; the Obsidian Edition
+mod is to be carried over. The repo ships no game data; the build
+regenerates everything from the player's own GOG install.
+
+**Where the work meets ours:** this is the live engine lane in
+the Dark Sun community, and it takes the road around the
+GPL-spec blocker (translate the original code instead of
+rewriting the engine against a spec). Its STATUS facts sit on
+ground we have already mapped: the overlay stub table, the
+RESOURCE.GFF drivers, the DARKSAVE→DARKRUN boot copy. Unlicensed
+for now, so reference-only; the DarkSunTools adoption pattern
+(ask, verify, port, credit) applies the day a license lands.
+
+## 7. Other tools
 
 | Project / Tool                  | Purpose                                                 |
 |---------------------------------|---------------------------------------------------------|
@@ -305,7 +380,7 @@ These are reverse-engineering aides, not assets. Useful for
 identifying memory layouts and verifying our rules-engine math
 against the original binary.
 
-## 7. Inactive / dormant
+## 8. Inactive / dormant
 
 - **Beamdog forums Shattered Lands → Infinity Engine port** ;
   https://forums.beamdog.com/discussion/72931: modders
@@ -313,14 +388,14 @@ against the original binary.
   Useful as an asset-conversion reference if we want a sanity-check
   on how someone else extracted regions.
 
-## 8. ScummVM
+## 9. ScummVM
 
 **No support, no pending engine.** Dark Sun has not been adopted by
 ScummVM. The project broadened scope to RPGs (Xeen, EOB I/II are in)
 but no Dark Sun engine has been merged or proposed. This is the
 project's gap to fill.
 
-## 9. Coordination strategy
+## 10. Coordination strategy
 
 Before duplicating any non-trivial RE work:
 

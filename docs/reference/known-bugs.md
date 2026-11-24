@@ -517,7 +517,8 @@ below are yuan-ti's `engine/src/DarkSun.Game/Scripting/GplRepairs.cs`.
 
 ### 3.7. Engine-side rows verified from the Obsidian relay (2026-11-17)
 
-The Obsidian Edition's 15-row relay (issue #24; see
+The [Obsidian Edition](https://github.com/daaki85/darksun-obsidian-edition)'s
+15-row relay (issue #24; see
 [`../reports/community-crossread-2026-11-13.md`](../reports/community-crossread-2026-11-13.md)
 §1 for the original claims) verified by our own disassembly passes
 over the DS1 image. Engine-side bugs are EXE patches, out of

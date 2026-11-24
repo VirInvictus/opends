@@ -76,11 +76,21 @@ decades:
   inside the dsoageofheroes org alone, none playable end-to-end.
 - **Beamdog forums port**: a community attempt to recreate
   *Shattered Lands* inside the Infinity Engine. Inactive.
+- **[`darksun-recompiled`](https://github.com/daaki85/darksun-recompiled)**
+  (daaki85, 2026–present): a static recompilation of *Shattered
+  Lands*' `DSUN.EXE` to C, running on a small emulated PC instead
+  of DOSBox. In active development and already past the old
+  stopping point: the intro, the main menu, and the first arena
+  scene with its scripted fight run. It sidesteps the spec
+  problem by translating the original code instead of rewriting
+  the engine.
 
-Every attempt has stalled before delivering a playable game. The
-blocker was the GPL bytecode VM: the engine's embedded scripting
-language, with no public spec, and most of the game's logic
-written in it.
+Every rewrite attempt before this one stalled or was shut down
+before delivering a playable game. The blocker was the GPL
+bytecode VM: the engine's embedded scripting language, with no
+public spec, and most of the game's logic written in it. The
+recompilation goes around that blocker by lifting the original
+code instead of rewriting against a spec.
 
 That spec now exists, here.
 [`docs/reference/gpl-vm.md`](docs/reference/gpl-vm.md) documents the VM end to end
@@ -222,6 +232,14 @@ Standing on the shoulders of every prior attempt:
   DSO protocol RE; the v1.0 client's debug symbols cross-reference
   WotR engine internals. Future reference for symbol curation in
   `gpl-disasm`.
+- **daaki85**
+  ([darksun-obsidian-edition](https://github.com/daaki85/darksun-obsidian-edition),
+  [darksun-recompiled](https://github.com/daaki85/darksun-recompiled)):
+  the Obsidian Edition mod's engine-bug catalog and dice-log
+  oracle reached us through yuan-ti's relay and are verified into
+  [`docs/reference/known-bugs.md`](docs/reference/known-bugs.md)
+  §3.7; `darksun-recompiled` is the community's live engine
+  recompilation.
 
 [`CREDITS.md`](CREDITS.md) is the per-feature attribution
 manifest: it maps each OpenDS feature to the specific upstream
