@@ -193,7 +193,7 @@ resolve_attack(...):
   apply_hit(sched, THAC0 - hit_adjustments(mode,sched,atk,tgt) [0x5b8:0xed], AC, ...)
 ```
 
-apply_hit = ovr5 local 0x1b7a (file 0x5873a):
+apply_hit = ovr5 local 0x1b7a (file 0x5883a):
 
 ```
   blows = mode>1 ? ITR1[tpl+0xb] : charrec[row+0x2a]; blows = (blows + round_parity)/2
@@ -206,7 +206,12 @@ apply_hit = ovr5 local 0x1b7a (file 0x5873a):
      hit: dmg = roll_dice(dice, sides, bonus) (local 0x1f92); difficulty_adjust if mode<=1
           backstab: dmg *= (thieflevel-1)/4 + 2, cap 5 (local 0x2904)
           apply_damage(target, dmg*2 passed via 0x5b8:0x20)    ; arg shl 1 at 0x1e50, halved inside: display parity
-          mirror-image: if retargeted and mode==1 and 25% check (0x598:0x20): redirect
+          fire-shield: attacker != target and mode==1 and target holds
+          effect 0x14 (query 0x598:0x20 = has_active_effect) -> re-apply
+          the damage to the attacker with type 0x0202 (0x58B27..0x58B4A;
+          deterministic, no roll. CORRECTED 2026-11-23: this line was
+          mislabeled mirror-image with a 25% check; the mirror test lives
+          only in the cast-engine landing routine, and blows exit it)
   weapon effect id item[+0xf] -> status applier 0x598:0x89; charges 0x580:0xde
   tally +0x181 per blow; at >= 99 an extra attack step
 ```

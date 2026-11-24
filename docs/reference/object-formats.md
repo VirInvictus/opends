@@ -289,7 +289,7 @@ reference these ids (negated). Layout (`gff_ojff_t`):
 | 17 | u8 | slot (0xFF = unequipped) | VB |
 | 18 | u8 | name index into the NAME pool (GPLDATA.GFF NAME id 1, 322 x 25-byte records) | VB (hundreds of coherent joins) |
 | 19 | i8 | bonus (39 on bags only; capacity?) | H |
-| 20 | u8 | trailing (0) | VB |
+| 20 | u8 | enchantment plus (0 = mundane; 1-3 appended to the display name) | H (2026-11-23 census: 61 records with +20>0, every cross-checkable one matching its in-game +N name -- 2642 Mace +2, 2533 Sling +2, 30005 Dag's Dagger +3; surfaced by the Sling +1 cross-read) |
 
 ### 4.2 DS2 item instance (type 1 payload, 23 bytes)
 

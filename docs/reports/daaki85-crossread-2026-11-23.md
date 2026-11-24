@@ -103,11 +103,20 @@ the end.
   `DSUN -W0 -L`; GOG's SOUND.CFG selects MT-32 whose instrument
   file GOG does not ship; the game polls INT 33h so presses and
   releases between polls are lost.
-- **Catalogue-quality note for ovr-map:** his tools consume our
-  syms TOMLs, and his frame classifier notes that "OpenDS names
-  some functions at the stack check", silently shifting some of
-  our rows 3-4 bytes back to the frame start. A small ovr-map
-  hygiene item, not a correctness break.
+- **Catalogue-quality note for ovr-map, audited same-day:** his
+  tools consume our syms TOMLs, and his frame classifier notes
+  that "OpenDS names some functions at the stack check". The
+  2026-11-23 byte audit of all 291 rows found his shift fires on
+  ZERO rows in either game: every stack-check-anchored row is his
+  own 'at' frameless case (DS1 `39 26 9C 00` after a ret; DS2
+  `6A nn E8` thunks), all 106 gpl_handler rows are byte-exact
+  dispatch-table entries a 3-4-byte shift would move OFF their
+  targets, and the 59 rows his tool notes as "interior" are
+  accounted for (dispatch entries plus documented data cells).
+  The audit did surface one unrelated correction, applied in
+  ds1.toml: gpl_opcode_dispatch 0x99c5 -> 0x9998 (the true far
+  frame, carrying both near callers; the old offset sat 44 bytes
+  in). Credit for the prompt: daaki85's frame_kind critique.
 
 ### 1.3. Tooling notes
 
@@ -242,25 +251,35 @@ switches are per-launch, ours are per-install). The overlay-coverage
 argument for file patching ("covered every time it loads") is
 worth a citation in fix-format.md's rationale when next touched.
 
-## 3. Follow-up worklist (findings, not commitments)
+## 3. Follow-up worklist — EXECUTED 2026-11-23
 
-- Re-trace Share Strength's removal call (598:48h) and settle the
-  getter-vs-remover reading; fold the outcome into known-bugs
-  §3.7 row for Share Strength.
-- Re-run the Sling +1 name-pool check against SEGOBJEX.
-- Reconcile combat-flow.md's apply_hit mirror-image sentence with
-  known-bugs §3.7 row 1 (blows never roll); one of the two is
-  wrong. Their dsclog comment agrees with §3.7.
-- Re-word re-tooling.md's dice-log oracle paragraph to describe
-  the real mechanism and name the missing pieces (seed
-  capture/set, replay, diff).
-- ovr-map hygiene: check the rows his classifier shifts 3-4 bytes
-  (named at stack-check sites) and either annotate or correct.
-- Fold the §2.1 extensions into known-bugs §3.7 rows, citing the
-  primary source (the repo URL is already in place from the
-  2026-11-23 linkage pass).
-- build-environment.md: note GOG's `__support/save` starting saves
-  (innoextract skips them; the game quits at START GAME without
-  them).
-- PSP recompute (873B2h) vs gain (0x875a8): verify which site is
-  which and correct either combat-flow or spell-effects prose.
+All eight items worked the same day; each landed as follows.
+
+1. Share Strength re-trace: DONE -- OE vindicated; known-bugs
+   §3.7 row 3 rewritten (the per-match call is a full remover;
+   the caster-as-target argument is the bug; the "skip" is
+   compaction plus the loop's index increment).
+2. Sling +1 re-check: DONE -- both sides half right; the display
+   name is pool "Sling" plus the newly decoded enchantment byte
+   (object-formats.md item +20); known-bugs row 12 rewritten.
+3. Mirror-image reconciliation: DONE -- combat-flow.md's sentence
+   described the wrong branch (it is Fire Shield retaliation,
+   deterministic, no roll); rewritten, and apply_hit's file
+   address corrected 0x5873a -> 0x5883a.
+4. Dice-log oracle reword: DONE -- re-tooling.md now describes
+   the live labeled log and names the missing pieces.
+5. ovr-map hygiene: DONE -- zero rows shift (see §1.2); one
+   unrelated correction applied (gpl_opcode_dispatch 0x99c5 ->
+   0x9998, with the callers as evidence).
+6. §3.7 extension fold-in: DONE -- rows 1, 2, 4-8, 10, and 12
+   extended from the primary source, each marked OE-sourced where
+   we did not independently trace it.
+7. __support/save note: DONE -- build-environment.md's extraction
+   section carries the copy step and the START GAME failure mode.
+8. PSP sites: DONE -- OE's 0x873B2 confirmed as the only PSP
+   routine (formula byte-verified; monotonic ratchet; the
+   [0x11a0] scratch-pointer quirk noted); our 0x875a8 claim was
+   the CON HP additive, and 0x875df is the attacks-per-round
+   derivation. rules-tables.md's +0x52 section rewritten, the
+   PSP recompute section added, lines 141/216/223/242/272
+   corrected; chargen-flow.md's init chain relabeled.

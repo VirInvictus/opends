@@ -19,8 +19,8 @@ Ghidra is NOT installed from Fedora packages here: the pinned
 12.1.2 build lives in `~/.local/share/ghidra_12.1.2_PUBLIC` with a
 pinned Temurin JDK 21 (Fedora ships only 25/26), and the setup is
 documented in `re-tooling.md`. Historically a third-party COPR
-offered ghidra, but
-direct download. Optional; r2 covers most needs.
+offered ghidra; this setup installs from the direct download
+instead. Optional; r2 covers most needs.
 
 ## 2. Python tooling
 
@@ -98,6 +98,23 @@ innoextract -d .games/ds2 \
 
 `.games/ds1/` and `.games/ds2/` are the paths the Rust corpus
 tests read; without them those tests skip.
+
+One install step GOG's own installer does that `innoextract` does
+not: the starting saves (`DARKSAVE.GFF`, `CHARSAVE.GFF`,
+`BACKSAVE.GFF`) extract into `__support/save/` and must be copied
+into the game root, where the executable expects them. Without
+that copy the game quits at START GAME (both games), and DS2's
+CHARTRAN finds no roster to transfer:
+
+```sh
+cp -n .games/ds1/__support/save/* .games/ds1/
+cp -n .games/ds2/__support/save/* .games/ds2/
+```
+
+(Gap observed and documented in daaki85's
+[`darksun-recompiled`](https://github.com/daaki85/darksun-recompiled)
+build notes; surfaced in our
+[`../reports/daaki85-crossread-2026-11-23.md`](../reports/daaki85-crossread-2026-11-23.md).)
 
 If you also have the GOG installers wrapped in `.rar`
 (like the GOG-Games.to redistribution), unpack the rars first

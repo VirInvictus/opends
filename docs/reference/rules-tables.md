@@ -63,16 +63,50 @@ the CON-floor table, same bug family as the ability getters).
 
 `+1` for CON 0-19, `+2` at 20, `+3` at 21-22, `+4` at 23-25. Level-up reads
 `[block+0x38+CON]` (DS1 0x87323..0x8732a; DS2 0x95ce6..0x95cf3) and applies
-HP gain = max(die roll, floor). THE ENGINE HAS NO 2E-STYLE ADDITIVE
-PER-LEVEL CON BONUS: low CON never reduces a level-up roll, high CON only
-raises the minimum.
+HP gain = max(die roll, floor). The level-up roll itself has no
+additive: low CON never reduces a roll, high CON only raises the
+minimum. The 2E-style CON additive does exist and is applied on
+the max-HP recompute side instead (the +0x52 table below, shared
+helper 0x8757c, consumers 0x874b0 / 0x877be / chargen 0x6571e;
+corrected 2026-11-23: this paragraph's original blanket claim
+contradicted section 5's own `hp += additive` line).
 
-### +0x52: 26-entry CON-indexed PSP table
+### +0x52: 26-entry CON-indexed HP bonus per level (the 2E additive)
 
 Signed bytes, CON 0..25: 0-1 -> -3; 2-3 -> -2; 4-6 -> -1; 7-14 -> 0; 15 ->
 +1; 16 -> +2; 17 -> +3; 18 -> +4; 19 -> +5; 20 -> +5; 21-23 -> +6; 24-25 ->
-+7. PSP gain = `t[CON] x psionic_level + min(t[CON],2) x other_levels`
-(DS1 0x875a8..0x875dc).
++7: the 2E CON ac ladder. This is an HP table, not PSP. The interior at
+DS1 0x875a8..0x875dc (shared helper 0x8757c..0x875de) computes
+`t[CON] x warrior_capped_group_level + (group_total - warrior_level) x min(t[CON],2)`
+and is applied wherever max HP is rebuilt (base-HP 0x874b0, the sheet
+helper 0x877be, chargen 0x6571e/0x6573a). Low CON does reduce rebuilt
+max HP by the table's negative entries; it just never touches the
+per-level die. CORRECTED 2026-11-23: this section originally titled
+the table "PSP" and gave a psionic-level formula; the real PSP routine
+is the recompute at 0x873b2 (next section), found via the Obsidian
+Edition's implementation notes (daaki85/darksun-obsidian-edition,
+DEVELOPMENT-INTERNALS.md 728) and traced to byte level.
+
+### The PSP recompute: 0x873b2 (the only PSP routine)
+
+Traced 2026-11-23, prompted by the Obsidian Edition's notes (their
+DEVELOPMENT-INTERNALS carries the same formula). One near caller,
+0x87cce, inside the level-up check 0x87af6: once per party member
+after the per-class promote loop, far-reached from the AddXP tail
+(0x6b8f8) and two screen paths. The total accumulates in si: CON,
+INT, and WIS each gated at >= 15 add their ladder from rules-block
+placeholder 0x338 (+0x11c / +0x124 / +0x12c; 7 entries covering
+scores 15-21, and score 22 bleeds into the next table's bytes: the
+ladders end too early for 22-25). Then the class branch: a
+psionicist (0x508:0x25 with arg 0xc) at level > 0 adds
+(level-1) x 10, plus table +0x134 x (level-1) per the WIS ladder
+(+1..+6 per level for WIS 15-20) when WIS >= 15; a non-psionicist
+adds 0x508:0x2a x 4 instead. The result ratchets: if si > sheet+0xc
+(max PSP), current PSP (charrec+0x2) gains the delta and sheet+0xc
+stores the new max; it never lowers. Quirk: the third stat's value
+reads through far ptr [0x11a0]+0x26, the chargen scratch record,
+which is valid during creation (creation's own PSP routine 0x65b39
+shares the tables and pointer) and stale at later level-ups.
 
 ### +0x6c: saving-throw table, 4 groups x 5 categories x 3 bytes (base, step, cap)
 
@@ -138,8 +172,11 @@ exists in-engine; the bestiary's "hand-tuned" reading was incomplete.
 Store/read sites: DS1 writes combat+31 at 0x86d7e and 0x87a91, reads it at
 0x5811f; DS2 writes combat+22 at 0x6e8f5, reads at 0x5c6e9 (confirming
 object-formats.md). The level-up applier (DS1 0x87944..0x87ac0) chains: HP
-roll (0x87250) -> PSP recompute (0x875df) -> THAC0 derive+store (0x87666)
--> saving-throw walk (0x877eb), plus class-0xb/0xc hook calls.
+roll (0x87250) -> attacks-per-round derive (0x875df) -> THAC0 derive+store
+(0x87666) -> saving-throw walk (0x877eb), plus class-0xb/0xc hook calls.
+The PSP recompute (0x873b2) is not in this chain: it runs once per party
+member at 0x87cce, inside the level-up check 0x87af6, after the promote
+loop.
 
 ## 3. XP advancement
 
@@ -213,14 +250,16 @@ base_hp(si):
   B  = sum of the 3 signed high_level bytes at +0x3f
   hp = (A * charrec[si].high_HP(+0xa)) / B
   hp /= class_count(si)            ; race==1 -> 1; else count of nonzero real_class[3]
-  hp += additive(si)               ; the shared helper at 0x8757c: the +0x52 PSP-formula shape
+  hp += additive(si)               ; the shared helper at 0x8757c: the +0x52 CON-HP-bonus shape
   return max(hp, B)
 ```
 
 The multiclass HP division is explicit. The per-level gain rule stands:
 group die rolled once per level, max(roll, CON floor), flat
 post_level_gain after the row's last_rolling_level. The recompute chain
-0x628:{0x2a, 0x39, 0x3e, 0x4d} = base-HP, PSP, THAC0, saves in order.
+0x628:{0x2a, 0x39, 0x3e, 0x4d} = base-HP, attacks-per-round, THAC0, saves
+in order (stub 0x39 was mislabeled "PSP" until corrected 2026-11-23; the
+PSP recompute lives outside this family at 0x873b2).
 
 **The combat block's +8/+10/+12 are NOT derived stats (resolved
 2026-10-06, port-digs-2026-10-06.md 8).** The three words are the
@@ -240,7 +279,7 @@ slot bytes (fixer 0x69DF0). The full 0x628 family is overlay 46
 (segtab record 197; every `0x628:off` call is ovr46 stub
 (off-0x20)/5, 16/16 call sites integral) and its DS2 twin 0x690:*;
 the stubs compute usability, base-HP, class-count, dice/additive,
-PSP, THAC0 (to combat+31/+22), group levels, saves, and level-ups,
+attacks, THAC0 (to combat+31/+22), group levels, saves, and level-ups,
 and none touches +8/+10/+12. The nonzero values in the shipped
 CHARSAVE pools (DS1 516..519; DS2 456..519) are SSI authoring-session
 indices exceeding the 400-row arrays and referencing nothing in
@@ -269,7 +308,8 @@ reproduce the belt model instead.
    port-digs-2026-10-06.md 8): no derivation exists; dead persistence
    slots; the 0x628 family is ovr46, statically resolved.
 8. Pool placeholder semantics across builds (cosmetic; noted so nobody
-   re-derives address math against them). Note: the PSP citation in
-   section 1 ("DS1 0x875a8..0x875dc") lands inside the shared additive
-   helper at 0x8757c..0x875de, which both the PSP recompute and the
-   base-HP additive use.
+   re-derives address math against them). Postscript 2026-11-23: the
+   old note here ("the PSP citation lands inside the shared additive
+   helper") defended a misreading. 0x875a8..0x875dc is the +0x52
+   CON-HP-bonus interior of helper 0x8757c, and the PSP recompute is
+   the separate routine at 0x873b2 (see the +0x52 section).

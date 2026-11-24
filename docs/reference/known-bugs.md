@@ -537,6 +537,24 @@ each against multiple fingerprints from Calvin's reference).
    image (countdown decrement + shatter FX). Blows never roll:
    melee damage bypasses the cast engine entirely, and innate
    attacks (spell id -1) exit before the mirror test.
+   Primary-source extensions (OE's own patch notes and code,
+   read 2026-11-23; not independently traced): the image effect
+   is effect 25; the Reflected Image variant's gate survives on
+   > 50 rather than > 75; area, cone, and wall spells are exempt
+   (single-creature spells only roll); OE's allegiance fix keys
+   on combatant number < 4 = party; and because the game never
+   blocks blows either, OE adds its own blow-block patch at
+   0x58A00 (attack routine 5883Ah, miss 58A46h) as a deliberate
+   change beyond the bug. Byte-level completion (re-traced
+   2026-11-23): the early exit for spell id -1 is the compare at
+   0x7A586 (`cmpw $0xffff,0x12(%bp)`) jumping at 0x7A58C, before
+   the mirror-bit test at 0x7A5B5 and the d100 gate at 0x7A5CD;
+   the psionics band 0x8A-0xAB also exits early at 0x7A5B2.
+   Spell-sourced damage does reach the roll (Melf's Acid Arrow
+   ticks pass id 0x12 at 0x789C7), and weapon-effect damage can
+   too via the 0x598:0x89 router (0x58BF2); only the blow's own
+   damage call, hardcoding id -1 at 0x58B19, never rolls. The
+   consumed image effect is 0x19 = 25, matching OE's "effect 25".
 2. **Protective effects burn on every landing — CONFIRMED, with
    corrected semantics.** The landing routine decrements the
    Armor-effect countdown (effect 2) for ANY spell landing on a
@@ -545,25 +563,57 @@ each against multiple fingerprints from Calvin's reference).
    for all damage (file 0x79A3E; the relay's file offset 0x7743E
    was wrong). So a damaging spell costs 2 countdown units, a blow
    1, a non-damaging friendly spell 1. The relay's "charges" are
-   active-effect timer countdowns, not item charges.
-3. **Share Strength's end removes nothing — CORRECTED.** The relay
-   said the ending loop removes the psionicist's records, skips
-   after each removal, and counts to 192. The trace (psionics
-   module, file 0x5CEBD, loop at exactly 0x5CEEC-0x5CF34) confirms
-   two of three: the loop keys records to the caster argument (not
-   per-record ownership) and its bound is the constant 192 rather
-   than the live count at DS:1E24. But it never removes and never
-   skips: the per-match call enters a pure getter 3 bytes past its
-   prologue and the result is discarded; the only real state change
-   is the PSST maintenance-bit clear. The genuine removal machinery
-   lives elsewhere (the condition functions in the effects module).
+   active-effect timer countdowns, not item charges. OE's patch
+   (primary source, read 2026-11-23) marks the landing-charge
+   jump at 0x7A557 (`74 0b` -> `eb 0b`) and confirms the blow
+   side: blow damage passes through the damage routine at 58B1Fh
+   with spell id FFFF, which is the unit a blow costs. Their
+   notes decode "charges" as the effect record's +8 word /
+   timed event kind 7 at DS:2FBEh.
+3. **Share Strength's end removes the wrong records — CONFIRMED
+   (re-traced 2026-11-23; OE's reading vindicated).** The ending
+   loop (psionics module, file 0x5CEBD, loop at exactly
+   0x5CEEC-0x5CF34) keys records to the caster argument (not
+   per-record ownership) and bounds at the constant 192 rather
+   than the live count at DS:1E24, and the per-match call at
+   0x5CF22 IS a remover: segment 598 offset 0x48 (stub 8, file
+   0x765E2) binary-searches the target-sorted effect array by
+   (target, status byte +7), runs the per-effect undo callback
+   (5a8:0x48), memmove-compacts the remainder, decrements the
+   live count at DS:1E24, and returns AX = 1 when it removes.
+   Our 2026-11-17 "pure getter, never removes" reading was a
+   misidentification: that description fits the neighbor 598:0x20
+   (has_active_effect), not this routine. The bug is the
+   argument: the loop passes the caster where the remover expects
+   the target, so a receiver's Share Strength record (target !=
+   caster) can never match and survives the power's end, while
+   any own record of the caster's carrying the same status byte
+   +7 is removed in its place; and since a removal compacts the
+   array while the loop only increments its index, the record
+   that slid into the current slot is skipped -- the relay's
+   "skips after each removal" was right after all. The
+   unconditional PSST maintenance-bit clear at 0x5CEDC remains
+   the only change that always happens. The correct primitive
+   sits next door: 598:0x4D (stub 9, remove-all-matching) keys
+   target + effect byte and re-examines the same index after
+   compaction. Credit: the Obsidian Edition's implementation
+   notes asserted removal and the caster-as-owner mechanism
+   first; the re-trace was prompted by their primary-source
+   claim in the 2026-11-23 cross-read.
 4. **Thri-kreen claws are crushing — CONFIRMED.** The natural-attack
    branch (combat module, file 0x581DF: `c7 46 ec 08 00`) forces
    every weaponless blow's element word to 8 (bludgeoning) with no
    race or creature branch; crushing-immune creatures (mastyrials)
    take zero from all claws. Thri-kreen are player race 8, so their
    claws also never gain the magic bit the (level-2)/2 formula adds
-   for non-player races.
+   for non-player races. OE's NS_FIST notes (primary source, read
+   2026-11-23) name the containing melee routine at 58019h and add
+   the frame: magic weapon kinds PLUS1-3 read from `[BP-0Ch]`,
+   natural attacks carry attack kind 0-2 (claws 0, bite 2), the
+   race byte lives at sheet +0x18 (thri-kreen = 8), party =
+   combatant < 4, and their mod's fix converts crushing to
+   slashing (0x10) for party thri-kreen only, monsters kept
+   crushing.
 5. **A click on the Effects screen ends a spell — CONFIRMED.** Both
    relayed bytes (ovr36, files 0x7F226 `7C 51` and 0x7F236
    `7D 41`) are the spell-vs-psionics band branch in the
@@ -571,28 +621,46 @@ each against multiple fingerprints from Calvin's reference).
    record removal exactly like powers; only the psionics band gets
    the extra mirror-byte clear. What a stray click loses is a
    running spell's active effect (Armor, Bless, ...), not a
-   memorized uncast slot.
+   memorized uncast slot. Extensions (OE primary source, read
+   2026-11-23): the psionics band is 0x8A-0xAB specifically, the
+   click-removal handler sits at 7F19Dh, and OE ships these same
+   two bytes as its EFFECTS_KEPT switch.
 6. **Scare's elf/half-elf exception never fires — CONFIRMED.** The
    situational save modifier (effects module, file 0x79FA4-0x7A01B):
    spell id 21 (Scare) gives +100 to the save roll at target level
    >= 6 and -100 below 6, and its only no-modifier escape requires
    the target's race byte to be both 3 (elf) and 4 (half-elf) --
    one byte, two different compares, unreachable. Every elf rolls
-   the same -100 as everyone else below level 6.
+   the same -100 as everyone else below level 6. OE's notes
+   (primary source, read 2026-11-23) frame the whole
+   situational-modifier routine at 79D3Ch: `[BP+6]` target,
+   `[BP+14h]` spell, `[BP+16h]` caster level, target level read
+   via 508h:2Ah (5E85Fh), with classless creatures reading 0
+   despite carrying HD at sheet +0x24.
 7. **Preserver's Dispel Magic sets the no-spells bit — CONFIRMED
    (data).** Spell record 26 (SPIN 27, preserver Dispel) carries
    effect byte +0x19 = 0x32 = 50, the spell-blocking status the
    Insect Plague handler applies; the priest Dispel (SPIN 99,
    record 98) carries 0x00 there. Both are target-point records
    with the area-walk aoe, so the bit lands on every creature in
-   the radius, caster's party included. Sub-part not proven: the
-   relay's "Dispel Magic cannot remove it" (the removal matcher was
-   not traced).
+   the radius, caster's party included. Sub-part now sourced (OE
+   primary source, read 2026-11-23; not independently traced):
+   OE's notes assert effect 50 ("No spell use") is exactly the
+   status Dispel Magic's removal matcher does not end, and their
+   fix is the single byte at 0x422C9, 50 -> 0. Their spell-record
+   work also fixes the record stride at 0x20 bytes with a flags
+   word at +0x11 (their Cloak of Bravery fear-flag patch edits
+   spells 21/43/78/132 at 0x42222+(spell-21)*0x20).
 8. **Cause Serious/Critical Wounds roll d9s — CONFIRMED (data).**
    SPIN 114 damage word 0xa0091100 = 2d9 and SPIN 129 0xa0091900 =
    3d9, while the matching Cure handlers pay 2d8+1 / 3d8+1 (and the
    Cure Critical game text promises 3d8+3, which the handler does
    not pay either -- a small text-vs-code discrepancy of its own).
+   Numbering note from the primary source (read 2026-11-23): OE
+   numbers spells 0-based, so OE 113/128 = SPIN 114/129 here;
+   their dice-word decode is +0x1C steps' dice<<5|flat bonus,
+   +0x1D base dice<<3|levels-per-step, +0x1E adj<<4|sides, and
+   their fix patches 0x42DAC and 0x42F8C.
 9. **The elf Cilla draws the half-elf woman's figure — CONFIRMED
    (data).** Both her creature row (307) and pregen template (32003)
    carry base-figure index 7 = the half-elf female sprite while her
@@ -608,7 +676,15 @@ each against multiple fingerprints from Calvin's reference).
     spell byte is destroyed outright with no roll, and one with a
     spell byte survives on d20 >= 10 minus that byte. (A third
     branch corrodes the lowest-+0x10 carried item on d20 <
-    15 - its plus.)
+    15 - its plus.) Primary-source additions (OE, read
+    2026-11-23): their rules statement adds the data observation
+    that every piece of armour carrying a power byte in the game
+    makes the check always succeed (Tanelyv's Armor +2 named),
+    and their item-deletion census found the single funnel every
+    deletion goes through at A0:1CD6h with ten callers -- our
+    7AA5Ah/7ABC4h acid pair is two of them, and 58D61h from
+    7AAEBh is Detonate, which identifies our third branch
+    (d20 < 15 - plus on the worn item that breaks most easily).
 11. **Hold Undead holds only the undead — REFUTED.** The relayed
     claim is contradicted by the code: the whom-it-takes filter
     (a 14-spell table in the effects module) routes Hold Undead and
@@ -616,18 +692,41 @@ each against multiple fingerprints from Calvin's reference).
     (undead), and both traced application routes enforce it (the
     cast engine skips filtered targets; area-target walks remove
     them from the list). yuan-ti's own reference agrees with the
-    code, not the relay.
+    code, not the relay. OE's docs independently refute the relay
+    too (primary source, read 2026-11-23) and explain the
+    misreading's origin: non-undead targets fall through to the
+    generic landing path (7A359h), "which looked like Hold Undead
+    holding anything. It doesn't." Their addresses: landing
+    7A333h, immunity exit 7A1F0h, HD-limit site 7A345h, target
+    sifting via 80F5:1CF7h and table 80F5:1DCFh.
 12. **Remaining unverified (searched, not traced)**: the roster
     DELETE-when-scrolled and new-character thief-skills-0 rows.
     Neither handler is documented in any corpus; the dig targets
     are now named (the "DELETE CHARS"/"DROP THIS CHARACTER?" string
     cluster at DSUN.EXE 0x4A4C9+ and 0x48CF1+; the sheet renderer
     for thief percentages -- which has no display string in the
-    image at all). The Sling +1 blank-icon row resolved as data:
-    no Sling +1 exists (the name pool has Sling, Staff Sling, and
-    unused Sling +2 / magic sling names), every sling's picture
-    reference resolves, and the closest real defect is the
-    OJFF-less chest sling 2644, whose inventory icon computes to 0.
+    image at all). The Sling +1 blank-icon row RESOLVED 2026-11-23
+    (prompted by OE's name claim, which is correct as the display
+    name): no literal "Sling +1" string exists anywhere in the
+    install -- the name pool has Sling, Staff Sling, and unused
+    Sling +2 / magic sling names -- but chest sling 2644 is pool
+    name "Sling" with enchantment plus +1 (item byte +20, decoded
+    in object-formats.md), so the game displays "Sling +1"; both
+    sides were half right, and our catalogue name columns print
+    the pool string only, which is how the original scan missed
+    it. The defect stands: OJFF 2644 is absent from SEGOBJEX (as
+    is 2643), so compute_icon (0x72B47) returns 0 on read failure
+    and the icon renders blank.
+    Postscript (OE primary source, read 2026-11-23): the two
+    remaining rows now have OE's implementation facts, still
+    untraced on our side. DELETE-when-scrolled: their
+    `roster_delete` patch names handler 54AC1h (entry 0x54ADF),
+    counts rows from the top of the list rather than the view,
+    and lifts the saved-character loops' `cmp 14h` caps at
+    0x53F43/0x54B59 to hold 29. Thief skills: their notes list
+    the new-as-Okay jump-fix set, the equipment-penalty slot
+    table at 0x44F70 (slots 6,1,10,3,13; never armour), and the
+    skill formula base + race + 4/level.
 
 ## 4. SSI patch lineage
 

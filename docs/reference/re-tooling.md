@@ -163,11 +163,20 @@ has the full notes); candidates for our lanes, not adopted yet:
   match or CI fails. The gate review did this by hand (our
   disassembly vs their encodings); making it a standing CI gate
   is the upgrade.
-- **The dice-log oracle** ([Obsidian Edition](https://github.com/daaki85/darksun-obsidian-edition), relayed via yuan-ti):
-  every original RNG call logged and labeled by purpose; replay a
-  golden fight from the same seed and diff the roll order. Sees
-  through identical totals; the natural instrument for runtime QA
-  and any rules work.
+- **The dice-log oracle** (Obsidian Edition:
+  [daaki85/darksun-obsidian-edition](https://github.com/daaki85/darksun-obsidian-edition);
+  mechanism read in
+  [`../reports/daaki85-crossread-2026-11-23.md`](../reports/daaki85-crossread-2026-11-23.md)
+  §2.2): their shipped version is a live labeled log, not a replay
+  harness. The RNG call is byte-patched to an INT 60h TSR that
+  returns the identical number and records caller and frame args
+  into an HMA ring; purpose labels are assigned Loader-side by
+  fingerprinting the code around each recorded return address.
+  The full instrument for runtime QA needs what theirs lacks:
+  seed capture and set (their patch bytes imply the state lives
+  at DS:4124h; unverified), replay from a saved seed, and a diff
+  step. Sees through identical totals; the natural instrument for
+  runtime QA and any rules work.
 
 ## Not applicable
 

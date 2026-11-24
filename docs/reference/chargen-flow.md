@@ -123,10 +123,13 @@ on finalize it copies into the party arrays [0x1661] (charrec) / [0x1665]
   - triple: 2/2/2, XP = max of three T[c][1], same bump.
   - DS2: START AT LEVEL 7 (single) / 6 (multi, same per-class bump to 7);
     XP = DATA:1000[class][6 or 5] * 100 (0x6c397..0x6c4ea).
-- HP/PSP init: finalize (DS1 0x66bd0..0x66cea; kreen get 4 attacks 1d4,
-  move 15) chains the recompute: base-HP variant -> PSP -> THAC0 -> saves
+- HP/attacks init: finalize (DS1 0x66bd0..0x66cea; kreen get 4 attacks 1d4,
+  move 15) chains the recompute: base-HP variant -> attacks-per-round ->
+  THAC0 -> saves
   (the 0x628:{0x2a,0x39,0x3e,0x4d} family of rules-tables.md; saves init
-  to 99 at 0x87813).
+  to 99 at 0x87813. CORRECTED 2026-11-23: the middle stub 0x39 is the
+  attacks derivation, not PSP; creation's PSP itself is set by the
+  separate routine 0x65b39, which shares the PSP tables).
 - Psionics: race selection initializes psionic state (DS1 helpers
   0x63efa/0x63fee); the wild-talent draw lives in the 3012 page (module
   19) and was not fully isolated.
