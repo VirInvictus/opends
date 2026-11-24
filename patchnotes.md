@@ -12,12 +12,12 @@ is that release's entry here, verbatim (see `docs/reference/versioning.md`).
   function, past its `inc bp; push bp; mov bp,sp; cmp [0x9C],sp`
   far frame at 0x9998, which carries the two near callers
   (0x98a7, 0xd24c). Found by the 291-row byte audit of both
-  catalogues prompted by daaki85's `frame_kind` critique in
+  catalogues prompted by @daaki85's `frame_kind` critique in
   [`darksun-recompiled`](https://github.com/daaki85/darksun-recompiled)
   -- his shift fires on zero of our rows (every stack-check
   anchor is a correct frameless entry and all 106 gpl_handler
   rows are byte-exact dispatch-table targets), but the audit it
-  prompted surfaced this one real error. Credit: daaki85, for
+  prompted surfaced this one real error. Credit: @daaki85, for
   the cross-check that found it. Also shipping, deferred from
   the 11-01/02 digs (they landed hours after v0.4.0 was cut):
   six new DS2 rows (`region_presentation_orchestrator`,
@@ -38,14 +38,14 @@ is that release's entry here, verbatim (see `docs/reference/versioning.md`).
   policy set the same day: paths inside old entries get fixed;
   tag messages stay as cut.
 - **Community linkage**: upstream-projects.md §6 catalogs
-  daaki85's [`darksun-recompiled`](https://github.com/daaki85/darksun-recompiled)
+  @daaki85's [`darksun-recompiled`](https://github.com/daaki85/darksun-recompiled)
   and [`darksun-obsidian-edition`](https://github.com/daaki85/darksun-obsidian-edition)
   (both cloned as reference checkouts), every Obsidian Edition
   mention gains its primary URL, and README's "every attempt has
   stalled" claim is corrected.
 - **The cross-read and worklist**: two repos mined (report:
   `docs/reports/daaki85-crossread-2026-11-23.md`) and all eight
-  follow-up items executed the same day. daaki85's work drove the
+  follow-up items executed the same day. @daaki85's work drove the
   substance: the Obsidian Edition's primary source vindicated the
   Share Strength re-trace (remover, caster-as-target bug),
   supplied the PSP recompute address that exposed our 0x875a8
