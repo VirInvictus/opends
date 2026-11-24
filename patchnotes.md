@@ -4,6 +4,50 @@ Released versions appear here, newest first: one heading per
 tagged release or dated batch. A `<tool>-vX.Y.Z` tag's message
 is that release's entry here, verbatim (see `docs/reference/versioning.md`).
 
+## ovr-map v0.4.1 (2026-11-23)
+
+- **`ovr-map` v0.4.1**: one syms correction, `gpl_opcode_dispatch`
+  0x99c5 -> 0x9998. The old offset sat 44 bytes into the function,
+  past its `inc bp; push bp; mov bp,sp; cmp [0x9C],sp` far frame at
+  0x9998, which carries the two near callers (0x98a7, 0xd24c); the
+  row's own evidence instruction (`call near [bx+0xc0]`) stays
+  inside the corrected span. Found by the 291-row byte audit of
+  both syms catalogues prompted by daaki85's `frame_kind` critique
+  in [`darksun-recompiled`](https://github.com/daaki85/darksun-recompiled):
+  his shift fires on zero of our rows (every stack-check anchor is
+  a correct frameless entry and all 106 gpl_handler rows are
+  byte-exact dispatch-table targets), but the audit it prompted
+  surfaced this one real error. Credit: daaki85, for the
+  cross-check that found it. Selftest green (935 DS1 / 854 DS2
+  entries, coverage unchanged).
+
+## Documentation audit and the daaki85 worklist (2026-11-23)
+
+- **Docs audit pass**: 24 drift findings plus a repo-wide link
+  sweep, all fixed (the 2026-11-22 reorg's missed path mentions,
+  AGENTS.md's pwntools row, the 16-vs-10 disabled-fix count,
+  phase-7's ships-version, and the rest). The standing patchnotes
+  policy set the same day: paths inside old entries get fixed;
+  tag messages stay as cut.
+- **Community linkage**: upstream-projects.md §6 catalogs
+  daaki85's [`darksun-recompiled`](https://github.com/daaki85/darksun-recompiled)
+  and [`darksun-obsidian-edition`](https://github.com/daaki85/darksun-obsidian-edition)
+  (both cloned as reference checkouts), every Obsidian Edition
+  mention gains its primary URL, and README's "every attempt has
+  stalled" claim is corrected.
+- **The cross-read and worklist**: two repos mined (report:
+  `docs/reports/daaki85-crossread-2026-11-23.md`) and all eight
+  follow-up items executed the same day. daaki85's work drove the
+  substance: the Obsidian Edition's primary source vindicated the
+  Share Strength re-trace (remover, caster-as-target bug),
+  supplied the PSP recompute address that exposed our 0x875a8
+  mislabel (the CON HP additive), named the Sling +1 that decoded
+  the item enchantment byte, and the recompiled repo's syms
+  critique prompted the catalogue audit that fixed
+  gpl_opcode_dispatch. The verdicts live in the known-bugs,
+  rules-tables, combat-flow, and object-formats corrections of
+  the same date.
+
 ## darkfix-ds1 v0.2.0-beta.4 (2026-11-17)
 
 - **`darkfix-ds1` v0.2.0-beta.4**: two more disabled fixes, our
@@ -42,7 +86,7 @@ is that release's entry here, verbatim (see `docs/reference/versioning.md`).
   2026-11-13 decision). Notation note: yuan-ti's `gname[5]` and our
   `GNAME[37]` are the same register (raw gname index 0x25, POV;
   yuan-ti displays gname indices minus 0x20, we keep the raw byte;
-  the identity table is `docs/gff-data-reference.md`). Authored
+  the identity table is `docs/reference/gff-data-reference.md`). Authored
   with gpl-asm 0.10.0's movable
   assembly; every expect fingerprint verified against the
   canonical chunk bytes, every label word read back from the
@@ -98,7 +142,7 @@ is that release's entry here, verbatim (see `docs/reference/versioning.md`).
   byte-identically through gpl-disasm. Landed ahead of its first
   consumer: the Legcrusher dialog guards (#20) are the first
   source-authored detour fixes this enables. Design record in
-  `docs/detour-repairs.md` section 3.
+  `docs/reference/detour-repairs.md` section 3.
 
 ## region-render v0.9.0 (2026-11-17)
 
@@ -209,7 +253,7 @@ is that release's entry here, verbatim (see `docs/reference/versioning.md`).
   `gpl award` handler corroborates the operand and result slots.
   The libgff mnemonic stands (two independent lineages agree, and
   with the semantics documented the name reads accurately);
-  recorded in `docs/gpl-opcodes.md` "Verified semantics".
+  recorded in `docs/reference/gpl-opcodes.md` "Verified semantics".
 
 ## image-extract v0.5.1 (2026-11-17)
 
@@ -268,7 +312,7 @@ is that release's entry here, verbatim (see `docs/reference/versioning.md`).
   `free_count = 8` and the next 64 bytes as eight phantom freed
   blocks. The TOC now ends with the 2-byte `free_count = 0`
   sentinel and `free_list_offset` points at it, exactly the shape
-  gff-edit's builder writes (docs/file-formats.md). Our own reader
+  gff-edit's builder writes (docs/reference/file-formats.md). Our own reader
   ignores the field, which is why self-reads never caught it; the
   written file now parses clean through `gff-cat info`, and a
   write-reparse-write cycle on DARKRUN.GFF is byte-stable.
@@ -299,12 +343,12 @@ is that release's entry here, verbatim (see `docs/reference/versioning.md`).
   GOG 1.10 install, per-site semantic review against our own
   disassembly with zero disagreements, and a 250/250
   reassembly-through-gpl-asm byte check; all recorded in
-  `docs/gate-review-yuan-ti-2026-11-13.md`), but nobody has seen
+  `docs/reports/gate-review-yuan-ti-2026-11-13.md`), but nobody has seen
   them run in the game. We are publishing them as an opt-in beta
   in the hope that someone else will test them: enable any of the
   six in `manifest.toml` (flip `enabled = false` to `true`), point
   the applier at a copy of your install, and follow the QA
-  packet, `docs/qa-packet-ds1-script-repairs-beta.md`, which
+  packet, `docs/qa/qa-packet-ds1-script-repairs-beta.md`, which
   lists a two-minute check per site. Report results as issues;
   fixes that pass QA graduate to enabled-by-default in the next
   release. The six (source: Calvin Rodo's
@@ -325,7 +369,7 @@ is that release's entry here, verbatim (see `docs/reference/versioning.md`).
   toggle-only after QA too). The applier learned chunk repairs
   for this release (`GplRepair`/detours: length-changing script
   fixes that move no address, the mechanism Calvin published and
-  we adopted in `docs/detour-repairs.md`); same-length fixes and
+  we adopted in `docs/reference/detour-repairs.md`); same-length fixes and
   detour fixes now compose on one file, and `--verify` re-derives
   every repaired chunk from the pristine backup. NOT in this
   beta: the six Legcrusher dialog guards (runtime-assembled
@@ -352,10 +396,10 @@ is that release's entry here, verbatim (see `docs/reference/versioning.md`).
   fingerprints verified clean against the canonical GOG 1.10
   GPLDATA.GFF the day the issue landed. None of it is canon yet:
   every borrowed repair passes the five-step adoption gate now
-  specified in `docs/detour-repairs.md` (fingerprint, semantic
+  specified in `docs/reference/detour-repairs.md` (fingerprint, semantic
   review, assemble check, runtime QA, credit) before it becomes a
   darkfix-ds1 fix, and the borrowed classes are cataloged with
-  evidence in `docs/known-bugs.md` §3.6. The release also adopts
+  evidence in `docs/reference/known-bugs.md` §3.6. The release also adopts
   Calvin's detour mechanism (length-changing repairs that append a
   JUMP-to-detour block so no address moves) as the design for the
   applier work that re-opens the triage's chunk-growth rows.
@@ -363,7 +407,7 @@ is that release's entry here, verbatim (see `docs/reference/versioning.md`).
   detour design, and the 17 new bug discoveries;
   **TimQuester** ([DarkSunTools](https://github.com/TimQuester/DarkSunTools),
   arrived via opends#14) for the FONT format facts verified into
-  `docs/file-formats.md` the same week (license pending upstream;
+  `docs/reference/file-formats.md` the same week (license pending upstream;
   facts-only landing in the revertable commit 1ca4094). Both names
   ride the darkfix-ds1 patchnotes entries of every future release
   that ships their work, per the gate's credit step.
@@ -402,7 +446,7 @@ is that release's entry here, verbatim (see `docs/reference/versioning.md`).
 - **`ovr-map` v0.4.0**: the segtab emission. `--json` now
   carries the exeinfo segment load table (`segtab`: `start_para`,
   `size`, `cls`, `x` per record) that `ovr-carve` resolves
-  module relocation words against, per docs/overlay-formats.md
+  module relocation words against, per docs/reference/overlay-formats.md
   section 2, keeping one implementation of the FBOV-adjacent
   structures. `--selftest` grew the documented invariant as a
   corpus assertion: every segtab record's word0 is the target of
@@ -477,7 +521,7 @@ is that release's entry here, verbatim (see `docs/reference/versioning.md`).
 - **`darkfix-ds1` v0.1.2**: the Phase 9 sweep triage lands, and
   with it the first script repairs beyond the deadtrigger family.
   Every catalogued DS1 bug (known-bugs.md 3, ~25 entries) now
-  carries a verdict with evidence (docs/ds1-sweep-triage-2026-10-07.md):
+  carries a verdict with evidence (docs/reports/ds1-sweep-triage-2026-10-07.md):
   three FIXED, nine fix-candidates gated on chunk growth, a
   runtime capture, or a content decision, and the rest closed as
   engine-side or no-static-site with the proof. The new
@@ -523,13 +567,13 @@ is that release's entry here, verbatim (see `docs/reference/versioning.md`).
   `.dso-online/tools/mdark.bin` at the symbols.txt offsets (only
   AIL proper is stubbed there); all eleven carry `dso_source`.
   The catalogue now names 143 DS2 locations (135 verified, 14
-  DSO-sourced). Evidence: docs/port-digs-2026-10-07.md 1.
+  DSO-sourced). Evidence: docs/reports/port-digs-2026-10-07.md 1.
 
 ## darkfix-ds2 v0.1.1 (2026-10-07)
 
 - **`darkfix-ds2` v0.1.1**: `fix.ds2.deadtriggers` grows from 27
   to 37 repointed rows. The 2026-10-07 correlation dig
-  (docs/port-digs-2026-10-07.md 2) closed ten of the twelve rows
+  (docs/reports/port-digs-2026-10-07.md 2) closed ten of the twelve rows
   v0.1.0 left: the VA Headquarters tapestry look (-1922) to
   `GPL-163@1800`, attested by MAS-51 and the same target the
   sibling -1923 row already uses; two more shared-prop use rows to
@@ -559,7 +603,7 @@ carries is documented with offset-level evidence, and every named
 RE hole from the mining prompt is resolved or closed as a written
 negative. Ten GFF kinds left the gap list this batch; the
 twenty-one kinds the corpus never ships are closed by a full
-census. The dig record is docs/port-digs-2026-10-06.md; the
+census. The dig record is docs/reports/port-digs-2026-10-06.md; the
 highlights:
 
 - **The DS2 spell system is a file** (`DATA`): 320 uniform 73-byte
@@ -610,13 +654,13 @@ highlights:
   only as code constants inside DSUN.EXE, and the other eighteen
   leave no trace at all.
 
-Documents in this release: docs/port-digs-2026-10-06.md (the dig
-record), docs/audio-cues.md (the cue tables), docs/format-coverage.md
-(the zeroed gap list), and the extended docs/file-formats.md,
-docs/object-formats.md, docs/rules-tables.md, docs/bestiary-ds1.md,
-docs/bestiary-ds2.md, docs/spell-effects.md, docs/combat-flow.md,
-docs/screen-flow.md, docs/exploration-flow.md,
-docs/audio-routing.md, docs/dso-symbols.md.
+Documents in this release: docs/reports/port-digs-2026-10-06.md (the dig
+record), docs/reference/audio-cues.md (the cue tables), docs/reference/format-coverage.md
+(the zeroed gap list), and the extended docs/reference/file-formats.md,
+docs/reference/object-formats.md, docs/reference/rules-tables.md, docs/catalogues/bestiary-ds1.md,
+docs/catalogues/bestiary-ds2.md, docs/reference/spell-effects.md, docs/reference/combat-flow.md,
+docs/reference/screen-flow.md, docs/reference/exploration-flow.md,
+docs/reference/audio-routing.md, docs/reference/dso-symbols.md.
 
 Every headline claim above was independently re-verified before
 release: four claim-verifier passes re-ran the corpus counts,
@@ -625,12 +669,12 @@ Nine secondary details they caught (a converter bug that failed 41
 payloads, a sample-rate generalization, a pool off-by-one, two
 miscounts, three offset slips, and a version bump that never
 reached Cargo.toml) are corrected in this batch.
-docs/mining-complete.md, the final campaign record, follows in a
+docs/reports/mining-complete.md, the final campaign record, follows in a
 later batch together with the ear pass. The release post for this
 batch (a per-document guide that tags and explains every mined
 document above) is the GitHub Release for the tag
 mining-completion-2026-10-06; its text also lives in the repo as
-docs/mining-release-post-2026-10-06.md.
+docs/reports/mining-release-post-2026-10-06.md.
 
 ## audio-extract v0.1.0 (2026-10-06)
 
@@ -655,7 +699,7 @@ docs/mining-release-post-2026-10-06.md.
   `scripts/audio-cue-sweep.py` sweeps `gpl-disasm --json` output
   for every `gpl sound` / `gpl music` instruction with its operand
   and the calling script's inline strings: the cue evidence
-  docs/audio-cues.md is written from (251 DS1 and 433 DS2 script
+  docs/reference/audio-cues.md is written from (251 DS1 and 433 DS2 script
   call sites; `gpl music` confirmed never emitted). Both selftests
   are wired into the CI selftest block.
 
@@ -704,10 +748,10 @@ docs/mining-release-post-2026-10-06.md.
 - **ovr-map 0.3.5**: the symbol catalogue grows by twelve
   verified DS1 rows from the capability/trigger digs (the
   capability mask builder and walker, evidence in
-  docs/port-digs-2026-09-21.md 2; the GPL script entry, executor,
+  docs/reports/port-digs-2026-09-21.md 2; the GPL script entry, executor,
   opcode dispatcher, and the seven trigger-table plumbing
   functions: sorted inserts, link-in, allocator, remove-head, and
-  both flush stages, evidence in docs/port-digs-2026-10-06.md 3).
+  both flush stages, evidence in docs/reports/port-digs-2026-10-06.md 3).
   All twelve are resident and verified; DS1 takes no DSO names
   (wrong codebase heritage), so the rows are descriptive with the
   digs as their evidence chain. The release also carries the
@@ -723,7 +767,7 @@ docs/mining-release-post-2026-10-06.md.
 ## release packaging (2026-09-15)
 
 - **release packaging**: `tools/build-release.sh` ships: the zip
-  builder promised in `docs/patch-workflow.md` §7 since Phase 6.
+  builder promised in `docs/reference/patch-workflow.md` §7 since Phase 6.
   It stages the flattened tree spec.md §4 defines (manifest.toml,
   VERSION, apply.py, darkfix/, fixes/, the player README), gates
   the stage through the real fix-contract checks, a compile pass,
@@ -938,7 +982,7 @@ docs/mining-release-post-2026-10-06.md.
 - **`tools/region-render/` v0.8.0**: **the animated palette
   ships.** `--animate-palette` emits the frame sequence with the
   palette rotated per the cycle pump decoded from `DSUN.EXE`
-  (docs/dsun-exe-re.md 4.5.5-4.5.6): a `PaletteCycle` of 16
+  (docs/reference/dsun-exe-re.md 4.5.5-4.5.6): a `PaletteCycle` of 16
   8-byte records (flags, reload, counter, first, count), one
   rendered frame = one pump pass, active ranges rotating toward
   higher indices with the range's last colour wrapping to its
@@ -991,7 +1035,7 @@ docs/mining-release-post-2026-10-06.md.
   11-15 and 240-248 with delay 2: **DS1 colour cycling is
   four fixed global ranges active from boot; there is no
   per-region cycle configuration**. That closes the
-  region-render animated-palette question (docs/dsun-exe-re.md
+  region-render animated-palette question (docs/reference/dsun-exe-re.md
   4.5.6) and completes the "first named consumers" box.
   Catalogue: 130 DS1 / 132 DS2 rows.
 
@@ -1050,7 +1094,7 @@ docs/mining-release-post-2026-10-06.md.
 
 - **`ovr-map` v0.3.2**: the symbol catalogue gains the VGA
   colour-cycle family, located and decoded 2026-09-06
-  (docs/dsun-exe-re.md 4.5.5): `vga_color_cycle_pump` (DS1
+  (docs/reference/dsun-exe-re.md 4.5.5): `vga_color_cycle_pump` (DS1
   `0x287fc` / DS2 `0x2cfdc`, instruction streams identical),
   `vga_write_palette_range` (DS1 `0x28894` / DS2 `0x2d074`,
   bodies byte-identical; the entry was previously quoted as
@@ -1123,7 +1167,7 @@ docs/mining-release-post-2026-10-06.md.
   documented `pwn asm` fallback was confirmed first and fails
   on pwntools 4.15 (`Invalid arch/bits combination: i386/16`);
   the selftest round-trips it against `ndisasm -b 16`, and
-  docs/re-tooling.md carries the correction. Scripts may
+  docs/reference/re-tooling.md carries the correction. Scripts may
   declare `game = "ds1"|"ds2"` to hash-gate the target
   against the canonical GOG 1.10 manifest.
 
@@ -1171,7 +1215,7 @@ docs/mining-release-post-2026-10-06.md.
   now checks the catalogues too. `--ghidra-rename` generates
   the catalogue-driven bulk-rename script, pairing with the
   checked-in `ghidra/OvrExport.java` TSV export; the
-  headless recipe in `docs/dsun-exe-re.md` 7 is corrected
+  headless recipe in `docs/reference/dsun-exe-re.md` 7 is corrected
   (dot-free script paths) and the import + persistence half
   is re-proven with the analyzed DS1 project kept under
   `scratch/ghidra_project/` (script execution is blocked by
@@ -1203,7 +1247,7 @@ docs/mining-release-post-2026-10-06.md.
 
 ## 2026-08: the binary side opens (ovr-map v0.1.0/0.2.0, gpl-asm v0.9.0, darkfix-ds1 v0.0.1)
 
-- **`docs/dsun-exe-survey.md`** is new: a whole-binary measured
+- **`docs/reference/dsun-exe-survey.md`** is new: a whole-binary measured
   survey of both engines, the exploration half of Phase 5.6.
   Method: `ovr-map` as a library plus byte-pattern scans over
   both `DSUN.EXE`s and the archive's floppy-1.0 comparison
@@ -1275,7 +1319,7 @@ docs/mining-release-post-2026-10-06.md.
 
   Verified headless against Ghidra 12.1.2, not just generated: 52 blocks,
   935 labels, and `ovr04_042e` reads `55 8b ec 83 ec 0e`, the dispatcher
-  prologue documented in `docs/dsun-exe-re.md` §3.1.
+  prologue documented in `docs/reference/dsun-exe-re.md` §3.1.
 
   Four things the headless runs taught, all now in the tool README.
   The script is **Java**, because Ghidra 12 dropped Jython and Python
@@ -1887,7 +1931,7 @@ docs/mining-release-post-2026-10-06.md.
   ds1-rust` (CPAL:200), which flattens every DS1 region into
   one rusty-red colour family and loses vegetation / sand /
   water distinctions (the engine's per-region palette routine
-  isn't fully RE'd yet; see `docs/dsun-exe-re.md` §4.5). v0.1.1
+  isn't fully RE'd yet; see `docs/reference/dsun-exe-re.md` §4.5). v0.1.1
   detects DS1 regions by stem length (`RGN??` = DS1, `RGN???`
   = DS2) and passes `--palette-preset ds1-pink` (PAL :1000)
   for DS1 only. Terrain types are now visually distinct. DS2
@@ -2227,7 +2271,7 @@ docs/mining-release-post-2026-10-06.md.
       a follow-up curation pass.
     - `--functions-summary` / `--globals-summary`: markdown
       tables of GPL/GFF-related engine intrinsics suitable
-      for pasting into `docs/dso-symbols.md`'s "Highest-value
+      for pasting into `docs/reference/dso-symbols.md`'s "Highest-value
       symbols" tier.
     The script never writes to `syms/` directly. Per the
     curation rule, every row commit is hand-reviewed.
@@ -2368,7 +2412,7 @@ docs/mining-release-post-2026-10-06.md.
     working.
 
 - **`tools/region-render/` v0.6.0** pivots past the
-  palette-cycle wall (`docs/dsun-exe-re.md` §4.5 documents
+  palette-cycle wall (`docs/reference/dsun-exe-re.md` §4.5 documents
   why the DSUN.EXE byte-pattern search has run its course on
   that surface) and animates the **entity layer** instead.
   Uses `image-extract v0.3.0`'s multi-frame decoder to walk
@@ -2502,7 +2546,7 @@ docs/mining-release-post-2026-10-06.md.
     stdlib-only; the dependency is on the user's system, not
     Python.
 
-- **`docs/dsun-exe-re.md` §4.5** deepening: a third time-boxed
+- **`docs/reference/dsun-exe-re.md` §4.5** deepening: a third time-boxed
   pass at the palette-cycle routine produced bounded findings
   but not a feature. Same pre-committed shape as the prior
   two passes; `region-render` stays at v0.5.0.
@@ -2568,7 +2612,7 @@ docs/mining-release-post-2026-10-06.md.
     sessions alongside regular play sessions.
   - **Honest scope statement** in the README. The full
     discovery loop (write single-opcode test chunk, observe
-    its side effect, iterate to fill `docs/gpl-opcodes.md`)
+    its side effect, iterate to fill `docs/reference/gpl-opcodes.md`)
     needs two things v0.2.0 doesn't yet have: input
     automation to drive the engine to the state where the
     chunk fires without manual keystroke wrangling (`repro
@@ -2798,7 +2842,7 @@ docs/mining-release-post-2026-10-06.md.
     is not at C:\\ root (so the engine fails the
     `DARKSAVE -> DARKRUN` copy and exits), and the factory
     `SOUND.CFG` fails MEL DSP detect (same bug family as
-    `docs/known-bugs.md` §2.6, exits inside a second). The
+    `docs/reference/known-bugs.md` §2.6, exits inside a second). The
     harness already had to solve both for the regression test
     to function; `--play` exposes that workaround as a
     user-facing mode.
@@ -2861,7 +2905,7 @@ docs/mining-release-post-2026-10-06.md.
     ticked; DS2 item row is the new tail.
   - **VERSION**: 0.4.0 -> 0.5.0.
 
-- **`docs/dsun-exe-re.md` §4.4 / §4.5 correction**. The cycle-
+- **`docs/reference/dsun-exe-re.md` §4.4 / §4.5 correction**. The cycle-
   table identification in the prior §4 commit was wrong; the
   loop at `0x23067` is the region GMAP / entity-render walker,
   not the palette cycle routine. The byte signature that drove
@@ -2944,7 +2988,7 @@ docs/mining-release-post-2026-10-06.md.
     three lines of `<scratch>/d/DSUN.LOG`. MEL Fatal Errors
     land in your face instead of behind a `--keep-scratch`.
   - **`tools/repro/bugs/README.md`** catalogue indexing
-    fixtures (cross-links to `docs/known-bugs.md` open until
+    fixtures (cross-links to `docs/reference/known-bugs.md` open until
     real-bug fixtures ship).
   - **Clearer FAIL line**: "DOSBox quit on its own (game
     exited or never launched)" vs "SIGTERM after timeout
@@ -2994,7 +3038,7 @@ docs/mining-release-post-2026-10-06.md.
     sub-blocks) remain queued.
   - **VERSION**: 0.3.0 -> 0.4.0.
 
-- **`docs/dsun-exe-re.md`** gains a new §4 catalogueing the DS1
+- **`docs/reference/dsun-exe-re.md`** gains a new §4 catalogueing the DS1
   palette I/O surface and partially decoding the animated-
   palette cycle routine. Pre-committed scope correction: with
   the cycle table's field-level semantics still open, this
@@ -3125,7 +3169,7 @@ docs/mining-release-post-2026-10-06.md.
   - **MEL audio gotcha documented**. With the factory
     `SOUND.CFG`, MEL aborts on `MIDI Detect Fail` / `DSP Detect
     Fail` and DSUN.EXE exits in <1 s (the same error family as
-    `docs/known-bugs.md` §2.6). Running `sound_ds.exe` once
+    `docs/reference/known-bugs.md` §2.6). Running `sound_ds.exe` once
     writes a `SOUND.CFG` that gets MEL through detect; the
     `ds1-smoke` fixture ships that file as a 59-byte asset (no
     game IP, just driver-id + integer settings) and stages it
@@ -3160,7 +3204,7 @@ docs/mining-release-post-2026-10-06.md.
 - **`tools/region-render/` v0.5.0** lands the DSUN.EXE RE pass
   for DS1 per-region palette selection and adjusts the default
   fallback to match what the engine actually does. The full
-  write-up lives in [`docs/dsun-exe-re.md`](docs/reference/dsun-exe-re.md).
+  write-up lives in [`docs/reference/dsun-exe-re.md`](docs/reference/dsun-exe-re.md).
   - **DSUN.EXE finding (DS1)**: located the per-region palette
     routine at file offset `0x56ad3..0x56b00`. The engine calls
     a single `load_resource(fourcc, id, far *buf)` helper twice
@@ -3191,9 +3235,9 @@ docs/mining-release-post-2026-10-06.md.
     per-region (not per-family) palette map. Animated palette
     colours (`VGAColorCycle` in the DSO symbol table) still
     need a separate RE pass. Both queued for a future release;
-    docs/dsun-exe-re.md §4 lists the open items in priority
+    docs/reference/dsun-exe-re.md §4 lists the open items in priority
     order.
-  - **New doc**: `docs/dsun-exe-re.md`, the maintainer's index
+  - **New doc**: `docs/reference/dsun-exe-re.md`, the maintainer's index
     into the engine binary. Covers binary layout, the shared
     `load_resource` calling convention, the CMAT/CPAL routine,
     and a reproducible recipe for the byte-pattern search that
@@ -3807,7 +3851,7 @@ docs/mining-release-post-2026-10-06.md.
     palette's high-index colours (visibly pink/magenta). The
     interior playable area renders with plausible terrain
     colours. Per-region palette discovery is queued for v0.2+.
-  - **Docs**: `docs/file-formats.md` expanded with a "Region
+  - **Docs**: `docs/reference/file-formats.md` expanded with a "Region
     geometry" subsection covering RMAP/MAP/GMAP/TILE/PAL/ETAB
     layouts (deferred sections are flagged for v0.2+).
   - Roadmap Phase 4 region-render bullet ticked; Phase 4 is now
@@ -3855,7 +3899,7 @@ docs/mining-release-post-2026-10-06.md.
     unit + 2 integration (was 40 + 2).
   - **VERSION file**: bumped from `0.2.1` to `0.4.2`. The
     `VERSION` file silently fell behind `Cargo.toml` between
-    v0.3.0 and v0.4.1; per `docs/versioning.md` it is the single
+    v0.3.0 and v0.4.1; per `docs/reference/versioning.md` it is the single
     source of truth, so this release catches it back up. No
     behavioural change.
   - Roadmap Phase 3 opcode-mnemonic-override bullet ticked.
@@ -4046,7 +4090,7 @@ docs/mining-release-post-2026-10-06.md.
     of every branch opcode is the absolute byte offset of the
     target instruction within the same chunk. The semantics
     table and the trace evidence land in
-    [`docs/gpl-bytecode.md` §5a](docs/reference/gpl-bytecode.md). The
+    [`docs/reference/gpl-bytecode.md` §5a](docs/reference/gpl-bytecode.md). The
     spike caught one wrinkle worth surfacing: `gpl ifcompare`
     (0x27) takes 2 parameters where the *second* param is the
     target offset (param[0] is the comparison value); this is
@@ -4268,7 +4312,7 @@ docs/mining-release-post-2026-10-06.md.
   WotR: `ExecuteGpl`, the `Gpl{Tile,Talk,Door,Pickup,Attack,
   Look,Use,UseWith}Check` trigger family, `GplChangeRegion`
   (relevant to the DS2 mines-elevator bug),
-  `GplUpdatePsionics`, and the `Gff*` API. **[`docs/dso-symbols.md`](docs/reference/dso-symbols.md)**
+  `GplUpdatePsionics`, and the `Gff*` API. **[`docs/reference/dso-symbols.md`](docs/reference/dso-symbols.md)**
   lands as the curation surface: how the symbols were
   extracted, the format, the highest-value candidates for
   `gpl-disasm v0.4.0+` symbol import, and a hand-verified
@@ -4335,9 +4379,9 @@ docs/mining-release-post-2026-10-06.md.
     RETVAL on `gpl_search` / `gpl_clone` / `gpl_request`, or
     a `GPL_COMPLEX_*` record-field access). v0.2.1 closes the
     gap.
-  - `docs/gpl-opcodes.md` adds a per-opcode `Params` column
+  - `docs/reference/gpl-opcodes.md` adds a per-opcode `Params` column
     backed by the new `PARAM_COUNTS` table.
-  - `docs/gpl-bytecode.md` §5: v0.2.0 description updated
+  - `docs/reference/gpl-bytecode.md` §5: v0.2.0 description updated
     (parameter decoding shipped); v0.2.1 carries the deferred
     cases.
   - Roadmap Phase 3 v0.2.0 box ticked.
@@ -4418,7 +4462,7 @@ docs/mining-release-post-2026-10-06.md.
     `gff_rdff_header_t` (load_action, blocknum, type, index,
     from, len) and emit the remaining body as an opaque hex
     preview. Full record schema decoding is per-game (DS1 vs
-    DS2 byte layouts differ per `docs/file-formats.md` §2)
+    DS2 byte layouts differ per `docs/reference/file-formats.md` §2)
     and lands in save-inspect v0.2.0.
   - `SPST`, `CACT`, `PREF`, `GREQ` (DS2-only) chunks emit
     hex previews until their layouts are documented.
@@ -4456,11 +4500,11 @@ docs/mining-release-post-2026-10-06.md.
     `tests/corpus_smoke.rs` disassembles every `GPL ` and
     `MAS ` chunk in DS1+DS2 `GPLDATA.GFF` (600 chunks; 2.37M
     input bytes -> 2.37M annotation rows) without panics.
-- **`docs/gpl-opcodes.md`** lands: the catalogue table with
+- **`docs/reference/gpl-opcodes.md`** lands: the catalogue table with
   source citation. "Safe in RETVAL context" annotations
   preserved from libgff `gpl_retval` switch (parse.c lines
   1791-1826).
-- **`docs/gpl-bytecode.md`** refreshed: Rust (was Python),
+- **`docs/reference/gpl-bytecode.md`** refreshed: Rust (was Python),
   depends on `gff-edit` library (was `gff-tool` JVM jar),
   per-version scope documented (v0.1 byte-annotation → v0.2
   parameter decoding → v0.3 control flow → v0.4 symbols).
@@ -4492,7 +4536,7 @@ docs/mining-release-post-2026-10-06.md.
     a GFF byte-identical to the original. Across the full
     corpus, 17/17 text-bearing GFFs round-trip byte-identical.
   - `gff-cat kind <FOURCC>` looks up an embedded catalogue
-    sourced from [`docs/file-formats.md`](docs/reference/file-formats.md).
+    sourced from [`docs/reference/file-formats.md`](docs/reference/file-formats.md).
     `gff-cat kind --list` dumps the whole catalogue.
   - Workspace gains `serde` and `serde_json` as pre-approved
     deps per [`spec.md`](spec.md) §7a (format I/O).
@@ -4523,7 +4567,7 @@ docs/mining-release-post-2026-10-06.md.
   (`tests/corpus_roundtrip.rs`) verifies no-op replace is
   byte-identical on all 128 GFFs in DS1+DS2 (pristine
   innoextract + deployed Wine installs).
-- [`docs/file-formats.md`](docs/reference/file-formats.md) §1: documents
+- [`docs/reference/file-formats.md`](docs/reference/file-formats.md) §1: documents
   the writer policy (in-place vs append) and how the writer
   uses each chunk's metadata file offset.
 - **Phase 1 closed**: the GFF foundation is read-and-write
@@ -4546,7 +4590,7 @@ docs/mining-release-post-2026-10-06.md.
   `SegLocIdOutOfRange`, `SecondaryTableOutOfBounds`,
   `SecondaryTableMismatch`. `dsun_music` and `libgff` cited as
   the format references for segmented resolution.
-- `docs/file-formats.md` §1 expanded: documents segmented chunk
+- `docs/reference/file-formats.md` §1 expanded: documents segmented chunk
   resolution (primary GFFI table, secondary table layout,
   resource-id reconstruction from segment runs). §5 open
   question on segmented chunk layout struck through; resolved.
@@ -4575,10 +4619,10 @@ docs/mining-release-post-2026-10-06.md.
   declares `tools/gff-edit` as the first member, plus shared
   edition / license / repo metadata and a minimal
   `[workspace.dependencies]` block (clap, anyhow, thiserror).
-  Per [`docs/versioning.md`](docs/reference/versioning.md), tools version
+  Per [`docs/reference/versioning.md`](docs/reference/versioning.md), tools version
   independently; the workspace does **not** carry a shared
   `version.workspace`.
-- [`docs/file-formats.md`](docs/reference/file-formats.md) §1 fills in the
+- [`docs/reference/file-formats.md`](docs/reference/file-formats.md) §1 fills in the
   authoritative GFF layout: 7-field file header, TOC header,
   num_types + chunk_list_header + (indexed entry | segmented
   entry) pattern, segmented-flag mask `0x80000000` on
@@ -4601,7 +4645,7 @@ docs/mining-release-post-2026-10-06.md.
   `[files]` entries so runtime-mutated files (e.g.
   `DARKRUN.GFF`, `SOUND.CFG`) carry pristine hashes for
   reference without failing verification on a played install.
-- [`docs/versioning.md`](docs/reference/versioning.md) lands. Each tool
+- [`docs/reference/versioning.md`](docs/reference/versioning.md) lands. Each tool
   and patch carries its own `VERSION` file; tag format
   `<item>-vMAJOR.MINOR.PATCH`. Build descriptors
   (`Cargo.toml` / `pyproject.toml` / `manifest.toml`) read from
@@ -4642,9 +4686,9 @@ docs/mining-release-post-2026-10-06.md.
 - Engine research dossier compiled from public reverse-engineering work.
 - GFF file-format catalog documented.
 - GPL bytecode editing strategy documented
-  ([`docs/gpl-bytecode.md`](docs/reference/gpl-bytecode.md)).
+  ([`docs/reference/gpl-bytecode.md`](docs/reference/gpl-bytecode.md)).
 - DSUN.EXE binary patching strategy documented
-  ([`docs/binary-patching.md`](docs/reference/binary-patching.md)).
+  ([`docs/reference/binary-patching.md`](docs/reference/binary-patching.md)).
 - End-to-end fix authoring workflow documented
-  ([`docs/patch-workflow.md`](docs/reference/patch-workflow.md)).
+  ([`docs/reference/patch-workflow.md`](docs/reference/patch-workflow.md)).
 - GOG installer extraction verified locally on Fedora 43.
