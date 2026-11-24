@@ -41,7 +41,7 @@ Corpus tallies:
 
 The top-utility chunks (highest inbound-call counts) are
 engine-helper / shared-subroutine candidates worth curating
-names for in `gpl-disasm/syms/functions.toml` once their role
+names for in `../gpl-disasm/syms/functions.toml` once their role
 is RE'd.
 
 

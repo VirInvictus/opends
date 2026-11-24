@@ -2,7 +2,7 @@
 
 Released versions appear here, newest first: one heading per
 tagged release or dated batch. A `<tool>-vX.Y.Z` tag's message
-is that release's entry here, verbatim (see `docs/versioning.md`).
+is that release's entry here, verbatim (see `docs/reference/versioning.md`).
 
 ## darkfix-ds1 v0.2.0-beta.4 (2026-11-17)
 
@@ -3160,7 +3160,7 @@ docs/mining-release-post-2026-10-06.md.
 - **`tools/region-render/` v0.5.0** lands the DSUN.EXE RE pass
   for DS1 per-region palette selection and adjusts the default
   fallback to match what the engine actually does. The full
-  write-up lives in [`docs/dsun-exe-re.md`](docs/dsun-exe-re.md).
+  write-up lives in [`docs/dsun-exe-re.md`](docs/reference/dsun-exe-re.md).
   - **DSUN.EXE finding (DS1)**: located the per-region palette
     routine at file offset `0x56ad3..0x56b00`. The engine calls
     a single `load_resource(fourcc, id, far *buf)` helper twice
@@ -4046,7 +4046,7 @@ docs/mining-release-post-2026-10-06.md.
     of every branch opcode is the absolute byte offset of the
     target instruction within the same chunk. The semantics
     table and the trace evidence land in
-    [`docs/gpl-bytecode.md` §5a](docs/gpl-bytecode.md). The
+    [`docs/gpl-bytecode.md` §5a](docs/reference/gpl-bytecode.md). The
     spike caught one wrinkle worth surfacing: `gpl ifcompare`
     (0x27) takes 2 parameters where the *second* param is the
     target offset (param[0] is the comparison value); this is
@@ -4268,13 +4268,13 @@ docs/mining-release-post-2026-10-06.md.
   WotR: `ExecuteGpl`, the `Gpl{Tile,Talk,Door,Pickup,Attack,
   Look,Use,UseWith}Check` trigger family, `GplChangeRegion`
   (relevant to the DS2 mines-elevator bug),
-  `GplUpdatePsionics`, and the `Gff*` API. **[`docs/dso-symbols.md`](docs/dso-symbols.md)**
+  `GplUpdatePsionics`, and the `Gff*` API. **[`docs/dso-symbols.md`](docs/reference/dso-symbols.md)**
   lands as the curation surface: how the symbols were
   extracted, the format, the highest-value candidates for
   `gpl-disasm v0.4.0+` symbol import, and a hand-verified
   catalogue table that grows as we cross-check each name
   against `DSUN.EXE`. Memory note `dso_online_reference` saved.
-  Cited from `CREDITS.md` and `docs/upstream-projects.md` §3.
+  Cited from `CREDITS.md` and `docs/reference/upstream-projects.md` §3.
 - **`tools/gpl-disasm/` v0.2.0** ships parameter decoding.
   Output is now **one row per instruction** (was one row per
   byte) with formatted parameters: `gpl print string  115,
@@ -4492,7 +4492,7 @@ docs/mining-release-post-2026-10-06.md.
     a GFF byte-identical to the original. Across the full
     corpus, 17/17 text-bearing GFFs round-trip byte-identical.
   - `gff-cat kind <FOURCC>` looks up an embedded catalogue
-    sourced from [`docs/file-formats.md`](docs/file-formats.md).
+    sourced from [`docs/file-formats.md`](docs/reference/file-formats.md).
     `gff-cat kind --list` dumps the whole catalogue.
   - Workspace gains `serde` and `serde_json` as pre-approved
     deps per [`spec.md`](spec.md) §7a (format I/O).
@@ -4523,7 +4523,7 @@ docs/mining-release-post-2026-10-06.md.
   (`tests/corpus_roundtrip.rs`) verifies no-op replace is
   byte-identical on all 128 GFFs in DS1+DS2 (pristine
   innoextract + deployed Wine installs).
-- [`docs/file-formats.md`](docs/file-formats.md) §1: documents
+- [`docs/file-formats.md`](docs/reference/file-formats.md) §1: documents
   the writer policy (in-place vs append) and how the writer
   uses each chunk's metadata file offset.
 - **Phase 1 closed**: the GFF foundation is read-and-write
@@ -4575,10 +4575,10 @@ docs/mining-release-post-2026-10-06.md.
   declares `tools/gff-edit` as the first member, plus shared
   edition / license / repo metadata and a minimal
   `[workspace.dependencies]` block (clap, anyhow, thiserror).
-  Per [`docs/versioning.md`](docs/versioning.md), tools version
+  Per [`docs/versioning.md`](docs/reference/versioning.md), tools version
   independently; the workspace does **not** carry a shared
   `version.workspace`.
-- [`docs/file-formats.md`](docs/file-formats.md) §1 fills in the
+- [`docs/file-formats.md`](docs/reference/file-formats.md) §1 fills in the
   authoritative GFF layout: 7-field file header, TOC header,
   num_types + chunk_list_header + (indexed entry | segmented
   entry) pattern, segmented-flag mask `0x80000000` on
@@ -4601,7 +4601,7 @@ docs/mining-release-post-2026-10-06.md.
   `[files]` entries so runtime-mutated files (e.g.
   `DARKRUN.GFF`, `SOUND.CFG`) carry pristine hashes for
   reference without failing verification on a played install.
-- [`docs/versioning.md`](docs/versioning.md) lands. Each tool
+- [`docs/versioning.md`](docs/reference/versioning.md) lands. Each tool
   and patch carries its own `VERSION` file; tag format
   `<item>-vMAJOR.MINOR.PATCH`. Build descriptors
   (`Cargo.toml` / `pyproject.toml` / `manifest.toml`) read from
@@ -4642,9 +4642,9 @@ docs/mining-release-post-2026-10-06.md.
 - Engine research dossier compiled from public reverse-engineering work.
 - GFF file-format catalog documented.
 - GPL bytecode editing strategy documented
-  ([`docs/gpl-bytecode.md`](docs/gpl-bytecode.md)).
+  ([`docs/gpl-bytecode.md`](docs/reference/gpl-bytecode.md)).
 - DSUN.EXE binary patching strategy documented
-  ([`docs/binary-patching.md`](docs/binary-patching.md)).
+  ([`docs/binary-patching.md`](docs/reference/binary-patching.md)).
 - End-to-end fix authoring workflow documented
-  ([`docs/patch-workflow.md`](docs/patch-workflow.md)).
+  ([`docs/patch-workflow.md`](docs/reference/patch-workflow.md)).
 - GOG installer extraction verified locally on Fedora 43.

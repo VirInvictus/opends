@@ -9,7 +9,7 @@ ordinal 0x72c) and verified by clean prologue decodes at
 multiple handlers (0x00 -> 0xe409, 0x22 -> 0xd444). The
 earlier guess of 0x6500 was wrong. The 15 unknown bytes share the single default
 entry `0x20a2` (file `0xe562`): reserved and unimplemented in the
-DS2 engine. See `../roadmap.md` (the campaign ledger; the dispatch-table resolution record lives in `dispatch-table-ds1.md` and the git history of the 2026-09-04/05 reads).
+DS2 engine. See `../../roadmap.md` (the campaign ledger; the dispatch-table resolution record lives in `dispatch-table-ds1.md` and the git history of the 2026-09-04/05 reads).
 
 | opcode | mnemonic | handler (file) |
 |---|---|---|

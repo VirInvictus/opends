@@ -681,7 +681,10 @@ DAC directly.
 `region-render v0.6.0` was a time-boxed third attempt at
 this surface; the attempt produced the findings in this
 subsection but not a working `--animate` flag, so
-`region-render` stays at v0.5.0.
+`region-render` stayed at v0.5.0 at the time. Superseded
+2026-09-10: v0.8.0 shipped `--animate-palette` (the decoded DS1
+boot colour-cycle ranges, driven by this subsection's findings);
+the tool is at 0.9.0.
 
 #### 4.5.6 Registration found: `StartCycle` / `StopCycle` (2026-09-06)
 

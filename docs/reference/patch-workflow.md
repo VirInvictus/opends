@@ -137,7 +137,7 @@ the expect range with a JUMP to it (EXIT_GPL fill for any
 remainder), and rebases the 15-bit big-endian label words listed
 in `relocate`. Mechanism and gate: `detour-repairs.md`; the
 adoption review that confirmed the encodings:
-`gate-review-yuan-ti-2026-11-13.md`. Composition: the applier
+`../reports/gate-review-yuan-ti-2026-11-13.md`. Composition: the applier
 composes EDITS and REPAIRS fixes on one file (EDITS apply in file
 space first; repaired chunks are then extracted from the composed
 bytes, so an absolute site inside a repaired chunk is already in
@@ -206,8 +206,9 @@ This is the catch-net for "fix A interacts badly with fix B."
 5. Commit. Suggested message:
    `dsN: fix.dsN.<short-id>: one-line summary`.
 
-(Per house rule, see `CLAUDE.md` under "Git habits": never push
-without explicit approval, and show the commit message first.)
+(Per house rule, see `AGENTS.md` under "Git habits": informative
+commit messages shown before committing; the standing push grant
+covers verified work, force-pushes stay approval-gated.)
 
 ## 7. Ship
 

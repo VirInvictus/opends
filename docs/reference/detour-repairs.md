@@ -4,9 +4,12 @@ Design note, 2026-11-13. The mechanism is Calvin Rodo's, published
 in [`yuan-ti`](https://github.com/CalvinRodo/yuan-ti)
 `engine/src/DarkSun.Game/Scripting/GplRepairs.cs` (MIT; design
 adopted with credit in [`../../CREDITS.md`](../../CREDITS.md), not a C#
-port). Nothing here is implemented yet; this note is the contract
-the implementation must satisfy, and the adoption gate every
-borrowed or newly authored repair must pass before it ships.
+port). Written before anything shipped; both halves are
+implemented now (the applier's REPAIRS path, darkfix-ds1
+0.2.0-beta.1, and gpl-asm 0.10.0's `assemble_movable`; status in
+§6). The note remains the contract the implementation must
+satisfy, and the adoption gate every borrowed or newly authored
+repair must pass before it ships.
 
 ## 1. The problem it solves
 

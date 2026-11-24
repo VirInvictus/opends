@@ -126,7 +126,7 @@ undoes a repair. See the
 ## 6. Editor setup
 
 No special config required. The project follows the
-conventions in `~/CLAUDE.md`:
+conventions in the repo's `AGENTS.md`:
 
 - Python files: `pyproject.toml`-driven if/when we add
   formatting; stdlib only otherwise.

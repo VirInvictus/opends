@@ -2,8 +2,9 @@
 
 The verified schema reference for the games' object data, the
 substrate of the bestiary and item/spell catalogues
-(`bestiary.md`, `item-catalogue.md`, `spell-catalogue.md`, all
-machine-generated). Established 2026-09-16 in a four-agent
+(`../catalogues/bestiary-ds1.md` and `-ds2.md`,
+`item-catalogue-ds1.md` and `-ds2.md`, `spell-catalogue-ds1.md`
+and `-ds2.md`, all machine-generated). Established 2026-09-16 in a four-agent
 extraction wave; every layout below was read off the shipped
 bytes of both canonical files, with anchors cross-checked
 against played saves, the in-install SSI clue books (facts

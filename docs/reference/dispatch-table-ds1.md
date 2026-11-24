@@ -12,7 +12,9 @@ entries (114 frameless stack-check, 11 overlay-marked frame,
 was wrong (no reloc support; handlers landed mid-instruction).
 The 15 unknown bytes share the single default entry `0x264c`
 (file `0xbe1c`): reserved and unimplemented, same set as DS2.
-See `../roadmap.md` Phase 5.6.1 and `dispatch-table-ds2.md`.
+See `../../roadmap.md` (campaign ledger; the elevator site-report
+draft note that the pre-condensation 5.6.1 box carried) and
+`dispatch-table-ds2.md`.
 
 | opcode | mnemonic | handler (file) |
 |---|---|---|

@@ -32,7 +32,9 @@ diverge here.
 
 - Your DS1 install with at least one save (the script defaults
   to `~/.wine/drive_c/GOG Games/Dark Sun/DARKRUN.GFF` and
-  `SAVE01.SAV`).
+  `SAVE01.SAV`; on this dev box installs live under `.games/`,
+  so pass both paths explicitly instead, see the script's
+  `--help`).
 - Python 3.11+ (stdlib-only; no Rust binaries required for
   this script).
 

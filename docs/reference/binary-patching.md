@@ -40,7 +40,7 @@ whole transaction. Ghidra is a manual install, and it needs
 on this machine, plus the three import traps specific to a
 Borland-overlaid real-mode target, is documented in
 [`dsun-exe-re.md`](dsun-exe-re.md) §7 and summarised in the repo
-`CLAUDE.md` under "Host RE tooling".
+`AGENTS.md` under "Host RE tooling".
 
 ## 3. Process for one binary fix
 

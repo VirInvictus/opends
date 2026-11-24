@@ -23,8 +23,14 @@ six script repairs adopted from Calvin Rodo's yuan-ti
 disabled and explicitly untested at runtime (runtime QA, issue
 #18, gates the 0.2.0 final); beta.2 migrated the two shipped
 GPLDATA.GFF fixes to chunk-relative addressing, byte-identical
-output. See [`../roadmap.md`](../roadmap.md) and `fixes/` for
-per-fix writeups.
+output; beta.3 added `fix.ds1.legcrusher-gone` (dialog guards
+playing Calvin's replacement lines once the Legcrusher is dead)
+and `fix.ds1.trustee-rounds` (the slave-pens Trustee stall,
+verified from the Obsidian relay); beta.4 added two own-authored
+detour fixes (`fix.ds1.slave-follow`, `fix.ds1.alhena-campfire`)
+and is the current release, with ten fixes shipped disabled
+pending the runtime QA run. See [`../roadmap.md`](../roadmap.md)
+and `fixes/` for per-fix writeups.
 
 ## Layout
 

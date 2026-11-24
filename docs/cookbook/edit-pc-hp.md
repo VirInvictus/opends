@@ -14,15 +14,16 @@ output, real backups taken.
   no build step, but it shells to `gff-cat` for chunk-level
   writes, which is a Rust binary.
 - Your game install. This walkthrough uses
-  `~/.wine/drive_c/GOG Games/Dark Sun 2/CHARSAVE.GFF` (an
-  active DS2 playthrough). Any `CHARSAVE.GFF` works.
+  `.games/ds2/CHARSAVE.GFF` (an active DS2 playthrough; on this
+  dev box installs live under `.games/`, so use your own
+  install's path). Any `CHARSAVE.GFF` works.
 
 ## 1. See who's in the party
 
 ```sh
 $ python3 tools/save-inspect/save-inspect.py list-pcs \
-    "$HOME/.wine/drive_c/GOG Games/Dark Sun 2/CHARSAVE.GFF"
-19 PC(s) in /home/bdkl/.wine/drive_c/GOG Games/Dark Sun 2/CHARSAVE.GFF:
+    .games/ds2/CHARSAVE.GFF
+19 PC(s) in .games/ds2/CHARSAVE.GFF:
 
   PC  CHAR  Name               HP/ Max   PSP/ Max        XP  Items
   ----------------------------------------------------------------------

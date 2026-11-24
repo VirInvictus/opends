@@ -26,7 +26,7 @@ them doesn't displace anything the player is carrying.
 
 ```sh
 $ python3 tools/save-inspect/save-inspect.py find-empty-slots \
-    "$HOME/.wine/drive_c/GOG Games/Dark Sun 2/CHARSAVE.GFF"
+    .games/ds2/CHARSAVE.GFF
 87 empty slot(s) in ...:
 
   PC  Slot Current-ID SlotKind   PC name

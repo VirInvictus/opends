@@ -37,7 +37,7 @@ the scripting VM specifically:
 language and encoding, [`gpl-opcodes.md`](reference/gpl-opcodes.md)
 is the opcode table, and
 [`dso-symbols.md`](reference/dso-symbols.md) documents the
-debug-symbol trove that names 3,530 engine functions.
+debug-symbol trove that names 3,527 engine functions.
 
 **"I want to author or apply patches."**
 [`patch-workflow.md`](reference/patch-workflow.md) is the
@@ -135,7 +135,7 @@ repairs.
 | [`patch-workflow.md`](reference/patch-workflow.md) | Authoring a fix end to end. |
 | [`fix-format.md`](reference/fix-format.md) | The darkfix patch artifact specification. |
 | [`binary-patching.md`](reference/binary-patching.md) | The `DSUN.EXE` binary-patch path. |
-| [`detour-repairs.md`](reference/detour-repairs.md) | Design note for length-changing script repairs (the mechanism yuan-ti uses; contract, nothing implemented in-tree yet). |
+| [`detour-repairs.md`](reference/detour-repairs.md) | Design note for length-changing script repairs (the mechanism yuan-ti uses; contract and adoption gate, both halves shipped: the applier's REPAIRS path and gpl-asm 0.10.0's assemble_movable). |
 | [`known-bugs.md`](reference/known-bugs.md) | The bug catalog and the bug-site census. |
 | [`install-variants.md`](reference/install-variants.md) | Release lineages and the patch-base rationale. |
 
@@ -201,7 +201,7 @@ evergreen docs; the dates are in the filenames.
 
 ## cookbook/ — tested walkthroughs
 
-Start at [`cookbook/README.md`](cookbook/README.md); six complete
+Start at [`cookbook/README.md`](cookbook/README.md); five complete
 entries from authoring a first darkfix to editing party PCs.
 
 ## The repo root

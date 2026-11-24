@@ -142,7 +142,7 @@ archived the catalog page but every patch zip returns 410).
    targeting floppy 1.10 would target an install that cannot
    currently be assembled from public artifacts (§5).
 2. **Verifiability.** The existing
-   `source-hashes/ds2-gog-1.10.toml` manifest pins it, and §3
+   `../source-hashes/ds2-gog-1.10.toml` manifest pins it, and §3
    shows the base itself is reconstructible from GOG's own
    shipped CD image plus an archived official patch. There is no
    provenance ambiguity.

@@ -433,7 +433,7 @@ comes from the RESOURCE fallback and the name chunk is absent).
 ### DATA (DS2 spell-system data)
 
 Documented 2026-10-06 (mineout wave 1; evidence and the release-
-lineage comparison in `port-digs-2026-10-06.md` 1). DATA exists only
+lineage comparison in `../reports/port-digs-2026-10-06.md` 1). DATA exists only
 in DS2's RESOURCE.GFF lineage (GOG `RESOURCE.GFF` plus `RESFLOP.GFF`
 in the floppy/HotU/cd10 trees; payload byte-identical across the
 archive copies, GOG 1.10 differing by exactly 5 bytes). No DS1 file
@@ -510,7 +510,7 @@ not XMI: third-party exports matching the DJ.DAT slot count
 
 ### VECT (256-direction unit circle)
 
-Decoded 2026-10-06 (evidence in `port-digs-2026-10-06.md` 5). One
+Decoded 2026-10-06 (evidence in `../reports/port-digs-2026-10-06.md` 5). One
 1024-byte chunk, id 1, in DS1 `RESOURCE.GFF` and the DS2
 `RESOURCE.GFF`/`RESFLOP.GFF` lineage; all five corpus payloads are
 byte-identical. Layout: 256 records of (LE i16 x, LE i16 y). Entry
