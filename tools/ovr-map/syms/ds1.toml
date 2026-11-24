@@ -1176,9 +1176,9 @@ notes = "The bytecode interpreter loop. The MISC stamp is what makes chunk-99 re
 [[function]]
 name = "gpl_opcode_dispatch"
 segment = "resident"
-offset = 0x99c5
+offset = 0x9998
 confidence = "verified"
-evidence = "docs/reports/port-digs-2026-10-06.md 3: `call near [bx+0xc0]` - the same DGROUP:0xc0, 129-entry handler table the gpl_handler_* rows resolve through"
+evidence = "docs/reports/port-digs-2026-10-06.md 3: `call near [bx+0xc0]` - the same DGROUP:0xc0, 129-entry handler table the gpl_handler_* rows resolve through. Entry corrected 0x99c5 -> 0x9998 on 2026-11-23 (the old offset sat 44 bytes into the function, past its `inc bp; push bp; mov bp,sp; cmp [0x9C],sp` far frame at 0x9998, which carries the two near callers 0x98a7 and 0xd24c; audit prompted by daaki85's darksun-recompiled syms cross-check, whose shift heuristic itself fires on zero of our rows)"
 notes = "Dispatches one opcode to its handler."
 
 [[function]]
