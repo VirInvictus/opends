@@ -61,11 +61,13 @@ DOSBox runs that launch the actual game must use **overlay mounts** so writes ne
 
 ## Reference checkouts
 
-Three upstream RE projects are cloned into dot-prefixed directories (gitignored) for cross-reference. They are read-only research material, not modifiable:
+Five upstream RE projects are cloned into dot-prefixed directories (gitignored) for cross-reference. They are read-only research material, not modifiable:
 
 - **`.dsun_music/`**: John Glassmyer's tools. Source of the GFF *writer* policy (in-place if it fits, append otherwise), the GFFI segmented-chunk cross-reference layout, and the PLAN frame decoder.
 - **`.dsoageofheroes/`**: paulofthewest's organization. `libgff` is the deepest public GFF/GPL reverse-engineering; the 129-entry opcode catalogue, GPL_* constants, and 7-bit packed inline string decoder all come from here. `soloscuro-archive` is the closest public partial GPL VM.
 - **`.dso-online/`**: greg-kennedy's DSO research mirror (AGPL-3.0; research-only, do not vendor). Hosts `tools/symbols.txt` with 3,527 named functions from DS2's shared codebase (the older 3,530 figure is a census misquote; `docs/reference/dso-symbols.md` has the measured count); primary source for `tools/gpl-disasm/syms/functions.toml`.
+- **`.darksun-recompiled/`**: daaki85's static recompilation of DS1 to C (prototype in play; **no license shipped**, so facts-only reference until upstream adds one). STATUS.md's runtime facts, the `entries/` entry-point lists, and the Python lifting toolchain are the cross-reference surface; see [`docs/reference/upstream-projects.md`](docs/reference/upstream-projects.md) §6. Cross-read record: [`docs/reports/daaki85-crossread-2026-11-23.md`](docs/reports/daaki85-crossread-2026-11-23.md).
+- **`.darksun-obsidian-edition/`**: daaki85's GPL-3.0 DS1 mod; the primary source of the 2026-11-17 findings relay ([`docs/reference/known-bugs.md`](docs/reference/known-bugs.md) §3.7) and the dice-log oracle. Same cross-read record as above.
 
 When porting logic from any of these, cite the upstream file/function in a code comment AND add a row to `CREDITS.md`. We follow attribute-everything as policy.
 

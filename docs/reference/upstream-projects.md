@@ -313,6 +313,8 @@ facts-only discipline.
 - License: GPL-3.0 for the mod's own code and documentation (the
   game's own art is excluded)
 - Status: actively released as of 2026-11-23 (2.19.2)
+- Workspace clone at `.darksun-obsidian-edition/` (read-only
+  research; GPL-3.0)
 
 A mod for DS1 (the GOG release, still in DOSBox): rules closer to
 AD&D 2e, kits, new spells, items, and people, the party's gear
@@ -340,6 +342,8 @@ repo is identified, future relays can go direct.
   all-rights-reserved: facts-only reference, the same rule as
   `libsoloscuro` above, until upstream adds one)
 - Status: prototype in play as of 2026-11-23
+- Workspace clone at `.darksun-recompiled/` (read-only research;
+  facts-only while unlicensed)
 
 A static recompilation of DS1's `DSUN.EXE` (GOG 1.10) to C,
 compiled natively for Windows and Linux on a small emulated PC

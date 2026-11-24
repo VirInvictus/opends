@@ -13,6 +13,8 @@
 .dsun_music/
 .dsoageofheroes/
 .dso-online/
+.darksun-recompiled/
+.darksun-obsidian-edition/
 
 # Build artifacts
 /build/

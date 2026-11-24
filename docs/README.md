@@ -189,6 +189,7 @@ evergreen docs; the dates are in the filenames.
 | [`exchange-yuan-ti-2026-11-13.md`](reports/exchange-yuan-ti-2026-11-13.md) | Four exchange briefs prepared for yuan-ti. |
 | [`gate-review-yuan-ti-2026-11-13.md`](reports/gate-review-yuan-ti-2026-11-13.md) | Adoption-gate record for yuan-ti's 29 GplRepairs (static gates pass; runtime QA pending). |
 | [`yuan-ti-mining-2026-11-17.md`](reports/yuan-ti-mining-2026-11-17.md) | yuan-ti mining batch 2: remaining instruction and Scripting files. |
+| [`daaki85-crossread-2026-11-23.md`](reports/daaki85-crossread-2026-11-23.md) | Community cross-read over daaki85's darksun-recompiled (the recompilation) and darksun-obsidian-edition (the relay's primary source). |
 
 ## qa/ — runtime QA
 
