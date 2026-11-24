@@ -28,9 +28,9 @@ independent of whether later phases happen.
 ## Where we are (snapshot 2026-11-17)
 
 All phases through 5.7 and the phase-6 pipeline are shipped.
-The patch program is live: darkfix-ds1 0.2.0-beta.4 carries four
-beta families (16 disabled fixes across the yuan-ti catalog, our
-sweep-triage rows, and the Detour/messenger repairs) gated by
+The patch program is live: darkfix-ds1 0.2.0-beta.4 carries ten
+disabled fixes (the yuan-ti catalog rows and our sweep-triage
+candidates) gated by
 runtime QA (#18); darkfix-ds2 0.1.x carries the dead-trigger
 round. The community lane is fully adopted (yuan-ti catalog
 complete; DarkSunTools Apache-2.0 with three ports shipped:
@@ -103,7 +103,8 @@ nothing in the patch program waits on binary knowledge anymore.
 **Goal**: fix the most famous DS2 bug, the one that broke the
 late game in 1994 and has never been fixed.
 
-**Ships**: `darkfix-ds2-v0.1.0`.
+**Ships**: `darkfix-ds2-v0.1.3` (0.1.0-0.1.2 already shipped the
+dead-trigger round).
 
 - [ ] DS2 active-party edit surface, verified end-to-end:
       confirm in a loaded game that CHARSAVE edits via
@@ -440,8 +441,9 @@ line each here; the evidence chains live at the targets):
   `docs/reference/dsun-exe-re.md` / `docs/reference/dsun-exe-survey.md`
   (corrected 2026-09-05; the syms row fixed in ovr-map 0.3.1).
 
-The elevator site-report narrative inside the 5.6.1 box is the
-Phase 7 site report's draft; it assembles into
+The elevator site-report narrative from the pre-condensation 5.6.1
+box (git history of this file) is the Phase 7 site report's draft;
+it assembles into
 `ds2-patch/fixes/fix.ds2.mines-elevator.md` when Phase 7 opens,
 from this ledger, `docs/reference/engine-quirks.md` 6, and the census row.
 
@@ -457,10 +459,12 @@ Each line names what the campaign shipped and where its record
 lives.
 
 
-- **Six-lens audit (2026-09-12)**: full report at
-  `audit/FULL-AUDIT-2026-09-12.md`; findings fed the final blitz.
+- **Six-lens audit (2026-09-12)**: session-era record, never
+  committed (no file in the tree or git history); findings fed
+  the final blitz.
 - **Final audit + blitz (2026-09-14/15)**: all 10 blitz items
-  shipped, `audit-final/opends/FINAL-REPORT.md`; darkfix-ds2 0.1.0
+  shipped (the FINAL-REPORT section was left uncommitted and is
+  not retained); darkfix-ds2 0.1.0
   (first DS2 fix) and 7 tool releases in one day.
 - **Bestiary campaign (2026-09-16/17)**: complete world-data
   mining (bestiary/items/spells/inventories/world-dumps, 12
@@ -469,7 +473,7 @@ lives.
   `docs/catalogues/bestiary-ds1.md` + kin.
 - **Port-mining campaign (2026-09-19)**: the Godot-readiness lane
   mined out; the Draj demo built; record:
-  `docs/reference/godot-port-readiness.md` + `docs/port-digs-*.md`.
+  `docs/reference/godot-port-readiness.md` + `docs/reports/port-digs-*.md`.
 - **Mineout campaign (2026-10-06/07)**: format-coverage gap list
   driven to zero; audio-extract + xmi2mid shipped; DS2 dead
   triggers 37/39; sweep verdicts in

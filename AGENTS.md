@@ -65,7 +65,7 @@ Three upstream RE projects are cloned into dot-prefixed directories (gitignored)
 
 - **`.dsun_music/`**: John Glassmyer's tools. Source of the GFF *writer* policy (in-place if it fits, append otherwise), the GFFI segmented-chunk cross-reference layout, and the PLAN frame decoder.
 - **`.dsoageofheroes/`**: paulofthewest's organization. `libgff` is the deepest public GFF/GPL reverse-engineering; the 129-entry opcode catalogue, GPL_* constants, and 7-bit packed inline string decoder all come from here. `soloscuro-archive` is the closest public partial GPL VM.
-- **`.dso-online/`**: greg-kennedy's DSO research mirror (AGPL-3.0; research-only, do not vendor). Hosts `tools/symbols.txt` with 3,530 named functions from DS2's shared codebase; primary source for `tools/gpl-disasm/syms/functions.toml`.
+- **`.dso-online/`**: greg-kennedy's DSO research mirror (AGPL-3.0; research-only, do not vendor). Hosts `tools/symbols.txt` with 3,527 named functions from DS2's shared codebase (the older 3,530 figure is a census misquote; `docs/reference/dso-symbols.md` has the measured count); primary source for `tools/gpl-disasm/syms/functions.toml`.
 
 When porting logic from any of these, cite the upstream file/function in a code comment AND add a row to `CREDITS.md`. We follow attribute-everything as policy.
 
@@ -80,7 +80,7 @@ Installed on Brandon's machine 2026-08-08. **None of this is a repo dependency**
 | **Ghidra 12.1.2** | `~/.local/share/ghidra_12.1.2_PUBLIC/ghidraRun` | Static analysis + decompilation of `DSUN.EXE`. The "when r2 stalls" tool `docs/reference/binary-patching.md` has always named. |
 | Temurin **JDK 21** | `~/.local/share/jdk/jdk-21.0.12+8` | Ghidra needs 21; Fedora 44 ships only 25/26. Pinned in Ghidra's `support/launch.properties` via `JAVA_HOME_OVERRIDE`, so the system JDK is untouched. |
 | `radare2` / `r2` | system | Still the scriptable first stop, unchanged. |
-| `pwntools` | uv tool, Python 3.13 | `pwn asm` / `pwn disasm` at `arch='i386', bits=16` for authoring patch bytes. |
+| `pwntools` | uv tool, Python 3.13 | ⚠ Its 16-bit assembly path is broken for this target (`Invalid arch/bits combination: i386/16`); patch-byte authoring goes through system nasm via `tools/exe-patch --asm` (see `docs/reference/re-tooling.md`). |
 | **REA** (`rea`, morluto/rea 6.8.0) | `~/.local/lib/node-v24.22.2-linux-x64/bin/rea` (private Node; system Node is below its floor) | Agent-driven Ghidra decompilation (`rea decompile --file-offset ...`, MCP registered in ZCode). Runs on `tools/ovr-carve` output; see `scratch/rea-bridge/` history and the patchnotes. The ZCode MCP lane times out on DSUN.EXE's ~90 s first import (30 s tool cap), so heavy decompiles go through the CLI. |
 
 **Four things to know before pointing Ghidra at these binaries.** Full detail in [`docs/reference/dsun-exe-re.md`](docs/reference/dsun-exe-re.md) §7.

@@ -127,8 +127,11 @@ culling, save/exit bugs) live in `DSUN.EXE`. We patch the executable
 directly.
 
 Authoring tools: **radare2** (preferred: scriptable, on Fedora as
-`r2`) or **Ghidra** for analysis; Python `pwntools`/`keystone-engine`
-or hand-assembled hex for emitting patches.
+`r2`) or **Ghidra** for analysis; **nasm** (shelled out to by
+`tools/exe-patch --asm`) for emitting patches. pwntools and
+keystone-engine were evaluated and declined 2026-09-06: pwntools
+rejects the i386/16 combination outright, and keystone would be a
+pip dependency buying what an installed nasm already provides.
 
 Each binary fix:
 

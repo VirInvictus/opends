@@ -18,8 +18,10 @@ detail lives in the docs it points at.
    `toml`, `png`); anything new needs per-tool justification in
    the PR.
 4. **Never break the install.** The applier refuses fingerprint
-   drift, length changes, wrong installs, and two enabled fixes
-   on one target; EXE patches are in-place only. Any change to
+   drift, length changes, wrong installs, and overlapping
+   same-file fix ranges (disjoint same-file fixes compose into
+   one write per spec §5, amended 2026-10-07); EXE patches are
+   in-place only. Any change to
    the applier or the patch format has to preserve those
    guarantees.
 5. **Tests are not optional.** Rust tools carry unit + corpus
@@ -40,7 +42,7 @@ cd opends
 cargo test --workspace     # the Rust gate; corpus tests skip
                            # cleanly without the games
 just gate                  # everything: fmt, clippy, tests, ruff,
-                           # compileall, all seven selftests
+                           # compileall, every tool selftest
 ```
 
 Ruff is pinned by the root `ruff.toml`; if your system ruff is a
@@ -66,7 +68,7 @@ different version, run the Python checks through
 
 ## House conventions
 
-- **The docs set travels with every change**: README, CLAUDE.md,
+- **The docs set travels with every change**: README, AGENTS.md,
   spec.md, roadmap.md, patchnotes.md. Version bumps follow the
   full cadence in [`docs/reference/versioning.md`](docs/reference/versioning.md):
   per-tool `VERSION` + its manifest + a patchnotes entry + a
